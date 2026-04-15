@@ -16,63 +16,38 @@ export default function Produit() {
   const [selected, setSelected] = useState<string | null>(null);
 
   return (
-    <main style={{
-      fontFamily: "system-ui, Arial",
-      background: "#ffffff",
-      color: "#111"
-    }}>
+    <main style={mainStyle}>
 
       {/* HERO */}
-      <section style={{ textAlign: "center", padding: "80px 20px" }}>
-        <h1 style={{ fontSize: "48px", fontWeight: 600 }}>
-          NeoDrive SWITCH
-        </h1>
+      <section style={heroSection}>
+        <h1 style={title}>NeoDrive SWITCH</h1>
 
-        <p style={{ fontSize: "18px", color: "#555" }}>
+        <p style={subtitle}>
           Voiture électrique sans permis
         </p>
 
-        <p style={{ color: "#777", marginTop: "5px" }}>
+        <p style={smallText}>
           Disponible immédiatement
         </p>
 
-        <h2 style={{ marginTop: "10px" }}>
+        <h2 style={price}>
           À partir de 4 490 €
         </h2>
 
-        <div style={{
-          display: "flex",
-          justifyContent: "center",
-          marginTop: "40px"
-        }}>
+        <div style={center}>
           <img
             src="/voiture.jpg"
-            style={{
-              width: "550px",
-              maxWidth: "90%",
-              borderRadius: "12px",
-              cursor: "pointer"
-            }}
+            style={mainImage}
             onClick={() => setSelected("/voiture.jpg")}
           />
         </div>
       </section>
 
       {/* GALLERY */}
-      <section style={{
-        maxWidth: "900px",
-        margin: "40px auto",
-        padding: "20px"
-      }}>
-        <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
-          Photos du véhicule
-        </h2>
+      <section style={gallerySection}>
+        <h2 style={centerTitle}>Photos du véhicule</h2>
 
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "15px"
-        }}>
+        <div style={grid}>
           {images.map((img, index) => (
             <img
               key={index}
@@ -100,9 +75,9 @@ export default function Produit() {
         </p>
       </section>
 
-      {/* PRICE LOGIC */}
-      <section style={{ background: "#f7f7f7", padding: "60px 20px" }}>
-        <div style={{ maxWidth: "800px", margin: "auto" }}>
+      {/* PRICE */}
+      <section style={graySection}>
+        <div style={container}>
           <h2>Pourquoi ce prix est-il aussi accessible ?</h2>
 
           <p style={text}>
@@ -139,14 +114,8 @@ export default function Produit() {
       </section>
 
       {/* SPECIFICATIONS */}
-      <section style={{
-        maxWidth: "900px",
-        margin: "auto",
-        padding: "60px 20px"
-      }}>
-        <h2 style={{ textAlign: "center", marginBottom: "30px" }}>
-          Fiche technique complète
-        </h2>
+      <section style={specSection}>
+        <h2 style={centerTitle}>Fiche technique complète</h2>
 
         <div style={table}>
           <Row label="Moteur" value="3000W électrique" />
@@ -164,30 +133,22 @@ export default function Produit() {
       </section>
 
       {/* DOCUMENTATION */}
-      <section style={{
-        maxWidth: "800px",
-        margin: "auto",
-        padding: "60px 20px",
-        textAlign: "center"
-      }}>
+      <section style={docSection}>
         <h2>Documentation du véhicule</h2>
 
         <p style={text}>
-          Un manuel utilisateur complet est disponible pour vous accompagner
-          dans l’utilisation et l’entretien du véhicule.
+          Un manuel utilisateur complet est disponible pour vous accompagner.
         </p>
 
         <div style={{ marginTop: "30px" }}>
-          <a href="/manuel-utilisateur-neodrive.pdf"
-            target="_blank"
-            style={ctaDark}>
+          <a href="/manuel-utilisateur-neodrive.pdf" target="_blank" style={ctaDark}>
             Télécharger le manuel utilisateur
           </a>
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section style={{ textAlign: "center", padding: "80px 20px" }}>
+      {/* CTA */}
+      <section style={ctaSection}>
         <a href="https://wa.me/33776156169" style={cta}>
           Demander une vidéo ou réserver
         </a>
@@ -204,7 +165,7 @@ export default function Produit() {
   );
 }
 
-/* COMPONENTS */
+/* COMPONENT */
 function Row(props: any) {
   return (
     <div style={row}>
@@ -215,44 +176,114 @@ function Row(props: any) {
 }
 
 /* STYLES */
-const section: any = {
+
+const mainStyle = {
+  fontFamily: "system-ui, Arial",
+  background: "#ffffff",
+  color: "#111"
+};
+
+const heroSection = {
+  textAlign: "center",
+  padding: "80px 20px"
+};
+
+const title = { fontSize: "48px", fontWeight: 600 };
+const subtitle = { fontSize: "18px", color: "#555" };
+const smallText = { color: "#777", marginTop: "5px" };
+const price = { marginTop: "10px" };
+
+const center = {
+  display: "flex",
+  justifyContent: "center",
+  marginTop: "40px"
+};
+
+const mainImage = {
+  width: "550px",
+  maxWidth: "90%",
+  borderRadius: "12px",
+  cursor: "pointer"
+};
+
+const gallerySection = {
+  maxWidth: "900px",
+  margin: "40px auto",
+  padding: "20px"
+};
+
+const grid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, 1fr)",
+  gap: "15px"
+};
+
+const imgStyle = {
+  width: "100%",
+  borderRadius: "10px",
+  cursor: "pointer"
+};
+
+const section = {
   maxWidth: "800px",
   margin: "auto",
   padding: "60px 20px"
 };
 
-const text: any = {
+const text = {
   marginTop: "15px",
   color: "#444",
   lineHeight: "1.6"
 };
 
-const list: any = {
+const graySection = {
+  background: "#f7f7f7",
+  padding: "60px 20px"
+};
+
+const container = {
+  maxWidth: "800px",
+  margin: "auto"
+};
+
+const list = {
   marginTop: "20px",
   lineHeight: "2"
 };
 
-const table: any = {
+const specSection = {
+  maxWidth: "900px",
+  margin: "auto",
+  padding: "60px 20px"
+};
+
+const table = {
   background: "#fff",
   borderRadius: "12px",
   overflow: "hidden",
   boxShadow: "0 10px 30px rgba(0,0,0,0.05)"
 };
 
-const row: any = {
+const row = {
   display: "flex",
   justifyContent: "space-between",
   padding: "15px 20px",
   borderBottom: "1px solid #eee"
 };
 
-const imgStyle: any = {
-  width: "100%",
-  borderRadius: "10px",
-  cursor: "pointer"
+const docSection = {
+  maxWidth: "800px",
+  margin: "auto",
+  padding: "60px 20px",
+  textAlign: "center"
 };
 
-const cta: any = {
+const ctaSection = {
+  textAlign: "center",
+  padding: "80px 20px"
+};
+
+const cta = {
   padding: "18px 40px",
   background: "#25D366",
   color: "#fff",
@@ -261,7 +292,7 @@ const cta: any = {
   fontWeight: "bold"
 };
 
-const ctaDark: any = {
+const ctaDark = {
   padding: "15px 30px",
   background: "#111",
   color: "#fff",
@@ -269,8 +300,8 @@ const ctaDark: any = {
   textDecoration: "none"
 };
 
-const overlay: any = {
-  position: "fixed",
+const overlay = {
+  position: "fixed" as const,
   top: 0,
   left: 0,
   width: "100%",
@@ -283,7 +314,7 @@ const overlay: any = {
   cursor: "pointer"
 };
 
-const zoomImg: any = {
+const zoomImg = {
   maxWidth: "90%",
   maxHeight: "90%"
 };
