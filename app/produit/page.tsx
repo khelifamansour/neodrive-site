@@ -225,6 +225,11 @@ const imgStyle: CSSProperties = {
   cursor: "pointer"
 };
 
+const centerTitle: CSSProperties = {
+  textAlign: "center",
+  marginBottom: "20px"
+};
+
 const section: CSSProperties = {
   maxWidth: "800px",
   margin: "auto",
