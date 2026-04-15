@@ -205,54 +205,54 @@ export default function Produit() {
 }
 
 /* COMPONENTS */
-function Row({ label, value }: { label: string; value: string }) {
+function Row(props: any) {
   return (
     <div style={row}>
-      <div>{label}</div>
-      <div style={{ color: "#555" }}>{value}</div>
+      <div>{props.label}</div>
+      <div style={{ color: "#555" }}>{props.value}</div>
     </div>
   );
 }
 
 /* STYLES */
-const section = {
+const section: any = {
   maxWidth: "800px",
   margin: "auto",
   padding: "60px 20px"
 };
 
-const text = {
+const text: any = {
   marginTop: "15px",
   color: "#444",
   lineHeight: "1.6"
 };
 
-const list = {
+const list: any = {
   marginTop: "20px",
   lineHeight: "2"
 };
 
-const table = {
+const table: any = {
   background: "#fff",
   borderRadius: "12px",
   overflow: "hidden",
   boxShadow: "0 10px 30px rgba(0,0,0,0.05)"
 };
 
-const row = {
+const row: any = {
   display: "flex",
   justifyContent: "space-between",
   padding: "15px 20px",
   borderBottom: "1px solid #eee"
 };
 
-const imgStyle = {
+const imgStyle: any = {
   width: "100%",
   borderRadius: "10px",
   cursor: "pointer"
 };
 
-const cta = {
+const cta: any = {
   padding: "18px 40px",
   background: "#25D366",
   color: "#fff",
@@ -261,7 +261,7 @@ const cta = {
   fontWeight: "bold"
 };
 
-const ctaDark = {
+const ctaDark: any = {
   padding: "15px 30px",
   background: "#111",
   color: "#fff",
@@ -269,7 +269,7 @@ const ctaDark = {
   textDecoration: "none"
 };
 
-const overlay = {
+const overlay: any = {
   position: "fixed",
   top: 0,
   left: 0,
@@ -283,7 +283,7 @@ const overlay = {
   cursor: "pointer"
 };
 
-const zoomImg = {
+const zoomImg: any = {
   maxWidth: "90%",
   maxHeight: "90%"
 };
