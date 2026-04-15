@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import type { CSSProperties } from "react";
 
 export default function Produit() {
 
@@ -166,7 +167,7 @@ export default function Produit() {
 }
 
 /* COMPONENT */
-function Row(props: any) {
+function Row(props: { label: string; value: string }) {
   return (
     <div style={row}>
       <div>{props.label}</div>
@@ -177,113 +178,113 @@ function Row(props: any) {
 
 /* STYLES */
 
-const mainStyle = {
+const mainStyle: CSSProperties = {
   fontFamily: "system-ui, Arial",
   background: "#ffffff",
   color: "#111"
 };
 
-const heroSection = {
+const heroSection: CSSProperties = {
   textAlign: "center",
   padding: "80px 20px"
 };
 
-const title = { fontSize: "48px", fontWeight: 600 };
-const subtitle = { fontSize: "18px", color: "#555" };
-const smallText = { color: "#777", marginTop: "5px" };
-const price = { marginTop: "10px" };
+const title: CSSProperties = { fontSize: "48px", fontWeight: 600 };
+const subtitle: CSSProperties = { fontSize: "18px", color: "#555" };
+const smallText: CSSProperties = { color: "#777", marginTop: "5px" };
+const price: CSSProperties = { marginTop: "10px" };
 
-const center = {
+const center: CSSProperties = {
   display: "flex",
   justifyContent: "center",
   marginTop: "40px"
 };
 
-const mainImage = {
+const mainImage: CSSProperties = {
   width: "550px",
   maxWidth: "90%",
   borderRadius: "12px",
   cursor: "pointer"
 };
 
-const gallerySection = {
+const gallerySection: CSSProperties = {
   maxWidth: "900px",
   margin: "40px auto",
   padding: "20px"
 };
 
-const grid = {
+const grid: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(3, 1fr)",
   gap: "15px"
 };
 
-const imgStyle = {
+const imgStyle: CSSProperties = {
   width: "100%",
   borderRadius: "10px",
   cursor: "pointer"
 };
 
-const section = {
+const section: CSSProperties = {
   maxWidth: "800px",
   margin: "auto",
   padding: "60px 20px"
 };
 
-const text = {
+const text: CSSProperties = {
   marginTop: "15px",
   color: "#444",
   lineHeight: "1.6"
 };
 
-const graySection = {
+const graySection: CSSProperties = {
   background: "#f7f7f7",
   padding: "60px 20px"
 };
 
-const container = {
+const container: CSSProperties = {
   maxWidth: "800px",
   margin: "auto"
 };
 
-const list = {
+const list: CSSProperties = {
   marginTop: "20px",
   lineHeight: "2"
 };
 
-const specSection = {
+const specSection: CSSProperties = {
   maxWidth: "900px",
   margin: "auto",
   padding: "60px 20px"
 };
 
-const table = {
+const table: CSSProperties = {
   background: "#fff",
   borderRadius: "12px",
   overflow: "hidden",
   boxShadow: "0 10px 30px rgba(0,0,0,0.05)"
 };
 
-const row = {
+const row: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   padding: "15px 20px",
   borderBottom: "1px solid #eee"
 };
 
-const docSection = {
+const docSection: CSSProperties = {
   maxWidth: "800px",
   margin: "auto",
   padding: "60px 20px",
   textAlign: "center"
 };
 
-const ctaSection = {
+const ctaSection: CSSProperties = {
   textAlign: "center",
   padding: "80px 20px"
 };
 
-const cta = {
+const cta: CSSProperties = {
   padding: "18px 40px",
   background: "#25D366",
   color: "#fff",
@@ -292,7 +293,7 @@ const cta = {
   fontWeight: "bold"
 };
 
-const ctaDark = {
+const ctaDark: CSSProperties = {
   padding: "15px 30px",
   background: "#111",
   color: "#fff",
@@ -300,8 +301,8 @@ const ctaDark = {
   textDecoration: "none"
 };
 
-const overlay = {
-  position: "fixed" as const,
+const overlay: CSSProperties = {
+  position: "fixed",
   top: 0,
   left: 0,
   width: "100%",
@@ -314,7 +315,7 @@ const overlay = {
   cursor: "pointer"
 };
 
-const zoomImg = {
+const zoomImg: CSSProperties = {
   maxWidth: "90%",
   maxHeight: "90%"
 };
