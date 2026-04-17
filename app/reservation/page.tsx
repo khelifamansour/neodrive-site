@@ -33,36 +33,37 @@ export default function Reservation() {
       </div>
 
       {/* DEVIS */}
-      <div id="devis" style={{
-        marginTop: 30,
-        border: "1px solid #ccc",
-        padding: 20,
-        background: "#fff"
-      }}>
+      <div id="devis" style={devisBox}>
 
-        <h2 style={{ marginBottom: 10 }}>DEVIS</h2>
+        <h2 style={{ textAlign: "center", marginBottom: 10 }}>DEVIS</h2>
 
         <p>Date : 11 juin 2025</p>
 
         <hr />
 
-        <strong>Client</strong>
-        <p>{prenom} {nom}</p>
-        <p>{adresse}</p>
-        <p>{cp} {ville}</p>
-        <p>{phone}</p>
+        {/* CLIENT + VENDEUR */}
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
+          <div>
+            <strong>Client</strong>
+            <p>{prenom} {nom}</p>
+            <p>{adresse}</p>
+            <p>{cp} {ville}</p>
+            <p>{phone}</p>
+          </div>
+
+          <div>
+            <strong>Vendeur</strong>
+            <p>MK HOLDING</p>
+            <p>31 rue Jean Nougaro</p>
+            <p>31600 Muret</p>
+            <p>SIREN : 908 645 393</p>
+            <p>TVA : Non applicable</p>
+          </div>
+        </div>
 
         <hr />
 
-        <strong>Vendeur</strong>
-        <p>MK HOLDING</p>
-        <p>31 rue Jean Nougaro</p>
-        <p>31600 Muret</p>
-        <p>SIREN : 908 645 393</p>
-        <p>TVA : Non applicable</p>
-
-        <hr />
-
+        {/* DETAILS */}
         <strong>Détails</strong>
 
         <table style={{ width: "100%", marginTop: 10 }}>
@@ -85,6 +86,7 @@ export default function Reservation() {
 
         <hr />
 
+        {/* PAYMENT */}
         <strong>Paiement</strong>
         <p>IBAN : FR76 2823 3000 0142 1307 1051 008</p>
         <p>BIC : REVOFRP2</p>
@@ -126,13 +128,31 @@ export default function Reservation() {
         </a>
       </div>
 
-      {/* PRINT FIX */}
+      {/* PRINT FIX (CORRIGÉ) */}
       <style>
         {`
         @media print {
-          body * { visibility: hidden; }
-          #devis, #devis * { visibility: visible; }
-          #devis { position: absolute; top: 0; left: 0; width: 100%; }
+          body {
+            margin: 0;
+          }
+
+          body * {
+            visibility: hidden;
+          }
+
+          #devis, #devis * {
+            visibility: visible;
+          }
+
+          #devis {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 90%;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+          }
         }
         `}
       </style>
@@ -141,7 +161,7 @@ export default function Reservation() {
   );
 }
 
-/* SAFE STYLES */
+/* STYLES */
 
 const input = {
   width: "100%",
@@ -178,4 +198,11 @@ const box = {
   background: "#f7f7f7",
   padding: 15,
   borderRadius: 8
+};
+
+const devisBox = {
+  marginTop: 30,
+  border: "1px solid #ccc",
+  padding: 20,
+  background: "#fff"
 };
