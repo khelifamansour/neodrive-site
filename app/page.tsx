@@ -25,12 +25,25 @@ export default function Home() {
             style={{ width: "100%", maxWidth: 400, marginTop: 20, borderRadius: 10 }}
           />
 
+          {/* BUTTONS */}
           <div style={{ marginTop: 20 }}>
+
+            {/* RESERVATION BUTTON */}
+            <div style={{ marginBottom: 10 }}>
+              <a href="/reservation">
+                <button style={ctaPrimary}>
+                  Réserver ce véhicule
+                </button>
+              </a>
+            </div>
+
+            {/* WHATSAPP BUTTON */}
             <a href="https://wa.me/33628261446" target="_blank">
               <button style={cta}>
                 Contacter sur WhatsApp
               </button>
             </a>
+
           </div>
         </div>
       </section>
@@ -78,12 +91,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* FINAL CTA */}
       <section style={{ padding: "40px 0" }}>
         <div style={{ textAlign: "center" }}>
-          <a href="https://wa.me/33628261446" target="_blank">
-            <button style={cta}>
-              Discuter sur WhatsApp
+          <a href="/reservation">
+            <button style={ctaPrimary}>
+              Réserver maintenant
             </button>
           </a>
         </div>
@@ -93,7 +106,7 @@ export default function Home() {
   );
 }
 
-/* SAFE STYLES */
+/* STYLES */
 
 const box = {
   background: "#f7f7f7",
@@ -109,5 +122,15 @@ const cta = {
   border: "none",
   borderRadius: 8,
   fontWeight: 600,
+  cursor: "pointer"
+};
+
+const ctaPrimary = {
+  padding: "15px 25px",
+  background: "#000",
+  color: "white",
+  border: "none",
+  borderRadius: 8,
+  fontWeight: 700,
   cursor: "pointer"
 };
