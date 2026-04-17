@@ -1,4 +1,4 @@
-correct and apply and vat is applicaticable 20% remove non applicable, create the code proof for vercel "use client";
+"use client";
 
 import { useState } from "react";
 
@@ -12,13 +12,22 @@ export default function Reservation() {
 
   const today = "11 juin 2025";
 
+  // PRICES
+  const prixVehiculeHT = 4490;
+  const transportHT = 490;
+  const totalHT = prixVehiculeHT + transportHT;
+  const tva = totalHT * 0.2;
+  const totalTTC = totalHT + tva;
+
   return (
-    <main style={container}>
+    <main style={{ maxWidth: 700, margin: "0 auto", padding: 20, fontFamily: "Arial" }}>
 
-      <h1 style={title}>Réservation véhicule</h1>
+      <h1 style={{ fontSize: 24, fontWeight: "bold" }}>
+        Réservation véhicule
+      </h1>
 
-      <p style={subtitle}>
-        Complétez vos informations pour générer votre devis officiel
+      <p style={{ color: "#555" }}>
+        Complétez vos informations pour générer votre devis
       </p>
 
       {/* FORM */}
@@ -32,19 +41,20 @@ export default function Reservation() {
       </div>
 
       {/* DEVIS */}
-      <div id="devis" style={devisBox}>
+      <div id="devis" style={{
+        marginTop: 30,
+        border: "1px solid #ccc",
+        padding: 20,
+        background: "#fff"
+      }}>
 
         <h2 style={{ textAlign: "center" }}>DEVIS</h2>
 
-        <div style={topRow}>
-          <span>Date : {today}</span>
-          <span>MK HOLDING</span>
-        </div>
+        <p>Date : {today}</p>
 
         <hr />
 
-        {/* CLIENT + ENTREPRISE */}
-        <div style={row}>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
           <div>
             <strong>Client</strong>
             <p>{prenom} {nom}</p>
@@ -59,57 +69,48 @@ export default function Reservation() {
             <p>31 rue Jean Nougaro</p>
             <p>31600 Muret</p>
             <p>SIREN : 908 645 393</p>
-            <p>Code NAF : 45.11Z</p>
-            <p>TVA : Non applicable (article 293B CGI)</p>
+            <p>TVA : 20%</p>
           </div>
         </div>
 
         <hr />
 
-        {/* TABLE */}
-        <table style={table}>
-          <thead>
-            <tr>
-              <th style={left}>Désignation</th>
-              <th style={right}>Montant</th>
-            </tr>
-          </thead>
+        <table style={{ width: "100%" }}>
           <tbody>
             <tr>
               <td>NeoDrive SWITCH</td>
-              <td style={right}>4 490 €</td>
+              <td style={{ textAlign: "right" }}>{prixVehiculeHT} €</td>
             </tr>
             <tr>
-              <td>Frais de transport</td>
-              <td style={right}>490 €</td>
+              <td>Transport</td>
+              <td style={{ textAlign: "right" }}>{transportHT} €</td>
             </tr>
           </tbody>
         </table>
 
         <hr />
 
-        <p style={total}>Total TTC : 4 980 €</p>
-        <p>Acompte demandé : 200 €</p>
+        <p>Total HT : {totalHT} €</p>
+        <p>TVA 20% : {tva.toFixed(0)} €</p>
+        <p><strong>Total TTC : {totalTTC.toFixed(0)} €</strong></p>
+
+        <p>Acompte : 200 €</p>
 
         <hr />
 
-        {/* PAYMENT */}
-        <strong>Coordonnées bancaires</strong>
+        <strong>Paiement</strong>
         <p>IBAN : FR76 2823 3000 0142 1307 1051 008</p>
         <p>BIC : REVOFRP2</p>
-        <p>Banque : Revolut Bank UAB</p>
-
-        <hr />
 
         <p style={{ marginTop: 15 }}>
-          Signature du client précédée de la mention "Bon pour accord"
+          Signature précédée de "Bon pour accord"
         </p>
 
       </div>
 
       {/* PDF */}
       <button onClick={() => window.print()} style={btn}>
-        Télécharger le devis (PDF)
+        Télécharger le devis PDF
       </button>
 
       {/* PAYMENT */}
@@ -126,8 +127,8 @@ export default function Reservation() {
         <h2>Documents nécessaires</h2>
 
         <div style={box}>
-          ✔ Pièce d’identité valide<br/>
-          ✔ Justificatif de domicile (-3 mois)<br/>
+          ✔ Pièce d’identité<br/>
+          ✔ Justificatif de domicile<br/>
           ✔ Devis signé
         </div>
 
@@ -142,14 +143,9 @@ export default function Reservation() {
       <style>
         {`
         @media print {
-
           @page {
             size: A4;
             margin: 10mm;
-          }
-
-          body {
-            margin: 0;
           }
 
           body * {
@@ -166,8 +162,6 @@ export default function Reservation() {
             left: 0;
             width: 100%;
             max-width: 190mm;
-            padding: 10mm;
-            box-sizing: border-box;
           }
         }
         `}
@@ -179,63 +173,12 @@ export default function Reservation() {
 
 /* STYLES */
 
-const container = {
-  maxWidth: 700,
-  margin: "0 auto",
-  padding: 20,
-  fontFamily: "Arial"
-};
-
-const title = {
-  fontSize: 24,
-  fontWeight: 700
-};
-
-const subtitle = {
-  color: "#555",
-  marginBottom: 20
-};
-
 const input = {
   width: "100%",
   padding: 10,
   marginTop: 10,
   border: "1px solid #ccc",
   borderRadius: 6
-};
-
-const devisBox = {
-  marginTop: 30,
-  border: "1px solid #ccc",
-  padding: 20,
-  background: "#fff"
-};
-
-const row = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 20
-};
-
-const topRow = {
-  display: "flex",
-  justifyContent: "space-between",
-  fontSize: 12,
-  marginBottom: 5
-};
-
-const table = {
-  width: "100%",
-  marginTop: 10,
-  borderCollapse: "collapse"
-};
-
-const left = { textAlign: "left" };
-const right = { textAlign: "right" };
-
-const total = {
-  fontWeight: "bold",
-  marginTop: 10
 };
 
 const btn = {
@@ -245,8 +188,7 @@ const btn = {
   background: "#000",
   color: "white",
   border: "none",
-  borderRadius: 6,
-  cursor: "pointer"
+  borderRadius: 6
 };
 
 const payBtn = {
@@ -256,8 +198,7 @@ const payBtn = {
   background: "#25D366",
   color: "white",
   border: "none",
-  borderRadius: 8,
-  cursor: "pointer"
+  borderRadius: 8
 };
 
 const box = {
