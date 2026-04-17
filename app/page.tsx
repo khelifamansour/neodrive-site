@@ -1,81 +1,62 @@
 export default function Home() {
   return (
-    <main style={{ textAlign: "center" }}>
+    <main style={container}>
 
       {/* HERO */}
-      <section style={{ padding: "80px 20px" }}>
-        <h1 style={{ fontSize: "48px", fontWeight: 600 }}>
-          NeoDrive SWITCH
+      <section style={hero}>
+        <h1 style={title}>
+          Voiture sans permis neuve disponible immédiatement
         </h1>
 
-        <p style={{ fontSize: "18px", color: "#555" }}>
-          Voiture électrique sans permis
+        <p style={subtitle}>
+          NeoDrive SWITCH – électrique, simple et économique
         </p>
 
-        <p style={{ color: "#777", marginTop: "5px" }}>
-          Disponible immédiatement
+        <h2 style={price}>À partir de 4 490 €</h2>
+
+        <p style={urgency}>
+          Stock limité – livraison rapide partout en France
         </p>
 
-        <h2 style={{ marginTop: "10px", fontSize: "22px" }}>
-          À partir de 4 490 €
-        </h2>
+        <img
+          src="/voiture.jpg"
+          alt="NeoDrive"
+          style={image}
+        />
 
-        {/* IMAGE CENTERED */}
-        <div style={{
-          marginTop: "40px",
-          display: "flex",
-          justifyContent: "center"
-        }}>
-          <img
-            src="/voiture.jpg"
-            style={{
-              width: "520px",
-              maxWidth: "90%",
-              borderRadius: "12px"
-            }}
-          />
-        </div>
+        <a href="https://wa.me/33628261446" target="_blank" style={cta}>
+          Contacter sur WhatsApp
+        </a>
+      </section>
 
-        {/* CTA */}
-        <div style={{ marginTop: "30px" }}>
-          <a href="https://wa.me/33628261446" style={ctaMain}>
-            Contacter maintenant
-          </a>
+      {/* TRUST */}
+      <section style={section}>
+        <div style={grid}>
+          <div style={card}>✔ Véhicule neuf – jamais immatriculé</div>
+          <div style={card}>✔ Batterie incluse – aucun frais caché</div>
+          <div style={card}>✔ Garantie 2 ans – SAV en France</div>
+          <div style={card}>✔ Livraison rapide partout en France</div>
         </div>
       </section>
 
-      {/* BENEFITS */}
-      <section style={{
-        maxWidth: "800px",
-        margin: "auto",
-        padding: "40px 20px"
-      }}>
-        <div style={{ display: "grid", gap: "15px" }}>
-          <div style={card}>Véhicule neuf – jamais immatriculé</div>
-          <div style={card}>Batterie incluse – aucun frais caché</div>
-          <div style={card}>Garantie 2 ans – SAV en France</div>
-          <div style={card}>Pièces disponibles rapidement</div>
-        </div>
+      {/* WHY */}
+      <section style={sectionCenter}>
+        <h2>Pourquoi choisir NeoDrive ?</h2>
+        <p style={text}>
+          Une solution simple pour se déplacer sans permis, sans leasing et sans coûts cachés.
+          Vous achetez votre véhicule et vous en êtes propriétaire immédiatement.
+        </p>
       </section>
 
       {/* LEASING */}
-      <section style={{
-        maxWidth: "800px",
-        margin: "auto",
-        padding: "60px 20px"
-      }}>
-        <h2>Alternative au leasing</h2>
+      <section style={section}>
+        <h2 style={{ textAlign: "center" }}>Alternative au leasing</h2>
 
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: "20px",
-          marginTop: "30px"
-        }}>
+        <div style={flexColumn}>
           <div style={badBox}>
             <strong>Leasing</strong>
             <p>6 000 à 8 000 € perdus</p>
-            <p>Aucun véhicule</p>
+            <p>Aucun véhicule à la fin</p>
           </div>
 
           <div style={goodBox}>
@@ -86,10 +67,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA FINAL */}
-      <section style={{ padding: "60px 20px" }}>
-        <a href="https://wa.me/33628261446" style={ctaMain}>
-          Appeler maintenant
+      {/* FINAL CTA */}
+      <section style={final}>
+        <p style={{ marginBottom: "15px", fontWeight: "600" }}>
+          Contactez-nous maintenant pour vérifier la disponibilité
+        </p>
+
+        <a href="https://wa.me/33628261446" target="_blank" style={cta}>
+          Discuter sur WhatsApp
         </a>
       </section>
 
@@ -99,31 +84,103 @@ export default function Home() {
 
 /* STYLES */
 
+const container = {
+  fontFamily: "Arial, sans-serif",
+  maxWidth: "900px",
+  margin: "auto",
+  padding: "20px"
+};
+
+const hero = {
+  textAlign: "center",
+  padding: "40px 0"
+};
+
+const title = {
+  fontSize: "28px",
+  fontWeight: "700",
+  lineHeight: "1.3"
+};
+
+const subtitle = {
+  color: "#555",
+  marginTop: "10px"
+};
+
+const price = {
+  fontSize: "22px",
+  marginTop: "10px"
+};
+
+const urgency = {
+  color: "#dc2626",
+  fontWeight: "600",
+  marginTop: "5px"
+};
+
+const image = {
+  width: "100%",
+  maxWidth: "420px",
+  borderRadius: "12px",
+  marginTop: "25px"
+};
+
+const cta = {
+  display: "inline-block",
+  marginTop: "25px",
+  padding: "14px 24px",
+  background: "#25D366",
+  color: "white",
+  borderRadius: "8px",
+  textDecoration: "none",
+  fontWeight: "600"
+};
+
+const section = {
+  padding: "30px 0"
+};
+
+const sectionCenter = {
+  padding: "30px 0",
+  textAlign: "center"
+};
+
+const text = {
+  color: "#555",
+  marginTop: "10px"
+};
+
+const grid = {
+  display: "grid",
+  gap: "12px"
+};
+
 const card = {
   background: "#f7f7f7",
-  padding: "15px",
+  padding: "14px",
   borderRadius: "8px"
 };
 
+const flexColumn = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
+  marginTop: "20px"
+};
+
 const badBox = {
-  flex: 1,
   background: "#fff0f0",
   padding: "15px",
   borderRadius: "8px"
 };
 
 const goodBox = {
-  flex: 1,
   background: "#f0fff4",
   padding: "15px",
   borderRadius: "8px"
 };
 
-const ctaMain = {
-  padding: "15px 30px",
-  background: "#25D366",
-  color: "#fff",
-  borderRadius: "8px",
-  textDecoration: "none",
-  fontWeight: "bold"
+const final = {
+  textAlign: "center",
+  padding: "40px 0"
 };
