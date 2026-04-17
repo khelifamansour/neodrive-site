@@ -2,8 +2,7 @@ export default function Home() {
   return (
     <main style={container}>
 
-      {/* HERO */}
-      <section style={hero}>
+      <section style={{ ...hero, textAlign: "center" }}>
         <h1 style={title}>
           Voiture sans permis neuve disponible immédiatement
         </h1>
@@ -29,7 +28,6 @@ export default function Home() {
         </a>
       </section>
 
-      {/* TRUST */}
       <section style={section}>
         <div style={grid}>
           <div style={card}>✔ Véhicule neuf – jamais immatriculé</div>
@@ -39,16 +37,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* WHY */}
-      <section style={sectionCenter}>
+      <section style={{ ...sectionCenter, textAlign: "center" }}>
         <h2>Pourquoi choisir NeoDrive ?</h2>
         <p style={text}>
-          Une solution simple pour se déplacer sans permis, sans leasing et sans coûts cachés.
-          Vous achetez votre véhicule et vous en êtes propriétaire immédiatement.
+          Une solution simple pour se déplacer sans permis.
         </p>
       </section>
 
-      {/* LEASING */}
       <section style={section}>
         <h2 style={{ textAlign: "center" }}>Alternative au leasing</h2>
 
@@ -56,7 +51,7 @@ export default function Home() {
           <div style={badBox}>
             <strong>Leasing</strong>
             <p>6 000 à 8 000 € perdus</p>
-            <p>Aucun véhicule à la fin</p>
+            <p>Aucun véhicule</p>
           </div>
 
           <div style={goodBox}>
@@ -67,12 +62,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section style={final}>
-        <p style={{ marginBottom: "15px", fontWeight: "600" }}>
-          Contactez-nous maintenant pour vérifier la disponibilité
-        </p>
-
+      <section style={{ ...final, textAlign: "center" }}>
         <a href="https://wa.me/33628261446" target="_blank" style={cta}>
           Discuter sur WhatsApp
         </a>
@@ -92,7 +82,6 @@ const container = {
 };
 
 const hero = {
-  textAlign: "center",
   padding: "40px 0"
 };
 
@@ -141,8 +130,7 @@ const section = {
 };
 
 const sectionCenter = {
-  padding: "30px 0",
-  textAlign: "center"
+  padding: "30px 0"
 };
 
 const text = {
@@ -181,6 +169,5 @@ const goodBox = {
 };
 
 const final = {
-  textAlign: "center",
   padding: "40px 0"
 };
