@@ -20,17 +20,21 @@ export default function Reservation() {
   };
 
   return (
-    <main style={container}>
+    <main style={{ maxWidth: 600, margin: "auto", padding: 20, fontFamily: "Arial" }}>
 
-      <h1 style={title}>Réserver votre véhicule</h1>
+      <div style={{ textAlign: "center" }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700 }}>
+          Réserver votre véhicule
+        </h1>
 
-      <p style={subtitle}>
-        Réservez votre NeoDrive en quelques étapes simples et sécurisées.
-      </p>
+        <p style={{ color: "#555", marginTop: 10 }}>
+          Réservez votre NeoDrive en quelques étapes simples et sécurisées.
+        </p>
+      </div>
 
       {/* FORM */}
-      <form onSubmit={handleSubmit} style={form}>
-
+      <form onSubmit={handleSubmit} style={{ marginTop: 30 }}>
+        
         <input
           placeholder="Nom complet"
           value={name}
@@ -55,13 +59,14 @@ export default function Reservation() {
         <button type="submit" style={button}>
           Confirmer ma demande
         </button>
+
       </form>
 
       {/* PAYMENT */}
-      <section style={section}>
+      <section style={{ marginTop: 40 }}>
         <h2>Acompte de réservation</h2>
 
-        <p style={text}>
+        <p style={{ color: "#555" }}>
           Pour bloquer votre véhicule, un acompte est demandé.
         </p>
 
@@ -73,35 +78,27 @@ export default function Reservation() {
       </section>
 
       {/* DOCUMENTS */}
-      <section style={section}>
+      <section style={{ marginTop: 40 }}>
         <h2>Documents nécessaires</h2>
-
-        <p style={text}>
-          Merci de préparer les documents suivants :
-        </p>
 
         <div style={box}>
           ✔ Pièce d’identité<br />
-          ✔ Justificatif de domicile (-3 mois)<br />
+          ✔ Justificatif de domicile (-3 mois)
         </div>
-
-        <p style={{ marginTop: 10 }}>
-          Vous pourrez les envoyer après validation de votre réservation.
-        </p>
       </section>
 
       {/* PROCESS */}
-      <section style={section}>
+      <section style={{ marginTop: 40 }}>
         <h2>Étapes de votre commande</h2>
 
         <div style={box}>
-          ✔ 1. Remplissez vos informations<br />
-          ✔ 2. Confirmation de disponibilité<br />
-          ✔ 3. Signature du devis officiel<br />
-          ✔ 4. Paiement de l’acompte<br />
-          ✔ 5. Envoi des documents<br />
+          ✔ 1. Informations<br />
+          ✔ 2. Validation<br />
+          ✔ 3. Devis<br />
+          ✔ 4. Acompte<br />
+          ✔ 5. Documents<br />
           ✔ 6. Paiement final<br />
-          ✔ 7. Carte grise + livraison<br />
+          ✔ 7. Livraison
         </div>
       </section>
 
@@ -109,48 +106,26 @@ export default function Reservation() {
   );
 }
 
-/* STYLES */
-
-const container = {
-  maxWidth: 600,
-  margin: "auto",
-  padding: 20,
-  fontFamily: "Arial"
-};
-
-const title = {
-  textAlign: "center",
-  fontSize: 28,
-  fontWeight: 700
-};
-
-const subtitle = {
-  textAlign: "center",
-  color: "#555",
-  marginTop: 10
-};
-
-const form = {
-  marginTop: 30,
-  display: "flex",
-  flexDirection: "column",
-  gap: 10
-};
+/* SAFE STYLES */
 
 const input = {
+  width: "100%",
   padding: 12,
+  marginTop: 10,
   borderRadius: 6,
   border: "1px solid #ccc"
 };
 
 const button = {
+  marginTop: 15,
   padding: 15,
   background: "#000",
   color: "white",
   border: "none",
   borderRadius: 8,
   fontWeight: 600,
-  cursor: "pointer"
+  cursor: "pointer",
+  width: "100%"
 };
 
 const payButton = {
@@ -161,21 +136,13 @@ const payButton = {
   border: "none",
   borderRadius: 8,
   fontWeight: 600,
-  cursor: "pointer"
-};
-
-const section = {
-  marginTop: 40
-};
-
-const text = {
-  color: "#555",
-  marginTop: 10
+  cursor: "pointer",
+  width: "100%"
 };
 
 const box = {
+  marginTop: 10,
   background: "#f7f7f7",
   padding: 15,
-  borderRadius: 8,
-  marginTop: 10
+  borderRadius: 8
 };
