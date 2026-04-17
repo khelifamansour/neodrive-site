@@ -5,8 +5,7 @@ export default function Home() {
       {/* HERO */}
       <section style={hero}>
         <h1 style={title}>
-          Voiture sans permis neuve disponible immédiatement AAAAAA
-          
+          Voiture sans permis neuve disponible immédiatement
         </h1>
 
         <p style={subtitle}>
