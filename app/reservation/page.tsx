@@ -3,175 +3,126 @@
 import { useState } from "react";
 
 export default function Reservation() {
-  const [name, setName] = useState("");
+  const [nom, setNom] = useState("");
+  const [prenom, setPrenom] = useState("");
   const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
+  const [adresse, setAdresse] = useState("");
+  const [cp, setCp] = useState("");
+  const [ville, setVille] = useState("");
 
-  const handleSubmit = (e: any) => {
-    e.preventDefault();
-
-    const message =
-      `Bonjour, je souhaite réserver un véhicule.\n\nNom: ${name}\nTéléphone: ${phone}\nVille: ${city}`;
-
-    window.open(
-      `https://wa.me/33628261446?text=${encodeURIComponent(message)}`,
-      "_blank"
-    );
-  };
+  const today = "11 juin 2025";
 
   return (
-    <main style={{ maxWidth: 600, margin: "auto", padding: 20, fontFamily: "Arial" }}>
+    <main style={{ maxWidth: 700, margin: "auto", padding: 20, fontFamily: "Arial" }}>
 
       {/* HEADER */}
       <div style={{ textAlign: "center" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 700 }}>
           Réserver votre véhicule
         </h1>
 
-        <p style={{ color: "#555", marginTop: 10 }}>
-          Réservez votre NeoDrive en quelques étapes simples et sécurisées.
-        </p>
-
-        <p style={{ color: "#dc2626", marginTop: 5 }}>
-          Stock limité – disponibilité immédiate
+        <p style={{ color: "#555" }}>
+          Remplissez vos informations pour générer votre devis officiel
         </p>
       </div>
 
       {/* FORM */}
-      <form onSubmit={handleSubmit} style={{ marginTop: 30 }}>
-        
-        <input
-          placeholder="Nom complet"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          style={input}
-        />
+      <div style={{ marginTop: 20 }}>
 
-        <input
-          placeholder="Téléphone"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          style={input}
-        />
+        <input placeholder="Nom" value={nom} onChange={(e) => setNom(e.target.value)} style={input}/>
+        <input placeholder="Prénom" value={prenom} onChange={(e) => setPrenom(e.target.value)} style={input}/>
+        <input placeholder="Téléphone" value={phone} onChange={(e) => setPhone(e.target.value)} style={input}/>
+        <input placeholder="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} style={input}/>
+        <input placeholder="Code postal" value={cp} onChange={(e) => setCp(e.target.value)} style={input}/>
+        <input placeholder="Ville" value={ville} onChange={(e) => setVille(e.target.value)} style={input}/>
 
-        <input
-          placeholder="Ville"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          style={input}
-        />
+      </div>
 
-        <button type="submit" style={button}>
-          Confirmer ma demande
-        </button>
-      </form>
-
-      {/* DEVIS PDF */}
+      {/* DEVIS */}
       <section style={{ marginTop: 40 }}>
-        <h2>Votre devis</h2>
+        <h2>Devis officiel</h2>
 
-        <p style={{ color: "#555" }}>
-          Un devis personnalisé est généré avec vos informations.
-        </p>
+        <div id="devis" style={devisBox}>
+          
+          <h2 style={{ textAlign: "center" }}>DEVIS</h2>
 
-        <div id="devis" style={box}>
-          <h3>DEVIS OFFICIEL</h3>
-
-          <p><strong>Nom:</strong> {name || "-"}</p>
-          <p><strong>Téléphone:</strong> {phone || "-"}</p>
-          <p><strong>Ville:</strong> {city || "-"}</p>
+          <p>Date : {today}</p>
 
           <hr />
 
-          <p>Produit: NeoDrive SWITCH</p>
-          <p>Prix: 4 490 €</p>
-          <p>Acompte: 200 €</p>
+          <h3>Client</h3>
+          <p>{prenom} {nom}</p>
+          <p>{adresse}</p>
+          <p>{cp} {ville}</p>
+          <p>{phone}</p>
 
           <hr />
 
-          <p><strong>IBAN:</strong> FRXX XXXX XXXX</p>
-          <p><strong>Société:</strong> Microdrive</p>
+          <h3>Vendeur</h3>
+          <p><strong>MK HOLDING</strong></p>
+          <p>31 rue Jean Nougaro, 31600 Muret</p>
+          <p>SIREN : 908 645 393</p>
+          <p>SIRET : 908 645 393 00012</p>
+          <p>Code NAF : 45.11Z</p>
+          <p>TVA : Non applicable</p>
+
+          <hr />
+
+          <h3>Détails</h3>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <tbody>
+              <tr>
+                <td>NeoDrive SWITCH</td>
+                <td style={{ textAlign: "right" }}>4 490 €</td>
+              </tr>
+              <tr>
+                <td>Transport</td>
+                <td style={{ textAlign: "right" }}>490 €</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <hr />
+
+          <p><strong>Total TTC : 4 980 €</strong></p>
+          <p>Acompte demandé : 200 €</p>
+
+          <hr />
+
+          <h3>Paiement</h3>
+          <p>IBAN : FR76 2823 3000 0142 1307 1051 008</p>
+          <p>BIC : REVOFRP2</p>
+          <p>Banque : Revolut Bank UAB</p>
+
+          <hr />
+
+          <p>
+            Signature du client précédée de la mention "Bon pour accord"
+          </p>
+
         </div>
 
-        <button
-          onClick={() => window.print()}
-          style={pdfButton}
-        >
-          Télécharger le devis (PDF)
+        <button onClick={() => window.print()} style={pdfButton}>
+          Télécharger le devis PDF
         </button>
       </section>
 
       {/* PAYMENT */}
       <section style={{ marginTop: 40 }}>
-        <h2>Acompte de réservation</h2>
+        <h2>Paiement acompte</h2>
+        <p>Pour bloquer le véhicule, un acompte est demandé</p>
 
-        <p style={{ color: "#555" }}>
-          Pour bloquer définitivement votre véhicule, un acompte est demandé après validation du devis.
-        </p>
-
-        <a href="https://buy.stripe.com/YOUR_LINK_HERE" target="_blank">
-          <button style={payButton}>
-            Payer l’acompte
-          </button>
+        <a href="https://buy.stripe.com/YOUR_LINK" target="_blank">
+          <button style={payButton}>Payer l’acompte</button>
         </a>
       </section>
 
-      {/* DOCUMENTS */}
-      <section style={{ marginTop: 40 }}>
-        <h2>Documents nécessaires</h2>
-
-        <p style={{ color: "#555" }}>
-          Pour finaliser votre dossier et préparer la carte grise, nous aurons besoin des documents suivants :
-        </p>
-
-        <div style={box}>
-          ✔ Pièce d’identité valide<br />
-          ✔ Justificatif de domicile de moins de 3 mois
-        </div>
-
-        <p style={{ marginTop: 10, color: "#555" }}>
-          Ces documents vous seront demandés après confirmation de votre réservation.
-        </p>
-      </section>
-
-      {/* PROCESS */}
-      <section style={{ marginTop: 40 }}>
-        <h2>Étapes de votre commande</h2>
-
-        <div style={box}>
-          ✔ 1. Vous remplissez vos informations<br />
-          ✔ 2. Nous confirmons la disponibilité du véhicule<br />
-          ✔ 3. Vous recevez un devis officiel personnalisé<br />
-          ✔ 4. Vous validez le devis et payez un acompte<br />
-          ✔ 5. Vous envoyez vos documents administratifs<br />
-          ✔ 6. Paiement final avant immatriculation<br />
-          ✔ 7. Carte grise et livraison du véhicule
-        </div>
-      </section>
-
-      {/* FINAL CTA */}
-      <section style={{ marginTop: 40, textAlign: "center" }}>
-        <p style={{ fontWeight: 600 }}>
-          Une question ? Contactez-nous directement
-        </p>
-
-        <a href="https://wa.me/33628261446" target="_blank">
-          <button style={payButton}>
-            Discuter sur WhatsApp
-          </button>
-        </a>
-      </section>
-
-      {/* PRINT MODE */}
+      {/* PRINT */}
       <style>
         {`
         @media print {
-          body * {
-            visibility: hidden;
-          }
-          #devis, #devis * {
-            visibility: visible;
-          }
+          body * { visibility: hidden; }
+          #devis, #devis * { visibility: visible; }
         }
         `}
       </style>
@@ -190,15 +141,20 @@ const input = {
   border: "1px solid #ccc"
 };
 
-const button = {
+const devisBox = {
+  marginTop: 20,
+  background: "#fff",
+  padding: 20,
+  border: "1px solid #ccc"
+};
+
+const pdfButton = {
   marginTop: 15,
   padding: 15,
   background: "#000",
   color: "white",
   border: "none",
   borderRadius: 8,
-  fontWeight: 600,
-  cursor: "pointer",
   width: "100%"
 };
 
@@ -209,26 +165,5 @@ const payButton = {
   color: "white",
   border: "none",
   borderRadius: 8,
-  fontWeight: 600,
-  cursor: "pointer",
   width: "100%"
-};
-
-const pdfButton = {
-  marginTop: 15,
-  padding: 15,
-  background: "#333",
-  color: "white",
-  border: "none",
-  borderRadius: 8,
-  fontWeight: 600,
-  cursor: "pointer",
-  width: "100%"
-};
-
-const box = {
-  marginTop: 10,
-  background: "#f7f7f7",
-  padding: 15,
-  borderRadius: 8
 };
