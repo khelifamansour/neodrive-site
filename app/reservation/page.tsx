@@ -11,13 +11,19 @@ export default function Reservation() {
   const [ville, setVille] = useState("");
 
   return (
-    <main style={container}>
+    <main style={{ maxWidth: 700, margin: "0 auto", padding: 20, fontFamily: "Arial, sans-serif" }}>
 
       {/* HEADER */}
-      <h1 style={title}>Réserver votre véhicule</h1>
+      <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
+        Réserver votre véhicule
+      </h1>
+
+      <p style={{ color: "#555", marginBottom: 20 }}>
+        Remplissez vos informations pour générer votre devis officiel
+      </p>
 
       {/* FORM */}
-      <div style={{ marginTop: 20 }}>
+      <div>
         <input placeholder="Nom" value={nom} onChange={(e) => setNom(e.target.value)} style={input}/>
         <input placeholder="Prénom" value={prenom} onChange={(e) => setPrenom(e.target.value)} style={input}/>
         <input placeholder="Téléphone" value={phone} onChange={(e) => setPhone(e.target.value)} style={input}/>
@@ -27,53 +33,61 @@ export default function Reservation() {
       </div>
 
       {/* DEVIS */}
-      <div id="devis" style={devisBox}>
+      <div id="devis" style={{
+        marginTop: 30,
+        border: "1px solid #ccc",
+        padding: 20,
+        background: "#fff"
+      }}>
 
-        <h2 style={{ textAlign: "center", marginBottom: 10 }}>DEVIS</h2>
+        <h2 style={{ marginBottom: 10 }}>DEVIS</h2>
 
-        <div style={row}>
-          <div>
-            <strong>Client</strong><br/>
-            {prenom} {nom}<br/>
-            {adresse}<br/>
-            {cp} {ville}<br/>
-            {phone}
-          </div>
+        <p>Date : 11 juin 2025</p>
 
-          <div>
-            <strong>MK HOLDING</strong><br/>
-            31 rue Jean Nougaro<br/>
-            31600 Muret<br/>
-            SIREN: 908 645 393<br/>
-            TVA: Non applicable
-          </div>
-        </div>
+        <hr />
 
-        <hr/>
+        <strong>Client</strong>
+        <p>{prenom} {nom}</p>
+        <p>{adresse}</p>
+        <p>{cp} {ville}</p>
+        <p>{phone}</p>
 
-        <table style={table}>
+        <hr />
+
+        <strong>Vendeur</strong>
+        <p>MK HOLDING</p>
+        <p>31 rue Jean Nougaro</p>
+        <p>31600 Muret</p>
+        <p>SIREN : 908 645 393</p>
+        <p>TVA : Non applicable</p>
+
+        <hr />
+
+        <strong>Détails</strong>
+
+        <table style={{ width: "100%", marginTop: 10 }}>
           <tbody>
             <tr>
               <td>NeoDrive SWITCH</td>
-              <td style={right}>4 490 €</td>
+              <td style={{ textAlign: "right" }}>4 490 €</td>
             </tr>
             <tr>
               <td>Transport</td>
-              <td style={right}>490 €</td>
+              <td style={{ textAlign: "right" }}>490 €</td>
             </tr>
           </tbody>
         </table>
 
-        <hr/>
+        <hr />
 
-        <p><strong>Total TTC: 4 980 €</strong></p>
-        <p>Acompte: 200 €</p>
+        <p><strong>Total TTC : 4 980 €</strong></p>
+        <p>Acompte : 200 €</p>
 
-        <hr/>
+        <hr />
 
-        <p><strong>Paiement:</strong></p>
-        <p>IBAN: FR76 2823 3000 0142 1307 1051 008</p>
-        <p>BIC: REVOFRP2</p>
+        <strong>Paiement</strong>
+        <p>IBAN : FR76 2823 3000 0142 1307 1051 008</p>
+        <p>BIC : REVOFRP2</p>
 
         <p style={{ marginTop: 20 }}>
           Signature précédée de "Bon pour accord"
@@ -81,22 +95,23 @@ export default function Reservation() {
 
       </div>
 
+      {/* PDF BUTTON */}
       <button onClick={() => window.print()} style={btn}>
-        Télécharger le devis PDF
+        Télécharger le devis (PDF)
       </button>
 
       {/* PAYMENT */}
-      <div style={{ marginTop: 30 }}>
+      <div style={{ marginTop: 20 }}>
         <a href="https://buy.stripe.com/YOUR_LINK" target="_blank">
-          <button style={payBtn}>Payer l’acompte</button>
+          <button style={payBtn}>
+            Payer l’acompte
+          </button>
         </a>
       </div>
 
-      {/* DOCUMENT UPLOAD */}
-      <div style={{ marginTop: 40 }}>
+      {/* DOCUMENTS */}
+      <div style={{ marginTop: 30 }}>
         <h2>Envoyer vos documents</h2>
-
-        <p>Merci d’envoyer :</p>
 
         <div style={box}>
           ✔ Pièce d’identité<br/>
@@ -126,19 +141,7 @@ export default function Reservation() {
   );
 }
 
-/* STYLES */
-
-const container = {
-  maxWidth: 700,
-  margin: "auto",
-  padding: 20,
-  fontFamily: "Arial"
-};
-
-const title = {
-  fontSize: 26,
-  textAlign: "center"
-};
+/* SAFE STYLES */
 
 const input = {
   width: "100%",
@@ -148,27 +151,6 @@ const input = {
   borderRadius: 6
 };
 
-const devisBox = {
-  marginTop: 30,
-  border: "1px solid #ccc",
-  padding: 20,
-  background: "white"
-};
-
-const row = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 20
-};
-
-const table = {
-  width: "100%"
-};
-
-const right = {
-  textAlign: "right"
-};
-
 const btn = {
   marginTop: 15,
   padding: 12,
@@ -176,19 +158,23 @@ const btn = {
   background: "#000",
   color: "white",
   border: "none",
-  borderRadius: 6
+  borderRadius: 6,
+  cursor: "pointer"
 };
 
 const payBtn = {
+  marginTop: 10,
   padding: 15,
   width: "100%",
   background: "#25D366",
   color: "white",
   border: "none",
-  borderRadius: 8
+  borderRadius: 8,
+  cursor: "pointer"
 };
 
 const box = {
+  marginTop: 10,
   background: "#f7f7f7",
   padding: 15,
   borderRadius: 8
