@@ -10,16 +10,15 @@ export default function Reservation() {
   const [cp, setCp] = useState("");
   const [ville, setVille] = useState("");
 
+  const today = "11 juin 2025";
+
   return (
-    <main style={{ maxWidth: 700, margin: "0 auto", padding: 20, fontFamily: "Arial, sans-serif" }}>
+    <main style={container}>
 
-      {/* HEADER */}
-      <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-        Réserver votre véhicule
-      </h1>
+      <h1 style={title}>Réservation véhicule</h1>
 
-      <p style={{ color: "#555", marginBottom: 20 }}>
-        Remplissez vos informations pour générer votre devis officiel
+      <p style={subtitle}>
+        Complétez vos informations pour générer votre devis officiel
       </p>
 
       {/* FORM */}
@@ -35,14 +34,17 @@ export default function Reservation() {
       {/* DEVIS */}
       <div id="devis" style={devisBox}>
 
-        <h2 style={{ textAlign: "center", marginBottom: 10 }}>DEVIS</h2>
+        <h2 style={{ textAlign: "center" }}>DEVIS</h2>
 
-        <p>Date : 11 juin 2025</p>
+        <div style={topRow}>
+          <span>Date : {today}</span>
+          <span>MK HOLDING</span>
+        </div>
 
         <hr />
 
-        {/* CLIENT + VENDEUR */}
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
+        {/* CLIENT + ENTREPRISE */}
+        <div style={row}>
           <div>
             <strong>Client</strong>
             <p>{prenom} {nom}</p>
@@ -57,47 +59,55 @@ export default function Reservation() {
             <p>31 rue Jean Nougaro</p>
             <p>31600 Muret</p>
             <p>SIREN : 908 645 393</p>
-            <p>TVA : Non applicable</p>
+            <p>Code NAF : 45.11Z</p>
+            <p>TVA : Non applicable (article 293B CGI)</p>
           </div>
         </div>
 
         <hr />
 
-        {/* DETAILS */}
-        <strong>Détails</strong>
-
-        <table style={{ width: "100%", marginTop: 10 }}>
+        {/* TABLE */}
+        <table style={table}>
+          <thead>
+            <tr>
+              <th style={left}>Désignation</th>
+              <th style={right}>Montant</th>
+            </tr>
+          </thead>
           <tbody>
             <tr>
               <td>NeoDrive SWITCH</td>
-              <td style={{ textAlign: "right" }}>4 490 €</td>
+              <td style={right}>4 490 €</td>
             </tr>
             <tr>
-              <td>Transport</td>
-              <td style={{ textAlign: "right" }}>490 €</td>
+              <td>Frais de transport</td>
+              <td style={right}>490 €</td>
             </tr>
           </tbody>
         </table>
 
         <hr />
 
-        <p><strong>Total TTC : 4 980 €</strong></p>
-        <p>Acompte : 200 €</p>
+        <p style={total}>Total TTC : 4 980 €</p>
+        <p>Acompte demandé : 200 €</p>
 
         <hr />
 
         {/* PAYMENT */}
-        <strong>Paiement</strong>
+        <strong>Coordonnées bancaires</strong>
         <p>IBAN : FR76 2823 3000 0142 1307 1051 008</p>
         <p>BIC : REVOFRP2</p>
+        <p>Banque : Revolut Bank UAB</p>
 
-        <p style={{ marginTop: 20 }}>
-          Signature précédée de "Bon pour accord"
+        <hr />
+
+        <p style={{ marginTop: 15 }}>
+          Signature du client précédée de la mention "Bon pour accord"
         </p>
 
       </div>
 
-      {/* PDF BUTTON */}
+      {/* PDF */}
       <button onClick={() => window.print()} style={btn}>
         Télécharger le devis (PDF)
       </button>
@@ -113,11 +123,11 @@ export default function Reservation() {
 
       {/* DOCUMENTS */}
       <div style={{ marginTop: 30 }}>
-        <h2>Envoyer vos documents</h2>
+        <h2>Documents nécessaires</h2>
 
         <div style={box}>
-          ✔ Pièce d’identité<br/>
-          ✔ Justificatif de domicile<br/>
+          ✔ Pièce d’identité valide<br/>
+          ✔ Justificatif de domicile (-3 mois)<br/>
           ✔ Devis signé
         </div>
 
@@ -128,10 +138,16 @@ export default function Reservation() {
         </a>
       </div>
 
-      {/* PRINT FIX (CORRIGÉ) */}
+      {/* PRINT FIX */}
       <style>
         {`
         @media print {
+
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+
           body {
             margin: 0;
           }
@@ -148,9 +164,9 @@ export default function Reservation() {
             position: absolute;
             top: 0;
             left: 0;
-            width: 90%;
-            margin: 0 auto;
-            padding: 20px;
+            width: 100%;
+            max-width: 190mm;
+            padding: 10mm;
             box-sizing: border-box;
           }
         }
@@ -163,12 +179,63 @@ export default function Reservation() {
 
 /* STYLES */
 
+const container = {
+  maxWidth: 700,
+  margin: "0 auto",
+  padding: 20,
+  fontFamily: "Arial"
+};
+
+const title = {
+  fontSize: 24,
+  fontWeight: 700
+};
+
+const subtitle = {
+  color: "#555",
+  marginBottom: 20
+};
+
 const input = {
   width: "100%",
   padding: 10,
   marginTop: 10,
   border: "1px solid #ccc",
   borderRadius: 6
+};
+
+const devisBox = {
+  marginTop: 30,
+  border: "1px solid #ccc",
+  padding: 20,
+  background: "#fff"
+};
+
+const row = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 20
+};
+
+const topRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  fontSize: 12,
+  marginBottom: 5
+};
+
+const table = {
+  width: "100%",
+  marginTop: 10,
+  borderCollapse: "collapse"
+};
+
+const left = { textAlign: "left" };
+const right = { textAlign: "right" };
+
+const total = {
+  fontWeight: "bold",
+  marginTop: 10
 };
 
 const btn = {
@@ -198,11 +265,4 @@ const box = {
   background: "#f7f7f7",
   padding: 15,
   borderRadius: 8
-};
-
-const devisBox = {
-  marginTop: 30,
-  border: "1px solid #ccc",
-  padding: 20,
-  background: "#fff"
 };
