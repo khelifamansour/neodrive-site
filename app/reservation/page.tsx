@@ -1,4 +1,4 @@
-"use client";
+correct and apply and vat is applicaticable 20% remove non applicable, create the code proof for vercel "use client";
 
 import { useState } from "react";
 
