@@ -40,7 +40,6 @@ export default function SAV() {
         <p style={text}>
           Après la garantie, vous pouvez toujours compter sur nous pour les pièces et le support technique.
         </p>
-
       </section>
 
       {/* PRODUCT ADVANTAGES */}
@@ -61,25 +60,24 @@ export default function SAV() {
         <h2>Documentation technique</h2>
 
         <p style={text}>
-          Pour les professionnels et les garages, nous mettons à disposition des documents techniques.
+          Nous mettons à disposition des documents complets pour les garages et les utilisateurs.
         </p>
 
         <div style={box}>
-          ✔ Manuel utilisateur<br/>
-          ✔ Schéma électrique<br/>
-          ✔ Guide de maintenance
+          ✔ Manuel technique complet du véhicule<br/>
+          ✔ Guide SAV et diagnostic avec liste des pièces<br/>
         </div>
 
         <div style={{ marginTop: 15 }}>
-          <a href="/manual.pdf" target="_blank">
+          <a href="/Manuel-technique.pdf" target="_blank">
             <button style={btn}>
-              Télécharger le manuel (PDF)
+              Télécharger le manuel technique
             </button>
           </a>
 
-          <a href="/schema.pdf" target="_blank">
+          <a href="/Guide-SAV-et-diagnostic-rapide.pdf" target="_blank">
             <button style={btnSecondary}>
-              Télécharger le schéma électrique
+              Télécharger le guide SAV et diagnostic
             </button>
           </a>
         </div>
