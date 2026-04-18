@@ -3,7 +3,7 @@ export default function Home() {
     <main style={container}>
 
       {/* HERO */}
-      <section style={{ padding: "40px 0" }}>
+      <section style={{ padding: "30px 10px" }}>
         <div style={{ textAlign: "center" }}>
 
           <h1 style={title}>
@@ -27,24 +27,23 @@ export default function Home() {
           />
 
           {/* BUTTONS */}
-          <div style={{ marginTop: 20 }}>
+          <div style={buttonContainer}>
 
-            <a href="/reservation">
+            <a href="/reservation" style={{ width: "100%" }}>
               <button style={ctaPrimary}>
                 Réserver ce véhicule
               </button>
             </a>
 
-            <a href="https://wa.me/33628261446" target="_blank">
+            <a href="https://wa.me/33628261446" target="_blank" style={{ width: "100%" }}>
               <button style={cta}>
                 Contacter sur WhatsApp
               </button>
             </a>
 
-            {/* NEW SAV BUTTON */}
-            <a href="/sav">
+            <a href="/sav" style={{ width: "100%" }}>
               <button style={ctaSecondary}>
-                Voir le service après-vente
+                Voir le SAV
               </button>
             </a>
 
@@ -53,7 +52,7 @@ export default function Home() {
       </section>
 
       {/* TRUST */}
-      <section style={{ padding: "30px 0" }}>
+      <section style={{ padding: "20px 10px" }}>
         <div>
           <div style={box}>✔ Véhicule neuf – jamais immatriculé</div>
           <div style={box}>✔ Batterie incluse – aucun frais caché</div>
@@ -63,9 +62,9 @@ export default function Home() {
       </section>
 
       {/* WHY */}
-      <section style={{ padding: "30px 0" }}>
+      <section style={{ padding: "20px 10px" }}>
         <div style={{ textAlign: "center" }}>
-          <h2>Pourquoi choisir NeoDrive ?</h2>
+          <h2 style={sectionTitle}>Pourquoi choisir NeoDrive ?</h2>
 
           <p style={subtitle}>
             Une solution simple pour se déplacer sans permis,
@@ -75,19 +74,19 @@ export default function Home() {
       </section>
 
       {/* LEASING */}
-      <section style={{ padding: "30px 0" }}>
+      <section style={{ padding: "20px 10px" }}>
         <div style={{ textAlign: "center" }}>
-          <h2>Alternative au leasing</h2>
+          <h2 style={sectionTitle}>Alternative au leasing</h2>
         </div>
 
-        <div style={{ marginTop: 20 }}>
+        <div style={{ marginTop: 15 }}>
           <div style={{ ...box, background: "#fff0f0" }}>
             <strong>Leasing</strong>
             <p>6 000 à 8 000 € perdus</p>
             <p>Aucun véhicule</p>
           </div>
 
-          <div style={{ ...box, background: "#f0fff4", marginTop: 10 }}>
+          <div style={{ ...box, background: "#f0fff4" }}>
             <strong>Microdrive</strong>
             <p>Vous êtes propriétaire</p>
             <p>Aucune surprise</p>
@@ -96,9 +95,9 @@ export default function Home() {
       </section>
 
       {/* FINAL CTA */}
-      <section style={{ padding: "40px 0" }}>
+      <section style={{ padding: "30px 10px" }}>
         <div style={{ textAlign: "center" }}>
-          <a href="/reservation">
+          <a href="/reservation" style={{ width: "100%" }}>
             <button style={ctaPrimary}>
               Réserver maintenant
             </button>
@@ -113,35 +112,44 @@ export default function Home() {
 /* STYLES */
 
 const container = {
+  width: "100%",
   maxWidth: 900,
   margin: "0 auto",
-  padding: 20,
+  padding: "10px",
   fontFamily: "Arial"
 };
 
 const title = {
-  fontSize: 26,
+  fontSize: "clamp(20px, 5vw, 28px)",
   fontWeight: "700"
+};
+
+const sectionTitle = {
+  fontSize: "clamp(18px, 4vw, 24px)",
+  fontWeight: "600"
 };
 
 const subtitle = {
   color: "#555",
-  marginTop: 10
+  marginTop: 10,
+  fontSize: "clamp(14px, 3.5vw, 16px)"
 };
 
 const price = {
-  marginTop: 10
+  marginTop: 10,
+  fontSize: "clamp(18px, 4vw, 22px)"
 };
 
 const urgency = {
   color: "red",
   fontWeight: "600",
-  marginTop: 5
+  marginTop: 5,
+  fontSize: "clamp(14px, 3.5vw, 16px)"
 };
 
 const image = {
   width: "100%",
-  maxWidth: 400,
+  height: "auto",
   marginTop: 20,
   borderRadius: 10
 };
@@ -150,11 +158,18 @@ const box = {
   background: "#f7f7f7",
   padding: 12,
   borderRadius: 8,
-  marginBottom: 10
+  marginBottom: 10,
+  fontSize: "14px"
+};
+
+const buttonContainer = {
+  marginTop: 20,
+  display: "flex",
+  flexDirection: "column",
+  gap: 10
 };
 
 const ctaPrimary = {
-  marginTop: 10,
   padding: 15,
   width: "100%",
   background: "#000",
@@ -162,11 +177,11 @@ const ctaPrimary = {
   border: "none",
   borderRadius: 8,
   fontWeight: "700",
-  cursor: "pointer"
+  cursor: "pointer",
+  fontSize: 16
 };
 
 const cta = {
-  marginTop: 10,
   padding: 15,
   width: "100%",
   background: "#25D366",
@@ -174,11 +189,11 @@ const cta = {
   border: "none",
   borderRadius: 8,
   fontWeight: "600",
-  cursor: "pointer"
+  cursor: "pointer",
+  fontSize: 16
 };
 
 const ctaSecondary = {
-  marginTop: 10,
   padding: 12,
   width: "100%",
   background: "#ddd",
@@ -186,5 +201,6 @@ const ctaSecondary = {
   border: "none",
   borderRadius: 8,
   fontWeight: "600",
-  cursor: "pointer"
+  cursor: "pointer",
+  fontSize: 14
 };
