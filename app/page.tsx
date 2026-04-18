@@ -27,27 +27,28 @@ export default function Home() {
           />
 
           {/* BUTTONS */}
-          <div style={buttonContainer}>
+          <div style={{ marginTop: 20 }}>
 
-            <a href="/reservation" style={{ width: "100%" }}>
+            <a href="/reservation">
               <button style={ctaPrimary}>
                 Réserver ce véhicule
               </button>
             </a>
 
-            <a href="https://wa.me/33628261446" target="_blank" style={{ width: "100%" }}>
+            <a href="https://wa.me/33628261446" target="_blank">
               <button style={cta}>
                 Contacter sur WhatsApp
               </button>
             </a>
 
-            <a href="/sav" style={{ width: "100%" }}>
+            <a href="/sav">
               <button style={ctaSecondary}>
                 Voir le SAV
               </button>
             </a>
 
           </div>
+
         </div>
       </section>
 
@@ -97,7 +98,7 @@ export default function Home() {
       {/* FINAL CTA */}
       <section style={{ padding: "30px 10px" }}>
         <div style={{ textAlign: "center" }}>
-          <a href="/reservation" style={{ width: "100%" }}>
+          <a href="/reservation">
             <button style={ctaPrimary}>
               Réserver maintenant
             </button>
@@ -162,14 +163,8 @@ const box = {
   fontSize: "14px"
 };
 
-const buttonContainer = {
-  marginTop: 20,
-  display: "flex",
-  flexDirection: "column",
-  gap: 10
-};
-
 const ctaPrimary = {
+  marginTop: 10,
   padding: 15,
   width: "100%",
   background: "#000",
@@ -182,6 +177,7 @@ const ctaPrimary = {
 };
 
 const cta = {
+  marginTop: 10,
   padding: 15,
   width: "100%",
   background: "#25D366",
@@ -194,6 +190,7 @@ const cta = {
 };
 
 const ctaSecondary = {
+  marginTop: 10,
   padding: 12,
   width: "100%",
   background: "#ddd",
