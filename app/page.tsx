@@ -1,46 +1,50 @@
 export default function Home() {
   return (
-    <main style={{ maxWidth: 900, margin: "auto", padding: 20, fontFamily: "Arial" }}>
+    <main style={container}>
 
       {/* HERO */}
       <section style={{ padding: "40px 0" }}>
         <div style={{ textAlign: "center" }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700 }}>
+
+          <h1 style={title}>
             Voiture sans permis neuve disponible immédiatement
           </h1>
 
-          <p style={{ color: "#555" }}>
+          <p style={subtitle}>
             NeoDrive SWITCH – électrique, simple et économique
           </p>
 
-          <h2>À partir de 4 490 €</h2>
+          <h2 style={price}>À partir de 4 490 €</h2>
 
-          <p style={{ color: "red", fontWeight: 600 }}>
+          <p style={urgency}>
             Stock limité – livraison rapide
           </p>
 
           <img
             src="/voiture.jpg"
-            alt="car"
-            style={{ width: "100%", maxWidth: 400, marginTop: 20, borderRadius: 10 }}
+            alt="NeoDrive SWITCH"
+            style={image}
           />
 
           {/* BUTTONS */}
           <div style={{ marginTop: 20 }}>
 
-            {/* RESERVATION BUTTON */}
-            <div style={{ marginBottom: 10 }}>
-              <a href="/reservation">
-                <button style={ctaPrimary}>
-                  Réserver ce véhicule
-                </button>
-              </a>
-            </div>
+            <a href="/reservation">
+              <button style={ctaPrimary}>
+                Réserver ce véhicule
+              </button>
+            </a>
 
-            {/* WHATSAPP BUTTON */}
             <a href="https://wa.me/33628261446" target="_blank">
               <button style={cta}>
                 Contacter sur WhatsApp
+              </button>
+            </a>
+
+            {/* NEW SAV BUTTON */}
+            <a href="/sav">
+              <button style={ctaSecondary}>
+                Voir le service après-vente
               </button>
             </a>
 
@@ -53,8 +57,8 @@ export default function Home() {
         <div>
           <div style={box}>✔ Véhicule neuf – jamais immatriculé</div>
           <div style={box}>✔ Batterie incluse – aucun frais caché</div>
-          <div style={box}>✔ Garantie 2 ans – SAV France</div>
-          <div style={box}>✔ Livraison rapide</div>
+          <div style={box}>✔ Garantie 2 ans – SAV en France</div>
+          <div style={box}>✔ Pièces disponibles immédiatement</div>
         </div>
       </section>
 
@@ -63,7 +67,7 @@ export default function Home() {
         <div style={{ textAlign: "center" }}>
           <h2>Pourquoi choisir NeoDrive ?</h2>
 
-          <p style={{ color: "#555" }}>
+          <p style={subtitle}>
             Une solution simple pour se déplacer sans permis,
             sans leasing et sans coûts cachés.
           </p>
@@ -108,6 +112,40 @@ export default function Home() {
 
 /* STYLES */
 
+const container = {
+  maxWidth: 900,
+  margin: "0 auto",
+  padding: 20,
+  fontFamily: "Arial"
+};
+
+const title = {
+  fontSize: 26,
+  fontWeight: "700"
+};
+
+const subtitle = {
+  color: "#555",
+  marginTop: 10
+};
+
+const price = {
+  marginTop: 10
+};
+
+const urgency = {
+  color: "red",
+  fontWeight: "600",
+  marginTop: 5
+};
+
+const image = {
+  width: "100%",
+  maxWidth: 400,
+  marginTop: 20,
+  borderRadius: 10
+};
+
 const box = {
   background: "#f7f7f7",
   padding: 12,
@@ -115,22 +153,38 @@ const box = {
   marginBottom: 10
 };
 
-const cta = {
-  padding: "15px 25px",
-  background: "#25D366",
-  color: "white",
-  border: "none",
-  borderRadius: 8,
-  fontWeight: 600,
-  cursor: "pointer"
-};
-
 const ctaPrimary = {
-  padding: "15px 25px",
+  marginTop: 10,
+  padding: 15,
+  width: "100%",
   background: "#000",
   color: "white",
   border: "none",
   borderRadius: 8,
-  fontWeight: 700,
+  fontWeight: "700",
+  cursor: "pointer"
+};
+
+const cta = {
+  marginTop: 10,
+  padding: 15,
+  width: "100%",
+  background: "#25D366",
+  color: "white",
+  border: "none",
+  borderRadius: 8,
+  fontWeight: "600",
+  cursor: "pointer"
+};
+
+const ctaSecondary = {
+  marginTop: 10,
+  padding: 12,
+  width: "100%",
+  background: "#ddd",
+  color: "#000",
+  border: "none",
+  borderRadius: 8,
+  fontWeight: "600",
   cursor: "pointer"
 };
