@@ -105,7 +105,7 @@ export default function Contact() {
 
       {/* FINAL CTA */}
       <div style={{ marginTop: "50px" }}>
-        <a href="https://wa.me/33776156169"
+        <a href="https://wa.me/33628261446"
           style={{
             padding: "18px 40px",
             background: "#25D366",
