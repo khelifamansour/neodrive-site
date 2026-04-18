@@ -52,7 +52,7 @@ export default function Contact() {
         </div>
 
         {/* WHATSAPP BUTTON */}
-        <a href="https://wa.me/33776156169"
+        <a href="https://wa.me/33628261446"
           style={{
             display: "inline-block",
             padding: "14px 30px",
