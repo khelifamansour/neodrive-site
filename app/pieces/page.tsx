@@ -87,7 +87,7 @@ export default function Pieces() {
 
       {/* CTA */}
       <div style={{ marginTop: "40px" }}>
-        <a href="https://wa.me/33776156169"
+        <a href="https://wa.me/33628261446"
           style={ctaGreen}>
           Commander une pièce
         </a>
