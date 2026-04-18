@@ -12,12 +12,17 @@ export default function Reservation() {
 
   const today = "11 juin 2025";
 
-  // PRICES
-  const prixVehiculeHT = 4490;
-  const transportHT = 490;
+  // ✅ PRICES (TTC already included)
+  const prixVehiculeTTC = 4490;
+  const transportTTC = 490;
+
+  // Extract VAT (20% included)
+  const prixVehiculeHT = prixVehiculeTTC / 1.2;
+  const transportHT = transportTTC / 1.2;
+
+  const totalTTC = prixVehiculeTTC + transportTTC;
   const totalHT = prixVehiculeHT + transportHT;
-  const tva = totalHT * 0.2;
-  const totalTTC = totalHT + tva;
+  const tva = totalTTC - totalHT;
 
   return (
     <main style={{ maxWidth: 700, margin: "0 auto", padding: 20, fontFamily: "Arial" }}>
@@ -69,7 +74,7 @@ export default function Reservation() {
             <p>31 rue Jean Nougaro</p>
             <p>31600 Muret</p>
             <p>SIREN : 908 645 393</p>
-            <p>TVA : 20%</p>
+            <p>TVA : 20% incluse</p>
           </div>
         </div>
 
@@ -79,19 +84,19 @@ export default function Reservation() {
           <tbody>
             <tr>
               <td>NeoDrive SWITCH</td>
-              <td style={{ textAlign: "right" }}>{prixVehiculeHT} €</td>
+              <td style={{ textAlign: "right" }}>{prixVehiculeTTC} €</td>
             </tr>
             <tr>
               <td>Transport</td>
-              <td style={{ textAlign: "right" }}>{transportHT} €</td>
+              <td style={{ textAlign: "right" }}>{transportTTC} €</td>
             </tr>
           </tbody>
         </table>
 
         <hr />
 
-        <p>Total HT : {totalHT} €</p>
-        <p>TVA 20% : {tva.toFixed(0)} €</p>
+        <p>Total HT : {totalHT.toFixed(0)} €</p>
+        <p>TVA (20%) : {tva.toFixed(0)} €</p>
         <p><strong>Total TTC : {totalTTC.toFixed(0)} €</strong></p>
 
         <p>Acompte : 200 €</p>
