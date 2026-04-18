@@ -150,7 +150,7 @@ export default function Produit() {
 
       {/* CTA */}
       <section style={ctaSection}>
-        <a href="https://wa.me/33776156169" style={cta}>
+        <a href="https://wa.me/33628261446" style={cta}>
           Demander une vidéo ou réserver
         </a>
       </section>
