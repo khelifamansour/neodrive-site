@@ -87,7 +87,7 @@ export default function Home() {
             <p>Aucun véhicule</p>
           </div>
 
-          <div style={{ ...box, background: "#f0fff4" }}>
+          <div style={{ ...box, background: "#f0fff4", marginTop: 10 }}>
             <strong>Microdrive</strong>
             <p>Vous êtes propriétaire</p>
             <p>Aucune surprise</p>
