@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+
 export default function Home() {
   return (
     <main style={container}>
@@ -55,7 +57,7 @@ export default function Home() {
         <div style={box}>✔ Véhicule neuf – jamais immatriculé</div>
         <div style={box}>✔ Batterie incluse – aucun frais caché</div>
         <div style={box}>✔ Paiement à la livraison</div>
-        <div style={box}>✔ SAV + pièces disponibles en France</div>
+        <div style={box}>✔ SAV et pièces disponibles en France</div>
       </section>
 
       {/* PRIX */}
@@ -65,7 +67,7 @@ export default function Home() {
         <div style={box}>
           ✔ Véhicule : à partir de 4 490 € TTC<br />
           ✔ Transport : 290 € à 690 € selon distance depuis Toulouse<br />
-          ✔ Carte grise : 160 €<br />
+          ✔ Carte grise : environ 160 €<br />
           ✔ Aucun frais caché
         </div>
       </section>
@@ -76,7 +78,7 @@ export default function Home() {
 
         <div style={box}>
           1. Contact WhatsApp ou téléphone<br />
-          2. Vidéo du véhicule + validation<br />
+          2. Vidéo du véhicule et validation<br />
           3. Préparation du véhicule<br />
           4. Livraison à domicile ou retrait<br />
           5. Paiement à la réception<br />
@@ -125,51 +127,53 @@ export default function Home() {
   );
 }
 
-/* STYLES */
+/* ===================== */
+/* SAFE TYPED STYLES     */
+/* ===================== */
 
-const container = {
+const container: React.CSSProperties = {
   maxWidth: 900,
   margin: "0 auto",
   padding: 10,
   fontFamily: "Arial"
 };
 
-const center = {
+const center: React.CSSProperties = {
   textAlign: "center",
   padding: "30px 10px"
 };
 
-const section = {
+const section: React.CSSProperties = {
   padding: "20px 10px"
 };
 
-const title = {
+const title: React.CSSProperties = {
   fontSize: 24,
-  fontWeight: "700"
+  fontWeight: 700
 };
 
-const subtitle = {
+const subtitle: React.CSSProperties = {
   color: "#555",
   marginTop: 10
 };
 
-const alert = {
+const alert: React.CSSProperties = {
   color: "red",
-  fontWeight: "600",
+  fontWeight: 600,
   marginTop: 5
 };
 
-const image = {
+const image: React.CSSProperties = {
   width: "100%",
   marginTop: 20,
   borderRadius: 10
 };
 
-const ctaBox = {
+const ctaBox: React.CSSProperties = {
   marginTop: 20
 };
 
-const box = {
+const box: React.CSSProperties = {
   background: "#f7f7f7",
   padding: 12,
   borderRadius: 8,
@@ -177,36 +181,38 @@ const box = {
   lineHeight: "1.5"
 };
 
-const btnBlack = {
+const btnBlack: React.CSSProperties = {
   marginTop: 10,
   padding: 15,
   width: "100%",
   background: "#000",
   color: "white",
   border: "none",
-  borderRadius: 8
+  borderRadius: 8,
+  cursor: "pointer"
 };
 
-const btnGreen = {
+const btnGreen: React.CSSProperties = {
   marginTop: 10,
   padding: 15,
   width: "100%",
   background: "#25D366",
   color: "white",
   border: "none",
-  borderRadius: 8
+  borderRadius: 8,
+  cursor: "pointer"
 };
 
-const h2 = {
+const h2: React.CSSProperties = {
   marginBottom: 10
 };
 
-const why = {
+const why: React.CSSProperties = {
   color: "#555",
   marginTop: 10
 };
 
-const safe = {
+const safe: React.CSSProperties = {
   marginTop: 10,
   fontSize: 12,
   color: "#444"
