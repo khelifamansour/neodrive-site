@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 export default function Home() {
   return (
@@ -18,48 +18,23 @@ export default function Home() {
           Stock limité – livraison rapide partout en France
         </p>
 
-        <img src="/voiture.jpg" style={image} />
+        <img
+          src="/voiture.jpg"
+          alt="voiture"
+          style={image}
+        />
 
         <div style={ctaBox}>
-          <a href="https://wa.me/33628261446">
-            <button style={btnGreen}>Voir le véhicule en vidéo</button>
+          <a href="https://wa.me/33628261446" target="_blank">
+            <button style={btnGreen}>
+              Voir le véhicule en vidéo
+            </button>
           </a>
 
           <a href="/reservation">
-            <button style={btnBlack}>Réserver</button>
-          </a>
-        </div>
-
-        <p styl…
-[16:40, 4/19/2026] service commercial: "use client";
-
-export default function Home() {
-  return (
-    <main style={container}>
-
-      {/* HERO */}
-      <section style={center}>
-        <h1 style={title}>
-          Voiture sans permis neuve dès 4 490 € TTC
-        </h1>
-
-        <p style={subtitle}>
-          Électrique – simple – économique
-        </p>
-
-        <p style={alert}>
-          Stock limité – livraison rapide partout en France
-        </p>
-
-        <img src="/voiture.jpg" style={image} />
-
-        <div style={ctaBox}>
-          <a href="https://wa.me/33628261446">
-            <button style={btnGreen}>Voir le véhicule en vidéo</button>
-          </a>
-
-          <a href="/reservation">
-            <button style={btnBlack}>Réserver</button>
+            <button style={btnBlack}>
+              Réserver
+            </button>
           </a>
         </div>
 
@@ -73,8 +48,8 @@ export default function Home() {
         <div style={box}>
           <strong>Entreprise Toulousaine</strong><br />
           MK HOLDING – SIREN 908 645 393<br />
-          31 rue Jean Nougaro – Muret<br />
-          Véhicules conformes réglementation française
+          31 rue Jean Nougaro – 31600 Muret<br />
+          Véhicules conformes à la réglementation française
         </div>
 
         <div style={box}>✔ Véhicule neuf – jamais immatriculé</div>
@@ -135,8 +110,10 @@ export default function Home() {
 
       {/* FINAL CTA */}
       <section style={center}>
-        <a href="https://wa.me/33628261446">
-          <button style={btnGreen}>Discuter sur WhatsApp</button>
+        <a href="https://wa.me/33628261446" target="_blank">
+          <button style={btnGreen}>
+            Discuter sur WhatsApp
+          </button>
         </a>
 
         <p style={safe}>
