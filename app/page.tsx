@@ -1,137 +1,147 @@
-"use client";
-
+[16:39, 4/19/2026] service commercial: "use client";
 
 export default function Home() {
   return (
-    <main style={{
-      width: "100%",
-      maxWidth: 900,
-      margin: "0 auto",
-      padding: "10px",
-      fontFamily: "Arial"
-    }}>
+    <main style={container}>
 
       {/* HERO */}
-      <section style={{ padding: "30px 10px" }}>
-        <div style={{ textAlign: "center" }}>
+      <section style={center}>
+        <h1 style={title}>
+          Voiture sans permis neuve dès 4 490 € TTC
+        </h1>
 
-          <h1 style={{ fontSize: "24px", fontWeight: "700" }}>
-            Voiture sans permis neuve à partir de 4 490 € TTC
-          </h1>
+        <p style={subtitle}>
+          Électrique – simple – économique
+        </p>
 
-          <p style={{ color: "#555", marginTop: 10 }}>
-            NeoDrive SWITCH – électrique, simple et économique
-          </p>
+        <p style={alert}>
+          Stock limité – livraison rapide partout en France
+        </p>
 
-          <p style={{ color: "red", fontWeight: "600", marginTop: 5 }}>
-            Stock limité – livraison rapide partout en France
-          </p>
+        <img src="/voiture.jpg" style={image} />
 
-          <img
-            src="/voiture.jpg"
-            alt="NeoDrive SWITCH"
-            style={{ width: "100%", marginTop: 20, borderRadius: 10 }}
-          />
+        <div style={ctaBox}>
+          <a href="https://wa.me/33628261446">
+            <button style={btnGreen}>Voir le véhicule en vidéo</button>
+          </a>
 
-          {/* BUTTONS */}
-          <div style={{ marginTop: 20 }}>
-
-            <a href="/reservation">
-              <button style={btnBlack}>
-                Réserver ce véhicule
-              </button>
-            </a>
-
-            <a href="https://wa.me/33628261446" target="_blank">
-              <button style={btnGreen}>
-                Contacter sur WhatsApp
-              </button>
-            </a>
-
-            <a href="/sav">
-              <button style={btnGrey}>
-                Voir le SAV
-              </button>
-            </a>
-
-          </div>
-
+          <a href="/reservation">
+            <button style={btnBlack}>Réserver</button>
+          </a>
         </div>
-      </section>
 
-      {/* COMPANY TRUST */}
-      <section style={{ padding: "20px 10px" }}>
-        <div style={box}>
-          <strong>Entreprise française</strong><br/>
-          MK HOLDING – SIREN 908 645 393<br/>
-          31 rue Jean Nougaro, 31600 Muret<br/>
-          Vente de véhicules conforme réglementation française
+        <p styl…
+[16:40, 4/19/2026] service commercial: "use client";
+
+export default function Home() {
+  return (
+    <main style={container}>
+
+      {/* HERO */}
+      <section style={center}>
+        <h1 style={title}>
+          Voiture sans permis neuve dès 4 490 € TTC
+        </h1>
+
+        <p style={subtitle}>
+          Électrique – simple – économique
+        </p>
+
+        <p style={alert}>
+          Stock limité – livraison rapide partout en France
+        </p>
+
+        <img src="/voiture.jpg" style={image} />
+
+        <div style={ctaBox}>
+          <a href="https://wa.me/33628261446">
+            <button style={btnGreen}>Voir le véhicule en vidéo</button>
+          </a>
+
+          <a href="/reservation">
+            <button style={btnBlack}>Réserver</button>
+          </a>
         </div>
+
+        <p style={safe}>
+          Paiement uniquement à la livraison – aucun risque
+        </p>
       </section>
 
       {/* TRUST */}
-      <section style={{ padding: "20px 10px" }}>
-        <div>
-          <div style={box}>✔ Véhicule neuf – jamais immatriculé</div>
-          <div style={box}>✔ Batterie incluse – aucun frais caché</div>
-          <div style={box}>✔ SAV disponible partout en France</div>
-          <div style={box}>✔ Pièces disponibles immédiatement</div>
+      <section style={section}>
+        <div style={box}>
+          <strong>Entreprise Toulousaine</strong><br />
+          MK HOLDING – SIREN 908 645 393<br />
+          31 rue Jean Nougaro – Muret<br />
+          Véhicules conformes réglementation française
+        </div>
+
+        <div style={box}>✔ Véhicule neuf – jamais immatriculé</div>
+        <div style={box}>✔ Batterie incluse – aucun frais caché</div>
+        <div style={box}>✔ Paiement à la livraison</div>
+        <div style={box}>✔ SAV + pièces disponibles en France</div>
+      </section>
+
+      {/* PRIX */}
+      <section style={section}>
+        <h2 style={h2}>Prix clair</h2>
+
+        <div style={box}>
+          ✔ Véhicule : à partir de 4 490 € TTC<br />
+          ✔ Transport : 290 € à 690 € selon distance depuis Toulouse<br />
+          ✔ Carte grise : 160 €<br />
+          ✔ Aucun frais caché
         </div>
       </section>
 
-      {/* WARRANTY */}
-      <section style={{ padding: "20px 10px" }}>
-        <h2>Garantie</h2>
+      {/* PROCESS */}
+      <section style={section}>
+        <h2 style={h2}>Comment ça marche</h2>
+
         <div style={box}>
-          ✔ Structure du véhicule (châssis, carrosserie) : 2 ans<br/>
-          ✔ Composants (moteur, électronique) : 1 an<br/>
-          ✔ Batterie : 6 mois<br/>
+          1. Contact WhatsApp ou téléphone<br />
+          2. Vidéo du véhicule + validation<br />
+          3. Préparation du véhicule<br />
+          4. Livraison à domicile ou retrait<br />
+          5. Paiement à la réception<br />
+          6. Aide immatriculation
+        </div>
+      </section>
+
+      {/* GARANTIE */}
+      <section style={section}>
+        <h2 style={h2}>Garantie</h2>
+
+        <div style={box}>
+          ✔ Structure : 2 ans<br />
+          ✔ Composants : 1 an<br />
+          ✔ Batterie : 6 mois<br />
           ✔ Assistance technique en France
         </div>
       </section>
 
-      {/* PRICING */}
-      <section style={{ padding: "20px 10px" }}>
-        <h2>Prix et frais</h2>
-        <div style={box}>
-          Prix du véhicule : à partir de 4 490 € TTC<br/>
-          Livraison : entre 290 € et 590 € selon région<br/>
-          Carte grise : environ 50 € à 150 € selon département<br/>
-          Aucun frais caché
-        </div>
-      </section>
+      {/* DIFFERENCE */}
+      <section style={center}>
+        <h2 style={h2}>Pourquoi nous choisir</h2>
 
-      {/* HOW IT WORKS */}
-      <section style={{ padding: "20px 10px" }}>
-        <h2>Comment ça marche</h2>
-        <div style={box}>
-          1. Réservation en ligne ou par téléphone<br/>
-          2. Envoi du devis et du contrat de vente<br/>
-          3. Paiement de l’acompte<br/>
-          4. Préparation du véhicule<br/>
-          5. Livraison à domicile ou retrait<br/>
-          6. Accompagnement pour immatriculation
-        </div>
-      </section>
-
-      {/* WHY */}
-      <section style={{ padding: "20px 10px", textAlign: "center" }}>
-        <h2>Pourquoi choisir NeoDrive</h2>
-        <p style={{ color: "#555", marginTop: 10 }}>
-          ✔ Prix direct import – sans intermédiaire<br/>
-          ✔ Aucun leasing ni abonnement<br/>
-          ✔ Véhicule simple et fiable<br/>
-          ✔ Support technique en France
+        <p style={why}>
+          ✔ Pas de leasing (contrairement à Ami)<br />
+          ✔ Pas d’abonnement mensuel<br />
+          ✔ Vous êtes propriétaire du véhicule<br />
+          ✔ Prix direct import sans intermédiaire
         </p>
       </section>
 
       {/* FINAL CTA */}
-      <section style={{ padding: "30px 10px", textAlign: "center" }}>
-        <a href="/reservation">
-          <button style={btnBlack}>
-            Réserver maintenant
-          </button>
+      <section style={center}>
+        <a href="https://wa.me/33628261446">
+          <button style={btnGreen}>Discuter sur WhatsApp</button>
         </a>
+
+        <p style={safe}>
+          Réponse rapide – vidéo disponible immédiatement
+        </p>
       </section>
 
     </main>
@@ -140,11 +150,54 @@ export default function Home() {
 
 /* STYLES */
 
+const container = {
+  maxWidth: 900,
+  margin: "0 auto",
+  padding: 10,
+  fontFamily: "Arial"
+};
+
+const center = {
+  textAlign: "center",
+  padding: "30px 10px"
+};
+
+const section = {
+  padding: "20px 10px"
+};
+
+const title = {
+  fontSize: 24,
+  fontWeight: "700"
+};
+
+const subtitle = {
+  color: "#555",
+  marginTop: 10
+};
+
+const alert = {
+  color: "red",
+  fontWeight: "600",
+  marginTop: 5
+};
+
+const image = {
+  width: "100%",
+  marginTop: 20,
+  borderRadius: 10
+};
+
+const ctaBox = {
+  marginTop: 20
+};
+
 const box = {
   background: "#f7f7f7",
   padding: 12,
   borderRadius: 8,
-  marginBottom: 10
+  marginBottom: 10,
+  lineHeight: "1.5"
 };
 
 const btnBlack = {
@@ -167,12 +220,17 @@ const btnGreen = {
   borderRadius: 8
 };
 
-const btnGrey = {
+const h2 = {
+  marginBottom: 10
+};
+
+const why = {
+  color: "#555",
+  marginTop: 10
+};
+
+const safe = {
   marginTop: 10,
-  padding: 12,
-  width: "100%",
-  background: "#ddd",
-  color: "#000",
-  border: "none",
-  borderRadius: 8
+  fontSize: 12,
+  color: "#444"
 };
