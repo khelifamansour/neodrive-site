@@ -1,5 +1,5 @@
-fdgggfdgfdf"use client";
-qsddbqs
+"use client";
+
 
 export default function Home() {
   return (
