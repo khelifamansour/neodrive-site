@@ -13,26 +13,37 @@ export default function Reservation() {
   const totalHT = totalTTC / 1.2;
   const tva = totalTTC - totalHT;
 
+  // ✅ PDF DOWNLOAD FUNCTION
+  const downloadPDF = () => {
+    const content = document.getElementById("devis-print");
+
+    if (!content) return;
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+
+    win.document.write(`
+      <html>
+        <head>
+          <title>Devis</title>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h2 { text-align: center; }
+          </style>
+        </head>
+        <body>
+          ${content.innerHTML}
+        </body>
+      </html>
+    `);
+
+    win.document.close();
+    win.focus();
+    win.print();
+  };
+
   return (
     <main style={container}>
-
-      {/* PRINT STYLE */}
-      <style>{`
-        @media print {
-          body { margin: 0; }
-          main { padding: 20mm; }
-          .page-break { page-break-before: always; }
-          .cgv {
-            font-size: 11px;
-            line-height: 1.4;
-            white-space: pre-line;
-          }
-        }
-        @page {
-          size: A4;
-          margin: 20mm;
-        }
-      `}</style>
 
       {/* HEADER */}
       <div style={header}>
@@ -48,13 +59,14 @@ export default function Reservation() {
         </div>
       </div>
 
+      {/* FORM */}
       <form 
         action="https://formspree.io/f/xjgjrqqg" 
         method="POST"
         encType="multipart/form-data"
       >
 
-        {/* REQUIRED FOR FORMSPREE */}
+        {/* hidden fields */}
         <input type="hidden" name="_subject" value="Nouvelle réservation véhicule" />
 
         {/* CLIENT */}
@@ -83,84 +95,58 @@ export default function Reservation() {
           <p style={small}>Devis signé :</p>
           <input type="file" name="devis_signe" accept=".pdf,image/*" style={input} required />
 
-          <p style={{ fontSize: 12, marginTop: 10 }}>
-            Taille max recommandée : 10MB par fichier
+          <p style={{ fontSize: 12 }}>
+            1. Télécharger le devis ci-dessous<br/>
+            2. Signer<br/>
+            3. Envoyer ici
           </p>
         </div>
 
-        {/* PRICING */}
-        <div style={section}>
-          <h3>Détail</h3>
+        {/* PDF CONTENT */}
+        <div id="devis-print">
 
-          <table style={table}>
-            <tbody>
-              <tr>
-                <td>Véhicule électrique</td>
-                <td style={right}>{prixVehiculeTTC} €</td>
-              </tr>
-              <tr>
-                <td>Transport</td>
-                <td style={right}>{transportTTC} €</td>
-              </tr>
-              <tr>
-                <td>Total HT</td>
-                <td style={right}>{totalHT.toFixed(0)} €</td>
-              </tr>
-              <tr>
-                <td>TVA</td>
-                <td style={right}>{tva.toFixed(0)} €</td>
-              </tr>
-              <tr style={totalRow}>
-                <td>Total TTC</td>
-                <td style={right}>{totalTTC} €</td>
-              </tr>
-            </tbody>
-          </table>
+          <div style={section}>
+            <h3>Détail</h3>
+
+            <table style={table}>
+              <tbody>
+                <tr>
+                  <td>Véhicule électrique</td>
+                  <td style={right}>{prixVehiculeTTC} €</td>
+                </tr>
+                <tr>
+                  <td>Transport</td>
+                  <td style={right}>{transportTTC} €</td>
+                </tr>
+                <tr>
+                  <td>Total HT</td>
+                  <td style={right}>{totalHT.toFixed(0)} €</td>
+                </tr>
+                <tr>
+                  <td>TVA</td>
+                  <td style={right}>{tva.toFixed(0)} €</td>
+                </tr>
+                <tr style={totalRow}>
+                  <td>Total TTC</td>
+                  <td style={right}>{totalTTC} €</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style={section}>
+            <p>Signature précédée de "Lu et approuvé"</p>
+            <div style={signature}></div>
+          </div>
+
         </div>
 
-        {/* SIGNATURE */}
-        <div style={section}>
-          <p>Signature précédée de "Lu et approuvé"</p>
-          <div style={signature}></div>
-        </div>
+        {/* DOWNLOAD BUTTON */}
+        <button type="button" onClick={downloadPDF} style={btn}>
+          Télécharger le devis PDF
+        </button>
 
-        {/* CGV */}
-        <div className="page-break"></div>
-
-        <div style={cgv}>
-{`CONDITIONS GÉNÉRALES DE VENTE
-
-1. Identité du vendeur
-MK HOLDING – SIREN 908 645 393
-
-2. Objet
-Vente de véhicules électriques
-
-3. Prix
-TTC hors frais annexes
-
-4. Garantie
-Structure : 2 ans
-Composants : 1 an
-Batterie : 6 mois
-
-5. Batterie
-Recharge obligatoire
-Pas de décharge prolongée
-
-6. Utilisation normale uniquement
-
-7. Autonomie indicative
-
-8. Diagnostic à distance obligatoire
-
-9. Transport à charge client
-
-16. Paiement selon accord
-
-17. Litiges : droit français`}
-        </div>
-
+        {/* SUBMIT */}
         <button type="submit" style={btn}>
           Envoyer mon dossier
         </button>
@@ -227,16 +213,11 @@ const small: React.CSSProperties = {
 };
 
 const btn: React.CSSProperties = {
-  marginTop: 20,
-  padding: 15,
+  marginTop: 15,
+  padding: 12,
   width: "100%",
   background: "#000",
   color: "#fff",
   border: "none",
-  borderRadius: 8
-};
-
-const cgv: React.CSSProperties = {
-  fontSize: 11,
-  whiteSpace: "pre-line"
+  borderRadius: 6
 };
