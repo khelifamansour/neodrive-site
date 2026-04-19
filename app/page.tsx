@@ -1,4 +1,4 @@
-[16:39, 4/19/2026] service commercial: "use client";
+ "use client";
 
 export default function Home() {
   return (
