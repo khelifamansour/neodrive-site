@@ -1,14 +1,6 @@
 "use client";
 
-import { useState } from "react";
-
 export default function Reservation() {
-  const [nom, setNom] = useState("");
-  const [prenom, setPrenom] = useState("");
-  const [phone, setPhone] = useState("");
-  const [adresse, setAdresse] = useState("");
-  const [cp, setCp] = useState("");
-  const [ville, setVille] = useState("");
 
   const today = new Date().toLocaleDateString("fr-FR");
 
@@ -55,122 +47,133 @@ export default function Reservation() {
         </div>
       </div>
 
-      {/* CLIENT */}
-      <div style={section}>
-        <h3>Informations client</h3>
+      {/* FORM */}
+      <form
+        action="https://formspree.io/f/xjgjrqqg"
+        method="POST"
+        encType="multipart/form-data"
+      >
 
-        <input placeholder="Nom" value={nom} onChange={(e) => setNom(e.target.value)} style={input}/>
-        <input placeholder="Prénom" value={prenom} onChange={(e) => setPrenom(e.target.value)} style={input}/>
-        <input placeholder="Téléphone" value={phone} onChange={(e) => setPhone(e.target.value)} style={input}/>
-        <input placeholder="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} style={input}/>
-        <input placeholder="Code postal" value={cp} onChange={(e) => setCp(e.target.value)} style={input}/>
-        <input placeholder="Ville" value={ville} onChange={(e) => setVille(e.target.value)} style={input}/>
-      </div>
+        <div style={section}>
+          <h3>Informations client</h3>
 
-      {/* PRICING */}
-      <div style={section} className="no-break">
-        <h3>Détail</h3>
+          <input name="nom" placeholder="Nom" style={input} required />
+          <input name="prenom" placeholder="Prénom" style={input} required />
+          <input name="telephone" placeholder="Téléphone" style={input} required />
+          <input name="adresse" placeholder="Adresse" style={input} required />
+          <input name="code_postal" placeholder="Code postal" style={input} required />
+          <input name="ville" placeholder="Ville" style={input} required />
+        </div>
 
-        <table style={table}>
-          <tbody>
-            <tr>
-              <td>Véhicule électrique</td>
-              <td style={right}>{prixVehiculeTTC} €</td>
-            </tr>
-            <tr>
-              <td>Transport</td>
-              <td style={right}>{transportTTC} €</td>
-            </tr>
-            <tr>
-              <td>Total HT</td>
-              <td style={right}>{totalHT.toFixed(0)} €</td>
-            </tr>
-            <tr>
-              <td>TVA</td>
-              <td style={right}>{tva.toFixed(0)} €</td>
-            </tr>
-            <tr style={totalRow}>
-              <td>Total TTC</td>
-              <td style={right}>{totalTTC} €</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        {/* DOCUMENTS */}
+        <div style={section}>
+          <h3>Documents obligatoires</h3>
 
-      {/* SIGNATURE */}
-      <div style={section} className="no-break">
-        <p>Signature précédée de "Lu et approuvé"</p>
-        <div style={signature}></div>
-      </div>
+          <p style={small}>Carte d’identité :</p>
+          <input type="file" name="cni" accept="image/*,.pdf" style={input} required />
 
-      {/* PAGE BREAK */}
-      <div className="page-break"></div>
+          <p style={small}>Justificatif de domicile :</p>
+          <input type="file" name="justificatif" accept="image/*,.pdf" style={input} required />
 
-      {/* FULL CGV */}
-      <div className="cgv">
+          <p style={small}>Devis signé :</p>
+          <input type="file" name="devis_signe" accept="image/*,.pdf" style={input} required />
+
+          <p style={{ fontSize: 12, marginTop: 10 }}>
+            Vos documents sont traités de manière confidentielle.
+          </p>
+        </div>
+
+        {/* PRICING */}
+        <div style={section} className="no-break">
+          <h3>Détail</h3>
+
+          <table style={table}>
+            <tbody>
+              <tr>
+                <td>Véhicule électrique</td>
+                <td style={right}>{prixVehiculeTTC} €</td>
+              </tr>
+              <tr>
+                <td>Transport</td>
+                <td style={right}>{transportTTC} €</td>
+              </tr>
+              <tr>
+                <td>Total HT</td>
+                <td style={right}>{totalHT.toFixed(0)} €</td>
+              </tr>
+              <tr>
+                <td>TVA</td>
+                <td style={right}>{tva.toFixed(0)} €</td>
+              </tr>
+              <tr style={totalRow}>
+                <td>Total TTC</td>
+                <td style={right}>{totalTTC} €</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* SIGNATURE */}
+        <div style={section} className="no-break">
+          <p>Signature précédée de "Lu et approuvé"</p>
+          <div style={signature}></div>
+        </div>
+
+        {/* PAGE BREAK */}
+        <div className="page-break"></div>
+
+        {/* CGV */}
+        <div className="cgv">
 {`CONDITIONS GÉNÉRALES DE VENTE
 
 1. Identité du vendeur
-MK HOLDING, SAS
-SIREN : 908 645 393
-Siège social : 31 rue Jean Nougaro, 31600 Muret
+MK HOLDING – SIREN 908 645 393
+31 rue Jean Nougaro, 31600 Muret
 
 2. Objet
-Les présentes CGV régissent la vente des véhicules électriques sans permis.
+Vente de véhicules électriques sans permis
 
 3. Prix
-Les prix sont exprimés en euros TTC.
-Ne sont pas inclus : carte grise, assurance, frais annexes.
+Prix TTC – hors carte grise et assurance
 
 4. Garantie
 Structure : 2 ans
 Composants : 1 an
-Batterie : 6 mois sous conditions strictes
+Batterie : 6 mois
 
-5. Batterie (OBLIGATOIRE)
-- Recharge après chaque utilisation
-- Ne pas laisser déchargée > 24h
-- Charges complètes régulières
-- Max 12h de charge
-- Utiliser chargeur fourni uniquement
+5. Batterie
+Recharge obligatoire après utilisation
+Pas de décharge prolongée
 
 6. Utilisation
-- Routes adaptées uniquement
-- Pas de surcharge
-- Pas d’usage abusif
+Routes adaptées uniquement
 
 7. Autonomie
-Donnée à titre indicatif
+Indicative selon conditions
 
 8. Panne
-- Contact vendeur
-- Diagnostic à distance
+Diagnostic à distance
 
 9. Réparation
-- Pièces fournies
-- Transport à charge du client
+Transport à charge client
 
-10. Exclusions
-- Accident
-- Mauvaise utilisation
-- Modifications
+10. Responsabilité
+Client responsable de l’usage
 
-11. Responsabilité
-Le client est responsable
-
-12. Assurance obligatoire
-
-13. Paiement
+11. Paiement
 Paiement à la livraison
 
-14. Litiges
-Droit français – Tribunal du siège
+12. Litiges
+Droit français
 `}
-      </div>
+        </div>
 
-      <button onClick={() => window.print()} style={btn}>
-        Télécharger / Imprimer le devis
-      </button>
+        {/* SUBMIT */}
+        <button type="submit" style={btn}>
+          Envoyer mon dossier
+        </button>
+
+      </form>
 
     </main>
   );
@@ -208,11 +211,11 @@ const input = {
 
 const table = {
   width: "100%",
-  borderCollapse: "collapse" as const   // ✅ FIX HERE
+  borderCollapse: "collapse"
 };
 
 const right = {
-  textAlign: "right" as const
+  textAlign: "right"
 };
 
 const totalRow = {
@@ -233,10 +236,10 @@ const small = {
 
 const btn = {
   marginTop: 20,
-  padding: 12,
+  padding: 15,
   width: "100%",
   background: "#000",
   color: "#fff",
   border: "none",
-  cursor: "pointer"
+  borderRadius: 8
 };
