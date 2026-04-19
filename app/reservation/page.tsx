@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+
 export default function Reservation() {
 
   const today = new Date().toLocaleDateString("fr-FR");
@@ -47,13 +49,9 @@ export default function Reservation() {
         </div>
       </div>
 
-      {/* FORM */}
-      <form
-        action="https://formspree.io/f/xjgjrqqg"
-        method="POST"
-        encType="multipart/form-data"
-      >
+      <form action="https://formspree.io/f/xjgjrqqg" method="POST">
 
+        {/* CLIENT */}
         <div style={section}>
           <h3>Informations client</h3>
 
@@ -70,21 +68,17 @@ export default function Reservation() {
           <h3>Documents obligatoires</h3>
 
           <p style={small}>Carte d’identité :</p>
-          <input type="file" name="cni" accept="image/*,.pdf" style={input} required />
+          <input type="file" name="cni" style={input} required />
 
           <p style={small}>Justificatif de domicile :</p>
-          <input type="file" name="justificatif" accept="image/*,.pdf" style={input} required />
+          <input type="file" name="justificatif" style={input} required />
 
           <p style={small}>Devis signé :</p>
-          <input type="file" name="devis_signe" accept="image/*,.pdf" style={input} required />
-
-          <p style={{ fontSize: 12, marginTop: 10 }}>
-            Vos documents sont traités de manière confidentielle.
-          </p>
+          <input type="file" name="devis_signe" style={input} required />
         </div>
 
         {/* PRICING */}
-        <div style={section} className="no-break">
+        <div style={section}>
           <h3>Détail</h3>
 
           <table style={table}>
@@ -114,24 +108,23 @@ export default function Reservation() {
         </div>
 
         {/* SIGNATURE */}
-        <div style={section} className="no-break">
+        <div style={section}>
           <p>Signature précédée de "Lu et approuvé"</p>
           <div style={signature}></div>
         </div>
 
-        {/* PAGE BREAK */}
+        {/* CGV */}
         <div className="page-break"></div>
 
-        {/* CGV */}
-        <div className="cgv">
+        <div style={cgv}>
 {`CONDITIONS GÉNÉRALES DE VENTE
 
 1. Identité du vendeur
-MK HOLDING – SIREN 908 645 393
+MK HOLDING, SAS – SIREN 908 645 393
 31 rue Jean Nougaro, 31600 Muret
 
 2. Objet
-Vente de véhicules électriques sans permis
+Les présentes CGV régissent la vente des véhicules sans permis électriques.
 
 3. Prix
 Prix TTC – hors carte grise et assurance
@@ -143,32 +136,24 @@ Batterie : 6 mois
 
 5. Batterie
 Recharge obligatoire après utilisation
-Pas de décharge prolongée
+Ne jamais laisser déchargée plus de 24h
 
 6. Utilisation
 Routes adaptées uniquement
 
-7. Autonomie
-Indicative selon conditions
+7. Autonomie indicative
 
-8. Panne
-Diagnostic à distance
+8. Diagnostic à distance obligatoire
 
-9. Réparation
-Transport à charge client
+9. Transport à la charge du client
 
-10. Responsabilité
-Client responsable de l’usage
+10. Garantie exclue en cas de mauvaise utilisation
 
-11. Paiement
-Paiement à la livraison
+16. Paiement selon accord
 
-12. Litiges
-Droit français
-`}
+17. Litiges – droit français`}
         </div>
 
-        {/* SUBMIT */}
         <button type="submit" style={btn}>
           Envoyer mon dossier
         </button>
@@ -179,9 +164,9 @@ Droit français
   );
 }
 
-/* STYLES */
+/* SAFE STYLES */
 
-const container = {
+const container: React.CSSProperties = {
   maxWidth: 800,
   margin: "0 auto",
   padding: 20,
@@ -189,7 +174,7 @@ const container = {
   background: "#fff"
 };
 
-const header = {
+const header: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   borderBottom: "2px solid black",
@@ -197,11 +182,11 @@ const header = {
   marginBottom: 20
 };
 
-const section = {
+const section: React.CSSProperties = {
   marginBottom: 25
 };
 
-const input = {
+const input: React.CSSProperties = {
   width: "100%",
   padding: 10,
   marginTop: 8,
@@ -209,32 +194,32 @@ const input = {
   borderRadius: 4
 };
 
-const table = {
+const table: React.CSSProperties = {
   width: "100%",
   borderCollapse: "collapse"
 };
 
-const right = {
+const right: React.CSSProperties = {
   textAlign: "right"
 };
 
-const totalRow = {
+const totalRow: React.CSSProperties = {
   fontWeight: "bold",
   borderTop: "2px solid black"
 };
 
-const signature = {
+const signature: React.CSSProperties = {
   marginTop: 40,
   width: 250,
   borderTop: "1px solid black"
 };
 
-const small = {
+const small: React.CSSProperties = {
   fontSize: 12,
   color: "#555"
 };
 
-const btn = {
+const btn: React.CSSProperties = {
   marginTop: 20,
   padding: 15,
   width: "100%",
@@ -242,4 +227,9 @@ const btn = {
   color: "#fff",
   border: "none",
   borderRadius: 8
+};
+
+const cgv: React.CSSProperties = {
+  fontSize: 11,
+  whiteSpace: "pre-line"
 };
