@@ -9,14 +9,14 @@ export default function Reservation() {
   const [adresse, setAdresse] = useState("");
   const [cp, setCp] = useState("");
   const [ville, setVille] = useState("");
+  const [accepted, setAccepted] = useState(false);
 
   const today = "11 juin 2025";
 
-  // ✅ PRICES (TTC already included)
+  // PRICES TTC
   const prixVehiculeTTC = 4490;
   const transportTTC = 490;
 
-  // Extract VAT (20% included)
   const prixVehiculeHT = prixVehiculeTTC / 1.2;
   const transportHT = transportTTC / 1.2;
 
@@ -43,6 +43,18 @@ export default function Reservation() {
         <input placeholder="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} style={input}/>
         <input placeholder="Code postal" value={cp} onChange={(e) => setCp(e.target.value)} style={input}/>
         <input placeholder="Ville" value={ville} onChange={(e) => setVille(e.target.value)} style={input}/>
+      </div>
+
+      {/* ACCEPT CGV */}
+      <div style={{ marginTop: 20 }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={accepted}
+            onChange={(e) => setAccepted(e.target.checked)}
+          />{" "}
+          J’ai lu et j’accepte les conditions générales de vente
+        </label>
       </div>
 
       {/* DEVIS */}
@@ -74,7 +86,7 @@ export default function Reservation() {
             <p>31 rue Jean Nougaro</p>
             <p>31600 Muret</p>
             <p>SIREN : 908 645 393</p>
-            <p>TVA : 20% incluse</p>
+            <p>TVA incluse</p>
           </div>
         </div>
 
@@ -104,12 +116,110 @@ export default function Reservation() {
         <hr />
 
         <strong>Paiement</strong>
-        <p>IBAN : FR76 2823 3000 0142 1307 1051 008</p>
-        <p>BIC : REVOFRP2</p>
+        <p>Paiement selon accord entre le vendeur et le client</p>
+        <p>Le véhicule reste la propriété du vendeur jusqu’au paiement complet</p>
 
-        <p style={{ marginTop: 15 }}>
-          Signature précédée de "Bon pour accord"
-        </p>
+        <hr />
+
+        <p>Lu et approuvé – Bon pour accord</p>
+
+        <div style={{ marginTop: 40 }}>
+          <div style={{ borderTop: "1px solid #000", width: 200 }}>
+            Signature client
+          </div>
+        </div>
+
+        {/* CGV FULL */}
+        <div style={{ marginTop: 40, fontSize: 10 }}>
+
+          <h3>CONDITIONS GÉNÉRALES DE VENTE</h3>
+
+          <p>
+1. Identité du vendeur
+MK HOLDING, SAS
+SIREN : 908 645 393
+Siège social : 31 rue Jean Nougaro, 31600 Muret
+(ci-après "le Vendeur")
+          </p>
+
+          <p>
+2. Objet
+Les présentes CGV régissent la vente des véhicules sans permis électriques.
+Toute commande implique l’acceptation pleine et entière des présentes conditions.
+          </p>
+
+          <p>
+3. Prix
+Les prix sont exprimés en euros TTC (TVA incluse).
+Ne sont pas inclus sauf mention contraire :
+frais de livraison, carte grise, assurance, frais annexes
+          </p>
+
+          <p>
+4. Garantie
+Châssis, structure, carrosserie : 2 ans
+Moteur, contrôleur, électronique : 1 an
+Batterie : 6 mois sous conditions strictes
+          </p>
+
+          <p>
+5. Batterie
+Recharge obligatoire après chaque utilisation.
+Ne jamais laisser déchargée plus de 24h.
+Charge max 12h.
+Stockage avec circuit coupé.
+          </p>
+
+          <p>
+6. Utilisation
+Usage normal sur routes adaptées uniquement.
+Exclusion : routes dégradées, surcharge, usage abusif
+          </p>
+
+          <p>
+7. Autonomie
+Donnée indicative selon conditions (température, poids, relief)
+          </p>
+
+          <p>
+8. Panne
+Diagnostic à distance obligatoire
+          </p>
+
+          <p>
+9. Réparations
+Transport à la charge du client.
+Pièces fournies sous validation.
+          </p>
+
+          <p>
+10. Exclusions
+Accident, modification, mauvaise utilisation, entretien insuffisant
+          </p>
+
+          <p>
+11. Responsabilité
+Client responsable de l’usage et de l’assurance
+          </p>
+
+          <p>
+12. Paiement
+Selon accord.
+Réserve de propriété jusqu’au paiement complet
+          </p>
+
+          <p>
+13. Litiges
+Droit français – tribunal compétent : siège du vendeur
+          </p>
+
+          <div style={{ marginTop: 20 }}>
+            <div style={{ borderTop: "1px solid black", width: 200 }}>
+              Signature client CGV
+            </div>
+          </div>
+
+        </div>
 
       </div>
 
@@ -121,52 +231,23 @@ export default function Reservation() {
       {/* PAYMENT */}
       <div style={{ marginTop: 20 }}>
         <a href="https://buy.stripe.com/YOUR_LINK" target="_blank">
-          <button style={payBtn}>
+          <button style={payBtn} disabled={!accepted}>
             Payer l’acompte
           </button>
         </a>
       </div>
 
-      {/* DOCUMENTS */}
-      <div style={{ marginTop: 30 }}>
-        <h2>Documents nécessaires</h2>
-
-        <div style={box}>
-          ✔ Pièce d’identité<br/>
-          ✔ Justificatif de domicile<br/>
-          ✔ Devis signé
-        </div>
-
-        <a href="https://tally.so/r/YOUR_FORM" target="_blank">
-          <button style={btn}>
-            Envoyer mes documents
-          </button>
-        </a>
-      </div>
-
-      {/* PRINT FIX */}
+      {/* STYLES */}
       <style>
         {`
         @media print {
-          @page {
-            size: A4;
-            margin: 10mm;
-          }
-
-          body * {
-            visibility: hidden;
-          }
-
-          #devis, #devis * {
-            visibility: visible;
-          }
-
+          body * { visibility: hidden; }
+          #devis, #devis * { visibility: visible; }
           #devis {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            max-width: 190mm;
           }
         }
         `}
@@ -175,8 +256,6 @@ export default function Reservation() {
     </main>
   );
 }
-
-/* STYLES */
 
 const input = {
   width: "100%",
@@ -203,12 +282,5 @@ const payBtn = {
   background: "#25D366",
   color: "white",
   border: "none",
-  borderRadius: 8
-};
-
-const box = {
-  marginTop: 10,
-  background: "#f7f7f7",
-  padding: 15,
   borderRadius: 8
 };
