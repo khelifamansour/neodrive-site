@@ -9,26 +9,56 @@ export default function Reservation() {
   const [adresse, setAdresse] = useState("");
   const [cp, setCp] = useState("");
   const [ville, setVille] = useState("");
-  const [accepted, setAccepted] = useState(false);
 
-  const today = "11 juin 2025";
+  const today = new Date().toLocaleDateString("fr-FR");
 
   const prixVehiculeTTC = 4490;
   const transportTTC = 490;
 
-  const prixVehiculeHT = prixVehiculeTTC / 1.2;
-  const transportHT = transportTTC / 1.2;
-
   const totalTTC = prixVehiculeTTC + transportTTC;
-  const totalHT = prixVehiculeHT + transportHT;
+  const totalHT = totalTTC / 1.2;
   const tva = totalTTC - totalHT;
 
   return (
-    <main style={{ maxWidth: 700, margin: "0 auto", padding: 20, fontFamily: "Arial" }}>
+    <main style={container}>
 
-      <h1 style={{ fontSize: 24, fontWeight: "bold" }}>Réservation véhicule</h1>
+      {/* PRINT STYLE */}
+      <style>{`
+        @media print {
+          body { margin: 0; }
+          main { padding: 20mm; }
+          .page-break { page-break-before: always; }
+          .no-break { page-break-inside: avoid; }
+          .cgv {
+            font-size: 11px;
+            line-height: 1.4;
+            white-space: pre-line;
+          }
+        }
+        @page {
+          size: A4;
+          margin: 20mm;
+        }
+      `}</style>
 
-      <div>
+      {/* HEADER */}
+      <div style={header}>
+        <div>
+          <h2 style={{ margin: 0 }}>Microdrive</h2>
+          <p style={small}>MK HOLDING – SIREN 908 645 393</p>
+          <p style={small}>31 rue Jean Nougaro, 31600 Muret</p>
+        </div>
+
+        <div style={{ textAlign: "right" }}>
+          <h2 style={{ margin: 0 }}>DEVIS</h2>
+          <p style={small}>Date : {today}</p>
+        </div>
+      </div>
+
+      {/* CLIENT */}
+      <div style={section}>
+        <h3>Informations client</h3>
+
         <input placeholder="Nom" value={nom} onChange={(e) => setNom(e.target.value)} style={input}/>
         <input placeholder="Prénom" value={prenom} onChange={(e) => setPrenom(e.target.value)} style={input}/>
         <input placeholder="Téléphone" value={phone} onChange={(e) => setPhone(e.target.value)} style={input}/>
@@ -37,233 +67,174 @@ export default function Reservation() {
         <input placeholder="Ville" value={ville} onChange={(e) => setVille(e.target.value)} style={input}/>
       </div>
 
-      {/* ACCEPT CGV */}
-      <div style={{ marginTop: 20 }}>
-        <label>
-          <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />{" "}
-          J’ai lu et j’accepte les conditions générales de vente
-        </label>
+      {/* PRICING */}
+      <div style={section} className="no-break">
+        <h3>Détail</h3>
+
+        <table style={table}>
+          <tbody>
+            <tr>
+              <td>Véhicule électrique</td>
+              <td style={right}>{prixVehiculeTTC} €</td>
+            </tr>
+            <tr>
+              <td>Transport</td>
+              <td style={right}>{transportTTC} €</td>
+            </tr>
+            <tr>
+              <td>Total HT</td>
+              <td style={right}>{totalHT.toFixed(0)} €</td>
+            </tr>
+            <tr>
+              <td>TVA</td>
+              <td style={right}>{tva.toFixed(0)} €</td>
+            </tr>
+            <tr style={totalRow}>
+              <td>Total TTC</td>
+              <td style={right}>{totalTTC} €</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      {/* DEVIS */}
-      <div id="devis" style={{ marginTop: 30, border: "1px solid #ccc", padding: 20 }}>
-
-        <h2>DEVIS</h2>
-        <p>Date : {today}</p>
-
-        <p><strong>{prenom} {nom}</strong></p>
-        <p>{adresse}</p>
-
-        <hr />
-
-        <p>Véhicule : {prixVehiculeTTC} €</p>
-        <p>Transport : {transportTTC} €</p>
-
-        <p>Total HT : {totalHT.toFixed(0)} €</p>
-        <p>TVA : {tva.toFixed(0)} €</p>
-        <p><strong>Total TTC : {totalTTC.toFixed(0)} €</strong></p>
-
-        <hr />
-
+      {/* SIGNATURE */}
+      <div style={section} className="no-break">
         <p>Signature précédée de "Lu et approuvé"</p>
-        <div style={{ marginTop: 40 }}>
-          <div style={{ borderTop: "1px solid black", width: 200 }}>Signature client</div>
-        </div>
+        <div style={signature}></div>
+      </div>
 
-        {/* FULL CGV */}
-        <div style={{ marginTop: 40, fontSize: 10, whiteSpace: "pre-line" }}>
-{`CONDITIONS GÉNÉRALES DE VENTE 
+      {/* PAGE BREAK */}
+      <div className="page-break"></div>
+
+      {/* FULL CGV */}
+      <div className="cgv">
+{`CONDITIONS GÉNÉRALES DE VENTE
 
 1. Identité du vendeur
 MK HOLDING, SAS
 SIREN : 908 645 393
 Siège social : 31 rue Jean Nougaro, 31600 Muret
-(ci-après « le Vendeur »)
 
 2. Objet
-Les présentes CGV régissent la vente des véhicules sans permis électriques.
-Toute commande implique l’acceptation pleine et entière des présentes conditions.
+Les présentes CGV régissent la vente des véhicules électriques sans permis.
 
 3. Prix
-Les prix sont exprimés en euros TTC (TVA incluse).
-Ne sont pas inclus sauf mention contraire :
-- frais de livraison
-- carte grise
-- assurance
-- frais annexes
+Les prix sont exprimés en euros TTC.
+Ne sont pas inclus : carte grise, assurance, frais annexes.
 
 4. Garantie
+Structure : 2 ans
+Composants : 1 an
+Batterie : 6 mois sous conditions strictes
 
-4.1 Structure du véhicule
-Châssis, structure, carrosserie : 2 ans
+5. Batterie (OBLIGATOIRE)
+- Recharge après chaque utilisation
+- Ne pas laisser déchargée > 24h
+- Charges complètes régulières
+- Max 12h de charge
+- Utiliser chargeur fourni uniquement
 
-4.2 Composants
-Moteur, contrôleur, électronique : 1 an
-
-4.3 Batterie
-Garantie limitée à 6 mois, sous conditions strictes d’utilisation.
-
-5. Conditions d’utilisation de la batterie (OBLIGATOIRES)
-
-Le client reconnaît avoir été informé que la batterie nécessite un usage rigoureux.
-
-Le client s’engage à :
-- recharger la batterie après chaque utilisation
-- ne jamais laisser la batterie déchargée plus de 24h
-- effectuer des charges complètes régulièrement
-- ne pas dépasser environ 12 heures de charge continue
-- utiliser uniquement le chargeur fourni
-- stocker le véhicule dans un environnement sec et tempéré
-
-En cas d’inutilisation prolongée :
-- couper le circuit électrique
-- maintenir une charge régulière (au moins une fois par semaine)
-
-Exclusion de garantie batterie :
-La garantie batterie est exclue en cas de :
-- décharge profonde
-- stockage sans recharge
-- mauvaise utilisation
-- non-respect des consignes
-
-6. Utilisation du véhicule
-
-Le véhicule doit être utilisé :
-- sur routes adaptées et en bon état
-- dans des conditions normales
-
-Exclusions :
-Sont exclus de garantie :
-- routes dégradées
-- chocs liés à la chaussée
-- surcharge
-- utilisation abusive
+6. Utilisation
+- Routes adaptées uniquement
+- Pas de surcharge
+- Pas d’usage abusif
 
 7. Autonomie
+Donnée à titre indicatif, dépend de :
+température, poids, relief, conduite
 
-L’autonomie est donnée à titre indicatif.
-Elle dépend notamment de :
-- température
-- poids transporté
-- relief
-- style de conduite
-- état de la route
+8. Panne
+- Contact vendeur
+- Diagnostic à distance
+- Application des instructions
 
-Aucune garantie d’autonomie n’est donnée.
+9. Réparation
+- Pièces fournies
+- Main d’œuvre possible si validée
+- Transport à charge du client
 
-8. Procédure en cas de panne
+10. Exclusions
+- Accident
+- Mauvaise utilisation
+- Modifications
+- Non-respect consignes
 
-En cas de problème :
-- le client contacte le Vendeur
-- diagnostic à distance (téléphone / WhatsApp)
-- application des instructions
+11. Responsabilité
+Le client est responsable de l’usage et de l’entretien
 
-9. Réparations
+12. Assurance
+Obligatoire
 
-9.1 Réparations simples
-Le Vendeur peut demander au client :
-- d’effectuer la réparation lui-même
-- ou via un tiers
+13. Paiement
+- Acompte ou paiement à livraison
+- Réserve de propriété jusqu’au paiement complet
 
-Le Vendeur fournit les instructions nécessaires.
-
-9.2 Réparations en garage
-Si nécessaire :
-- le Vendeur oriente vers un garage
-- le client transporte le véhicule
-
-Transport :
-Le transport du véhicule est à la charge exclusive du client.
-Le Vendeur ne prend pas en charge :
-- remorquage
-- transport
-- déplacement
-
-9.3 Prise en charge
-Si la panne est couverte par la garantie :
-- le Vendeur fournit les pièces
-- le Vendeur peut prendre en charge la main d’œuvre du garage
-
-Uniquement si :
-- validation préalable du Vendeur
-- réparation conforme
-- absence de faute du client
-
-10. Exclusions de garantie
-
-La garantie ne couvre pas :
-- accident
-- choc
-- mauvaise utilisation
-- modification du véhicule
-- intervention non autorisée
-- défaut d’entretien
-- non-respect des consignes
-
-11. Modifications
-
-Toute modification sans accord écrit entraîne l’annulation immédiate de la garantie.
-
-12. Responsabilité
-
-Le client est seul responsable :
-- de l’usage du véhicule
-- de son entretien
-- de sa conduite
-
-13. Assurance
-
-Le client doit souscrire une assurance conforme à la réglementation.
-
-14. Comportement client
-
-Le Vendeur peut suspendre toute assistance en cas de :
-- comportement agressif
-- abus
-- non-respect des règles
-
-15. Livraison
-
-Le client doit vérifier le véhicule à réception.
-Toute anomalie doit être signalée immédiatement.
-
-16. Paiement
-
-Les modalités de paiement sont définies selon accord entre le Vendeur et le Client.
-
-Le paiement peut être :
-- avec acompte à la commande et solde à la livraison
-- ou paiement total à la livraison
-
-Réserve de propriété :
-Le véhicule reste la propriété du Vendeur jusqu’au paiement complet.
-
-Tant que le paiement n’est pas intégral :
-- le véhicule ne devient pas la propriété du client
-- la livraison peut être refusée ou suspendue
-
-17. Litiges
-
-Droit applicable : français
-Tribunal compétent : juridiction du siège du Vendeur
+14. Litiges
+Droit français – Tribunal du siège
 `}
-</div>
-
       </div>
 
       <button onClick={() => window.print()} style={btn}>
-        Télécharger le devis PDF
+        Télécharger / Imprimer le devis
       </button>
 
     </main>
   );
 }
 
+/* STYLES */
+
+const container = {
+  maxWidth: 800,
+  margin: "0 auto",
+  padding: 20,
+  fontFamily: "Arial",
+  background: "#fff"
+};
+
+const header = {
+  display: "flex",
+  justifyContent: "space-between",
+  borderBottom: "2px solid black",
+  paddingBottom: 10,
+  marginBottom: 20
+};
+
+const section = {
+  marginBottom: 25
+};
+
 const input = {
   width: "100%",
   padding: 10,
-  marginTop: 10,
-  border: "1px solid #ccc"
+  marginTop: 8,
+  border: "1px solid #ccc",
+  borderRadius: 4
+};
+
+const table = {
+  width: "100%",
+  borderCollapse: "collapse"
+};
+
+const right = {
+  textAlign: "right"
+};
+
+const totalRow = {
+  fontWeight: "bold",
+  borderTop: "2px solid black"
+};
+
+const signature = {
+  marginTop: 40,
+  width: 250,
+  borderTop: "1px solid black"
+};
+
+const small = {
+  fontSize: 12,
+  color: "#555"
 };
 
 const btn = {
@@ -271,5 +242,7 @@ const btn = {
   padding: 12,
   width: "100%",
   background: "#000",
-  color: "white"
+  color: "#fff",
+  border: "none",
+  cursor: "pointer"
 };
