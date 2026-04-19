@@ -22,7 +22,6 @@ export default function Reservation() {
           body { margin: 0; }
           main { padding: 20mm; }
           .page-break { page-break-before: always; }
-          .no-break { page-break-inside: avoid; }
           .cgv {
             font-size: 11px;
             line-height: 1.4;
@@ -49,7 +48,14 @@ export default function Reservation() {
         </div>
       </div>
 
-      <form action="https://formspree.io/f/xjgjrqqg" method="POST">
+      <form 
+        action="https://formspree.io/f/xjgjrqqg" 
+        method="POST"
+        encType="multipart/form-data"
+      >
+
+        {/* REQUIRED FOR FORMSPREE */}
+        <input type="hidden" name="_subject" value="Nouvelle réservation véhicule" />
 
         {/* CLIENT */}
         <div style={section}>
@@ -58,6 +64,7 @@ export default function Reservation() {
           <input name="nom" placeholder="Nom" style={input} required />
           <input name="prenom" placeholder="Prénom" style={input} required />
           <input name="telephone" placeholder="Téléphone" style={input} required />
+          <input name="email" type="email" placeholder="Email" style={input} required />
           <input name="adresse" placeholder="Adresse" style={input} required />
           <input name="code_postal" placeholder="Code postal" style={input} required />
           <input name="ville" placeholder="Ville" style={input} required />
@@ -68,13 +75,17 @@ export default function Reservation() {
           <h3>Documents obligatoires</h3>
 
           <p style={small}>Carte d’identité :</p>
-          <input type="file" name="cni" style={input} required />
+          <input type="file" name="cni" accept=".pdf,image/*" style={input} required />
 
           <p style={small}>Justificatif de domicile :</p>
-          <input type="file" name="justificatif" style={input} required />
+          <input type="file" name="justificatif" accept=".pdf,image/*" style={input} required />
 
           <p style={small}>Devis signé :</p>
-          <input type="file" name="devis_signe" style={input} required />
+          <input type="file" name="devis_signe" accept=".pdf,image/*" style={input} required />
+
+          <p style={{ fontSize: 12, marginTop: 10 }}>
+            Taille max recommandée : 10MB par fichier
+          </p>
         </div>
 
         {/* PRICING */}
@@ -120,14 +131,13 @@ export default function Reservation() {
 {`CONDITIONS GÉNÉRALES DE VENTE
 
 1. Identité du vendeur
-MK HOLDING, SAS – SIREN 908 645 393
-31 rue Jean Nougaro, 31600 Muret
+MK HOLDING – SIREN 908 645 393
 
 2. Objet
-Les présentes CGV régissent la vente des véhicules sans permis électriques.
+Vente de véhicules électriques
 
 3. Prix
-Prix TTC – hors carte grise et assurance
+TTC hors frais annexes
 
 4. Garantie
 Structure : 2 ans
@@ -135,23 +145,20 @@ Composants : 1 an
 Batterie : 6 mois
 
 5. Batterie
-Recharge obligatoire après utilisation
-Ne jamais laisser déchargée plus de 24h
+Recharge obligatoire
+Pas de décharge prolongée
 
-6. Utilisation
-Routes adaptées uniquement
+6. Utilisation normale uniquement
 
 7. Autonomie indicative
 
 8. Diagnostic à distance obligatoire
 
-9. Transport à la charge du client
-
-10. Garantie exclue en cas de mauvaise utilisation
+9. Transport à charge client
 
 16. Paiement selon accord
 
-17. Litiges – droit français`}
+17. Litiges : droit français`}
         </div>
 
         <button type="submit" style={btn}>
@@ -164,7 +171,7 @@ Routes adaptées uniquement
   );
 }
 
-/* SAFE STYLES */
+/* STYLES */
 
 const container: React.CSSProperties = {
   maxWidth: 800,
