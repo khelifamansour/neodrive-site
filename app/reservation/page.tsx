@@ -140,34 +140,28 @@ Batterie : 6 mois sous conditions strictes
 - Pas d’usage abusif
 
 7. Autonomie
-Donnée à titre indicatif, dépend de :
-température, poids, relief, conduite
+Donnée à titre indicatif
 
 8. Panne
 - Contact vendeur
 - Diagnostic à distance
-- Application des instructions
 
 9. Réparation
 - Pièces fournies
-- Main d’œuvre possible si validée
 - Transport à charge du client
 
 10. Exclusions
 - Accident
 - Mauvaise utilisation
 - Modifications
-- Non-respect consignes
 
 11. Responsabilité
-Le client est responsable de l’usage et de l’entretien
+Le client est responsable
 
-12. Assurance
-Obligatoire
+12. Assurance obligatoire
 
 13. Paiement
-- Acompte ou paiement à livraison
-- Réserve de propriété jusqu’au paiement complet
+Paiement à la livraison
 
 14. Litiges
 Droit français – Tribunal du siège
@@ -214,11 +208,11 @@ const input = {
 
 const table = {
   width: "100%",
-  borderCollapse: "collapse"
+  borderCollapse: "collapse" as const   // ✅ FIX HERE
 };
 
 const right = {
-  textAlign: "right"
+  textAlign: "right" as const
 };
 
 const totalRow = {
