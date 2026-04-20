@@ -28,24 +28,46 @@ export default function Reservation() {
   };
 
   // ✅ REAL PDF DOWNLOAD
-  const downloadPDF = async () => {
-    if (!printRef.current) return;
+const downloadPDF = async () => {
+  if (!printRef.current) return;
 
-    const html2canvas = (window as any).html2canvas;
-    const jsPDF = (window as any).jspdf.jsPDF;
+  const html2canvas = (window as any).html2canvas;
+  const jsPDF = (window as any).jspdf.jsPDF;
 
-    const canvas = await html2canvas(printRef.current, { scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
+  const element = printRef.current;
 
-    const pdf = new jsPDF("p", "mm", "a4");
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true
+  });
 
-    const width = 210;
-    const height = (canvas.height * width) / canvas.width;
+  const imgData = canvas.toDataURL("image/png");
 
-    pdf.addImage(imgData, "PNG", 0, 0, width, height);
-    pdf.save("devis-neodrive.pdf");
-  };
+  const pdf = new jsPDF("p", "mm", "a4");
 
+  const pageWidth = 210;
+  const pageHeight = 297;
+
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  // FIRST PAGE
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+
+  // ADD EXTRA PAGES
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+
+  pdf.save("devis-neodrive.pdf");
+};
   return (
     <main style={container}>
 
