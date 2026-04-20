@@ -149,6 +149,137 @@ export default function Reservation() {
           <div style={{ marginTop: 60 }}>
             <p>Signature précédée de "Lu et approuvé"</p>
             <div style={signature}></div>
+            <div style={{ pageBreakBefore: "always", marginTop: 40 }}></div>
+
+<div style={{ fontSize: 10, lineHeight: "1.5", whiteSpace: "pre-line" }}>
+{`CONDITIONS GÉNÉRALES DE VENTE
+
+1. IDENTITÉ DU VENDEUR
+MK HOLDING, SAS
+SIREN : 908 645 393
+31 rue Jean Nougaro, 31600 Muret
+
+2. OBJET
+Les présentes conditions régissent la vente de véhicules électriques sans permis.
+Toute commande implique l’acceptation pleine et entière des présentes CGV.
+
+3. COMMANDE
+Le client peut commander via la plateforme du vendeur.
+Toute validation vaut engagement contractuel.
+
+4. PRIX
+Les prix sont exprimés en euros TTC.
+Ne sont pas inclus : livraison, carte grise, assurance.
+
+5. RÉSERVE DE PROPRIÉTÉ
+Le véhicule reste la propriété du vendeur jusqu’au paiement complet.
+
+6. UTILISATION DU VÉHICULE
+Le client s’engage à :
+- utiliser le véhicule sur routes goudronnées et en bon état
+- respecter le manuel utilisateur
+- ne pas surcharger ni utiliser abusivement le véhicule
+- utiliser le véhicule pour des trajets courts (environ 30 km/jour recommandé)
+
+Toute utilisation non conforme entraîne l’exclusion de garantie.
+
+7. RESPONSABILITÉ
+Le client est seul responsable :
+- de l’usage du véhicule
+- de son entretien
+- des dommages causés
+- de la souscription d’une assurance obligatoire
+
+8. BATTERIE
+Le client s’engage à :
+- recharger le véhicule après chaque utilisation
+- ne jamais laisser la batterie déchargée plus de 24h
+- effectuer des charges complètes régulières
+- ne pas dépasser environ 12 heures de charge
+- couper le circuit en cas d’inutilisation
+- maintenir une charge même sans utilisation
+
+Tout non-respect annule la garantie batterie.
+
+9. GARANTIE
+Structure (châssis, carrosserie) : 2 ans  
+Composants : 1 an  
+Batterie : 6 mois (usage normal uniquement)
+
+La garantie s’applique uniquement si :
+- le véhicule est utilisé conformément aux instructions
+- aucune modification n’a été effectuée
+- aucun usage abusif n’est constaté
+
+Le vendeur se réserve le droit d’apprécier l’application de la garantie après analyse du défaut.
+
+10. RÉPARATION ET SAV
+Deux types de panne :
+
+A. Panne simple  
+→ Diagnostic à distance (WhatsApp / téléphone)  
+→ Instructions envoyées au client  
+→ Pièces expédiées si nécessaire  
+
+B. Panne complexe 
+→ Diagnostic à distance (WhatsApp / téléphone)
+→ Orientation vers un garage local  
+→ Fourniture des pièces par le vendeur  
+
+Le vendeur :
+- ne transporte jamais le véhicule  
+- ne prend pas en charge le transport  
+- fournit uniquement support technique et pièces  
+
+La main d’œuvre peut être prise en charge UNIQUEMENT après validation préalable.
+
+11. EXCLUSIONS DE GARANTIE
+Sont exclus :
+- accident
+- choc
+- mauvaise utilisation
+- défaut d’entretien
+- modification non autorisée
+- non-respect des consignes
+- usure normale
+
+12. MODIFICATIONS
+Toute modification sans autorisation écrite annule immédiatement la garantie.
+
+13. AUTONOMIE
+L’autonomie est indicative.
+Elle dépend de nombreux facteurs (température, charge, route, conduite).
+
+14. COMPORTEMENT CLIENT
+Le vendeur se réserve le droit de suspendre le support en cas :
+- comportement abusif
+- agressivité
+- non-respect des règles
+
+15. CONTACT
+Toute demande doit être effectuée via WhatsApp ou téléphone.
+
+16. PAIEMENT
+Paiement selon accord :
+- acompte + solde à la livraison
+- ou paiement total à la livraison
+
+17. ACCEPTATION
+Le client déclare :
+- avoir pris connaissance des présentes CGV
+- les accepter sans réserve
+- avoir reçu toutes les informations nécessaires
+
+18. DROIT APPLICABLE
+Droit français – tribunal compétent : siège du vendeur
+`}
+</div>
+
+{/* SIGNATURE CGV */}
+<div style={{ marginTop: 40 }}>
+  <p>Signature CGV précédée de "Lu et approuvé"</p>
+  <div style={{ borderTop: "1px solid black", width: 250 }}></div>
+</div>
           </div>
 
         </div>
