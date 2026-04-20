@@ -22,79 +22,119 @@ export default function Home() {
 
         <img
           src="/voiture.jpg"
-          alt="voiture"
+          alt="voiture sans permis"
           style={image}
         />
 
         <div style={ctaBox}>
           <a href="https://wa.me/33628261446" target="_blank">
             <button style={btnGreen}>
-              Voir le véhicule en vidéo
+              Voir le véhicule réel en vidéo maintenant
             </button>
           </a>
 
           <a href="/reservation">
             <button style={btnBlack}>
-              Réserver
+              Réserver sans paiement
             </button>
           </a>
         </div>
 
-        <p style={safe}>
-          Paiement uniquement à la livraison – aucun risque
+        <p style={safeStrong}>
+          🔒 Achat 100% sécurisé : aucun paiement à l’avance – inspection avant paiement
         </p>
+      </section>
+
+      {/* SECURITY */}
+      <section style={section}>
+        <h2 style={h2}>Achat sécurisé</h2>
+
+        <div style={box}>
+          ✔ Aucun acompte demandé<br />
+          ✔ Paiement uniquement à la livraison<br />
+          ✔ Inspection complète du véhicule avant paiement<br />
+          ✔ Refus possible si non conforme<br />
+          ✔ Aucun engagement tant que vous n’avez pas validé
+        </div>
       </section>
 
       {/* TRUST */}
       <section style={section}>
         <div style={box}>
-          <strong>Entreprise Toulousaine</strong><br />
+          <strong>Entreprise Française</strong><br />
           MK HOLDING – SIREN 908 645 393<br />
           31 rue Jean Nougaro – 31600 Muret<br />
-          Véhicules conformes à la réglementation française
+          Véhicules conformes à la réglementation française<br />
+          Facture fournie + documents pour immatriculation
         </div>
 
         <div style={box}>✔ Véhicule neuf – jamais immatriculé</div>
         <div style={box}>✔ Batterie incluse – aucun frais caché</div>
-        <div style={box}>✔ Paiement à la livraison</div>
-        <div style={box}>✔ SAV et pièces disponibles en France</div>
+        <div style={box}>✔ Paiement sécurisé à la livraison</div>
+        <div style={box}>✔ SAV + pièces disponibles en France</div>
+        <div style={box}>✔ Assistance rapide WhatsApp / téléphone</div>
       </section>
 
-      {/* PRIX */}
+      {/* PRICE */}
       <section style={section}>
         <h2 style={h2}>Prix clair</h2>
 
         <div style={box}>
           ✔ Véhicule : à partir de 4 490 € TTC<br />
-          ✔ Transport : 290 € à 690 € selon distance depuis Toulouse<br />
+          ✔ Transport : 290 € à 690 € selon distance<br />
           ✔ Carte grise : environ 160 €<br />
           ✔ Aucun frais caché
         </div>
       </section>
 
-      {/* PROCESS */}
+      {/* WHY PRICE */}
       <section style={section}>
-        <h2 style={h2}>Comment ça marche</h2>
+        <h2 style={h2}>Pourquoi ce prix ?</h2>
 
         <div style={box}>
-          1. Contact WhatsApp ou téléphone<br />
-          2. Vidéo du véhicule et validation<br />
-          3. Préparation du véhicule<br />
-          4. Livraison à domicile ou retrait<br />
-          5. Paiement à la réception<br />
-          6. Aide immatriculation
+          ✔ Import direct usine<br />
+          ✔ Pas de concession coûteuse<br />
+          ✔ Pas de leasing imposé<br />
+          ✔ Structure légère = prix réduit pour le client
         </div>
       </section>
 
-      {/* GARANTIE */}
+      {/* PROCESS */}
       <section style={section}>
-        <h2 style={h2}>Garantie</h2>
+        <h2 style={h2}>Comment ça marche (simple et sécurisé)</h2>
 
         <div style={box}>
-          ✔ Structure : 2 ans<br />
-          ✔ Composants : 1 an<br />
-          ✔ Batterie : 6 mois<br />
-          ✔ Assistance technique en France
+          1. Contact WhatsApp ou téléphone<br />
+          2. Vidéo réelle du véhicule disponible<br />
+          3. Validation sans engagement<br />
+          4. Préparation du véhicule<br />
+          5. Livraison à domicile ou retrait<br />
+          6. Inspection complète AVANT paiement<br />
+          7. Paiement uniquement si tout est conforme<br />
+          8. Aide pour immatriculation
+        </div>
+      </section>
+
+      {/* WARRANTY */}
+      <section style={section}>
+        <h2 style={h2}>Garantie & assistance</h2>
+
+        <div style={box}>
+          <strong>✔ Vous n’êtes jamais seul après l’achat</strong><br /><br />
+
+          ✔ Garantie constructeur :<br />
+          - Structure (châssis, carrosserie) : 2 ans<br />
+          - Composants électriques : 1 an<br />
+          - Batterie : 6 mois (usage normal)<br /><br />
+
+          ✔ Assistance technique gratuite à vie (WhatsApp / téléphone)<br />
+          ✔ Diagnostic rapide à distance<br />
+          ✔ Pièces disponibles durablement (suivi assuré)<br />
+          ✔ Envoi de pièces partout en France<br />
+          ✔ Main d’œuvre prise en charge après validation pour pannes couvertes<br /><br />
+
+          ✔ Accompagnement réel :<br />
+          Nous vous guidons étape par étape pour résoudre rapidement toute situation.
         </div>
       </section>
 
@@ -106,7 +146,9 @@ export default function Home() {
           ✔ Pas de leasing (contrairement à Ami)<br />
           ✔ Pas d’abonnement mensuel<br />
           ✔ Vous êtes propriétaire du véhicule<br />
-          ✔ Prix direct import sans intermédiaire
+          ✔ Prix direct import sans intermédiaire<br />
+          ✔ Process simple et transparent<br />
+          ✔ Achat sans risque
         </p>
       </section>
 
@@ -114,12 +156,12 @@ export default function Home() {
       <section style={center}>
         <a href="https://wa.me/33628261446" target="_blank">
           <button style={btnGreen}>
-            Discuter sur WhatsApp
+            Voir le véhicule en vidéo maintenant
           </button>
         </a>
 
         <p style={safe}>
-          Réponse rapide – vidéo disponible immédiatement
+          Réponse rapide – vidéo réelle disponible immédiatement
         </p>
       </section>
 
@@ -127,9 +169,7 @@ export default function Home() {
   );
 }
 
-/* ===================== */
-/* SAFE TYPED STYLES     */
-/* ===================== */
+/* STYLES */
 
 const container: React.CSSProperties = {
   maxWidth: 900,
@@ -178,7 +218,7 @@ const box: React.CSSProperties = {
   padding: 12,
   borderRadius: 8,
   marginBottom: 10,
-  lineHeight: "1.5"
+  lineHeight: "1.6"
 };
 
 const btnBlack: React.CSSProperties = {
@@ -216,4 +256,11 @@ const safe: React.CSSProperties = {
   marginTop: 10,
   fontSize: 12,
   color: "#444"
+};
+
+const safeStrong: React.CSSProperties = {
+  marginTop: 12,
+  fontSize: 14,
+  color: "#000",
+  fontWeight: 700
 };
