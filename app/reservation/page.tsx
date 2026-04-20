@@ -1,47 +1,65 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 export default function Reservation() {
 
-  const printRef = useRef<HTMLDivElement>(null);
-
-  const [client, setClient] = useState({
-    nom: "",
-    prenom: "",
-    telephone: "",
-    email: "",
-    adresse: "",
-    ville: ""
-  });
+  const today = new Date().toLocaleDateString("fr-FR");
 
   const prixVehicule = 4490;
   const transport = 490;
   const carteGrise = 150;
   const totalTTC = prixVehicule + transport + carteGrise;
 
-  const today = new Date().toLocaleDateString("fr-FR");
+  const printRef = useRef<HTMLDivElement>(null);
+
+  // ✅ CLIENT STATE (NEW)
+  const [client, setClient] = useState({
+    nom: "",
+    prenom: "",
+    telephone: "",
+    email: "",
+    adresse: "",
+    code_postal: "",
+    ville: ""
+  });
 
   const handleChange = (e: any) => {
     setClient({ ...client, [e.target.name]: e.target.value });
   };
 
-  const generatePDF = async () => {
+  // ✅ IMPROVED PDF
+  const downloadPDF = () => {
     if (!printRef.current) return;
 
-    const canvas = await html2canvas(printRef.current, { scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
+    const win = window.open("", "_blank");
+    if (!win) return;
 
-    const pdf = new jsPDF("p", "mm", "a4");
-    const width = pdf.internal.pageSize.getWidth();
+    win.document.write(`
+      <html>
+        <head>
+          <title>Devis NEODRIVE</title>
+          <style>
+            body { font-family: Arial; padding: 40px; max-width: 800px; margin: auto; }
+            h1 { text-align: center; margin-bottom: 10px; }
+            h3 { margin-top: 25px; }
+            p { margin: 4px 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            td { padding: 10px; border-bottom: 1px solid #ddd; }
+            .total { font-weight: bold; border-top: 2px solid black; }
+            .header { display: flex; justify-content: space-between; }
+            .signature { margin-top: 60px; border-top: 1px solid black; width: 250px; }
+            .small { font-size: 12px; color: #555; }
+          </style>
+        </head>
+        <body>
+          ${printRef.current.innerHTML}
+        </body>
+      </html>
+    `);
 
-    const imgProps = pdf.getImageProperties(imgData);
-    const height = (imgProps.height * width) / imgProps.width;
-
-    pdf.addImage(imgData, "PNG", 0, 0, width, height);
-    pdf.save("devis-neodrive.pdf");
+    win.document.close();
+    win.print();
   };
 
   return (
@@ -49,101 +67,130 @@ export default function Reservation() {
 
       <h2 style={{ textAlign: "center" }}>Réservation véhicule</h2>
 
-      {/* FORM */}
-      <div style={section}>
-        <input name="nom" placeholder="Nom" onChange={handleChange} style={input} />
-        <input name="prenom" placeholder="Prénom" onChange={handleChange} style={input} />
-        <input name="telephone" placeholder="Téléphone" onChange={handleChange} style={input} />
-        <input name="email" placeholder="Email" onChange={handleChange} style={input} />
-        <input name="adresse" placeholder="Adresse" onChange={handleChange} style={input} />
-        <input name="ville" placeholder="Ville" onChange={handleChange} style={input} />
-      </div>
+      <form
+        action="https://formspree.io/f/xjgjrqqg"
+        method="POST"
+        encType="multipart/form-data"
+      >
 
-      {/* PDF */}
-      <div ref={printRef} style={pdf}>
+        {/* CLIENT */}
+        <div style={section}>
+          <h3>Informations client</h3>
 
-        <div style={header}>
-          <div>
-            <h2>NEODRIVE</h2>
-            <p>MK HOLDING</p>
-            <p>SIREN : 908 645 393</p>
-            <p>31 rue Jean Nougaro, 31600 Muret</p>
-            <p>TVA : FR93908645393</p>
-          </div>
-
-          <div style={{ textAlign: "right" }}>
-            <h1>DEVIS</h1>
-            <p>Date : {today}</p>
-          </div>
+          <input name="nom" placeholder="Nom" style={input} onChange={handleChange} required />
+          <input name="prenom" placeholder="Prénom" style={input} onChange={handleChange} required />
+          <input name="telephone" placeholder="Téléphone" style={input} onChange={handleChange} required />
+          <input name="email" type="email" placeholder="Email" style={input} onChange={handleChange} required />
+          <input name="adresse" placeholder="Adresse" style={input} onChange={handleChange} required />
+          <input name="code_postal" placeholder="Code postal" style={input} onChange={handleChange} required />
+          <input name="ville" placeholder="Ville" style={input} onChange={handleChange} required />
         </div>
 
-        <hr />
+        {/* DOCUMENTS */}
+        <div style={section}>
+          <h3>Documents obligatoires</h3>
 
-        <div style={block}>
+          <p style={small}>Carte d’identité :</p>
+          <input type="file" name="cni" required />
+
+          <p style={small}>Justificatif de domicile :</p>
+          <input type="file" name="justificatif" required />
+
+          <p style={small}>Devis signé :</p>
+          <input type="file" name="devis_signe" required />
+
+          <p style={small}>
+            1. Télécharger le devis<br/>
+            2. Signer<br/>
+            3. Envoyer ici
+          </p>
+        </div>
+
+        {/* PDF */}
+        <div ref={printRef} style={pdf}>
+
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div>
+              <h2>NEODRIVE</h2>
+              <p>MK HOLDING</p>
+              <p>SIREN : 908 645 393</p>
+              <p>31 rue Jean Nougaro, 31600 Muret</p>
+              <p>TVA : FR93908645393</p>
+            </div>
+
+            <div style={{ textAlign: "right" }}>
+              <h1>DEVIS</h1>
+              <p>Date : {today}</p>
+            </div>
+          </div>
+
+          <hr />
+
           <h3>Acheteur</h3>
           <p>{client.nom} {client.prenom}</p>
           <p>{client.adresse}</p>
-          <p>{client.ville}</p>
+          <p>{client.code_postal} {client.ville}</p>
           <p>{client.telephone}</p>
           <p>{client.email}</p>
-        </div>
 
-        <div style={block}>
           <h3>Détail</h3>
 
-          <table style={table}>
+          <table>
             <tbody>
               <tr>
                 <td>Véhicule électrique</td>
-                <td>{prixVehicule} €</td>
+                <td style={right}>{prixVehicule} €</td>
               </tr>
               <tr>
                 <td>Livraison + mise en route</td>
-                <td>{transport} €</td>
+                <td style={right}>{transport} €</td>
               </tr>
               <tr>
                 <td>Carte grise</td>
-                <td>{carteGrise} €</td>
+                <td style={right}>{carteGrise} €</td>
               </tr>
-              <tr style={totalRow}>
-                <td>Total TTC</td>
-                <td>{totalTTC} €</td>
+              <tr className="total">
+                <td>Total TTC (TVA incluse)</td>
+                <td style={right}>{totalTTC} €</td>
               </tr>
             </tbody>
           </table>
-        </div>
 
-        <div style={block}>
           <h3>Conditions générales de vente</h3>
 
-          <p style={small}>
+          <p style={{ fontSize: 12 }}>
             Le véhicule est vendu prêt à être livré. Paiement à la livraison possible.
             Livraison sous réserve de disponibilité.
           </p>
 
-          <p style={small}>
+          <p style={{ fontSize: 12 }}>
             Garantie :
             Structure et châssis : 2 ans.
             Composants mécaniques et électroniques : 1 an.
             Batterie : garantie incluse.
           </p>
 
-          <p style={small}>
-            Le client reconnaît avoir pris connaissance des conditions générales de vente
-            et les accepte après signature du devis.
+          <p style={{ fontSize: 12 }}>
+            Le client reconnaît avoir pris connaissance des conditions et les accepte après signature.
           </p>
+
+          <div style={{ marginTop: 60 }}>
+            <p>Signature précédée de "Lu et approuvé"</p>
+            <div style={{ borderTop: "1px solid black", width: 250 }}></div>
+          </div>
+
         </div>
 
-        <div style={{ marginTop: 50 }}>
-          <p>Signature précédée de "Lu et approuvé"</p>
-          <div style={signature}></div>
-        </div>
+        {/* BUTTONS */}
+        <button type="button" onClick={downloadPDF} style={btn}>
+          Télécharger le devis PDF
+        </button>
 
-      </div>
+        <button type="submit" style={btn}>
+          Envoyer mon dossier
+        </button>
 
-      <button onClick={generatePDF} style={btn}>
-        Télécharger le devis PDF
-      </button>
+      </form>
 
     </main>
   );
@@ -152,63 +199,46 @@ export default function Reservation() {
 /* STYLES */
 
 const container: React.CSSProperties = {
-  maxWidth: 700,
-  margin: "auto",
+  maxWidth: 800,
+  margin: "0 auto",
   padding: 20,
   fontFamily: "Arial"
 };
 
 const section: React.CSSProperties = {
-  marginBottom: 20
+  marginBottom: 25
 };
 
 const input: React.CSSProperties = {
   width: "100%",
   padding: 10,
-  marginBottom: 10,
-  border: "1px solid #ccc"
+  marginTop: 8,
+  border: "1px solid #ccc",
+  borderRadius: 4
 };
 
 const pdf: React.CSSProperties = {
   background: "#fff",
   padding: 30,
-  border: "1px solid #ddd"
+  border: "1px solid #ddd",
+  marginTop: 30
 };
 
-const header: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between"
-};
-
-const block: React.CSSProperties = {
-  marginTop: 20
-};
-
-const table: React.CSSProperties = {
-  width: "100%",
-  marginTop: 10
-};
-
-const totalRow: React.CSSProperties = {
-  fontWeight: "bold",
-  borderTop: "2px solid black"
+const right: React.CSSProperties = {
+  textAlign: "right"
 };
 
 const small: React.CSSProperties = {
-  fontSize: 12
-};
-
-const signature: React.CSSProperties = {
-  marginTop: 40,
-  width: 250,
-  borderTop: "1px solid black"
+  fontSize: 12,
+  color: "#555"
 };
 
 const btn: React.CSSProperties = {
-  marginTop: 20,
+  marginTop: 15,
   padding: 12,
   width: "100%",
-  background: "black",
-  color: "white",
-  border: "none"
+  background: "#000",
+  color: "#fff",
+  border: "none",
+  borderRadius: 6
 };
