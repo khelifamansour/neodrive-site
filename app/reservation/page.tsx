@@ -13,7 +13,6 @@ export default function Reservation() {
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  // ✅ CLIENT STATE (NEW)
   const [client, setClient] = useState({
     nom: "",
     prenom: "",
@@ -28,42 +27,31 @@ export default function Reservation() {
     setClient({ ...client, [e.target.name]: e.target.value });
   };
 
-  // ✅ IMPROVED PDF
-  const downloadPDF = () => {
+  // ✅ REAL PDF DOWNLOAD
+  const downloadPDF = async () => {
     if (!printRef.current) return;
 
-    const win = window.open("", "_blank");
-    if (!win) return;
+    const html2canvas = (window as any).html2canvas;
+    const jsPDF = (window as any).jspdf.jsPDF;
 
-    win.document.write(`
-      <html>
-        <head>
-          <title>Devis NEODRIVE</title>
-          <style>
-            body { font-family: Arial; padding: 40px; max-width: 800px; margin: auto; }
-            h1 { text-align: center; margin-bottom: 10px; }
-            h3 { margin-top: 25px; }
-            p { margin: 4px 0; }
-            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-            td { padding: 10px; border-bottom: 1px solid #ddd; }
-            .total { font-weight: bold; border-top: 2px solid black; }
-            .header { display: flex; justify-content: space-between; }
-            .signature { margin-top: 60px; border-top: 1px solid black; width: 250px; }
-            .small { font-size: 12px; color: #555; }
-          </style>
-        </head>
-        <body>
-          ${printRef.current.innerHTML}
-        </body>
-      </html>
-    `);
+    const canvas = await html2canvas(printRef.current, { scale: 2 });
+    const imgData = canvas.toDataURL("image/png");
 
-    win.document.close();
-    win.print();
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const width = 210;
+    const height = (canvas.height * width) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 0, 0, width, height);
+    pdf.save("devis-neodrive.pdf");
   };
 
   return (
     <main style={container}>
+
+      {/* CDN (IMPORTANT) */}
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
       <h2 style={{ textAlign: "center" }}>Réservation véhicule</h2>
 
@@ -72,6 +60,8 @@ export default function Reservation() {
         method="POST"
         encType="multipart/form-data"
       >
+
+        <input type="hidden" name="_subject" value="Nouvelle réservation véhicule" />
 
         {/* CLIENT */}
         <div style={section}>
@@ -91,18 +81,19 @@ export default function Reservation() {
           <h3>Documents obligatoires</h3>
 
           <p style={small}>Carte d’identité :</p>
-          <input type="file" name="cni" required />
+          <input type="file" name="cni" accept=".pdf,image/*" required />
 
           <p style={small}>Justificatif de domicile :</p>
-          <input type="file" name="justificatif" required />
+          <input type="file" name="justificatif" accept=".pdf,image/*" required />
 
           <p style={small}>Devis signé :</p>
-          <input type="file" name="devis_signe" required />
+          <input type="file" name="devis_signe" accept=".pdf,image/*" required />
 
           <p style={small}>
             1. Télécharger le devis<br/>
             2. Signer<br/>
-            3. Envoyer ici
+            3. Réimporter ici<br/>
+            4. Envoyer
           </p>
         </div>
 
@@ -115,7 +106,6 @@ export default function Reservation() {
               <p>MK HOLDING</p>
               <p>SIREN : 908 645 393</p>
               <p>31 rue Jean Nougaro, 31600 Muret</p>
-              <p>TVA : FR93908645393</p>
             </div>
 
             <div style={{ textAlign: "right" }}>
@@ -135,7 +125,7 @@ export default function Reservation() {
 
           <h3>Détail</h3>
 
-          <table>
+          <table style={table}>
             <tbody>
               <tr>
                 <td>Véhicule électrique</td>
@@ -149,34 +139,16 @@ export default function Reservation() {
                 <td>Carte grise</td>
                 <td style={right}>{carteGrise} €</td>
               </tr>
-              <tr className="total">
-                <td>Total TTC (TVA incluse)</td>
+              <tr style={totalRow}>
+                <td>Total TTC</td>
                 <td style={right}>{totalTTC} €</td>
               </tr>
             </tbody>
           </table>
 
-          <h3>Conditions générales de vente</h3>
-
-          <p style={{ fontSize: 12 }}>
-            Le véhicule est vendu prêt à être livré. Paiement à la livraison possible.
-            Livraison sous réserve de disponibilité.
-          </p>
-
-          <p style={{ fontSize: 12 }}>
-            Garantie :
-            Structure et châssis : 2 ans.
-            Composants mécaniques et électroniques : 1 an.
-            Batterie : garantie incluse.
-          </p>
-
-          <p style={{ fontSize: 12 }}>
-            Le client reconnaît avoir pris connaissance des conditions et les accepte après signature.
-          </p>
-
           <div style={{ marginTop: 60 }}>
             <p>Signature précédée de "Lu et approuvé"</p>
-            <div style={{ borderTop: "1px solid black", width: 250 }}></div>
+            <div style={signature}></div>
           </div>
 
         </div>
@@ -224,8 +196,24 @@ const pdf: React.CSSProperties = {
   marginTop: 30
 };
 
+const table: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse"
+};
+
 const right: React.CSSProperties = {
   textAlign: "right"
+};
+
+const totalRow: React.CSSProperties = {
+  fontWeight: "bold",
+  borderTop: "2px solid black"
+};
+
+const signature: React.CSSProperties = {
+  marginTop: 40,
+  width: 250,
+  borderTop: "1px solid black"
 };
 
 const small: React.CSSProperties = {
