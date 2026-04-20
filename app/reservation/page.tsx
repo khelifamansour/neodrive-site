@@ -194,30 +194,102 @@ Le véhicule reste la propriété du vendeur jusqu’au paiement complet.
 
 6. UTILISATION DU VÉHICULE
 Le client s’engage à :
-- utiliser le véhicule sur routes goudronnées
+- utiliser le véhicule sur routes goudronnées et en bon état
 - respecter le manuel utilisateur
+- ne pas surcharger ni utiliser abusivement le véhicule
+- utiliser le véhicule pour des trajets courts (environ 30 km/jour recommandé)
 
-Toute utilisation non conforme entraîne exclusion de garantie.
+Toute utilisation non conforme entraîne l’exclusion de garantie.
 
 7. RESPONSABILITÉ
-Le client est seul responsable de l’usage et de l’assurance.
+Le client est seul responsable :
+- de l’usage du véhicule
+- de son entretien
+- des dommages causés
+- de la souscription d’une assurance obligatoire
 
 8. BATTERIE
-Recharge obligatoire après usage. Ne pas laisser déchargée.
+Le client s’engage à :
+- recharger le véhicule après chaque utilisation
+- ne jamais laisser la batterie déchargée plus de 24h
+- effectuer des charges complètes régulières
+- ne pas dépasser environ 12 heures de charge
+- couper le circuit en cas d’inutilisation
+- maintenir une charge même sans utilisation
+
+Tout non-respect annule la garantie batterie.
 
 9. GARANTIE
-Structure : 2 ans  
+Structure (châssis, carrosserie) : 2 ans  
 Composants : 1 an  
-Batterie : 6 mois  
+Batterie : 6 mois (usage normal uniquement)
 
-10. SAV
-Diagnostic à distance + pièces envoyées.
+La garantie s’applique uniquement si :
+- le véhicule est utilisé conformément aux instructions
+- aucune modification n’a été effectuée
+- aucun usage abusif n’est constaté
+
+Le vendeur se réserve le droit d’apprécier l’application de la garantie après analyse du défaut.
+
+10. RÉPARATION ET SAV
+Deux types de panne :
+
+A. Panne simple  
+→ Diagnostic à distance (WhatsApp / téléphone)  
+→ Instructions envoyées au client  
+→ Pièces expédiées si nécessaire  
+
+B. Panne complexe 
+→ Diagnostic à distance (WhatsApp / téléphone)
+→ Orientation vers un garage local  
+→ Fourniture des pièces par le vendeur  
+
+Le vendeur :
+- ne transporte jamais le véhicule  
+- ne prend pas en charge le transport  
+- fournit uniquement support technique et pièces  
+
+La main d’œuvre peut être prise en charge UNIQUEMENT après validation préalable.
+
+11. EXCLUSIONS DE GARANTIE
+Sont exclus :
+- accident
+- choc
+- mauvaise utilisation
+- défaut d’entretien
+- modification non autorisée
+- non-respect des consignes
+- usure normale
+
+12. MODIFICATIONS
+Toute modification sans autorisation écrite annule immédiatement la garantie.
+
+13. AUTONOMIE
+L’autonomie est indicative.
+Elle dépend de nombreux facteurs (température, charge, route, conduite).
+
+14. COMPORTEMENT CLIENT
+Le vendeur se réserve le droit de suspendre le support en cas :
+- comportement abusif
+- agressivité
+- non-respect des règles
+
+15. CONTACT
+Toute demande doit être effectuée via WhatsApp ou téléphone.
+
+16. PAIEMENT
+Paiement selon accord :
+- acompte + solde à la livraison
+- ou paiement total à la livraison
 
 17. ACCEPTATION
-Le client accepte sans réserve.
+Le client déclare :
+- avoir pris connaissance des présentes CGV
+- les accepter sans réserve
+- avoir reçu toutes les informations nécessaires
 
 18. DROIT APPLICABLE
-Droit français
+Droit français – tribunal compétent : siège du vendeur
 `}
           </div>
 
