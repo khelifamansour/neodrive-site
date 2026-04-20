@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import Script from "next/script";
 
 export default function Reservation() {
 
@@ -27,53 +28,49 @@ export default function Reservation() {
     setClient({ ...client, [e.target.name]: e.target.value });
   };
 
-  // ✅ REAL PDF DOWNLOAD
-const downloadPDF = async () => {
-  if (!printRef.current) return;
+  const downloadPDF = async () => {
+    if (!printRef.current) return;
 
-  const html2canvas = (window as any).html2canvas;
-  const jsPDF = (window as any).jspdf.jsPDF;
+    const html2canvas = (window as any).html2canvas;
+    const jsPDF = (window as any).jspdf.jsPDF;
 
-  const element = printRef.current;
+    const canvas = await html2canvas(printRef.current, {
+      scale: 2,
+      useCORS: true
+    });
 
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    useCORS: true
-  });
+    const imgData = canvas.toDataURL("image/png");
 
-  const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
 
-  const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = 210;
+    const pageHeight = 297;
 
-  const pageWidth = 210;
-  const pageHeight = 297;
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-  const imgWidth = pageWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
 
-  let heightLeft = imgHeight;
-  let position = 0;
-
-  // FIRST PAGE
-  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
-
-  // ADD EXTRA PAGES
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
     pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
-  }
 
-  pdf.save("devis-neodrive.pdf");
-};
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    pdf.save("devis-neodrive.pdf");
+  };
+
   return (
     <main style={container}>
 
-      {/* CDN (IMPORTANT) */}
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+      {/* CDN FIXED FOR NEXT */}
+      <Script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" />
+      <Script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" />
 
       <h2 style={{ textAlign: "center" }}>Réservation véhicule</h2>
 
@@ -85,7 +82,6 @@ const downloadPDF = async () => {
 
         <input type="hidden" name="_subject" value="Nouvelle réservation véhicule" />
 
-        {/* CLIENT */}
         <div style={section}>
           <h3>Informations client</h3>
 
@@ -98,7 +94,6 @@ const downloadPDF = async () => {
           <input name="ville" placeholder="Ville" style={input} onChange={handleChange} required />
         </div>
 
-        {/* DOCUMENTS */}
         <div style={section}>
           <h3>Documents obligatoires</h3>
 
@@ -119,7 +114,6 @@ const downloadPDF = async () => {
           </p>
         </div>
 
-        {/* PDF */}
         <div ref={printRef} style={pdf}>
 
           <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -171,15 +165,11 @@ const downloadPDF = async () => {
           <div style={{ marginTop: 60 }}>
             <p>Signature précédée de "Lu et approuvé"</p>
             <div style={signature}></div>
-            <div style={{ pageBreakBefore: "always", marginTop: 40 }}></div>
+          </div>
 
-<div style={{ fontSize: 10, lineHeight: "1.5",const cgvStyle: React.CSSProperties = {
-  fontSize: 10,
-  lineHeight: "1.6",
-  marginTop: 20,
-  whiteSpace: "pre-line"
-}; }}>
-  <div style={cgvStyle}>
+          <div style={{ pageBreakBefore: "always", marginTop: 40 }}></div>
+
+          <div style={cgvStyle}>
 {`CONDITIONS GÉNÉRALES DE VENTE
 
 1. IDENTITÉ DU VENDEUR
@@ -204,115 +194,40 @@ Le véhicule reste la propriété du vendeur jusqu’au paiement complet.
 
 6. UTILISATION DU VÉHICULE
 Le client s’engage à :
-- utiliser le véhicule sur routes goudronnées et en bon état
+- utiliser le véhicule sur routes goudronnées
 - respecter le manuel utilisateur
-- ne pas surcharger ni utiliser abusivement le véhicule
-- utiliser le véhicule pour des trajets courts (environ 30 km/jour recommandé)
 
-Toute utilisation non conforme entraîne l’exclusion de garantie.
+Toute utilisation non conforme entraîne exclusion de garantie.
 
 7. RESPONSABILITÉ
-Le client est seul responsable :
-- de l’usage du véhicule
-- de son entretien
-- des dommages causés
-- de la souscription d’une assurance obligatoire
+Le client est seul responsable de l’usage et de l’assurance.
 
 8. BATTERIE
-Le client s’engage à :
-- recharger le véhicule après chaque utilisation
-- ne jamais laisser la batterie déchargée plus de 24h
-- effectuer des charges complètes régulières
-- ne pas dépasser environ 12 heures de charge
-- couper le circuit en cas d’inutilisation
-- maintenir une charge même sans utilisation
-
-Tout non-respect annule la garantie batterie.
+Recharge obligatoire après usage. Ne pas laisser déchargée.
 
 9. GARANTIE
-Structure (châssis, carrosserie) : 2 ans  
+Structure : 2 ans  
 Composants : 1 an  
-Batterie : 6 mois (usage normal uniquement)
+Batterie : 6 mois  
 
-La garantie s’applique uniquement si :
-- le véhicule est utilisé conformément aux instructions
-- aucune modification n’a été effectuée
-- aucun usage abusif n’est constaté
-
-Le vendeur se réserve le droit d’apprécier l’application de la garantie après analyse du défaut.
-
-10. RÉPARATION ET SAV
-Deux types de panne :
-
-A. Panne simple  
-→ Diagnostic à distance (WhatsApp / téléphone)  
-→ Instructions envoyées au client  
-→ Pièces expédiées si nécessaire  
-
-B. Panne complexe 
-→ Diagnostic à distance (WhatsApp / téléphone)
-→ Orientation vers un garage local  
-→ Fourniture des pièces par le vendeur  
-
-Le vendeur :
-- ne transporte jamais le véhicule  
-- ne prend pas en charge le transport  
-- fournit uniquement support technique et pièces  
-
-La main d’œuvre peut être prise en charge UNIQUEMENT après validation préalable.
-
-11. EXCLUSIONS DE GARANTIE
-Sont exclus :
-- accident
-- choc
-- mauvaise utilisation
-- défaut d’entretien
-- modification non autorisée
-- non-respect des consignes
-- usure normale
-
-12. MODIFICATIONS
-Toute modification sans autorisation écrite annule immédiatement la garantie.
-
-13. AUTONOMIE
-L’autonomie est indicative.
-Elle dépend de nombreux facteurs (température, charge, route, conduite).
-
-14. COMPORTEMENT CLIENT
-Le vendeur se réserve le droit de suspendre le support en cas :
-- comportement abusif
-- agressivité
-- non-respect des règles
-
-15. CONTACT
-Toute demande doit être effectuée via WhatsApp ou téléphone.
-
-16. PAIEMENT
-Paiement selon accord :
-- acompte + solde à la livraison
-- ou paiement total à la livraison
+10. SAV
+Diagnostic à distance + pièces envoyées.
 
 17. ACCEPTATION
-Le client déclare :
-- avoir pris connaissance des présentes CGV
-- les accepter sans réserve
-- avoir reçu toutes les informations nécessaires
+Le client accepte sans réserve.
 
 18. DROIT APPLICABLE
-Droit français – tribunal compétent : siège du vendeur
+Droit français
 `}
-</div>
+          </div>
 
-{/* SIGNATURE CGV */}
-<div style={{ marginTop: 40 }}>
-  <p>Signature CGV précédée de "Lu et approuvé"</p>
-  <div style={{ borderTop: "1px solid black", width: 250 }}></div>
-</div>
+          <div style={{ marginTop: 40 }}>
+            <p>Signature CGV précédée de "Lu et approuvé"</p>
+            <div style={{ borderTop: "1px solid black", width: 250 }}></div>
           </div>
 
         </div>
 
-        {/* BUTTONS */}
         <button type="button" onClick={downloadPDF} style={btn}>
           Télécharger le devis PDF
         </button>
@@ -388,4 +303,11 @@ const btn: React.CSSProperties = {
   color: "#fff",
   border: "none",
   borderRadius: 6
+};
+
+const cgvStyle: React.CSSProperties = {
+  fontSize: 10,
+  lineHeight: "1.6",
+  marginTop: 20,
+  whiteSpace: "pre-line"
 };
