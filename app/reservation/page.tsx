@@ -173,7 +173,13 @@ const downloadPDF = async () => {
             <div style={signature}></div>
             <div style={{ pageBreakBefore: "always", marginTop: 40 }}></div>
 
-<div style={{ fontSize: 10, lineHeight: "1.5", whiteSpace: "pre-line" }}>
+<div style={{ fontSize: 10, lineHeight: "1.5",const cgvStyle: React.CSSProperties = {
+  fontSize: 10,
+  lineHeight: "1.6",
+  marginTop: 20,
+  whiteSpace: "pre-line"
+}; }}>
+  <div style={cgvStyle}>
 {`CONDITIONS GÉNÉRALES DE VENTE
 
 1. IDENTITÉ DU VENDEUR
