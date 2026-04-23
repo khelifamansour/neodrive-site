@@ -67,6 +67,8 @@ export default function RootLayout({
             <a href="/livraison">Livraison</a>
             <a href="/carte-grise">Carte grise</a>
             <a href="/faq">FAQ</a>
+            <a href="/QuiSommesNous">QuiSommesNous</a>
+            
             <a href="/contact">Contact</a>
           </div>
         </nav>
