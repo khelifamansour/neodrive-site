@@ -1,8 +1,15 @@
+"use client";
+
+import React, { useState } from "react";
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+
+  const [open, setOpen] = useState(false);
+
   return (
     <html lang="fr">
       <body
@@ -24,19 +31,19 @@ export default function RootLayout({
             zIndex: 1000,
           }}
         >
+
           {/* TOP ROW */}
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              flexWrap: "wrap",
             }}
           >
             {/* LOGO */}
             <div
               style={{
-                fontWeight: "600",
+                fontWeight: "700",
                 fontSize: "16px",
               }}
             >
@@ -49,37 +56,70 @@ export default function RootLayout({
             </a>
           </div>
 
-          {/* MENU (SECOND ROW ON MOBILE) */}
+          {/* MENU */}
           <div
             style={{
               marginTop: 10,
               display: "flex",
               justifyContent: "center",
               flexWrap: "wrap",
-              gap: 12,
+              gap: 14,
               fontSize: "13px",
             }}
           >
-            <a href="/">Accueil</a>
-            <a href="/produit">Produit</a>
-            <a href="/pieces">Pièces</a>
-            <a href="/sav">SAV</a>
-            <a href="/livraison">Livraison</a>
-            <a href="/carte-grise">Carte grise</a>
-            <a href="/faq">FAQ</a>
-            <a href="/QuiSommesNous">QuiSommesNous</a>
-            
-            <a href="/contact">Contact</a>
+            <a href="/" style={link}>Accueil</a>
+            <a href="/produit" style={link}>Véhicule</a>
+            <a href="/livraison" style={link}>Livraison</a>
+            <a href="/carte-grise" style={link}>Carte grise</a>
+            <a href="/QuiSommesNous" style={link}>Qui sommes-nous</a>
+
+            {/* DROPDOWN SERVICE */}
+            <div
+              style={{ position: "relative" }}
+              onMouseEnter={() => setOpen(true)}
+              onMouseLeave={() => setOpen(false)}
+            >
+              <span style={{ cursor: "pointer", fontWeight: 500 }}>
+                Service & Assistance ▾
+              </span>
+
+              {open && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "22px",
+                    left: 0,
+                    background: "#fff",
+                    border: "1px solid #eee",
+                    borderRadius: "6px",
+                    padding: "10px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                    minWidth: "180px",
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+                  }}
+                >
+                  <a href="/sav" style={link}>Service après-vente</a>
+                  <a href="/pieces" style={link}>Pièces détachées</a>
+                  <a href="/faq" style={link}>Questions fréquentes</a>
+                </div>
+              )}
+            </div>
+
+            <a href="/contact" style={link}>Contact</a>
           </div>
+
         </nav>
 
         {children}
+
       </body>
     </html>
   );
 }
 
-/* BUTTON */
+/* STYLES */
 
 const ctaSmall = {
   background: "#25D366",
@@ -88,4 +128,10 @@ const ctaSmall = {
   borderRadius: "6px",
   textDecoration: "none",
   fontSize: "12px",
+  fontWeight: 600,
+};
+
+const link = {
+  textDecoration: "none",
+  color: "#333",
 };
