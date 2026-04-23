@@ -80,11 +80,11 @@ export default function Home() {
         <h2 style={h2}>Prix clair</h2>
 
         <div style={box}>
- ✔ Véhicule : à partir de 4 490 € TTC  
-✔ Livraison partout en France via transport personnalisé  
-✔ Paiement uniquement à la livraison  
-✔ Possibilité d’organiser votre propre transporteur  
-✔ Carte grise : 150 €  
+ ✔ Véhicule : à partir de 4 490 € TTC  <br />
+✔ Livraison partout en France via transport personnalisé  <br />
+✔ Paiement uniquement à la livraison  <br />
+✔ Possibilité d’organiser votre propre transporteur  <br />
+✔ Carte grise : 150 €  <br />
 ✔ Aucun frais caché  
 
 👉 Voir les détails dans la section Livraison
