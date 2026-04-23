@@ -1,4 +1,4 @@
-'use client';
+'use clientssss';
 import React from "react";
 
 export default function QuiSommesNous() {
