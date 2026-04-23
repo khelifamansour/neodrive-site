@@ -6,13 +6,8 @@ import Script from "next/script";
 export default function Reservation() {
 
   const today = new Date().toLocaleDateString("fr-FR");
-
-
-const transport = getTransportPrice(client.code_postal?.substring(0,2) || "");
-const totalTTC = prixVehicule + transport + carteGrise;
-
-  const printRef = useRef<HTMLDivElement>(null);
-
+    const prixVehicule = 4490;
+  const carteGrise = 150;
   const [client, setClient] = useState({
     nom: "",
     prenom: "",
@@ -23,10 +18,7 @@ const totalTTC = prixVehicule + transport + carteGrise;
     ville: ""
   });
 
-    const prixVehicule = 4490;
-  const carteGrise = 150;
- ​
-const getTransportPrice = (dept: string) => {
+  const getTransportPrice = (dept: string) => {
   if (["31","81","82","32","09"].includes(dept)) return 250;
   if (["11","12","46","47","33","65","66"].includes(dept)) return 350;
   if (["34","30","40","24","19","87","15"].includes(dept)) return 490;
@@ -34,6 +26,15 @@ const getTransportPrice = (dept: string) => {
   if (["44","35","56","29","22","53","49","67","68"].includes(dept)) return 690;
   return 790;
 };
+const transport = getTransportPrice(client.code_postal?.substring(0,2) || "");
+const totalTTC = prixVehicule + transport + carteGrise;
+
+  const printRef = useRef<HTMLDivElement>(null);
+
+
+
+ ​
+
 
   const handleChange = (e: any) => {
     setClient({ ...client, [e.target.name]: e.target.value });
@@ -212,11 +213,14 @@ const getTransportPrice = (dept: string) => {
                 <td style={right}>{prixVehicule} €</td>
               </tr>
               <tr>
-                <p style={{ fontSize: 12, color: "#555" }}>
-  Prix de livraison calculé automatiquement selon votre département
-</p>
-                <td style={right}>{transport} €</td>
-              </tr>
+  <td>
+    Livraison (calculée selon département)
+    <div style={{ fontSize: 12, color: "#555" }}>
+      Prix automatique selon votre localisation
+    </div>
+  </td>
+  <td style={right}>{transport} €</td>
+</tr>
               <tr>
                 <td>Carte grise</td>
                 <td style={right}>{carteGrise} €</td>
