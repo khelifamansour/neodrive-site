@@ -37,6 +37,8 @@ export default function LivraisonPage() {
 
       <h2>📍 Tarifs de livraison</h2>
 
+      {/* EXACTEMENT LES MÊMES ZONES QUE TON CODE */}
+
       <h3>Zone 1 — "250 €"</h3>
       <p>
         Haute-Garonne (31), Tarn (81), Tarn-et-Garonne (82), Gers (32), Ariège (09)
@@ -44,40 +46,38 @@ export default function LivraisonPage() {
 
       <h3>Zone 2 — "350 €"</h3>
       <p>
-        Gironde (33 - Bordeaux), Aude (11), Aveyron (12), Lot (46), 
-        Lot-et-Garonne (47), Hautes-Pyrénées (65), Pyrénées-Orientales (66)
+        Aude (11), Aveyron (12), Lot (46), Lot-et-Garonne (47), Gironde (33),
+        Hautes-Pyrénées (65), Pyrénées-Orientales (66)
       </p>
 
       <h3>Zone 3 — "490 €"</h3>
       <p>
-        Hérault (34 - Montpellier), Gard (30 - Nîmes), Landes (40), 
-        Dordogne (24), Corrèze (19), Haute-Vienne (87), Cantal (15)
+        Hérault (34), Gard (30), Landes (40), Dordogne (24),
+        Corrèze (19), Haute-Vienne (87), Cantal (15)
       </p>
 
       <h3>Zone 4 — "599 €"</h3>
       <p>
-        Paris (75), Île-de-France (77, 78, 91, 92, 93, 94, 95), 
-        Bouches-du-Rhône (13 - Marseille), Rhône (69 - Lyon), 
-        Puy-de-Dôme (63), Charente (16), Charente-Maritime (17), Vienne (86)
+        Paris (75), Seine-et-Marne (77), Yvelines (78), Essonne (91),
+        Hauts-de-Seine (92), Seine-Saint-Denis (93), Val-de-Marne (94), Val-d’Oise (95),
+        Bouches-du-Rhône (13), Rhône (69), Puy-de-Dôme (63),
+        Charente (16), Charente-Maritime (17), Vienne (86)
       </p>
 
       <h3>Zone 5 — "690 €"</h3>
       <p>
-        Loire-Atlantique (44 - Nantes), Ille-et-Vilaine (35 - Rennes), 
-        Morbihan (56), Finistère (29 - Brest), Côtes-d’Armor (22), 
-        Mayenne (53), Maine-et-Loire (49)
+        Loire-Atlantique (44), Ille-et-Vilaine (35), Morbihan (56), Finistère (29),
+        Côtes-d’Armor (22), Mayenne (53), Maine-et-Loire (49),
+        Bas-Rhin (67), Haut-Rhin (68)
       </p>
 
       <h3>Zone 6 — "790 €"</h3>
       <p>
-        Nord (59 - Lille), Pas-de-Calais (62), Alsace (Bas-Rhin 67, Haut-Rhin 68), 
-        Lorraine (54, 55, 57), Champagne-Ardenne (08, 10, 51, 52), 
-        Normandie (14, 27, 50, 61, 76), Bourgogne-Franche-Comté (21, 25, 39, 58, 70, 71, 89, 90)
+        Autres départements non listés (longue distance)
       </p>
 
       <p style={{ marginTop: 20 }}>
-        Les tarifs sont calculés en fonction du temps réel de déplacement (aller-retour), 
-        incluant carburant, péages et organisation logistique.
+        Le tarif est calculé automatiquement lors de la réservation en fonction du département.
       </p>
 
       <h2>🔁 Option transport client</h2>
