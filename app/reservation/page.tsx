@@ -8,9 +8,17 @@ export default function Reservation() {
   const today = new Date().toLocaleDateString("fr-FR");
 
   const prixVehicule = 4490;
-  const transport = 490;
-  const carteGrise = 150;
-  const totalTTC = prixVehicule + transport + carteGrise;
+  ​vous​
+const getTransportPrice = (dept: string) => {
+  if (["31","81","82","32","09"].includes(dept)) return 250;
+  if (["11","12","46","47","33","65","66"].includes(dept)) return 350;
+  if (["34","30","40","24","19","87","15"].includes(dept)) return 490;
+  if (["75","77","78","91","92","93","94","95","13","69","63","16","17","86"].includes(dept)) return 599;
+  if (["44","35","56","29","22","53","49","67","68"].includes(dept)) return 690;
+  return 790;
+};
+const transport = getTransportPrice(client.code_postal?.substring(0,2) || "");
+const totalTTC = prixVehicule + transport + carteGrise;
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -91,6 +99,59 @@ export default function Reservation() {
           <input name="email" type="email" placeholder="Email" style={input} onChange={handleChange} required />
           <input name="adresse" placeholder="Adresse" style={input} onChange={handleChange} required />
           <input name="code_postal" placeholder="Code postal" style={input} onChange={handleChange} required />
+          <select
+  style={input}
+  onChange={(e) =>
+    setClient({
+      ...client,
+      code_postal: e.target.value
+    })
+  }
+  required
+>
+  <option value="">Sélectionner votre département</option>
+
+  <optgroup label="Zone 1 — 250 €">
+    <option value="31">Haute-Garonne (31)</option>
+    <option value="81">Tarn (81)</option>
+    <option value="82">Tarn-et-Garonne (82)</option>
+    <option value="32">Gers (32)</option>
+    <option value="09">Ariège (09)</option>
+  </optgroup>
+
+  <optgroup label="Zone 2 — 350 €">
+    <option value="11">Aude (11)</option>
+    <option value="12">Aveyron (12)</option>
+    <option value="46">Lot (46)</option>
+    <option value="47">Lot-et-Garonne (47)</option>
+    <option value="33">Gironde (33)</option>
+  </optgroup>
+
+  <optgroup label="Zone 3 — 490 €">
+    <option value="34">Hérault (34)</option>
+    <option value="30">Gard (30)</option>
+    <option value="40">Landes (40)</option>
+  </optgroup>
+
+  <optgroup label="Zone 4 — 599 €">
+    <option value="75">Paris (75)</option>
+    <option value="92">Hauts-de-Seine (92)</option>
+    <option value="93">Seine-Saint-Denis (93)</option>
+    <option value="94">Val-de-Marne (94)</option>
+  </optgroup>
+
+  <optgroup label="Zone 5 — 690 €">
+    <option value="44">Loire-Atlantique (44)</option>
+    <option value="35">Ille-et-Vilaine (35)</option>
+    <option value="29">Finistère (29)</option>
+  </optgroup>
+
+  <optgroup label="Zone 6 — 790 €">
+    <option value="59">Nord (59)</option>
+    <option value="62">Pas-de-Calais (62)</option>
+  </optgroup>
+
+</select>
           <input name="ville" placeholder="Ville" style={input} onChange={handleChange} required />
         </div>
 
@@ -148,7 +209,9 @@ export default function Reservation() {
                 <td style={right}>{prixVehicule} €</td>
               </tr>
               <tr>
-                <td>Livraison + mise en route</td>
+                <p style={{ fontSize: 12, color: "#555" }}>
+  Prix de livraison calculé automatiquement selon votre département
+</p>
                 <td style={right}>{transport} €</td>
               </tr>
               <tr>
