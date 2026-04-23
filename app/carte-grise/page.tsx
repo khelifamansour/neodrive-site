@@ -36,26 +36,28 @@ export default function CarteGrise() {
     pdf.text(`Prénom : ${client.prenom}`, 20, 50);
     pdf.text(`Adresse : ${client.adresse}`, 20, 60);
     pdf.text(`${client.code_postal} ${client.ville}`, 20, 70);
+    pdf.text(`Téléphone : ${client.telephone}`, 20, 80);
+    pdf.text(`Email : ${client.email}`, 20, 90);
 
-    pdf.text(`Date : ${today}`, 20, 90);
+    pdf.text(`Date : ${today}`, 20, 110);
 
     pdf.text(
       "Je soussigné(e), autorise la société MK HOLDING à effectuer toutes les démarches nécessaires à l'immatriculation du véhicule en mon nom.",
       20,
-      110,
+      130,
       { maxWidth: 170 }
     );
 
     pdf.text(
       "Ce mandat permet à MK HOLDING de traiter la demande de carte grise auprès des services compétents.",
       20,
-      130,
+      150,
       { maxWidth: 170 }
     );
 
-    pdf.text("Signature précédée de 'Lu et approuvé' :", 20, 170);
+    pdf.text("Signature précédée de 'Lu et approuvé' :", 20, 190);
 
-    pdf.line(20, 190, 120, 190);
+    pdf.line(20, 210, 120, 210);
 
     pdf.save("mandat-carte-grise.pdf");
   };
@@ -91,8 +93,8 @@ export default function CarteGrise() {
         </ol>
 
         <p style={small}>
-          ✔ Certificat provisoire sous 3-4 jours  
-          ✔ Carte grise sous environ 7 jours
+          ✔ Certificat provisoire sous 3–4 jours  
+          ✔ Carte grise définitive sous environ 7 jours
         </p>
       </div>
 
@@ -147,6 +149,10 @@ export default function CarteGrise() {
         <div style={section}>
           <h3>Documents à envoyer</h3>
 
+          <p style={small}>
+            Dossier complet obligatoire : CNI + justificatif + mandat signé + COC + CNIT + paiement
+          </p>
+
           <p style={small}>Carte d’identité :</p>
           <input type="file" name="cni" required />
 
@@ -156,12 +162,18 @@ export default function CarteGrise() {
           <p style={small}>Mandat signé :</p>
           <input type="file" name="mandat" required />
 
+          <p style={small}>Certificat de conformité (COC) :</p>
+          <input type="file" name="coc" required />
+
+          <p style={small}>Certificat d’homologation (CNIT) :</p>
+          <input type="file" name="cnit" required />
+
           <p style={small}>Preuve de paiement (150€) :</p>
           <input type="file" name="paiement" required />
         </div>
 
         <button type="submit" style={btn}>
-          Envoyer mon dossier
+          Envoyer mon dossier carte grise
         </button>
 
       </form>
