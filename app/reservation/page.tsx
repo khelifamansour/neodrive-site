@@ -8,7 +8,8 @@ export default function Reservation() {
   const today = new Date().toLocaleDateString("fr-FR");
 
   const prixVehicule = 4490;
-  ​vous​
+  const carteGrise = 150;
+ ​
 const getTransportPrice = (dept: string) => {
   if (["31","81","82","32","09"].includes(dept)) return 250;
   if (["11","12","46","47","33","65","66"].includes(dept)) return 350;
