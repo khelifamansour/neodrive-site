@@ -37,8 +37,6 @@ export default function LivraisonPage() {
 
       <h2>📍 Tarifs de livraison</h2>
 
-      {/* EXACTEMENT LES MÊMES ZONES QUE TON CODE */}
-
       <h3>Zone 1 — "250 €"</h3>
       <p>
         Haute-Garonne (31), Tarn (81), Tarn-et-Garonne (82), Gers (32), Ariège (09)
@@ -73,11 +71,14 @@ export default function LivraisonPage() {
 
       <h3>Zone 6 — "790 €"</h3>
       <p>
-        Autres départements non listés (longue distance)
+        Nord (59), Pas-de-Calais (62), Calvados (14), Eure (27),
+        Manche (50), Orne (61), Seine-Maritime (76),
+        Meurthe-et-Moselle (54), Meuse (55), Moselle (57),
+        Ardennes (08), Aube (10), Marne (51), Haute-Marne (52)
       </p>
 
       <p style={{ marginTop: 20 }}>
-        Le tarif est calculé automatiquement lors de la réservation en fonction du département.
+        Le tarif est calculé automatiquement lors de la réservation en fonction de votre département.
       </p>
 
       <h2>🔁 Option transport client</h2>
@@ -88,4 +89,3 @@ export default function LivraisonPage() {
 
     </main>
   );
-}
