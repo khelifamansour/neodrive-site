@@ -51,7 +51,7 @@ export default function QuiSommesNous() {
           <img src="/france2.jpg" style={img} />
           <img src="/france3.jpg" style={img} />
           <img src="/france4.jpg" style={img} />
-          <img src="/france5.jpg" style={img} />
+   
         </div>
 
         {/* VIDEOS */}
