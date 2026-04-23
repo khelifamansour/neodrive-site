@@ -38,22 +38,47 @@ export default function LivraisonPage() {
       <h2>📍 Tarifs de livraison</h2>
 
       <h3>Zone 1 — "250 €"</h3>
-      <p>Haute-Garonne (31), Tarn (81), Tarn-et-Garonne (82), Gers (32), Ariège (09)</p>
+      <p>
+        Haute-Garonne (31), Tarn (81), Tarn-et-Garonne (82), Gers (32), Ariège (09)
+      </p>
 
       <h3>Zone 2 — "350 €"</h3>
-      <p>Aude (11), Aveyron (12), Lot (46), Lot-et-Garonne (47), Gironde (33), Hautes-Pyrénées (65), Pyrénées-Orientales (66)</p>
+      <p>
+        Gironde (33 - Bordeaux), Aude (11), Aveyron (12), Lot (46), 
+        Lot-et-Garonne (47), Hautes-Pyrénées (65), Pyrénées-Orientales (66)
+      </p>
 
       <h3>Zone 3 — "490 €"</h3>
-      <p>Hérault (34), Gard (30), Landes (40), Dordogne (24), Corrèze (19), Haute-Vienne (87), Cantal (15)</p>
+      <p>
+        Hérault (34 - Montpellier), Gard (30 - Nîmes), Landes (40), 
+        Dordogne (24), Corrèze (19), Haute-Vienne (87), Cantal (15)
+      </p>
 
       <h3>Zone 4 — "599 €"</h3>
-      <p>Paris (75), Île-de-France (77,78,91,92,93,94,95), Bouches-du-Rhône (13), Rhône (69), Puy-de-Dôme (63), Charente (16), Charente-Maritime (17), Vienne (86)</p>
+      <p>
+        Paris (75), Île-de-France (77, 78, 91, 92, 93, 94, 95), 
+        Bouches-du-Rhône (13 - Marseille), Rhône (69 - Lyon), 
+        Puy-de-Dôme (63), Charente (16), Charente-Maritime (17), Vienne (86)
+      </p>
 
       <h3>Zone 5 — "690 €"</h3>
-      <p>Loire-Atlantique (44), Ille-et-Vilaine (35), Morbihan (56), Finistère (29), Côtes-d’Armor (22), Mayenne (53), Maine-et-Loire (49), Bas-Rhin (67), Haut-Rhin (68)</p>
+      <p>
+        Loire-Atlantique (44 - Nantes), Ille-et-Vilaine (35 - Rennes), 
+        Morbihan (56), Finistère (29 - Brest), Côtes-d’Armor (22), 
+        Mayenne (53), Maine-et-Loire (49)
+      </p>
 
       <h3>Zone 6 — "790 €"</h3>
-      <p>Reste de la France (distance maximale)</p>
+      <p>
+        Nord (59 - Lille), Pas-de-Calais (62), Alsace (Bas-Rhin 67, Haut-Rhin 68), 
+        Lorraine (54, 55, 57), Champagne-Ardenne (08, 10, 51, 52), 
+        Normandie (14, 27, 50, 61, 76), Bourgogne-Franche-Comté (21, 25, 39, 58, 70, 71, 89, 90)
+      </p>
+
+      <p style={{ marginTop: 20 }}>
+        Les tarifs sont calculés en fonction du temps réel de déplacement (aller-retour), 
+        incluant carburant, péages et organisation logistique.
+      </p>
 
       <h2>🔁 Option transport client</h2>
       <p>
