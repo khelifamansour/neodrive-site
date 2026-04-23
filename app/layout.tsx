@@ -64,6 +64,7 @@ export default function RootLayout({
             <a href="/produit">Produit</a>
             <a href="/pieces">Pièces</a>
             <a href="/sav">SAV</a>
+            <a href="/sav">Livraison</a>
             <a href="/faq">FAQ</a>
             <a href="/contact">Contact</a>
           </div>
