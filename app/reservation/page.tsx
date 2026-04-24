@@ -19,7 +19,7 @@ export default function Reservation() {
   });
   const [noDelivery, setNoDelivery] = useState(false);
 
-
+const [quantity, setQuantity] = useState(1);
 
   
 
@@ -39,7 +39,7 @@ export default function Reservation() {
   const transport = noDelivery
   ? 0
   : getTransportPrice(client.code_postal?.substring(0,2) || "");
-const totalTTC = prixVehicule + transport + carteGrise;
+const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -187,6 +187,14 @@ const totalTTC = prixVehicule + transport + carteGrise;
   </optgroup>
 
 </select>
+          <input
+  type="number"
+  min="1"
+  value={quantity}
+  onChange={(e) => setQuantity(Number(e.target.value))}
+  style={input}
+  placeholder="Nombre de véhicules"
+/>
           <label style={{ display: "flex", alignItems: "center", marginTop: 10 }}>
   <input
     type="checkbox"
@@ -249,8 +257,8 @@ const totalTTC = prixVehicule + transport + carteGrise;
           <table style={table}>
            <tbody>
   <tr>
-    <td>Véhicule électrique</td>
-    <td style={right}>{prixVehicule} €</td>
+<td>Véhicule électrique x{quantity}</td>
+<td style={right}>{prixVehicule * quantity} €</td>
   </tr>
 
   {!noDelivery && (
