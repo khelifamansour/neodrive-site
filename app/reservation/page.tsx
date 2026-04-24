@@ -247,36 +247,42 @@ const totalTTC = prixVehicule + transport + carteGrise;
           <h3>Détail</h3>
 
           <table style={table}>
-            <tbody>
-              <tr>
-                <td>Véhicule électrique</td>
-                <td style={right}>{prixVehicule} €</td>
-              </tr>
-              {!noDelivery && (
+           <tbody>
   <tr>
-    <td>
-      Livraison (calculée selon département)
-      <div style={{ fontSize: 12, color: "#555" }}>
-        Prix automatique selon votre localisation
-      </div>
-    </td>
-    <td style={right}>{transport} €</td>
+    <td>Véhicule électrique</td>
+    <td style={right}>{prixVehicule} €</td>
   </tr>
-)}
-              {noDelivery && (
-  <p style={{ color: "green", marginTop: 10 }}>
-    Retrait sur place – aucun frais de livraison
-  </p>
-)}
-              <tr>
-                <td>Carte grise</td>
-                <td style={right}>{carteGrise} €</td>
-              </tr>
-              <tr style={totalRow}>
-                <td>Total TTC</td>
-                <td style={right}>{totalTTC} €</td>
-              </tr>
-            </tbody>
+
+  {!noDelivery && (
+    <tr>
+      <td>
+        Livraison (calculée selon département)
+        <div style={{ fontSize: 12, color: "#555" }}>
+          Prix automatique selon votre localisation
+        </div>
+      </td>
+      <td style={right}>{transport} €</td>
+    </tr>
+  )}
+
+  {noDelivery && (
+    <tr>
+      <td colSpan={2} style={{ color: "green", textAlign: "center" }}>
+        Retrait sur place – aucun frais de livraison
+      </td>
+    </tr>
+  )}
+
+  <tr>
+    <td>Carte grise</td>
+    <td style={right}>{carteGrise} €</td>
+  </tr>
+
+  <tr style={totalRow}>
+    <td>Total TTC</td>
+    <td style={right}>{totalTTC} €</td>
+  </tr>
+</tbody>
           </table>
 
           <div style={{ marginTop: 60 }}>
