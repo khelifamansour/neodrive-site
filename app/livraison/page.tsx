@@ -83,6 +83,117 @@ export default function LivraisonPage() {
         Dans ce cas, le paiement doit être effectué avant enlèvement.
       </p>
 
+      <h2>🚚 Transporteurs recommandés (haute fiabilité)</h2>
+
+<p>
+Pour les livraisons longue distance, vous pouvez faire appel directement à un transporteur spécialisé.
+Nous recommandons plusieurs sociétés reconnues pour leur sérieux et leur expérience dans le transport de véhicules.
+</p>
+
+<p>
+Le client peut contacter directement ces transporteurs afin d’obtenir un devis et organiser l’enlèvement du véhicule.
+</p>
+
+<ul>
+  <li>
+    <strong>OGER Transports</strong><br/>
+    📞 02 41 69 05 55<br/>
+    🌐 https://oger-transports.fr<br/>
+    Transport de véhicules par camion (porte-voiture), service national
+  </li>
+
+  <li>
+    <strong>Transports Rabouin</strong><br/>
+    📞 02 40 25 37 00<br/>
+    🌐 https://www.rabouin.com<br/>
+    Spécialiste transport automobile (France & Europe)
+  </li>
+
+  <li>
+    <strong>Mouttec</strong><br/>
+    📞 07 43 36 30 55<br/>
+    🌐 https://www.mouttec.com<br/>
+    Convoyage sécurisé avec inspection du véhicule
+  </li>
+
+  <li>
+    <strong>Le Bon Transport</strong><br/>
+    🌐 https://www.lebontransport.fr<br/>
+    Transport premium (véhicules sensibles / neufs)
+  </li>
+
+  <li>
+    <strong>Hiflow</strong><br/>
+    🌐 https://www.hiflow.com<br/>
+    Convoyage professionnel avec réseau national
+  </li>
+
+  <li>
+    <strong>My Express Driver</strong><br/>
+    🌐 https://myexpressdriver.com<br/>
+    Réseau de convoyeurs, livraison rapide
+  </li>
+
+  <li>
+    <strong>Adfleet</strong><br/>
+    🌐 https://www.adfleet.fr<br/>
+    Convoyage sécurisé avec assurance
+  </li>
+
+  <li>
+    <strong>DriiveMe</strong><br/>
+    🌐 https://www.driiveme.com<br/>
+    Solution flexible de convoyage
+  </li>
+
+  <li>
+    <strong>YesWeTruck</strong><br/>
+    📞 02 55 07 02 40<br/>
+    🌐 https://www.yeswetruck-transport.com<br/>
+    Transport et logistique flexible
+  </li>
+
+  <li>
+    <strong>Transports RICHARD</strong><br/>
+    🌐 https://www.transports-richard.fr<br/>
+    Transport national de véhicules
+  </li>
+
+  <li>
+    <strong>Transport OGER (PME)</strong><br/>
+    🌐 https://oger-transport.fr<br/>
+    Transport véhicules pour particuliers et professionnels
+  </li>
+
+  <li>
+    <strong>Disposeo</strong><br/>
+    Transport de véhicules France & Europe (contact via site)
+  </li>
+
+  <li>
+    <strong>Mon Convoyeur Auto</strong><br/>
+    🌐 https://monconvoyeurauto.com<br/>
+    Convoyage encadré avec chauffeurs qualifiés
+  </li>
+
+  <li>
+    <strong>M-Delivery</strong><br/>
+    🌐 https://m-delivery.fr<br/>
+    Livraison rapide de véhicules
+  </li>
+
+  <li>
+    <strong>Tiips Transport</strong><br/>
+    🌐 https://www.tiipstransport.com<br/>
+    Transport et convoyage national
+  </li>
+</ul>
+
+<p>
+Vous pouvez également organiser le transport via un transporteur de votre choix.
+Le paiement du véhicule peut être effectué au moment de l’enlèvement pour garantir une transaction sécurisée.
+</p>
+
     </main>
   );
 }
