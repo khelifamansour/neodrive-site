@@ -45,20 +45,19 @@ export default function QuiSommesNous() {
         </div>
 
         {/* PHOTOS FRANCE */}
-        <div style={grid}>
+     {/*    <div style={grid}>
           <img src="/france1.jpg" style={img} />
           <img src="/france2.jpg" style={img} />
-          <img src="/france3.jpg" style={img} />
-          <img src="/france4.jpg" style={img} />
+ 
    
-        </div>
+        </div> */}
 
         {/* VIDEOS */}
         <p style={small}>
           Vidéos réelles – véhicules disponibles en France
         </p>
 
-        <div style={videoBox}>
+     {/*    <div style={videoBox}>
           <video controls style={video}>
             <source src="/video1.mp4" />
           </video>
@@ -69,7 +68,7 @@ export default function QuiSommesNous() {
 
           <video controls style={video}>
             <source src="/video3.mp4" />
-          </video>
+          </video> */}
         </div>
       </section>
 
@@ -90,9 +89,9 @@ export default function QuiSommesNous() {
 
         {/* PHOTOS USINE */}
         <div style={grid}>
-          <img src="/usine1.jpg" style={img} />
-          <img src="/usine2.jpg" style={img} />
-          <img src="/usine3.jpg" style={img} />
+         {/*  <img src="/usine1.jpg" style={img} />
+          <img src="/usine2.jpg" style={img} /> */}
+         
         </div>
       </section>
 
