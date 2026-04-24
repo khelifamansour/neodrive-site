@@ -111,7 +111,7 @@ const totalTTC = prixVehicule + transport + carteGrise;
           <input name="email" type="email" placeholder="Email" style={input} onChange={handleChange} required />
           <input name="adresse" placeholder="Adresse" style={input} onChange={handleChange} required />
           <input name="code_postal" placeholder="Code postal" style={input} onChange={handleChange} required />
-         <select
+        <select
   style={input}
   onChange={(e) =>
     setClient({
@@ -124,7 +124,7 @@ const totalTTC = prixVehicule + transport + carteGrise;
   <option value="">Sélectionner votre département</option>
 
   {/* ZONE 1 */}
-  <optgroup label="Zone 1 — 250 €">
+  <optgroup label="Zone 1 — 350 €">
     <option value="31">Haute-Garonne (31)</option>
     <option value="81">Tarn (81)</option>
     <option value="82">Tarn-et-Garonne (82)</option>
@@ -132,8 +132,8 @@ const totalTTC = prixVehicule + transport + carteGrise;
     <option value="09">Ariège (09)</option>
   </optgroup>
 
-  {/* ZONE 2 */}
-  <optgroup label="Zone 2 — 350 €">
+  {/* ZONE 2 + 3 fusionnées */}
+  <optgroup label="Zone 2 — 490 €">
     <option value="11">Aude (11)</option>
     <option value="12">Aveyron (12)</option>
     <option value="46">Lot (46)</option>
@@ -141,10 +141,7 @@ const totalTTC = prixVehicule + transport + carteGrise;
     <option value="33">Gironde (33)</option>
     <option value="65">Hautes-Pyrénées (65)</option>
     <option value="66">Pyrénées-Orientales (66)</option>
-  </optgroup>
 
-  {/* ZONE 3 */}
-  <optgroup label="Zone 3 — 490 €">
     <option value="34">Hérault (34)</option>
     <option value="30">Gard (30)</option>
     <option value="40">Landes (40)</option>
@@ -154,8 +151,8 @@ const totalTTC = prixVehicule + transport + carteGrise;
     <option value="15">Cantal (15)</option>
   </optgroup>
 
-  {/* ZONE 4 */}
-  <optgroup label="Zone 4 — 599 €">
+  {/* ZONE 3 */}
+  <optgroup label="Zone 3 — 690 €">
     <option value="75">Paris (75)</option>
     <option value="77">Seine-et-Marne (77)</option>
     <option value="78">Yvelines (78)</option>
@@ -172,8 +169,8 @@ const totalTTC = prixVehicule + transport + carteGrise;
     <option value="86">Vienne (86)</option>
   </optgroup>
 
-  {/* ZONE 5 */}
-  <optgroup label="Zone 5 — 690 €">
+  {/* ZONE 4 */}
+  <optgroup label="Zone 4 — 790 €">
     <option value="44">Loire-Atlantique (44)</option>
     <option value="35">Ille-et-Vilaine (35)</option>
     <option value="56">Morbihan (56)</option>
@@ -183,24 +180,6 @@ const totalTTC = prixVehicule + transport + carteGrise;
     <option value="49">Maine-et-Loire (49)</option>
     <option value="67">Bas-Rhin (67)</option>
     <option value="68">Haut-Rhin (68)</option>
-  </optgroup>
-
-  {/* ZONE 6 */}
-  <optgroup label="Zone 6 — 790 €">
-    <option value="59">Nord (59)</option>
-    <option value="62">Pas-de-Calais (62)</option>
-    <option value="14">Calvados (14)</option>
-    <option value="27">Eure (27)</option>
-    <option value="50">Manche (50)</option>
-    <option value="61">Orne (61)</option>
-    <option value="76">Seine-Maritime (76)</option>
-    <option value="54">Meurthe-et-Moselle (54)</option>
-    <option value="55">Meuse (55)</option>
-    <option value="57">Moselle (57)</option>
-    <option value="08">Ardennes (08)</option>
-    <option value="10">Aube (10)</option>
-    <option value="51">Marne (51)</option>
-    <option value="52">Haute-Marne (52)</option>
   </optgroup>
 
 </select>
