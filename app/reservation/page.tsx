@@ -20,6 +20,7 @@ export default function Reservation() {
 
 
 
+  
 
   const getTransportPrice = (dept: string) => {
   if (["31","81","82","32","09"].includes(dept)) return 350;
@@ -34,7 +35,9 @@ export default function Reservation() {
 
   return 790;
 };
-const transport = getTransportPrice(client.code_postal?.substring(0,2) || "");
+  const transport = noDelivery
+  ? 0
+  : getTransportPrice(client.code_postal?.substring(0,2) || "");
 const totalTTC = prixVehicule + transport + carteGrise;
 
   const printRef = useRef<HTMLDivElement>(null);
@@ -183,6 +186,15 @@ const totalTTC = prixVehicule + transport + carteGrise;
   </optgroup>
 
 </select>
+          <label style={{ display: "flex", alignItems: "center", marginTop: 10 }}>
+  <input
+    type="checkbox"
+    checked={noDelivery}
+    onChange={(e) => setNoDelivery(e.target.checked)}
+    style={{ marginRight: 8 }}
+  />
+  Retrait sur place (pas de livraison)
+</label>
           <input name="ville" placeholder="Ville" style={input} onChange={handleChange} required />
         </div>
 
@@ -239,15 +251,22 @@ const totalTTC = prixVehicule + transport + carteGrise;
                 <td>Véhicule électrique</td>
                 <td style={right}>{prixVehicule} €</td>
               </tr>
-              <tr>
-  <td>
-    Livraison (calculée selon département)
-    <div style={{ fontSize: 12, color: "#555" }}>
-      Prix automatique selon votre localisation
-    </div>
-  </td>
-  <td style={right}>{transport} €</td>
-</tr>
+              {!noDelivery && (
+  <tr>
+    <td>
+      Livraison (calculée selon département)
+      <div style={{ fontSize: 12, color: "#555" }}>
+        Prix automatique selon votre localisation
+      </div>
+    </td>
+    <td style={right}>{transport} €</td>
+  </tr>
+)}
+              {noDelivery && (
+  <p style={{ color: "green", marginTop: 10 }}>
+    Retrait sur place – aucun frais de livraison
+  </p>
+)}
               <tr>
                 <td>Carte grise</td>
                 <td style={right}>{carteGrise} €</td>
