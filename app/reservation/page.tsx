@@ -282,8 +282,8 @@ const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity)
   )}
 
   <tr>
-    <td>Carte grise</td>
-    <td style={right}>{carteGrise} €</td>
+  <td>Carte grise x{quantity}</td>
+<td style={right}>{carteGrise * quantity} €</td>
   </tr>
 
   <tr style={totalRow}>
