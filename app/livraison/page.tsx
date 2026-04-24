@@ -35,51 +35,47 @@ export default function LivraisonPage() {
         <li>Refus possible si non conforme</li>
       </ul>
 
-      <h2>📍 Tarifs de livraison</h2>
+<h2>📍 Tarifs de livraison</h2>
 
-      <h3>Zone 1 — "250 €"</h3>
-      <p>
-        Haute-Garonne (31), Tarn (81), Tarn-et-Garonne (82), Gers (32), Ariège (09)
-      </p>
+<h3>Zone 1 — 350 €</h3>
+<p>
+  Haute-Garonne (31), Tarn (81), Tarn-et-Garonne (82), Gers (32), Ariège (09)
+</p>
 
-      <h3>Zone 2 — "350 €"</h3>
-      <p>
-        Aude (11), Aveyron (12), Lot (46), Lot-et-Garonne (47), Gironde (33),
-        Hautes-Pyrénées (65), Pyrénées-Orientales (66)
-      </p>
+<h3>Zone 2 — 490 €</h3>
+<p>
+  Aude (11), Aveyron (12), Lot (46), Lot-et-Garonne (47), Gironde (33),
+  Hautes-Pyrénées (65), Pyrénées-Orientales (66),
+  Hérault (34), Gard (30), Landes (40), Dordogne (24),
+  Corrèze (19), Haute-Vienne (87), Cantal (15)
+</p>
 
-      <h3>Zone 3 — "490 €"</h3>
-      <p>
-        Hérault (34), Gard (30), Landes (40), Dordogne (24),
-        Corrèze (19), Haute-Vienne (87), Cantal (15)
-      </p>
+<h3>Zone 3 — 690 €</h3>
+<p>
+  Paris (75), Seine-et-Marne (77), Yvelines (78), Essonne (91),
+  Hauts-de-Seine (92), Seine-Saint-Denis (93), Val-de-Marne (94), Val-d’Oise (95),
+  Bouches-du-Rhône (13), Rhône (69), Puy-de-Dôme (63),
+  Charente (16), Charente-Maritime (17), Vienne (86)
+</p>
 
-      <h3>Zone 4 — "599 €"</h3>
-      <p>
-        Paris (75), Seine-et-Marne (77), Yvelines (78), Essonne (91),
-        Hauts-de-Seine (92), Seine-Saint-Denis (93), Val-de-Marne (94), Val-d’Oise (95),
-        Bouches-du-Rhône (13), Rhône (69), Puy-de-Dôme (63),
-        Charente (16), Charente-Maritime (17), Vienne (86)
-      </p>
+<h3>Zone 4 — 790 €</h3>
+<p>
+  Loire-Atlantique (44), Ille-et-Vilaine (35), Morbihan (56), Finistère (29),
+  Côtes-d’Armor (22), Mayenne (53), Maine-et-Loire (49),
+  Bas-Rhin (67), Haut-Rhin (68)
+</p>
 
-      <h3>Zone 5 — "690 €"</h3>
-      <p>
-        Loire-Atlantique (44), Ille-et-Vilaine (35), Morbihan (56), Finistère (29),
-        Côtes-d’Armor (22), Mayenne (53), Maine-et-Loire (49),
-        Bas-Rhin (67), Haut-Rhin (68)
-      </p>
+<h3>Autres départements — 790 €</h3>
+<p>
+  Nord (59), Pas-de-Calais (62), Calvados (14), Eure (27),
+  Manche (50), Orne (61), Seine-Maritime (76),
+  Meurthe-et-Moselle (54), Meuse (55), Moselle (57),
+  Ardennes (08), Aube (10), Marne (51), Haute-Marne (52)
+</p>
 
-      <h3>Zone 6 — "790 €"</h3>
-      <p>
-        Nord (59), Pas-de-Calais (62), Calvados (14), Eure (27),
-        Manche (50), Orne (61), Seine-Maritime (76),
-        Meurthe-et-Moselle (54), Meuse (55), Moselle (57),
-        Ardennes (08), Aube (10), Marne (51), Haute-Marne (52)
-      </p>
-
-      <p style={{ marginTop: 20 }}>
-        Le tarif est calculé automatiquement lors de la réservation en fonction de votre département.
-      </p>
+<p style={{ marginTop: 20 }}>
+  Le tarif est calculé automatiquement lors de la réservation en fonction de votre département.
+</p>
 
       <h2>🔁 Option transport client</h2>
       <p>
