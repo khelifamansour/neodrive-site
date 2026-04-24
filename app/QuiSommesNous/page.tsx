@@ -44,31 +44,10 @@ export default function QuiSommesNous() {
           ✔ Aucun paiement à l’avance
         </div>
 
-        {/* PHOTOS FRANCE */}
-     {/*    <div style={grid}>
-          <img src="/france1.jpg" style={img} />
-          <img src="/france2.jpg" style={img} />
- 
-   
-        </div> */}
+      
 
-        {/* VIDEOS */}
-        <p style={small}>
-          Vidéos réelles – véhicules disponibles en France
-        </p>
 
-     {/*    <div style={videoBox}>
-          <video controls style={video}>
-            <source src="/video1.mp4" />
-          </video>
-
-          <video controls style={video}>
-            <source src="/video2.mp4" />
-          </video>
-
-          <video controls style={video}>
-            <source src="/video3.mp4" />
-          </video> */}
+     
         </div>
       </section>
 
@@ -87,12 +66,7 @@ export default function QuiSommesNous() {
           Nous sélectionnons directement les modèles pour garantir fiabilité et simplicité.
         </div>
 
-        {/* PHOTOS USINE */}
-        <div style={grid}>
-         {/*  <img src="/usine1.jpg" style={img} />
-          <img src="/usine2.jpg" style={img} /> */}
-         
-        </div>
+       
       </section>
 
       {/* QUALITÉ */}
