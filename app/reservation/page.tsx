@@ -18,12 +18,20 @@ export default function Reservation() {
     ville: ""
   });
 
+
+
+
   const getTransportPrice = (dept: string) => {
-  if (["31","81","82","32","09"].includes(dept)) return 250;
-  if (["11","12","46","47","33","65","66"].includes(dept)) return 350;
-  if (["34","30","40","24","19","87","15"].includes(dept)) return 490;
-  if (["75","77","78","91","92","93","94","95","13","69","63","16","17","86"].includes(dept)) return 599;
-  if (["44","35","56","29","22","53","49","67","68"].includes(dept)) return 690;
+  if (["31","81","82","32","09"].includes(dept)) return 350;
+
+  if (["11","12","46","47","33","65","66",
+       "34","30","40","24","19","87","15"].includes(dept)) return 490;
+
+  if (["75","77","78","91","92","93","94","95",
+       "13","69","63","16","17","86"].includes(dept)) return 690;
+
+  if (["44","35","56","29","22","53","49","67","68"].includes(dept)) return 790;
+
   return 790;
 };
 const transport = getTransportPrice(client.code_postal?.substring(0,2) || "");
