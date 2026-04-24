@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import React from "react";
 
 export default function QuiSommesNous() {
@@ -19,8 +19,7 @@ export default function QuiSommesNous() {
         <div style={box}>
           Nous sommes une marque basée à Toulouse spécialisée dans les véhicules électriques sans permis.<br /><br />
 
-          Nous combinons :
-          <br />
+          Nous combinons :<br />
           ✔ L’ingénierie et les normes européennes<br />
           ✔ Le savoir-faire industriel chinois dans l’électrique<br /><br />
 
@@ -43,12 +42,6 @@ export default function QuiSommesNous() {
           ✔ Vidéo réelle du véhicule avant achat<br />
           ✔ Aucun paiement à l’avance
         </div>
-
-      
-
-
-     
-        </div>
       </section>
 
       {/* USINE */}
@@ -65,8 +58,6 @@ export default function QuiSommesNous() {
 
           Nous sélectionnons directement les modèles pour garantir fiabilité et simplicité.
         </div>
-
-       
       </section>
 
       {/* QUALITÉ */}
@@ -110,7 +101,7 @@ export default function QuiSommesNous() {
         </a>
 
         <p style={safe}>
-          Réponse rapide – vidéo réelle disponible immédiatement
+          Réponse rapide – accompagnement personnalisé
         </p>
       </section>
 
@@ -158,27 +149,6 @@ const box: React.CSSProperties = {
   lineHeight: "1.6"
 };
 
-const grid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 10
-};
-
-const img: React.CSSProperties = {
-  width: "100%",
-  borderRadius: 8
-};
-
-const videoBox: React.CSSProperties = {
-  marginTop: 10
-};
-
-const video: React.CSSProperties = {
-  width: "100%",
-  borderRadius: 10,
-  marginTop: 10
-};
-
 const btnGreen: React.CSSProperties = {
   marginTop: 10,
   padding: 15,
@@ -199,12 +169,6 @@ const btnBlack: React.CSSProperties = {
   border: "none",
   borderRadius: 8,
   cursor: "pointer"
-};
-
-const small: React.CSSProperties = {
-  fontSize: 12,
-  color: "#555",
-  marginTop: 10
 };
 
 const safe: React.CSSProperties = {
