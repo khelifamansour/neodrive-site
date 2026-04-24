@@ -17,6 +17,7 @@ export default function Reservation() {
     code_postal: "",
     ville: ""
   });
+  const [noDelivery, setNoDelivery] = useState(false);
 
 
 
