@@ -396,7 +396,7 @@ const th: React.CSSProperties = {
   padding: 10,
   background: "#000",
   color: "white",
-  textAlign: "left"
+  textAlign: "left",
 };
 
 const td: React.CSSProperties = {
