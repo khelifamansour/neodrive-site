@@ -5,6 +5,9 @@ import React, {
   useEffect
 } from "react";
 
+import { supabase }
+from "@/lib/supabase";
+
 export default function CRMPage() {
 
   /* =========================
@@ -29,6 +32,28 @@ export default function CRMPage() {
 
   const videoLink =
     "https://youtube.com";
+
+  /* =========================
+     TEST SUPABASE
+  ========================= */
+
+  const testSupabase =
+  async () => {
+
+    const { data, error } =
+    await supabase
+      .from("leads")
+      .select("*");
+
+    console.log(data);
+
+    console.log(error);
+
+    alert(
+      "Check console F12"
+    );
+
+  };
 
   /* =========================
      LOAD STORAGE
@@ -455,6 +480,16 @@ ${senderEmail}`;
       <h1 style={title}>
         EasyMicrodrive CRM
       </h1>
+
+      <button
+      onClick={testSupabase}
+      style={{
+        padding: 10,
+        marginBottom: 20
+      }}
+      >
+        TEST SUPABASE
+      </button>
 
       <div style={topBar}>
 
@@ -1060,3 +1095,4 @@ React.CSSProperties = {
   width: 160
 
 };
+
