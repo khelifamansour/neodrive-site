@@ -1,533 +1,1026 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import Script from "next/script";
+import React, {
+  useState,
+  useEffect
+} from "react";
 
-export default function Facturation() {
+import { supabase }
+from "@/lib/supabase";
 
-  const today = new Date().toLocaleDateString("fr-FR");
+export default function CRMPage() {
 
-  const prixVehicule = 4490;
-  const carteGrise = 150;
+  /* =========================
+     STATES
+  ========================= */
 
-  const invoiceNumber = `FAC-${Date.now()}`;
+  const [leads, setLeads] =
+    useState<any[]>([]);
 
-  const [client, setClient] = useState({
-    nom: "",
-    prenom: "",
-    telephone: "",
-    email: "",
-    adresse: "",
-    code_postal: "",
-    ville: ""
-  });
+  const [search, setSearch] =
+    useState("");
 
-  const [noDelivery, setNoDelivery] = useState(false);
+  /* =========================
+     SETTINGS
+  ========================= */
 
-  const [quantity, setQuantity] = useState(1);
+  const senderEmail =
+    "sales@easymicrodrive.com";
 
-  const getTransportPrice = (dept: string) => {
+  const website =
+    "https://easydrive-auto.fr";
 
-    if (["31","81","82","32","09"].includes(dept)) return 350;
+  const videoLink =
+    "https://youtube.com";
 
-    if ([
-      "11","12","46","47","33","65","66",
-      "34","30","40","24","19","87","15"
-    ].includes(dept)) return 490;
+  /* =========================
+     LOAD LEADS CLOUD
+  ========================= */
 
-    if ([
-      "75","77","78","91","92","93","94","95",
-      "13","69","63","16","17","86"
-    ].includes(dept)) return 690;
+  useEffect(() => {
 
-    if ([
-      "44","35","56","29","22","53",
-      "49","67","68"
-    ].includes(dept)) return 790;
+    loadLeads();
 
-    return 790;
-  };
+  }, []);
 
-  const transport = noDelivery
-    ? 0
-    : getTransportPrice(client.code_postal?.substring(0,2) || "");
+  const loadLeads =
+  async () => {
 
-  const totalTTC =
-    (prixVehicule * quantity)
-    + transport
-    + (carteGrise * quantity);
+    const { data, error } =
+    await supabase
+      .from("leads")
+      .select("*")
+      .order("id", {
+        ascending: false
+      });
 
-  const totalHT = totalTTC / 1.20;
-
-  const montantTVA = totalTTC - totalHT;
-
-  const printRef = useRef<HTMLDivElement>(null);
-
-  const handleChange = (e: any) => {
-    setClient({
-      ...client,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const downloadPDF = async () => {
-
-    if (!printRef.current) return;
-
-    const html2canvas = (window as any).html2canvas;
-    const jsPDF = (window as any).jspdf.jsPDF;
-
-    const canvas = await html2canvas(printRef.current, {
-      scale: 2,
-      useCORS: true
-    });
-
-    const imgData = canvas.toDataURL("image/png");
-
-    const pdf = new jsPDF("p", "mm", "a4");
-
-    const pageWidth = 210;
-    const pageHeight = 297;
-
-    const imgWidth = pageWidth;
-
-    const imgHeight =
-      (canvas.height * imgWidth) / canvas.width;
-
-    let heightLeft = imgHeight;
-
-    let position = 0;
-
-    pdf.addImage(
-      imgData,
-      "PNG",
-      0,
-      position,
-      imgWidth,
-      imgHeight
+    console.log(
+      "LOAD LEADS",
+      data
     );
 
-    heightLeft -= pageHeight;
+    console.log(
+      "LOAD ERROR",
+      error
+    );
 
-    while (heightLeft > 0) {
+    if (!error && data) {
 
-      position = heightLeft - imgHeight;
+      setLeads(data);
 
-      pdf.addPage();
-
-      pdf.addImage(
-        imgData,
-        "PNG",
-        0,
-        position,
-        imgWidth,
-        imgHeight
-      );
-
-      heightLeft -= pageHeight;
     }
 
-    pdf.save(`facture-${invoiceNumber}.pdf`);
   };
+
+  /* =========================
+     TEST SUPABASE
+  ========================= */
+
+  const testSupabase =
+  async () => {
+
+    const { data, error } =
+    await supabase
+      .from("leads")
+      .select("*");
+
+    console.log(
+      "SUPABASE TEST",
+      data
+    );
+
+    console.log(
+      "SUPABASE ERROR",
+      error
+    );
+
+    alert(
+      "Check F12 console"
+    );
+
+  };
+
+  /* =========================
+     IMPORT CSV
+  ========================= */
+
+  const handleCSV = async (
+    e: any
+  ) => {
+
+    const file =
+      e.target.files[0];
+
+    if (!file) return;
+
+    const reader =
+      new FileReader();
+
+    reader.onload =
+    async (
+      event: any
+    ) => {
+
+      const text =
+        event.target.result;
+
+      const rows =
+        text.split("\n");
+
+      const parsed =
+        rows
+        .slice(1)
+        .map(
+          (
+            row: string
+          ) => {
+
+          const cols =
+            row.split(",");
+
+          return {
+
+            nom:
+              cols[3]?.trim() || "",
+
+            telephone:
+              cols[4]?.trim() || "",
+
+            email:
+              cols[5]?.trim() || "",
+
+            annonce:
+              cols[1]?.trim() || "",
+
+            statut:
+              "Nouveau",
+
+            tag:
+              "",
+
+            notes:
+              "",
+
+            rappel:
+              "",
+
+            history:
+              [],
+
+            selected:
+              false,
+
+            assigned_to:
+              "Mansour"
+
+          };
+
+        });
+
+      console.log(
+        "PARSED CSV",
+        parsed
+      );
+
+      const { data, error } =
+      await supabase
+        .from("leads")
+        .insert(parsed)
+        .select();
+
+      console.log(
+        "INSERT DATA",
+        data
+      );
+
+      console.log(
+        "INSERT ERROR",
+        error
+      );
+
+      if (!error) {
+
+        alert(
+          "Import OK"
+        );
+
+        loadLeads();
+
+      } else {
+
+        alert(
+          "Erreur import CSV"
+        );
+
+      }
+
+    };
+
+    reader.readAsText(file);
+
+  };
+
+  /* =========================
+     SEARCH
+  ========================= */
+
+  const filtered =
+    leads.filter((lead) => {
+
+    const text =
+      `${lead.nom}
+      ${lead.telephone}
+      ${lead.email}
+      ${lead.annonce}
+      ${lead.tag}
+      ${lead.notes}`
+      .toLowerCase();
+
+    return text.includes(
+      search.toLowerCase()
+    );
+
+  });
+
+  /* =========================
+     UPDATE LEAD
+  ========================= */
+
+  const updateLead =
+  async (
+    id: number,
+    field: string,
+    value: any
+  ) => {
+
+    const { error } =
+    await supabase
+      .from("leads")
+      .update({
+        [field]: value
+      })
+      .eq("id", id);
+
+    console.log(
+      "UPDATE ERROR",
+      error
+    );
+
+    loadLeads();
+
+  };
+
+  /* =========================
+     EXPORT CSV
+  ========================= */
+
+  const exportCSV = () => {
+
+    const rows =
+      leads.map((lead) => [
+
+      lead.nom,
+
+      lead.telephone,
+
+      lead.email,
+
+      lead.annonce,
+
+      lead.statut,
+
+      lead.tag,
+
+      lead.notes
+
+    ]);
+
+    const csvContent =
+
+      "Nom,Téléphone,Email,Annonce,Statut,Tag,Notes\n"
+
+      +
+
+      rows
+      .map((e) =>
+        e.join(",")
+      )
+      .join("\n");
+
+    const blob =
+      new Blob(
+        [csvContent],
+        {
+          type:
+          "text/csv;charset=utf-8;"
+        }
+      );
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+    link.href =
+      URL.createObjectURL(blob);
+
+    link.download =
+      "microdrive_crm.csv";
+
+    link.click();
+
+  };
+
+  /* =========================
+     BULK EMAIL
+  ========================= */
+
+  const sendBulkEmail =
+  () => {
+
+    const emails =
+      leads
+      .filter(
+        (lead) =>
+          lead.selected
+      )
+      .map(
+        (lead) =>
+          lead.email
+      )
+      .join(",");
+
+    const message =
+`Bonjour,
+
+Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
+
+Découvrez notre site :
+${website}
+
+Vidéo :
+${videoLink}
+
+Cordialement,
+EasyMicrodrive`;
+
+    window.location.href =
+`mailto:${senderEmail}?bcc=${emails}&subject=${encodeURIComponent("EasyMicrodrive")}&body=${encodeURIComponent(message)}`;
+
+  };
+
+  /* =========================
+     BULK WHATSAPP
+  ========================= */
+
+  const sendBulkWhatsApp =
+  () => {
+
+    const selected =
+      leads.filter(
+        (lead) =>
+          lead.selected
+      );
+
+    selected.forEach(
+      (lead, index) => {
+
+      const cleanPhone =
+        lead.telephone
+        ?.replace(
+          /[^0-9]/g,
+          ""
+        );
+
+      const message =
+`Bonjour ${lead.nom},
+
+Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
+
+${website}`;
+
+      const link =
+`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+
+      setTimeout(() => {
+
+        window.open(
+          link,
+          "_blank"
+        );
+
+      }, index * 800);
+
+    });
+
+  };
+
+  /* =========================
+     STATUS COLOR
+  ========================= */
+
+  const getStatusColor =
+    (status: string) => {
+
+    switch (status) {
+
+      case "Chaud":
+        return "#16a34a";
+
+      case "Client":
+        return "#0f172a";
+
+      case "Livraison":
+        return "#f97316";
+
+      case "Perdu":
+        return "#dc2626";
+
+      case "Contacté":
+        return "#2563eb";
+
+      default:
+        return "#777";
+
+    }
+
+  };
+
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
 
     <main style={container}>
 
-      <Script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" />
+      <h1 style={title}>
+        EasyMicrodrive CRM
+      </h1>
 
-      <Script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" />
+      <button
+      onClick={testSupabase}
+      style={testBtn}
+      >
+        TEST SUPABASE
+      </button>
 
-      <h2 style={{ textAlign: "center" }}>
-        Facturation
-      </h2>
-
-      <div style={section}>
-
-        <h3>Informations client</h3>
+      <div style={topBar}>
 
         <input
-          name="nom"
-          placeholder="Nom"
-          style={input}
-          onChange={handleChange}
-          required
+          type="file"
+          accept=".csv"
+          onChange={handleCSV}
         />
 
         <input
-          name="prenom"
-          placeholder="Prénom"
-          style={input}
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          name="telephone"
-          placeholder="Téléphone"
-          style={input}
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          style={input}
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          name="adresse"
-          placeholder="Adresse"
-          style={input}
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          name="code_postal"
-          placeholder="Code postal"
-          style={input}
-          onChange={handleChange}
-          required
-        />
-
-        <select
-          style={input}
+          placeholder="Recherche..."
+          value={search}
           onChange={(e) =>
-            setClient({
-              ...client,
-              code_postal: e.target.value
-            })
+            setSearch(
+              e.target.value
+            )
           }
-          required
-        >
-
-          <option value="">
-            Sélectionner votre département
-          </option>
-
-          <optgroup label="Zone 1 — 350 €">
-            <option value="31">Haute-Garonne (31)</option>
-            <option value="81">Tarn (81)</option>
-            <option value="82">Tarn-et-Garonne (82)</option>
-            <option value="32">Gers (32)</option>
-            <option value="09">Ariège (09)</option>
-          </optgroup>
-
-          <optgroup label="Zone 2 — 490 €">
-            <option value="11">Aude (11)</option>
-            <option value="12">Aveyron (12)</option>
-            <option value="46">Lot (46)</option>
-            <option value="47">Lot-et-Garonne (47)</option>
-            <option value="33">Gironde (33)</option>
-            <option value="65">Hautes-Pyrénées (65)</option>
-            <option value="66">Pyrénées-Orientales (66)</option>
-            <option value="34">Hérault (34)</option>
-            <option value="30">Gard (30)</option>
-            <option value="40">Landes (40)</option>
-            <option value="24">Dordogne (24)</option>
-            <option value="19">Corrèze (19)</option>
-            <option value="87">Haute-Vienne (87)</option>
-            <option value="15">Cantal (15)</option>
-          </optgroup>
-
-          <optgroup label="Zone 3 — 690 €">
-            <option value="75">Paris (75)</option>
-            <option value="77">Seine-et-Marne (77)</option>
-            <option value="78">Yvelines (78)</option>
-            <option value="91">Essonne (91)</option>
-            <option value="92">Hauts-de-Seine (92)</option>
-            <option value="93">Seine-Saint-Denis (93)</option>
-            <option value="94">Val-de-Marne (94)</option>
-            <option value="95">Val-d’Oise (95)</option>
-            <option value="13">Bouches-du-Rhône (13)</option>
-            <option value="69">Rhône (69)</option>
-            <option value="63">Puy-de-Dôme (63)</option>
-            <option value="16">Charente (16)</option>
-            <option value="17">Charente-Maritime (17)</option>
-            <option value="86">Vienne (86)</option>
-          </optgroup>
-
-          <optgroup label="Zone 4 — 790 €">
-            <option value="44">Loire-Atlantique (44)</option>
-            <option value="35">Ille-et-Vilaine (35)</option>
-            <option value="56">Morbihan (56)</option>
-            <option value="29">Finistère (29)</option>
-            <option value="22">Côtes-d’Armor (22)</option>
-            <option value="53">Mayenne (53)</option>
-            <option value="49">Maine-et-Loire (49)</option>
-            <option value="67">Bas-Rhin (67)</option>
-            <option value="68">Haut-Rhin (68)</option>
-          </optgroup>
-
-        </select>
-
-        <input
-          type="number"
-          min="1"
-          value={quantity}
-          onChange={(e) =>
-            setQuantity(Number(e.target.value))
-          }
-          style={input}
-          placeholder="Nombre de véhicules"
+          style={searchInput}
         />
 
-        <label
-          style={{
-            display: "flex",
-            alignItems: "center",
-            marginTop: 10
-          }}
+        <button
+          onClick={exportCSV}
+          style={exportBtn}
         >
+          Export CSV
+        </button>
 
-          <input
-            type="checkbox"
-            checked={noDelivery}
-            onChange={(e) =>
-              setNoDelivery(e.target.checked)
-            }
-            style={{ marginRight: 8 }}
-          />
+        <button
+          onClick={sendBulkEmail}
+          style={bulkBtn}
+        >
+          Email groupé
+        </button>
 
-          Retrait sur place (pas de livraison)
-
-        </label>
-
-        <input
-          name="ville"
-          placeholder="Ville"
-          style={input}
-          onChange={handleChange}
-          required
-        />
+        <button
+          onClick={sendBulkWhatsApp}
+          style={waBulkBtn}
+        >
+          WhatsApp groupé
+        </button>
 
       </div>
 
-      <div ref={printRef} style={pdf}>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between"
-          }}
-        >
-
-          <div>
-            <h2>NEODRIVE</h2>
-            <p>MK HOLDING</p>
-            <p>SIREN : 908 645 393</p>
-            <p>31 rue Jean Nougaro, 31600 Muret</p>
-          </div>
-
-          <div style={{ textAlign: "right" }}>
-            <h1>FACTURE</h1>
-            <p>Date : {today}</p>
-            <p>N° : {invoiceNumber}</p>
-          </div>
-
-        </div>
-
-        <hr />
-
-        <h3>Acheteur</h3>
-
-        <p>
-          {client.nom} {client.prenom}
-        </p>
-
-        <p>{client.adresse}</p>
-
-        <p>
-          {client.code_postal} {client.ville}
-        </p>
-
-        <p>{client.telephone}</p>
-
-        <p>{client.email}</p>
-
-        <h3>Détail</h3>
+      <div
+        style={{
+          overflowX: "auto"
+        }}
+      >
 
         <table style={table}>
 
+          <thead>
+
+            <tr>
+
+              <th style={th}>
+                ✓
+              </th>
+
+              <th style={th}>
+                Nom
+              </th>
+
+              <th style={th}>
+                Téléphone
+              </th>
+
+              <th style={th}>
+                Email
+              </th>
+
+              <th style={th}>
+                Annonce
+              </th>
+
+              <th style={th}>
+                Statut
+              </th>
+
+              <th style={th}>
+                Tag
+              </th>
+
+              <th style={th}>
+                Assigné
+              </th>
+
+              <th style={th}>
+                Actions
+              </th>
+
+              <th style={th}>
+                Notes
+              </th>
+
+            </tr>
+
+          </thead>
+
           <tbody>
 
-            <tr>
-              <td>
-                Véhicule électrique x{quantity}
-              </td>
+            {filtered.map(
+              (lead) => {
 
-              <td style={right}>
-                {prixVehicule * quantity} €
-              </td>
-            </tr>
+              const cleanPhone =
+                lead.telephone
+                ?.replace(
+                  /[^0-9]/g,
+                  ""
+                );
 
-            {!noDelivery && (
+              const message =
+`Bonjour ${lead.nom},
 
-              <tr>
+Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
 
-                <td>
-                  Livraison
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "#555"
-                    }}
-                  >
-                    Prix automatique selon votre localisation
-                  </div>
-                </td>
+Découvrez notre site :
+${website}
 
-                <td style={right}>
-                  {transport} €
-                </td>
+Vidéo :
+${videoLink}`;
 
-              </tr>
+              const whatsappLink =
+`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 
-            )}
+              const emailLink =
+`mailto:${lead.email}?subject=${encodeURIComponent("EasyMicrodrive")}&body=${encodeURIComponent(message)}`;
 
-            {noDelivery && (
+              return (
 
-              <tr>
-
-                <td
-                  colSpan={2}
-                  style={{
-                    color: "green",
-                    textAlign: "center"
-                  }}
+                <tr
+                  key={lead.id}
                 >
-                  Retrait sur place – aucun frais de livraison
-                </td>
 
-              </tr>
+                  <td style={td}>
 
-            )}
+                    <input
+                      type="checkbox"
+                      checked={
+                        lead.selected || false
+                      }
+                      onChange={() =>
+                        updateLead(
+                          lead.id,
+                          "selected",
+                          !lead.selected
+                        )
+                      }
+                    />
 
-            <tr>
+                  </td>
 
-              <td>
-                Carte grise x{quantity}
-              </td>
+                  <td style={td}>
+                    {lead.nom}
+                  </td>
 
-              <td style={right}>
-                {carteGrise * quantity} €
-              </td>
+                  <td style={td}>
+                    {
+                      lead.telephone
+                    }
+                  </td>
 
-            </tr>
+                  <td style={td}>
+                    {lead.email}
+                  </td>
 
-            <tr>
+                  <td style={td}>
+                    {lead.annonce}
+                  </td>
 
-              <td>Total HT</td>
+                  <td style={td}>
 
-              <td style={right}>
-                {totalHT.toFixed(2)} €
-              </td>
+                    <select
+                      value={
+                        lead.statut
+                      }
+                      onChange={(e) =>
+                        updateLead(
+                          lead.id,
+                          "statut",
+                          e.target.value
+                        )
+                      }
 
-            </tr>
+                      style={{
+                        background:
+                          getStatusColor(
+                            lead.statut
+                          ),
 
-            <tr>
+                        color:
+                          "white",
 
-              <td>TVA 20%</td>
+                        padding: 6,
 
-              <td style={right}>
-                {montantTVA.toFixed(2)} €
-              </td>
+                        borderRadius: 6
+                      }}
+                    >
 
-            </tr>
+                      <option>
+                        Nouveau
+                      </option>
 
-            <tr style={totalRow}>
+                      <option>
+                        Contacté
+                      </option>
 
-              <td>Total TTC</td>
+                      <option>
+                        Chaud
+                      </option>
 
-              <td style={right}>
-                {totalTTC.toFixed(2)} €
-              </td>
+                      <option>
+                        Livraison
+                      </option>
 
-            </tr>
+                      <option>
+                        Client
+                      </option>
+
+                      <option>
+                        SAV
+                      </option>
+
+                      <option>
+                        Perdu
+                      </option>
+
+                    </select>
+
+                  </td>
+
+                  <td style={td}>
+
+                    <input
+                      value={
+                        lead.tag || ""
+                      }
+                      onChange={(e) =>
+                        updateLead(
+                          lead.id,
+                          "tag",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Paris / SAV / Batterie"
+                      style={input}
+                    />
+
+                  </td>
+
+                  <td style={td}>
+                    {
+                      lead.assigned_to
+                    }
+                  </td>
+
+                  <td style={td}>
+
+                    <div
+                      style={{
+                        display:
+                          "flex",
+
+                        gap: 8,
+
+                        flexWrap:
+                          "wrap"
+                      }}
+                    >
+
+                      <a
+                        href={
+                          whatsappLink
+                        }
+                        target="_blank"
+                        style={waBtn}
+                      >
+                        WhatsApp
+                      </a>
+
+                      <a
+                        href={
+                          emailLink
+                        }
+                        style={
+                          emailBtn
+                        }
+                      >
+                        Email
+                      </a>
+
+                      <a
+                        href={`tel:${cleanPhone}`}
+                        style={
+                          callBtn
+                        }
+                      >
+                        Appeler
+                      </a>
+
+                    </div>
+
+                  </td>
+
+                  <td style={td}>
+
+                    <textarea
+                      value={
+                        lead.notes || ""
+                      }
+                      onChange={(e) =>
+                        updateLead(
+                          lead.id,
+                          "notes",
+                          e.target.value
+                        )
+                      }
+                      style={
+                        textarea
+                      }
+                    />
+
+                  </td>
+
+                </tr>
+
+              );
+
+            })}
 
           </tbody>
 
         </table>
 
-        <div style={{ marginTop: 40 }}>
-
-          <p>
-            Paiement à la livraison par virement bancaire.
-          </p>
-
-          <p>
-            Merci pour votre confiance.
-          </p>
-
-        </div>
-
       </div>
 
-      <button
-        type="button"
-        onClick={downloadPDF}
-        style={btn}
-      >
-        Télécharger la facture PDF
-      </button>
-
     </main>
+
   );
+
 }
 
-/* STYLES */
+/* =========================
+   STYLES
+========================= */
 
-const container: React.CSSProperties = {
-  maxWidth: 800,
-  margin: "0 auto",
+const container:
+React.CSSProperties = {
+
   padding: 20,
+
   fontFamily: "Arial"
+
 };
 
-const section: React.CSSProperties = {
-  marginBottom: 25
+const title:
+React.CSSProperties = {
+
+  fontSize: 50,
+
+  marginBottom: 20
+
 };
 
-const input: React.CSSProperties = {
-  width: "100%",
+const topBar:
+React.CSSProperties = {
+
+  display: "flex",
+
+  gap: 10,
+
+  marginBottom: 20,
+
+  flexWrap: "wrap"
+
+};
+
+const searchInput:
+React.CSSProperties = {
+
   padding: 10,
-  marginTop: 8,
-  border: "1px solid #ccc",
-  borderRadius: 4
-};
 
-const pdf: React.CSSProperties = {
-  background: "#fff",
-  padding: 30,
-  border: "1px solid #ddd",
-  marginTop: 30
-};
+  minWidth: 250,
 
-const table: React.CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse"
-};
+  border:
+    "1px solid #ccc",
 
-const right: React.CSSProperties = {
-  textAlign: "right"
-};
-
-const totalRow: React.CSSProperties = {
-  fontWeight: "bold",
-  borderTop: "2px solid black"
-};
-
-const btn: React.CSSProperties = {
-  marginTop: 15,
-  padding: 12,
-  width: "100%",
-  background: "#000",
-  color: "#fff",
-  border: "none",
   borderRadius: 6
+
+};
+
+const input:
+React.CSSProperties = {
+
+  padding: 8,
+
+  border:
+    "1px solid #ccc",
+
+  borderRadius: 6,
+
+  width: 160
+
+};
+
+const exportBtn:
+React.CSSProperties = {
+
+  background: "#000",
+
+  color: "white",
+
+  border: "none",
+
+  padding: "10px 15px",
+
+  borderRadius: 6
+
+};
+
+const bulkBtn:
+React.CSSProperties = {
+
+  background: "#2563eb",
+
+  color: "white",
+
+  border: "none",
+
+  padding: "10px 15px",
+
+  borderRadius: 6
+
+};
+
+const waBulkBtn:
+React.CSSProperties = {
+
+  background: "#25D366",
+
+  color: "white",
+
+  border: "none",
+
+  padding: "10px 15px",
+
+  borderRadius: 6
+
+};
+
+const testBtn:
+React.CSSProperties = {
+
+  padding: 10,
+
+  marginBottom: 20
+
+};
+
+const table:
+React.CSSProperties = {
+
+  width: "100%",
+
+  borderCollapse:
+    "collapse"
+
+};
+
+const th:
+React.CSSProperties = {
+
+  border:
+    "1px solid #ddd",
+
+  padding: 10,
+
+  background: "#000",
+
+  color: "white",
+
+  textAlign: "left"
+
+};
+
+const td:
+React.CSSProperties = {
+
+  border:
+    "1px solid #ddd",
+
+  padding: 10,
+
+  verticalAlign:
+    "top"
+
+};
+
+const waBtn:
+React.CSSProperties = {
+
+  background:
+    "#25D366",
+
+  color: "white",
+
+  padding:
+    "8px 12px",
+
+  borderRadius: 6,
+
+  textDecoration:
+    "none"
+
+};
+
+const emailBtn:
+React.CSSProperties = {
+
+  background:
+    "#ea4335",
+
+  color: "white",
+
+  padding:
+    "8px 12px",
+
+  borderRadius: 6,
+
+  textDecoration:
+    "none"
+
+};
+
+const callBtn:
+React.CSSProperties = {
+
+  background:
+    "#000",
+
+  color: "white",
+
+  padding:
+    "8px 12px",
+
+  borderRadius: 6,
+
+  textDecoration:
+    "none"
+
+};
+
+const textarea:
+React.CSSProperties = {
+
+  width: 220,
+
+  minHeight: 80
+
 };
