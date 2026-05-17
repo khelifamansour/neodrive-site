@@ -16,9 +16,6 @@ export default function CRMPage() {
   const [search, setSearch] =
     useState("");
 
-  const website =
-    "https://easydrive-auto.fr";
-
   useEffect(() => {
 
     loadLeads();
@@ -352,107 +349,57 @@ export default function CRMPage() {
 
 }
 
-const container:
-React.CSSProperties = {
-
+const container: React.CSSProperties = {
   padding: 20,
-
   fontFamily: "Arial"
-
 };
 
-const title:
-React.CSSProperties = {
-
+const title: React.CSSProperties = {
   fontSize: 50,
-
   marginBottom: 20
-
 };
 
-const topBar:
-React.CSSProperties = {
-
+const topBar: React.CSSProperties = {
   display: "flex",
-
   gap: 10,
-
   marginBottom: 20,
-
   flexWrap: "wrap"
-
 };
 
-const searchInput:
-React.CSSProperties = {
-
+const searchInput: React.CSSProperties = {
   padding: 10,
-
   minWidth: 250,
-
-  border:
-    "1px solid #ccc",
-
+  border: "1px solid #ccc",
   borderRadius: 6
-
 };
 
-const exportBtn:
-React.CSSProperties = {
-
+const exportBtn: React.CSSProperties = {
   background: "#000",
-
   color: "white",
-
   border: "none",
-
   padding: "10px 15px",
-
   borderRadius: 6
-
 };
 
-const testBtn:
-React.CSSProperties = {
-
+const testBtn: React.CSSProperties = {
   padding: 10,
-
   marginBottom: 20
-
 };
 
-const table:
-React.CSSProperties = {
-
+const table: React.CSSProperties = {
   width: "100%",
-
-  borderCollapse:
-    "collapse"
-
+  borderCollapse: "collapse"
 };
 
-const th:
-React.CSSProperties = {
-
-  border:
-    "1px solid #ddd",
-
+const th: React.CSSProperties = {
+  border: "1px solid #ddd",
   padding: 10,
-
   background: "#000",
-
   color: "white",
-
   textAlign: "left"
-
 };
 
-const td:
-React.CSSProperties = {
-
-  border:
-    "1px solid #ddd",
-
-  padding: 10,
-
+const td: React.CSSProperties = {
+  border: "1px solid #ddd",
+  padding: 10
 };
