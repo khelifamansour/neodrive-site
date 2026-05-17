@@ -10,29 +10,14 @@ from "@/lib/supabase";
 
 export default function CRMPage() {
 
-  /* =========================
-     STATES
-  ========================= */
-
   const [leads, setLeads] =
     useState<any[]>([]);
 
   const [search, setSearch] =
     useState("");
 
-  /* =========================
-     SETTINGS
-  ========================= */
-
-  const senderEmail =
-    "sales@easymicrodrive.com";
-
   const website =
     "https://easydrive-auto.fr";
-
-  /* =========================
-     LOAD LEADS
-  ========================= */
 
   useEffect(() => {
 
@@ -51,15 +36,8 @@ export default function CRMPage() {
         ascending: false
       });
 
-    console.log(
-      "LOAD DATA",
-      data
-    );
-
-    console.log(
-      "LOAD ERROR",
-      error
-    );
+    console.log(data);
+    console.log(error);
 
     if (!error && data) {
 
@@ -69,10 +47,6 @@ export default function CRMPage() {
 
   };
 
-  /* =========================
-     TEST SUPABASE
-  ========================= */
-
   const testSupabase =
   async () => {
 
@@ -81,15 +55,8 @@ export default function CRMPage() {
       .from("leads")
       .select("*");
 
-    console.log(
-      "SUPABASE DATA",
-      data
-    );
-
-    console.log(
-      "SUPABASE ERROR",
-      error
-    );
+    console.log(data);
+    console.log(error);
 
     alert(
       "Check console F12"
@@ -97,11 +64,8 @@ export default function CRMPage() {
 
   };
 
-  /* =========================
-     IMPORT CSV
-  ========================= */
-
-  const handleCSV = async (
+  const handleCSV =
+  async (
     e: any
   ) => {
 
@@ -161,10 +125,7 @@ export default function CRMPage() {
             lead.nom
         );
 
-      console.log(
-        "PARSED",
-        parsed
-      );
+      console.log(parsed);
 
       const { data, error } =
       await supabase
@@ -172,15 +133,8 @@ export default function CRMPage() {
         .insert(parsed)
         .select();
 
-      console.log(
-        "INSERT DATA",
-        data
-      );
-
-      console.log(
-        "INSERT ERROR",
-        error
-      );
+      console.log(data);
+      console.log(error);
 
       if (!error) {
 
@@ -204,10 +158,6 @@ export default function CRMPage() {
 
   };
 
-  /* =========================
-     SEARCH
-  ========================= */
-
   const filtered =
     leads.filter((lead) => {
 
@@ -223,10 +173,6 @@ export default function CRMPage() {
     );
 
   });
-
-  /* =========================
-     EXPORT CSV
-  ========================= */
 
   const exportCSV = () => {
 
@@ -281,40 +227,6 @@ export default function CRMPage() {
 
   };
 
-  /* =========================
-     BULK EMAIL
-  ========================= */
-
-  const sendBulkEmail =
-  () => {
-
-    const emails =
-      leads
-      .map(
-        (lead) =>
-          lead.email
-      )
-      .join(",");
-
-    const message =
-`Bonjour,
-
-Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
-
-${website}
-
-Cordialement,
-EasyMicrodrive`;
-
-    window.location.href =
-`mailto:${senderEmail}?bcc=${emails}&subject=${encodeURIComponent("EasyMicrodrive")}&body=${encodeURIComponent(message)}`;
-
-  };
-
-  /* =========================
-     RENDER
-  ========================= */
-
   return (
 
     <main style={container}>
@@ -354,13 +266,6 @@ EasyMicrodrive`;
           style={exportBtn}
         >
           Export CSV
-        </button>
-
-        <button
-          onClick={sendBulkEmail}
-          style={bulkBtn}
-        >
-          Email groupé
         </button>
 
       </div>
@@ -447,10 +352,6 @@ EasyMicrodrive`;
 
 }
 
-/* =========================
-   STYLES
-========================= */
-
 const container:
 React.CSSProperties = {
 
@@ -511,21 +412,6 @@ React.CSSProperties = {
 
 };
 
-const bulkBtn:
-React.CSSProperties = {
-
-  background: "#2563eb",
-
-  color: "white",
-
-  border: "none",
-
-  padding: "10px 15px",
-
-  borderRadius: 6
-
-};
-
 const testBtn:
 React.CSSProperties = {
 
@@ -567,6 +453,6 @@ React.CSSProperties = {
   border:
     "1px solid #ddd",
 
-  padding: 10
+  padding: 10,
 
 };
