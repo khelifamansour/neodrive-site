@@ -34,6 +34,35 @@ export default function CRMPage() {
     "https://youtube.com";
 
   /* =========================
+     LOAD LEADS CLOUD
+  ========================= */
+
+  useEffect(() => {
+
+    loadLeads();
+
+  }, []);
+
+  const loadLeads =
+  async () => {
+
+    const { data, error } =
+    await supabase
+      .from("leads")
+      .select("*")
+      .order("id", {
+        ascending: false
+      });
+
+    if (!error && data) {
+
+      setLeads(data);
+
+    }
+
+  };
+
+  /* =========================
      TEST SUPABASE
   ========================= */
 
@@ -50,50 +79,18 @@ export default function CRMPage() {
     console.log(error);
 
     alert(
-      "Check console F12"
+      "Supabase connecté"
     );
 
   };
 
   /* =========================
-     LOAD STORAGE
-  ========================= */
-
-  useEffect(() => {
-
-    const saved =
-      localStorage.getItem(
-        "microdrive_leads"
-      );
-
-    if (saved) {
-
-      setLeads(
-        JSON.parse(saved)
-      );
-
-    }
-
-  }, []);
-
-  /* =========================
-     SAVE STORAGE
-  ========================= */
-
-  useEffect(() => {
-
-    localStorage.setItem(
-      "microdrive_leads",
-      JSON.stringify(leads)
-    );
-
-  }, [leads]);
-
-  /* =========================
      IMPORT CSV
   ========================= */
 
-  const handleCSV = (e: any) => {
+  const handleCSV = async (
+    e: any
+  ) => {
 
     const file =
       e.target.files[0];
@@ -102,7 +99,9 @@ export default function CRMPage() {
       new FileReader();
 
     reader.onload =
-      (event: any) => {
+      async (
+        event: any
+      ) => {
 
       const text =
         event.target.result;
@@ -124,16 +123,6 @@ export default function CRMPage() {
 
           return {
 
-            id: Date.now() + index,
-
-            selected: false,
-
-            date:
-              cols[0] || "",
-
-            annonce:
-              cols[1] || "",
-
             nom:
               cols[3] || "",
 
@@ -143,29 +132,35 @@ export default function CRMPage() {
             email:
               cols[5] || "",
 
+            annonce:
+              cols[1] || "",
+
             statut:
               "Nouveau",
 
-            notes: "",
+            tag:
+              "",
 
-            tag: "",
+            notes:
+              "",
 
-            assignedTo:
-              "Mansour",
-
-            history: []
+            assigned_to:
+              "Mansour"
 
           };
 
         });
 
-      setLeads((prev) => [
+      const { error } =
+      await supabase
+        .from("leads")
+        .insert(parsed);
 
-        ...parsed,
+      if (!error) {
 
-        ...prev
+        loadLeads();
 
-      ]);
+      }
 
     };
 
@@ -196,137 +191,24 @@ export default function CRMPage() {
   });
 
   /* =========================
-     STATUS
+     UPDATE LEAD
   ========================= */
 
-  const updateStatus = (
+  const updateLead =
+  async (
     id: number,
-    status: string
+    field: string,
+    value: string
   ) => {
 
-    setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === id
-          ? {
-              ...lead,
-              statut: status
-            }
-          : lead
-      )
-    );
-
-  };
-
-  /* =========================
-     NOTES
-  ========================= */
-
-  const updateNotes = (
-    id: number,
-    notes: string
-  ) => {
-
-    setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === id
-          ? {
-              ...lead,
-              notes
-            }
-          : lead
-      )
-    );
-
-  };
-
-  /* =========================
-     TAGS
-  ========================= */
-
-  const updateTag = (
-    id: number,
-    tag: string
-  ) => {
-
-    setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === id
-          ? {
-              ...lead,
-              tag
-            }
-          : lead
-      )
-    );
-
-  };
-
-  /* =========================
-     SELECT
-  ========================= */
-
-  const toggleSelect = (
-    id: number
-  ) => {
-
-    setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === id
-          ? {
-              ...lead,
-              selected:
-                !lead.selected
-            }
-          : lead
-      )
-    );
-
-  };
-
-  /* =========================
-     HISTORY
-  ========================= */
-
-  const addHistory = (
-    id: number,
-    action: string
-  ) => {
-
-    setLeads((prev) =>
-      prev.map((lead) => {
-
-        if (
-          lead.id === id
-        ) {
-
-          return {
-
-            ...lead,
-
-            history: [
-
-              ...lead.history,
-
-              {
-
-                date:
-                  new Date()
-                  .toLocaleString(),
-
-                action
-
-              }
-
-            ]
-
-          };
-
-        }
-
-        return lead;
-
+    await supabase
+      .from("leads")
+      .update({
+        [field]: value
       })
-    );
+      .eq("id", id);
+
+    loadLeads();
 
   };
 
@@ -338,8 +220,6 @@ export default function CRMPage() {
 
     const rows =
       leads.map((lead) => [
-
-      lead.date,
 
       lead.nom,
 
@@ -359,7 +239,7 @@ export default function CRMPage() {
 
     const csvContent =
 
-      "Date,Nom,Téléphone,Email,Annonce,Statut,Tag,Notes\n"
+      "Nom,Téléphone,Email,Annonce,Statut,Tag,Notes\n"
 
       +
 
@@ -398,16 +278,14 @@ export default function CRMPage() {
   ========================= */
 
   const sendBulkEmail =
-    () => {
+  () => {
 
-    const selected =
-      leads.filter(
+    const emails =
+      leads
+      .filter(
         (lead) =>
           lead.selected
-      );
-
-    const bcc =
-      selected
+      )
       .map(
         (lead) =>
           lead.email
@@ -426,20 +304,61 @@ Vidéo :
 ${videoLink}
 
 Cordialement,
-EasyMicrodrive
-
-${senderEmail}`;
-
-    const mailto =
-`mailto:${senderEmail}?bcc=${bcc}&subject=${encodeURIComponent("EasyMicrodrive")}&body=${encodeURIComponent(message)}`;
+EasyMicrodrive`;
 
     window.location.href =
-      mailto;
+`mailto:${senderEmail}?bcc=${emails}&subject=${encodeURIComponent("EasyMicrodrive")}&body=${encodeURIComponent(message)}`;
 
   };
 
   /* =========================
-     STATUS COLORS
+     BULK WHATSAPP
+  ========================= */
+
+  const sendBulkWhatsApp =
+  () => {
+
+    const selected =
+      leads.filter(
+        (lead) =>
+          lead.selected
+      );
+
+    selected.forEach(
+      (lead, index) => {
+
+      const cleanPhone =
+        lead.telephone
+        ?.replace(
+          /[^0-9]/g,
+          ""
+        );
+
+      const message =
+`Bonjour ${lead.nom},
+
+Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
+
+${website}`;
+
+      const link =
+`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+
+      setTimeout(() => {
+
+        window.open(
+          link,
+          "_blank"
+        );
+
+      }, index * 800);
+
+    });
+
+  };
+
+  /* =========================
+     STATUS COLOR
   ========================= */
 
   const getStatusColor =
@@ -483,10 +402,7 @@ ${senderEmail}`;
 
       <button
       onClick={testSupabase}
-      style={{
-        padding: 10,
-        marginBottom: 20
-      }}
+      style={testBtn}
       >
         TEST SUPABASE
       </button>
@@ -524,6 +440,13 @@ ${senderEmail}`;
           Email groupé
         </button>
 
+        <button
+          onClick={sendBulkWhatsApp}
+          style={waBulkBtn}
+        >
+          WhatsApp groupé
+        </button>
+
       </div>
 
       <div
@@ -540,10 +463,6 @@ ${senderEmail}`;
 
               <th style={th}>
                 ✓
-              </th>
-
-              <th style={th}>
-                Date
               </th>
 
               <th style={th}>
@@ -582,10 +501,6 @@ ${senderEmail}`;
                 Notes
               </th>
 
-              <th style={th}>
-                Historique
-              </th>
-
             </tr>
 
           </thead>
@@ -597,7 +512,7 @@ ${senderEmail}`;
 
               const cleanPhone =
                 lead.telephone
-                .replace(
+                ?.replace(
                   /[^0-9]/g,
                   ""
                 );
@@ -611,10 +526,7 @@ Découvrez notre site :
 ${website}
 
 Vidéo :
-${videoLink}
-
-Cordialement,
-EasyMicrodrive`;
+${videoLink}`;
 
               const whatsappLink =
 `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -633,19 +545,26 @@ EasyMicrodrive`;
                     <input
                       type="checkbox"
                       checked={
-                        lead.selected
+                        lead.selected || false
                       }
-                      onChange={() =>
-                        toggleSelect(
-                          lead.id
-                        )
-                      }
+                      onChange={async () => {
+
+                        await supabase
+                          .from("leads")
+                          .update({
+                            selected:
+                            !lead.selected
+                          })
+                          .eq(
+                            "id",
+                            lead.id
+                          );
+
+                        loadLeads();
+
+                      }}
                     />
 
-                  </td>
-
-                  <td style={td}>
-                    {lead.date}
                   </td>
 
                   <td style={td}>
@@ -673,8 +592,9 @@ EasyMicrodrive`;
                         lead.statut
                       }
                       onChange={(e) =>
-                        updateStatus(
+                        updateLead(
                           lead.id,
+                          "statut",
                           e.target.value
                         )
                       }
@@ -730,23 +650,24 @@ EasyMicrodrive`;
 
                     <input
                       value={
-                        lead.tag
+                        lead.tag || ""
                       }
                       onChange={(e) =>
-                        updateTag(
+                        updateLead(
                           lead.id,
+                          "tag",
                           e.target.value
                         )
                       }
-                      placeholder="Paris / SAV / Batterie..."
-                      style={tagInput}
+                      placeholder="Paris / SAV / Batterie"
+                      style={input}
                     />
 
                   </td>
 
                   <td style={td}>
                     {
-                      lead.assignedTo
+                      lead.assigned_to
                     }
                   </td>
 
@@ -770,12 +691,6 @@ EasyMicrodrive`;
                         }
                         target="_blank"
                         style={waBtn}
-                        onClick={() =>
-                          addHistory(
-                            lead.id,
-                            "WhatsApp"
-                          )
-                        }
                       >
                         WhatsApp
                       </a>
@@ -787,12 +702,6 @@ EasyMicrodrive`;
                         style={
                           emailBtn
                         }
-                        onClick={() =>
-                          addHistory(
-                            lead.id,
-                            "Email"
-                          )
-                        }
                       >
                         Email
                       </a>
@@ -801,12 +710,6 @@ EasyMicrodrive`;
                         href={`tel:${cleanPhone}`}
                         style={
                           callBtn
-                        }
-                        onClick={() =>
-                          addHistory(
-                            lead.id,
-                            "Appel"
-                          )
                         }
                       >
                         Appeler
@@ -820,11 +723,12 @@ EasyMicrodrive`;
 
                     <textarea
                       value={
-                        lead.notes
+                        lead.notes || ""
                       }
                       onChange={(e) =>
-                        updateNotes(
+                        updateLead(
                           lead.id,
+                          "notes",
                           e.target.value
                         )
                       }
@@ -832,54 +736,6 @@ EasyMicrodrive`;
                         textarea
                       }
                     />
-
-                  </td>
-
-                  <td style={td}>
-
-                    <div
-                      style={{
-                        maxHeight:
-                          150,
-
-                        overflowY:
-                          "auto",
-
-                        fontSize: 12
-                      }}
-                    >
-
-                      {lead.history
-                      ?.map(
-                        (
-                          item: any,
-                          i: number
-                        ) => (
-
-                        <div
-                          key={i}
-                          style={{
-                            marginBottom: 8
-                          }}
-                        >
-
-                          <b>
-                            {
-                              item.date
-                            }
-                          </b>
-
-                          <br />
-
-                          {
-                            item.action
-                          }
-
-                        </div>
-
-                      ))}
-
-                    </div>
 
                   </td>
 
@@ -950,6 +806,20 @@ React.CSSProperties = {
 
 };
 
+const input:
+React.CSSProperties = {
+
+  padding: 8,
+
+  border:
+    "1px solid #ccc",
+
+  borderRadius: 6,
+
+  width: 160
+
+};
+
 const exportBtn:
 React.CSSProperties = {
 
@@ -977,6 +847,30 @@ React.CSSProperties = {
   padding: "10px 15px",
 
   borderRadius: 6
+
+};
+
+const waBulkBtn:
+React.CSSProperties = {
+
+  background: "#25D366",
+
+  color: "white",
+
+  border: "none",
+
+  padding: "10px 15px",
+
+  borderRadius: 6
+
+};
+
+const testBtn:
+React.CSSProperties = {
+
+  padding: 10,
+
+  marginBottom: 20
 
 };
 
@@ -1081,18 +975,3 @@ React.CSSProperties = {
   minHeight: 80
 
 };
-
-const tagInput:
-React.CSSProperties = {
-
-  padding: 8,
-
-  border:
-    "1px solid #ccc",
-
-  borderRadius: 6,
-
-  width: 160
-
-};
-
