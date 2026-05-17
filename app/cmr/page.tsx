@@ -30,11 +30,8 @@ export default function CRMPage() {
   const website =
     "https://easydrive-auto.fr";
 
-  const videoLink =
-    "https://youtube.com";
-
   /* =========================
-     LOAD LEADS CLOUD
+     LOAD LEADS
   ========================= */
 
   useEffect(() => {
@@ -55,7 +52,7 @@ export default function CRMPage() {
       });
 
     console.log(
-      "LOAD LEADS",
+      "LOAD DATA",
       data
     );
 
@@ -85,7 +82,7 @@ export default function CRMPage() {
       .select("*");
 
     console.log(
-      "SUPABASE TEST",
+      "SUPABASE DATA",
       data
     );
 
@@ -95,7 +92,7 @@ export default function CRMPage() {
     );
 
     alert(
-      "Check F12 console"
+      "Check console F12"
     );
 
   };
@@ -153,32 +150,19 @@ export default function CRMPage() {
               cols[1]?.trim() || "",
 
             statut:
-              "Nouveau",
-
-            tag:
-              "",
-
-            notes:
-              "",
-
-            rappel:
-              "",
-
-            history:
-              [],
-
-            selected:
-              false,
-
-            assigned_to:
-              "Mansour"
+              "Nouveau"
 
           };
 
-        });
+        })
+
+        .filter(
+          (lead) =>
+            lead.nom
+        );
 
       console.log(
-        "PARSED CSV",
+        "PARSED",
         parsed
       );
 
@@ -209,7 +193,7 @@ export default function CRMPage() {
       } else {
 
         alert(
-          "Erreur import CSV"
+          "Erreur import"
         );
 
       }
@@ -231,9 +215,7 @@ export default function CRMPage() {
       `${lead.nom}
       ${lead.telephone}
       ${lead.email}
-      ${lead.annonce}
-      ${lead.tag}
-      ${lead.notes}`
+      ${lead.annonce}`
       .toLowerCase();
 
     return text.includes(
@@ -241,34 +223,6 @@ export default function CRMPage() {
     );
 
   });
-
-  /* =========================
-     UPDATE LEAD
-  ========================= */
-
-  const updateLead =
-  async (
-    id: number,
-    field: string,
-    value: any
-  ) => {
-
-    const { error } =
-    await supabase
-      .from("leads")
-      .update({
-        [field]: value
-      })
-      .eq("id", id);
-
-    console.log(
-      "UPDATE ERROR",
-      error
-    );
-
-    loadLeads();
-
-  };
 
   /* =========================
      EXPORT CSV
@@ -287,17 +241,13 @@ export default function CRMPage() {
 
       lead.annonce,
 
-      lead.statut,
-
-      lead.tag,
-
-      lead.notes
+      lead.statut
 
     ]);
 
     const csvContent =
 
-      "Nom,Téléphone,Email,Annonce,Statut,Tag,Notes\n"
+      "Nom,Téléphone,Email,Annonce,Statut\n"
 
       +
 
@@ -340,10 +290,6 @@ export default function CRMPage() {
 
     const emails =
       leads
-      .filter(
-        (lead) =>
-          lead.selected
-      )
       .map(
         (lead) =>
           lead.email
@@ -355,94 +301,13 @@ export default function CRMPage() {
 
 Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
 
-Découvrez notre site :
 ${website}
-
-Vidéo :
-${videoLink}
 
 Cordialement,
 EasyMicrodrive`;
 
     window.location.href =
 `mailto:${senderEmail}?bcc=${emails}&subject=${encodeURIComponent("EasyMicrodrive")}&body=${encodeURIComponent(message)}`;
-
-  };
-
-  /* =========================
-     BULK WHATSAPP
-  ========================= */
-
-  const sendBulkWhatsApp =
-  () => {
-
-    const selected =
-      leads.filter(
-        (lead) =>
-          lead.selected
-      );
-
-    selected.forEach(
-      (lead, index) => {
-
-      const cleanPhone =
-        lead.telephone
-        ?.replace(
-          /[^0-9]/g,
-          ""
-        );
-
-      const message =
-`Bonjour ${lead.nom},
-
-Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
-
-${website}`;
-
-      const link =
-`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-
-      setTimeout(() => {
-
-        window.open(
-          link,
-          "_blank"
-        );
-
-      }, index * 800);
-
-    });
-
-  };
-
-  /* =========================
-     STATUS COLOR
-  ========================= */
-
-  const getStatusColor =
-    (status: string) => {
-
-    switch (status) {
-
-      case "Chaud":
-        return "#16a34a";
-
-      case "Client":
-        return "#0f172a";
-
-      case "Livraison":
-        return "#f97316";
-
-      case "Perdu":
-        return "#dc2626";
-
-      case "Contacté":
-        return "#2563eb";
-
-      default:
-        return "#777";
-
-    }
 
   };
 
@@ -459,8 +324,8 @@ ${website}`;
       </h1>
 
       <button
-      onClick={testSupabase}
-      style={testBtn}
+        onClick={testSupabase}
+        style={testBtn}
       >
         TEST SUPABASE
       </button>
@@ -498,13 +363,6 @@ ${website}`;
           Email groupé
         </button>
 
-        <button
-          onClick={sendBulkWhatsApp}
-          style={waBulkBtn}
-        >
-          WhatsApp groupé
-        </button>
-
       </div>
 
       <div
@@ -518,10 +376,6 @@ ${website}`;
           <thead>
 
             <tr>
-
-              <th style={th}>
-                ✓
-              </th>
 
               <th style={th}>
                 Nom
@@ -543,22 +397,6 @@ ${website}`;
                 Statut
               </th>
 
-              <th style={th}>
-                Tag
-              </th>
-
-              <th style={th}>
-                Assigné
-              </th>
-
-              <th style={th}>
-                Actions
-              </th>
-
-              <th style={th}>
-                Notes
-              </th>
-
             </tr>
 
           </thead>
@@ -566,64 +404,18 @@ ${website}`;
           <tbody>
 
             {filtered.map(
-              (lead) => {
-
-              const cleanPhone =
-                lead.telephone
-                ?.replace(
-                  /[^0-9]/g,
-                  ""
-                );
-
-              const message =
-`Bonjour ${lead.nom},
-
-Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
-
-Découvrez notre site :
-${website}
-
-Vidéo :
-${videoLink}`;
-
-              const whatsappLink =
-`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-
-              const emailLink =
-`mailto:${lead.email}?subject=${encodeURIComponent("EasyMicrodrive")}&body=${encodeURIComponent(message)}`;
-
-              return (
+              (lead) => (
 
                 <tr
                   key={lead.id}
                 >
 
                   <td style={td}>
-
-                    <input
-                      type="checkbox"
-                      checked={
-                        lead.selected || false
-                      }
-                      onChange={() =>
-                        updateLead(
-                          lead.id,
-                          "selected",
-                          !lead.selected
-                        )
-                      }
-                    />
-
-                  </td>
-
-                  <td style={td}>
                     {lead.nom}
                   </td>
 
                   <td style={td}>
-                    {
-                      lead.telephone
-                    }
+                    {lead.telephone}
                   </td>
 
                   <td style={td}>
@@ -635,164 +427,13 @@ ${videoLink}`;
                   </td>
 
                   <td style={td}>
-
-                    <select
-                      value={
-                        lead.statut
-                      }
-                      onChange={(e) =>
-                        updateLead(
-                          lead.id,
-                          "statut",
-                          e.target.value
-                        )
-                      }
-
-                      style={{
-                        background:
-                          getStatusColor(
-                            lead.statut
-                          ),
-
-                        color:
-                          "white",
-
-                        padding: 6,
-
-                        borderRadius: 6
-                      }}
-                    >
-
-                      <option>
-                        Nouveau
-                      </option>
-
-                      <option>
-                        Contacté
-                      </option>
-
-                      <option>
-                        Chaud
-                      </option>
-
-                      <option>
-                        Livraison
-                      </option>
-
-                      <option>
-                        Client
-                      </option>
-
-                      <option>
-                        SAV
-                      </option>
-
-                      <option>
-                        Perdu
-                      </option>
-
-                    </select>
-
-                  </td>
-
-                  <td style={td}>
-
-                    <input
-                      value={
-                        lead.tag || ""
-                      }
-                      onChange={(e) =>
-                        updateLead(
-                          lead.id,
-                          "tag",
-                          e.target.value
-                        )
-                      }
-                      placeholder="Paris / SAV / Batterie"
-                      style={input}
-                    />
-
-                  </td>
-
-                  <td style={td}>
-                    {
-                      lead.assigned_to
-                    }
-                  </td>
-
-                  <td style={td}>
-
-                    <div
-                      style={{
-                        display:
-                          "flex",
-
-                        gap: 8,
-
-                        flexWrap:
-                          "wrap"
-                      }}
-                    >
-
-                      <a
-                        href={
-                          whatsappLink
-                        }
-                        target="_blank"
-                        style={waBtn}
-                      >
-                        WhatsApp
-                      </a>
-
-                      <a
-                        href={
-                          emailLink
-                        }
-                        style={
-                          emailBtn
-                        }
-                      >
-                        Email
-                      </a>
-
-                      <a
-                        href={`tel:${cleanPhone}`}
-                        style={
-                          callBtn
-                        }
-                      >
-                        Appeler
-                      </a>
-
-                    </div>
-
-                  </td>
-
-                  <td style={td}>
-
-                    <textarea
-                      value={
-                        lead.notes || ""
-                      }
-                      onChange={(e) =>
-                        updateLead(
-                          lead.id,
-                          "notes",
-                          e.target.value
-                        )
-                      }
-                      style={
-                        textarea
-                      }
-                    />
-
+                    {lead.statut}
                   </td>
 
                 </tr>
 
-              );
-
-            })}
+              )
+            )}
 
           </tbody>
 
@@ -855,20 +496,6 @@ React.CSSProperties = {
 
 };
 
-const input:
-React.CSSProperties = {
-
-  padding: 8,
-
-  border:
-    "1px solid #ccc",
-
-  borderRadius: 6,
-
-  width: 160
-
-};
-
 const exportBtn:
 React.CSSProperties = {
 
@@ -888,21 +515,6 @@ const bulkBtn:
 React.CSSProperties = {
 
   background: "#2563eb",
-
-  color: "white",
-
-  border: "none",
-
-  padding: "10px 15px",
-
-  borderRadius: 6
-
-};
-
-const waBulkBtn:
-React.CSSProperties = {
-
-  background: "#25D366",
 
   color: "white",
 
@@ -955,72 +567,6 @@ React.CSSProperties = {
   border:
     "1px solid #ddd",
 
-  padding: 10,
-
-  verticalAlign:
-    "top"
-
-};
-
-const waBtn:
-React.CSSProperties = {
-
-  background:
-    "#25D366",
-
-  color: "white",
-
-  padding:
-    "8px 12px",
-
-  borderRadius: 6,
-
-  textDecoration:
-    "none"
-
-};
-
-const emailBtn:
-React.CSSProperties = {
-
-  background:
-    "#ea4335",
-
-  color: "white",
-
-  padding:
-    "8px 12px",
-
-  borderRadius: 6,
-
-  textDecoration:
-    "none"
-
-};
-
-const callBtn:
-React.CSSProperties = {
-
-  background:
-    "#000",
-
-  color: "white",
-
-  padding:
-    "8px 12px",
-
-  borderRadius: 6,
-
-  textDecoration:
-    "none"
-
-};
-
-const textarea:
-React.CSSProperties = {
-
-  width: 220,
-
-  minHeight: 80
+  padding: 10
 
 };
