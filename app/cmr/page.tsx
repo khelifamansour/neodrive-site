@@ -1,82 +1,138 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import React, {
+  useState,
+  useEffect
+} from "react";
+
+import { supabase }
+from "@/lib/supabase";
+
+type Lead = {
+  id?: number;
+  nom: string;
+  telephone: string;
+  email: string;
+  annonce: string;
+  statut: string;
+};
 
 export default function CRMPage() {
 
-  const [leads, setLeads] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
+  const [leads, setLeads] =
+    useState<Lead[]>([]);
+
+  const [search, setSearch] =
+    useState("");
 
   useEffect(() => {
+
     loadLeads();
+
   }, []);
 
-  const loadLeads = async () => {
+  const loadLeads =
+  async () => {
 
-    const { data, error } = await supabase
+    const { data, error } =
+    await supabase
       .from("leads")
       .select("*")
-      .order("id", { ascending: false });
+      .order("id", {
+        ascending: false
+      });
 
     console.log(data);
     console.log(error);
 
     if (!error && data) {
+
       setLeads(data);
+
     }
 
   };
 
-  const testSupabase = async () => {
+  const testSupabase =
+  async () => {
 
-    const { data, error } = await supabase
+    const { data, error } =
+    await supabase
       .from("leads")
       .select("*");
 
     console.log(data);
     console.log(error);
 
-    alert("Check console F12");
+    alert(
+      "Check console F12"
+    );
 
   };
 
-  const handleCSV = async (e: any) => {
+  const handleCSV =
+  async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
 
-    const file = e.target.files[0];
+    const file =
+      e.target.files?.[0];
 
     if (!file) return;
 
-    const reader = new FileReader();
+    const reader =
+      new FileReader();
 
-    reader.onload = async (event: any) => {
+    reader.onload =
+    async (
+      event
+    ) => {
 
-      const text = event.target.result;
+      const text =
+        event.target?.result as string;
 
-      const rows = text.split("\n");
+      const rows =
+        text.split("\n");
 
-      const parsed = rows
+      const parsed: Lead[] =
+        rows
         .slice(1)
-        .map((row: string) => {
+        .map((row) => {
 
-          const cols = row.split(",");
+          const cols =
+            row.split(",");
 
           return {
 
-            nom: cols[3]?.trim() || "",
-            telephone: cols[4]?.trim() || "",
-            email: cols[5]?.trim() || "",
-            annonce: cols[1]?.trim() || "",
-            statut: "Nouveau",
+            nom:
+              cols[3]?.trim() || "",
+
+            telephone:
+              cols[4]?.trim() || "",
+
+            email:
+              cols[5]?.trim() || "",
+
+            annonce:
+              cols[1]?.trim() || "",
+
+            statut:
+              "Nouveau",
 
           };
 
         })
-        .filter((lead) => lead.nom);
+
+        .filter(
+          (
+            lead: Lead
+          ) => lead.nom
+        );
 
       console.log(parsed);
 
-      const { data, error } = await supabase
+      const { data, error } =
+      await supabase
         .from("leads")
         .insert(parsed)
         .select();
@@ -86,13 +142,17 @@ export default function CRMPage() {
 
       if (!error) {
 
-        alert("Import OK");
+        alert(
+          "Import OK"
+        );
 
         loadLeads();
 
       } else {
 
-        alert("Erreur import");
+        alert(
+          "Erreur import"
+        );
 
       }
 
@@ -102,44 +162,69 @@ export default function CRMPage() {
 
   };
 
-  const filtered = leads.filter((lead) => {
+  const filtered =
+    leads.filter(
+      (
+        lead: Lead
+      ) => {
 
-    const text = `
-      ${lead.nom}
-      ${lead.telephone}
-      ${lead.email}
-      ${lead.annonce}
-    `.toLowerCase();
+      const text =
+        `
+        ${lead.nom}
+        ${lead.telephone}
+        ${lead.email}
+        ${lead.annonce}
+        `
+        .toLowerCase();
 
-    return text.includes(
-      search.toLowerCase()
-    );
+      return text.includes(
+        search.toLowerCase()
+      );
 
-  });
+    });
 
   const exportCSV = () => {
 
-    const rows = leads.map((lead) => [
+    const rows =
+      leads.map((lead) => [
+
       lead.nom,
+
       lead.telephone,
+
       lead.email,
+
       lead.annonce,
+
       lead.statut,
+
     ]);
 
     const csvContent =
-      "Nom,Téléphone,Email,Annonce,Statut\n" +
-      rows.map((e) => e.join(",")).join("\n");
 
-    const blob = new Blob(
-      [csvContent],
-      {
-        type: "text/csv;charset=utf-8;",
-      }
-    );
+      "Nom,Téléphone,Email,Annonce,Statut\n"
+
+      +
+
+      rows
+      .map((e) =>
+        e.join(",")
+      )
+      .join("\n");
+
+    const blob =
+      new Blob(
+        [csvContent],
+        {
+          type:
+          "text/csv;charset=utf-8;",
+        }
+      );
 
     const link =
-      document.createElement("a");
+      document.createElement(
+        "a"
+      );
 
     link.href =
       URL.createObjectURL(blob);
@@ -178,7 +263,9 @@ export default function CRMPage() {
           placeholder="Recherche..."
           value={search}
           onChange={(e) =>
-            setSearch(e.target.value)
+            setSearch(
+              e.target.value
+            )
           }
           style={searchInput}
         />
@@ -192,7 +279,11 @@ export default function CRMPage() {
 
       </div>
 
-      <div style={{ overflowX: "auto" }}>
+      <div
+        style={{
+          overflowX: "auto",
+        }}
+      >
 
         <table style={table}>
 
@@ -226,33 +317,39 @@ export default function CRMPage() {
 
           <tbody>
 
-            {filtered.map((lead) => (
+            {filtered.map(
+              (
+                lead: Lead
+              ) => (
 
-              <tr key={lead.id}>
+                <tr
+                  key={lead.id}
+                >
 
-                <td style={td}>
-                  {lead.nom}
-                </td>
+                  <td style={td}>
+                    {lead.nom}
+                  </td>
 
-                <td style={td}>
-                  {lead.telephone}
-                </td>
+                  <td style={td}>
+                    {lead.telephone}
+                  </td>
 
-                <td style={td}>
-                  {lead.email}
-                </td>
+                  <td style={td}>
+                    {lead.email}
+                  </td>
 
-                <td style={td}>
-                  {lead.annonce}
-                </td>
+                  <td style={td}>
+                    {lead.annonce}
+                  </td>
 
-                <td style={td}>
-                  {lead.statut}
-                </td>
+                  <td style={td}>
+                    {lead.statut}
+                  </td>
 
-              </tr>
+                </tr>
 
-            ))}
+              )
+            )}
 
           </tbody>
 
