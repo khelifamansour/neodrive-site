@@ -7,13 +7,19 @@ import React, {
 
 export default function CRMPage() {
 
+  /* =========================
+     STATES
+  ========================= */
+
   const [leads, setLeads] =
     useState<any[]>([]);
 
   const [search, setSearch] =
     useState("");
 
-  /* SETTINGS */
+  /* =========================
+     SETTINGS
+  ========================= */
 
   const senderEmail =
     "sales@easymicrodrive.com";
@@ -24,7 +30,9 @@ export default function CRMPage() {
   const videoLink =
     "https://youtube.com";
 
-  /* LOAD SAVED DATA */
+  /* =========================
+     LOAD STORAGE
+  ========================= */
 
   useEffect(() => {
 
@@ -35,13 +43,17 @@ export default function CRMPage() {
 
     if (saved) {
 
-      setLeads(JSON.parse(saved));
+      setLeads(
+        JSON.parse(saved)
+      );
 
     }
 
   }, []);
 
-  /* SAVE DATA */
+  /* =========================
+     SAVE STORAGE
+  ========================= */
 
   useEffect(() => {
 
@@ -52,7 +64,9 @@ export default function CRMPage() {
 
   }, [leads]);
 
-  /* CSV IMPORT */
+  /* =========================
+     IMPORT CSV
+  ========================= */
 
   const handleCSV = (e: any) => {
 
@@ -85,7 +99,9 @@ export default function CRMPage() {
 
           return {
 
-            id: index,
+            id: Date.now() + index,
+
+            selected: false,
 
             date:
               cols[0] || "",
@@ -107,13 +123,24 @@ export default function CRMPage() {
 
             notes: "",
 
+            tag: "",
+
+            assignedTo:
+              "Mansour",
+
             history: []
 
           };
 
         });
 
-      setLeads(parsed);
+      setLeads((prev) => [
+
+        ...parsed,
+
+        ...prev
+
+      ]);
 
     };
 
@@ -121,7 +148,31 @@ export default function CRMPage() {
 
   };
 
-  /* UPDATE STATUS */
+  /* =========================
+     SEARCH
+  ========================= */
+
+  const filtered =
+    leads.filter((lead) => {
+
+    const text =
+      `${lead.nom}
+      ${lead.telephone}
+      ${lead.email}
+      ${lead.annonce}
+      ${lead.tag}
+      ${lead.notes}`
+      .toLowerCase();
+
+    return text.includes(
+      search.toLowerCase()
+    );
+
+  });
+
+  /* =========================
+     STATUS
+  ========================= */
 
   const updateStatus = (
     id: number,
@@ -141,7 +192,9 @@ export default function CRMPage() {
 
   };
 
-  /* UPDATE NOTES */
+  /* =========================
+     NOTES
+  ========================= */
 
   const updateNotes = (
     id: number,
@@ -161,7 +214,53 @@ export default function CRMPage() {
 
   };
 
-  /* ADD HISTORY */
+  /* =========================
+     TAGS
+  ========================= */
+
+  const updateTag = (
+    id: number,
+    tag: string
+  ) => {
+
+    setLeads((prev) =>
+      prev.map((lead) =>
+        lead.id === id
+          ? {
+              ...lead,
+              tag
+            }
+          : lead
+      )
+    );
+
+  };
+
+  /* =========================
+     SELECT
+  ========================= */
+
+  const toggleSelect = (
+    id: number
+  ) => {
+
+    setLeads((prev) =>
+      prev.map((lead) =>
+        lead.id === id
+          ? {
+              ...lead,
+              selected:
+                !lead.selected
+            }
+          : lead
+      )
+    );
+
+  };
+
+  /* =========================
+     HISTORY
+  ========================= */
 
   const addHistory = (
     id: number,
@@ -184,11 +283,13 @@ export default function CRMPage() {
               ...lead.history,
 
               {
+
                 date:
                   new Date()
                   .toLocaleString(),
 
                 action
+
               }
 
             ]
@@ -204,29 +305,155 @@ export default function CRMPage() {
 
   };
 
-  /* SEARCH */
+  /* =========================
+     EXPORT CSV
+  ========================= */
 
-  const filtered =
-    leads.filter((lead) => {
+  const exportCSV = () => {
 
-    const text =
-      `${lead.nom}
-      ${lead.telephone}
-      ${lead.annonce}`
-      .toLowerCase();
+    const rows =
+      leads.map((lead) => [
 
-    return text.includes(
-      search.toLowerCase()
-    );
+      lead.date,
 
-  });
+      lead.nom,
+
+      lead.telephone,
+
+      lead.email,
+
+      lead.annonce,
+
+      lead.statut,
+
+      lead.tag,
+
+      lead.notes
+
+    ]);
+
+    const csvContent =
+
+      "Date,Nom,Téléphone,Email,Annonce,Statut,Tag,Notes\n"
+
+      +
+
+      rows
+      .map((e) =>
+        e.join(",")
+      )
+      .join("\n");
+
+    const blob =
+      new Blob(
+        [csvContent],
+        {
+          type:
+          "text/csv;charset=utf-8;"
+        }
+      );
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+    link.href =
+      URL.createObjectURL(blob);
+
+    link.download =
+      "microdrive_crm.csv";
+
+    link.click();
+
+  };
+
+  /* =========================
+     BULK EMAIL
+  ========================= */
+
+  const sendBulkEmail =
+    () => {
+
+    const selected =
+      leads.filter(
+        (lead) =>
+          lead.selected
+      );
+
+    const bcc =
+      selected
+      .map(
+        (lead) =>
+          lead.email
+      )
+      .join(",");
+
+    const message =
+`Bonjour,
+
+Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
+
+Découvrez notre site :
+${website}
+
+Vidéo :
+${videoLink}
+
+Cordialement,
+EasyMicrodrive
+
+${senderEmail}`;
+
+    const mailto =
+`mailto:${senderEmail}?bcc=${bcc}&subject=${encodeURIComponent("EasyMicrodrive")}&body=${encodeURIComponent(message)}`;
+
+    window.location.href =
+      mailto;
+
+  };
+
+  /* =========================
+     STATUS COLORS
+  ========================= */
+
+  const getStatusColor =
+    (status: string) => {
+
+    switch (status) {
+
+      case "Chaud":
+        return "#16a34a";
+
+      case "Client":
+        return "#0f172a";
+
+      case "Livraison":
+        return "#f97316";
+
+      case "Perdu":
+        return "#dc2626";
+
+      case "Contacté":
+        return "#2563eb";
+
+      default:
+        return "#777";
+
+    }
+
+  };
+
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
 
     <main style={container}>
 
       <h1 style={title}>
-        Microdrive CRM
+        EasyMicrodrive CRM
       </h1>
 
       <div style={topBar}>
@@ -248,6 +475,20 @@ export default function CRMPage() {
           style={searchInput}
         />
 
+        <button
+          onClick={exportCSV}
+          style={exportBtn}
+        >
+          Export CSV
+        </button>
+
+        <button
+          onClick={sendBulkEmail}
+          style={bulkBtn}
+        >
+          Email groupé
+        </button>
+
       </div>
 
       <div
@@ -261,6 +502,10 @@ export default function CRMPage() {
           <thead>
 
             <tr>
+
+              <th style={th}>
+                ✓
+              </th>
 
               <th style={th}>
                 Date
@@ -284,6 +529,14 @@ export default function CRMPage() {
 
               <th style={th}>
                 Statut
+              </th>
+
+              <th style={th}>
+                Tag
+              </th>
+
+              <th style={th}>
+                Assigné
               </th>
 
               <th style={th}>
@@ -319,26 +572,17 @@ export default function CRMPage() {
 
 Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
 
-Nous livrons partout en France.
-
 Découvrez notre site :
 ${website}
 
-Vidéo du véhicule :
+Vidéo :
 ${videoLink}
 
-N'hésitez pas à nous contacter.
-
 Cordialement,
-EasyMicrodrive
-
-${senderEmail}`;
+EasyMicrodrive`;
 
               const whatsappLink =
 `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-
-              const smsLink =
-`sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
 
               const emailLink =
 `mailto:${lead.email}?subject=${encodeURIComponent("EasyMicrodrive")}&body=${encodeURIComponent(message)}`;
@@ -348,6 +592,22 @@ ${senderEmail}`;
                 <tr
                   key={lead.id}
                 >
+
+                  <td style={td}>
+
+                    <input
+                      type="checkbox"
+                      checked={
+                        lead.selected
+                      }
+                      onChange={() =>
+                        toggleSelect(
+                          lead.id
+                        )
+                      }
+                    />
+
+                  </td>
 
                   <td style={td}>
                     {lead.date}
@@ -383,6 +643,20 @@ ${senderEmail}`;
                           e.target.value
                         )
                       }
+
+                      style={{
+                        background:
+                          getStatusColor(
+                            lead.statut
+                          ),
+
+                        color:
+                          "white",
+
+                        padding: 6,
+
+                        borderRadius: 6
+                      }}
                     >
 
                       <option>
@@ -419,6 +693,30 @@ ${senderEmail}`;
 
                   <td style={td}>
 
+                    <input
+                      value={
+                        lead.tag
+                      }
+                      onChange={(e) =>
+                        updateTag(
+                          lead.id,
+                          e.target.value
+                        )
+                      }
+                      placeholder="Paris / SAV / Batterie..."
+                      style={tagInput}
+                    />
+
+                  </td>
+
+                  <td style={td}>
+                    {
+                      lead.assignedTo
+                    }
+                  </td>
+
+                  <td style={td}>
+
                     <div
                       style={{
                         display:
@@ -440,24 +738,11 @@ ${senderEmail}`;
                         onClick={() =>
                           addHistory(
                             lead.id,
-                            "WhatsApp envoyé"
+                            "WhatsApp"
                           )
                         }
                       >
                         WhatsApp
-                      </a>
-
-                      <a
-                        href={smsLink}
-                        style={smsBtn}
-                        onClick={() =>
-                          addHistory(
-                            lead.id,
-                            "SMS envoyé"
-                          )
-                        }
-                      >
-                        SMS
                       </a>
 
                       <a
@@ -470,7 +755,7 @@ ${senderEmail}`;
                         onClick={() =>
                           addHistory(
                             lead.id,
-                            "Email envoyé"
+                            "Email"
                           )
                         }
                       >
@@ -581,7 +866,9 @@ ${senderEmail}`;
 
 }
 
-/* STYLES */
+/* =========================
+   STYLES
+========================= */
 
 const container:
 React.CSSProperties = {
@@ -623,6 +910,36 @@ React.CSSProperties = {
 
   border:
     "1px solid #ccc",
+
+  borderRadius: 6
+
+};
+
+const exportBtn:
+React.CSSProperties = {
+
+  background: "#000",
+
+  color: "white",
+
+  border: "none",
+
+  padding: "10px 15px",
+
+  borderRadius: 6
+
+};
+
+const bulkBtn:
+React.CSSProperties = {
+
+  background: "#2563eb",
+
+  color: "white",
+
+  border: "none",
+
+  padding: "10px 15px",
 
   borderRadius: 6
 
@@ -685,24 +1002,6 @@ React.CSSProperties = {
 
 };
 
-const smsBtn:
-React.CSSProperties = {
-
-  background:
-    "#2563eb",
-
-  color: "white",
-
-  padding:
-    "8px 12px",
-
-  borderRadius: 6,
-
-  textDecoration:
-    "none"
-
-};
-
 const emailBtn:
 React.CSSProperties = {
 
@@ -745,5 +1044,19 @@ React.CSSProperties = {
   width: 220,
 
   minHeight: 80
+
+};
+
+const tagInput:
+React.CSSProperties = {
+
+  padding: 8,
+
+  border:
+    "1px solid #ccc",
+
+  borderRadius: 6,
+
+  width: 160
 
 };
