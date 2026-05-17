@@ -70,7 +70,7 @@ export default function CRMPage() {
         .slice(1)
         .map((row: string) => {
 
-          const cols = row.split(",");
+          const cols = row.split(";");
 
           return {
 
