@@ -72,6 +72,7 @@ export default function RootLayout({
             <a href="/livraison" style={link}>Livraison</a>
             <a href="/carte-grise" style={link}>Carte grise</a>
             <a href="/QuiSommesNous" style={link}>Qui sommes-nous</a>
+            <a href="/facturation" style={link}>Facturation</a>
 
             {/* DROPDOWN SERVICE */}
             <div
