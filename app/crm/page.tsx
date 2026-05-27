@@ -25,10 +25,6 @@ const supabase =
 
 export default function CRMPage() {
 
-  /* =========================
-     STATES
-  ========================= */
-
   const [leads, setLeads] =
     useState<any[]>([]);
 
