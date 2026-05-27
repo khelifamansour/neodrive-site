@@ -207,6 +207,10 @@ export default function CRMPage() {
         .map(
           (row: string) => {
 
+            /* =========================
+               SIMPLE SAFE CSV PARSER
+            ========================= */
+
             const cols =
               row.match(
                 /(".*?"|[^",]+)(?=\s*,|\s*$)/g
