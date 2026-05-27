@@ -28,13 +28,15 @@ type Lead = {
 
   statut: string;
 
-  phase?: string;
+  phase: string;
 
-  commentaire?: string;
+  commentaire: string;
 
-  operateur?: string;
+  historique: string;
 
-  derniere_relance?: string;
+  operateur: string;
+
+  derniere_relance: string;
 
 };
 
@@ -70,44 +72,26 @@ export default function CRMPage() {
   const loadLeads =
   async () => {
 
-    try {
+    const {
+      data,
+      error
+    } = await supabase
 
-      const {
-        data,
-        error
-      } = await supabase
+      .from("leads")
 
-        .from("leads")
+      .select("*")
 
-        .select("*")
+      .order("id", {
+        ascending: false
+      });
 
-        .order("id", {
-          ascending: false
-        });
+    console.log(data);
+    console.log(error);
 
-      console.log(data);
-      console.log(error);
-
-      if (error) {
-
-        alert(
-          error.message
-        );
-
-        return;
-
-      }
+    if (!error && data) {
 
       setLeads(
-        (data || []) as Lead[]
-      );
-
-    } catch (err: any) {
-
-      console.log(err);
-
-      alert(
-        err.message
+        data as Lead[]
       );
 
     }
@@ -148,6 +132,40 @@ export default function CRMPage() {
       );
 
     }
+
+  };
+
+  /* =========================
+     UPDATE LEAD
+  ========================= */
+
+  const updateLead =
+  async (
+    id: number,
+    field: string,
+    value: string
+  ) => {
+
+    await supabase
+
+      .from("leads")
+
+      .update({
+        [field]: value
+      })
+
+      .eq("id", id);
+
+    setLeads((prev) =>
+      prev.map((lead) =>
+        lead.id === id
+          ? {
+              ...lead,
+              [field]: value
+            }
+          : lead
+      )
+    );
 
   };
 
@@ -221,6 +239,9 @@ export default function CRMPage() {
                   "À contacter",
 
                 commentaire:
+                  "",
+
+                historique:
                   "",
 
                 operateur:
@@ -307,40 +328,6 @@ export default function CRMPage() {
   };
 
   /* =========================
-     UPDATE LEAD
-  ========================= */
-
-  const updateLead =
-  async (
-    id: number,
-    field: string,
-    value: string
-  ) => {
-
-    await supabase
-
-      .from("leads")
-
-      .update({
-        [field]: value
-      })
-
-      .eq("id", id);
-
-    setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === id
-          ? {
-              ...lead,
-              [field]: value
-            }
-          : lead
-      )
-    );
-
-  };
-
-  /* =========================
      SEARCH
   ========================= */
 
@@ -357,6 +344,7 @@ export default function CRMPage() {
         ${lead.commentaire}
         ${lead.phase}
         ${lead.operateur}
+        ${lead.historique}
         `
         .toLowerCase();
 
@@ -391,11 +379,13 @@ export default function CRMPage() {
 
         lead.commentaire,
 
+        lead.operateur,
+
       ]);
 
     const csvContent =
 
-      "Nom,Téléphone,Email,Annonce,Statut,Phase,Commentaire\n"
+      "Nom,Téléphone,Email,Annonce,Statut,Phase,Commentaire,Operateur\n"
 
       +
 
@@ -536,6 +526,14 @@ export default function CRMPage() {
               </th>
 
               <th style={th}>
+                Historique
+              </th>
+
+              <th style={th}>
+                Relance
+              </th>
+
+              <th style={th}>
                 Actions
               </th>
 
@@ -623,11 +621,19 @@ export default function CRMPage() {
                       </option>
 
                       <option>
-                        Perdu
+                        Réfléchit
+                      </option>
+
+                      <option>
+                        Livraison
                       </option>
 
                       <option>
                         Client
+                      </option>
+
+                      <option>
+                        Perdu
                       </option>
 
                     </select>
@@ -697,7 +703,7 @@ export default function CRMPage() {
                         )
                       }
 
-                      placeholder="Nom opérateur"
+                      placeholder="Opérateur"
 
                       style={input}
 
@@ -730,15 +736,63 @@ export default function CRMPage() {
 
                   <td style={td}>
 
+                    <textarea
+
+                      value={
+                        lead.historique ||
+                        ""
+                      }
+
+                      onChange={(e) =>
+                        updateLead(
+                          lead.id || 0,
+                          "historique",
+                          e.target.value
+                        )
+                      }
+
+                      style={textarea}
+
+                    />
+
+                  </td>
+
+                  <td style={td}>
+
+                    <input
+
+                      value={
+                        lead.derniere_relance ||
+                        ""
+                      }
+
+                      onChange={(e) =>
+                        updateLead(
+                          lead.id || 0,
+                          "derniere_relance",
+                          e.target.value
+                        )
+                      }
+
+                      placeholder="Dernière relance"
+
+                      style={input}
+
+                    />
+
+                  </td>
+
+                  <td style={td}>
+
                     <div
                       style={{
                         display:
                           "flex",
 
-                        gap: 8,
+                        flexDirection:
+                          "column",
 
-                        flexWrap:
-                          "wrap"
+                        gap: 8
                       }}
                     >
 
@@ -847,7 +901,7 @@ React.CSSProperties = {
 
   padding: 8,
 
-  width: 150,
+  width: 160,
 
 };
 
@@ -940,6 +994,9 @@ React.CSSProperties = {
   textDecoration:
     "none",
 
+  textAlign:
+    "center",
+
 };
 
 const emailBtn:
@@ -958,6 +1015,9 @@ React.CSSProperties = {
   textDecoration:
     "none",
 
+  textAlign:
+    "center",
+
 };
 
 const smsBtn:
@@ -975,5 +1035,8 @@ React.CSSProperties = {
 
   textDecoration:
     "none",
+
+  textAlign:
+    "center",
 
 };
