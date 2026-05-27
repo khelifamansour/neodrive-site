@@ -207,7 +207,7 @@ export default function CRMPage() {
           (row: string) => {
 
           /* =========================
-             SIMPLE CSV PARSER
+             CSV PARSER
           ========================= */
 
           const cols =
