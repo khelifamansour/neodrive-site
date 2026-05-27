@@ -172,15 +172,27 @@ export default function CRMPage() {
 
       }
 
+      /* =========================
+         READ FILE
+      ========================= */
+
       const text =
         await file.text();
 
       console.log(text);
 
+      /* =========================
+         SPLIT ROWS
+      ========================= */
+
       const rows =
         text.split(/\r?\n/);
 
       console.log(rows);
+
+      /* =========================
+         PARSE CSV
+      ========================= */
 
       const parsed:
       Lead[] = rows
@@ -195,10 +207,6 @@ export default function CRMPage() {
         .map(
           (row: string) => {
 
-            /* =========================
-               SAFE CSV PARSER
-            ========================= */
-
             const cols =
               row.match(
                 /(".*?"|[^",]+)(?=\s*,|\s*$)/g
@@ -207,24 +215,32 @@ export default function CRMPage() {
             return {
 
               nom:
-                (cols[3] || "")
-                  .replace(/"/g, "")
-                  .trim(),
+                String(
+                  cols[3] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
               telephone:
-                (cols[4] || "")
-                  .replace(/"/g, "")
-                  .trim(),
+                String(
+                  cols[4] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
               email:
-                (cols[5] || "")
-                  .replace(/"/g, "")
-                  .trim(),
+                String(
+                  cols[5] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
               annonce:
-                (cols[1] || "")
-                  .replace(/"/g, "")
-                  .trim(),
+                String(
+                  cols[1] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
               statut:
                 "Nouveau",
@@ -264,6 +280,10 @@ export default function CRMPage() {
         return;
 
       }
+
+      /* =========================
+         INSERT SUPABASE
+      ========================= */
 
       const {
         data,
