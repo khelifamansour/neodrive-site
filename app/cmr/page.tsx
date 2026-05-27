@@ -13,19 +13,12 @@ from "@/lib/supabase";
 ========================= */
 
 type Lead = {
-
   id?: number;
-
   nom: string;
-
   telephone: string;
-
   email: string;
-
   annonce: string;
-
   statut: string;
-
 };
 
 /* =========================
@@ -33,10 +26,6 @@ type Lead = {
 ========================= */
 
 export default function CRMPage() {
-
-  /* =========================
-     STATES
-  ========================= */
 
   const [leads, setLeads] =
     useState<Lead[]>([]);
@@ -206,43 +195,44 @@ export default function CRMPage() {
         .map(
           (row: string) => {
 
-          /* =========================
-             CSV PARSER
-          ========================= */
+            /* =========================
+               SAFE CSV PARSER
+            ========================= */
 
-          const cols =
-            row.match(
-              /(".*?"|[^",]+)(?=\s*,|\s*$)/g
-            ) || [];
+            const cols =
+              row.match(
+                /(".*?"|[^",]+)(?=\s*,|\s*$)/g
+              ) || [];
 
-          return {
+            return {
 
-            nom:
-              cols[3]
-                ?.replace(/"/g, "")
-                ?.trim() || "",
+              nom:
+                (cols[3] || "")
+                  .replace(/"/g, "")
+                  .trim(),
 
-            telephone:
-              cols[4]
-                ?.replace(/"/g, "")
-                ?.trim() || "",
+              telephone:
+                (cols[4] || "")
+                  .replace(/"/g, "")
+                  .trim(),
 
-            email:
-              cols[5]
-                ?.replace(/"/g, "")
-                ?.trim() || "",
+              email:
+                (cols[5] || "")
+                  .replace(/"/g, "")
+                  .trim(),
 
-            annonce:
-              cols[1]
-                ?.replace(/"/g, "")
-                ?.trim() || "",
+              annonce:
+                (cols[1] || "")
+                  .replace(/"/g, "")
+                  .trim(),
 
-            statut:
-              "Nouveau",
+              statut:
+                "Nouveau",
 
-          };
+            };
 
-        })
+          }
+        )
 
         .filter(
           (lead: Lead) =>
@@ -337,20 +327,21 @@ export default function CRMPage() {
     leads.filter(
       (lead: Lead) => {
 
-      const text =
-        `
-        ${lead.nom}
-        ${lead.telephone}
-        ${lead.email}
-        ${lead.annonce}
-        `
-        .toLowerCase();
+        const text =
+          `
+          ${lead.nom}
+          ${lead.telephone}
+          ${lead.email}
+          ${lead.annonce}
+          `
+          .toLowerCase();
 
-      return text.includes(
-        search.toLowerCase()
-      );
+        return text.includes(
+          search.toLowerCase()
+        );
 
-    });
+      }
+    );
 
   /* =========================
      EXPORT CSV
@@ -363,17 +354,18 @@ export default function CRMPage() {
       leads.map(
         (lead: Lead) => [
 
-        lead.nom,
+          lead.nom,
 
-        lead.telephone,
+          lead.telephone,
 
-        lead.email,
+          lead.email,
 
-        lead.annonce,
+          lead.annonce,
 
-        lead.statut,
+          lead.statut,
 
-      ]);
+        ]
+      );
 
     const csvContent =
 
@@ -382,17 +374,17 @@ export default function CRMPage() {
       +
 
       rows
-      .map((e) =>
-        e.join(",")
-      )
-      .join("\n");
+        .map((e) =>
+          e.join(",")
+        )
+        .join("\n");
 
     const blob =
       new Blob(
         [csvContent],
         {
           type:
-          "text/csv;charset=utf-8;"
+            "text/csv;charset=utf-8;"
         }
       );
 
@@ -517,36 +509,37 @@ export default function CRMPage() {
                 index: number
               ) => (
 
-              <tr
-                key={
-                  lead.id ||
-                  index
-                }
-              >
+                <tr
+                  key={
+                    lead.id ||
+                    index
+                  }
+                >
 
-                <td style={td}>
-                  {lead.nom}
-                </td>
+                  <td style={td}>
+                    {lead.nom}
+                  </td>
 
-                <td style={td}>
-                  {lead.telephone}
-                </td>
+                  <td style={td}>
+                    {lead.telephone}
+                  </td>
 
-                <td style={td}>
-                  {lead.email}
-                </td>
+                  <td style={td}>
+                    {lead.email}
+                  </td>
 
-                <td style={td}>
-                  {lead.annonce}
-                </td>
+                  <td style={td}>
+                    {lead.annonce}
+                  </td>
 
-                <td style={td}>
-                  {lead.statut}
-                </td>
+                  <td style={td}>
+                    {lead.statut}
+                  </td>
 
-              </tr>
+                </tr>
 
-            ))}
+              )
+            )}
 
           </tbody>
 
