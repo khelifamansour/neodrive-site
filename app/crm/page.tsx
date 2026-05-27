@@ -5,8 +5,6 @@ import React, {
   useState
 } from "react";
 
-import Papa from "papaparse";
-
 import { supabase }
 from "@/lib/supabase";
 
@@ -45,10 +43,6 @@ type Lead = {
 ========================= */
 
 export default function CRMPage() {
-
-  /* =========================
-     STATES
-  ========================= */
 
   const [leads, setLeads] =
     useState<Lead[]>([]);
@@ -197,121 +191,125 @@ export default function CRMPage() {
 
       }
 
-      Papa.parse(file, {
+      const text =
+        await file.text();
 
-        header: true,
+      const rows =
+        text.split(/\r?\n/);
 
-        skipEmptyLines: true,
+      const parsed:
+      Lead[] = rows
 
-        complete: async (
-          results: any
-        ) => {
+        .slice(1)
 
-          console.log(results);
+        .filter(
+          (row: string) =>
+            row.trim() !== ""
+        )
 
-          const parsed:
-          Lead[] = results.data
+        .map(
+          (row: string) => {
 
-            .map((row: any) => {
+            const cols =
+              row.split(",");
 
-              return {
+            return {
 
-                nom:
-                  row["Nom"] ||
-                  "",
+              nom:
+                cols[3]
+                  ?.replace(/"/g, "")
+                  ?.trim() || "",
 
-                telephone:
-                  row["Téléphone"] ||
-                  "",
+              telephone:
+                cols[4]
+                  ?.replace(/"/g, "")
+                  ?.trim() || "",
 
-                email:
-                  row["Email"] ||
-                  "",
+              email:
+                cols[5]
+                  ?.replace(/"/g, "")
+                  ?.trim() || "",
 
-                annonce:
-                  row["Annonce"] ||
-                  "",
+              annonce:
+                cols[1]
+                  ?.replace(/"/g, "")
+                  ?.trim() || "",
 
-                statut:
-                  "Nouveau",
+              statut:
+                "Nouveau",
 
-                phase:
-                  "À contacter",
+              phase:
+                "À contacter",
 
-                commentaire:
-                  "",
+              commentaire:
+                "",
 
-                historique:
-                  "",
+              historique:
+                "",
 
-                operateur:
-                  "",
+              operateur:
+                "",
 
-                derniere_relance:
-                  "",
+              derniere_relance:
+                "",
 
-              };
-
-            })
-
-            .filter(
-              (lead: Lead) =>
-                lead.nom ||
-                lead.telephone ||
-                lead.email
-            );
-
-          console.log(parsed);
-
-          alert(
-            parsed.length +
-            " contacts détectés"
-          );
-
-          if (
-            parsed.length === 0
-          ) {
-
-            alert(
-              "Aucun contact trouvé"
-            );
-
-            setLoading(false);
-
-            return;
+            };
 
           }
+        )
 
-          const {
-            error
-          } = await supabase
+        .filter(
+          (lead: Lead) =>
+            lead.nom ||
+            lead.telephone ||
+            lead.email
+        );
 
-            .from("leads")
+      console.log(parsed);
 
-            .insert(parsed);
+      alert(
+        parsed.length +
+        " contacts détectés"
+      );
 
-          if (error) {
+      if (
+        parsed.length === 0
+      ) {
 
-            alert(
-              "Erreur import : " +
-              error.message
-            );
+        alert(
+          "Aucun contact trouvé"
+        );
 
-          } else {
+        setLoading(false);
 
-            alert(
-              "Import OK"
-            );
+        return;
 
-            loadLeads();
+      }
 
-          }
+      const {
+        error
+      } = await supabase
 
-          setLoading(false);
+        .from("leads")
 
-        }
+        .insert(parsed);
 
-      });
+      if (error) {
+
+        alert(
+          "Erreur import : " +
+          error.message
+        );
+
+      } else {
+
+        alert(
+          "Import OK"
+        );
+
+        loadLeads();
+
+      }
 
     } catch (err: any) {
 
@@ -320,6 +318,8 @@ export default function CRMPage() {
       alert(
         err.message
       );
+
+    } finally {
 
       setLoading(false);
 
