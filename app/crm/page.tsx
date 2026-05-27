@@ -26,6 +26,34 @@ const supabase =
   );
 
 /* =========================
+   TYPES
+========================= */
+
+type Lead = {
+
+  id?: number;
+
+  nom: string;
+
+  telephone: string;
+
+  email: string;
+
+  annonce: string;
+
+  statut: string;
+
+  tag: string;
+
+  notes: string;
+
+  assigned_to: string;
+
+  selected: boolean;
+
+};
+
+/* =========================
    PAGE
 ========================= */
 
@@ -36,7 +64,7 @@ export default function CRMPage() {
   ========================= */
 
   const [leads, setLeads] =
-    useState<any[]>([]);
+    useState<Lead[]>([]);
 
   const [search, setSearch] =
     useState("");
@@ -67,35 +95,45 @@ export default function CRMPage() {
   const loadLeads =
   async () => {
 
-    console.log(
-      "Loading leads..."
-    );
+    try {
 
-    const {
-      data,
-      error
-    } = await supabase
-      .from("leads")
-      .select("*")
-      .order("id", {
-        ascending: false
-      });
+      const {
+        data,
+        error
+      } = await supabase
+        .from("leads")
+        .select("*")
+        .order("id", {
+          ascending: false
+        });
 
-    console.log(data);
-    console.log(error);
+      console.log(data);
+      console.log(error);
 
-    if (error) {
+      if (error) {
 
-      alert(
-        "Erreur chargement : " +
-        error.message
+        alert(
+          "Erreur chargement : " +
+          error.message
+        );
+
+        return;
+
+      }
+
+      setLeads(
+        (data as Lead[]) || []
       );
 
-      return;
+    } catch (err: any) {
+
+      console.log(err);
+
+      alert(
+        err.message
+      );
 
     }
-
-    setLeads(data || []);
 
   };
 
@@ -107,15 +145,11 @@ export default function CRMPage() {
   async () => {
 
     const {
-      data,
       error
     } = await supabase
       .from("leads")
       .select("*")
       .limit(1);
-
-    console.log(data);
-    console.log(error);
 
     if (error) {
 
@@ -139,14 +173,16 @@ export default function CRMPage() {
   ========================= */
 
   const handleCSV =
-  async (e: any) => {
+  async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
 
     try {
 
       setLoading(true);
 
       const file =
-        e.target.files[0];
+        e.target.files?.[0];
 
       if (!file) {
 
@@ -163,20 +199,33 @@ export default function CRMPage() {
 
       console.log(text);
 
+      if (
+        !text.includes(";")
+      ) {
+
+        alert(
+          "CSV Leboncoin invalide"
+        );
+
+        return;
+
+      }
+
       const rows =
-        text.split("\n");
+        text.split(/\r?\n/);
 
-      console.log(rows);
-
-      const parsed =
+      const parsed: Lead[] =
         rows
+
         .slice(1)
+
         .filter(
-          (row) =>
+          (row: string) =>
             row.trim() !== ""
         )
+
         .map(
-          (row) => {
+          (row: string) => {
 
           const cols =
             row.split(";");
@@ -228,7 +277,14 @@ export default function CRMPage() {
 
           };
 
-        });
+        })
+
+        .filter(
+          (lead: Lead) =>
+            lead.nom ||
+            lead.telephone ||
+            lead.email
+        );
 
       console.log(parsed);
 
@@ -250,14 +306,11 @@ export default function CRMPage() {
       }
 
       const {
-        data,
         error
       } = await supabase
         .from("leads")
-        .insert(parsed)
-        .select();
+        .insert(parsed);
 
-      console.log(data);
       console.log(error);
 
       if (error) {
@@ -316,8 +369,6 @@ export default function CRMPage() {
 
     if (error) {
 
-      console.log(error);
-
       alert(
         error.message
       );
@@ -326,7 +377,16 @@ export default function CRMPage() {
 
     }
 
-    loadLeads();
+    setLeads((prev) =>
+      prev.map((lead) =>
+        lead.id === id
+          ? {
+              ...lead,
+              [field]: value
+            }
+          : lead
+      )
+    );
 
   };
 
@@ -336,8 +396,10 @@ export default function CRMPage() {
 
   const deleteLead =
   async (
-    id: number
+    id?: number
   ) => {
+
+    if (!id) return;
 
     const ok =
       confirm(
@@ -363,7 +425,12 @@ export default function CRMPage() {
 
     }
 
-    loadLeads();
+    setLeads((prev) =>
+      prev.filter(
+        (lead) =>
+          lead.id !== id
+      )
+    );
 
   };
 
@@ -372,24 +439,25 @@ export default function CRMPage() {
   ========================= */
 
   const filtered =
-    leads.filter((lead) => {
+    leads.filter(
+      (lead: Lead) => {
 
-    const text =
-      `
-      ${lead.nom}
-      ${lead.telephone}
-      ${lead.email}
-      ${lead.annonce}
-      ${lead.tag}
-      ${lead.notes}
-      `
-      .toLowerCase();
+      const text =
+        `
+        ${lead.nom}
+        ${lead.telephone}
+        ${lead.email}
+        ${lead.annonce}
+        ${lead.tag}
+        ${lead.notes}
+        `
+        .toLowerCase();
 
-    return text.includes(
-      search.toLowerCase()
-    );
+      return text.includes(
+        search.toLowerCase()
+      );
 
-  });
+    });
 
   /* =========================
      EXPORT CSV
@@ -400,7 +468,7 @@ export default function CRMPage() {
 
     const rows =
       filtered.map(
-        (lead) => [
+        (lead: Lead) => [
 
         lead.nom,
 
@@ -461,12 +529,27 @@ ${rows
 
     const selected =
       leads.filter(
-        (lead) =>
+        (lead: Lead) =>
           lead.selected
       );
 
+    if (
+      selected.length === 0
+    ) {
+
+      alert(
+        "Aucun contact sélectionné"
+      );
+
+      return;
+
+    }
+
     selected.forEach(
-      (lead, index) => {
+      (
+        lead: Lead,
+        index: number
+      ) => {
 
       const phone =
         String(
@@ -664,7 +747,10 @@ ${videoLink}`;
           <tbody>
 
             {filtered.map(
-              (lead) => {
+              (
+                lead: Lead,
+                index: number
+              ) => {
 
               const phone =
                 String(
@@ -681,7 +767,10 @@ ${videoLink}`;
               return (
 
                 <tr
-                  key={lead.id}
+                  key={
+                    lead.id ||
+                    index
+                  }
                 >
 
                   <td style={td}>
@@ -694,7 +783,7 @@ ${videoLink}`;
                       }
                       onChange={() =>
                         updateLead(
-                          lead.id,
+                          lead.id || 0,
                           "selected",
                           !lead.selected
                         )
@@ -729,7 +818,7 @@ ${videoLink}`;
                       }
                       onChange={(e) =>
                         updateLead(
-                          lead.id,
+                          lead.id || 0,
                           "statut",
                           e.target.value
                         )
@@ -789,7 +878,7 @@ ${videoLink}`;
                       }
                       onChange={(e) =>
                         updateLead(
-                          lead.id,
+                          lead.id || 0,
                           "tag",
                           e.target.value
                         )
@@ -861,7 +950,7 @@ ${videoLink}`;
                       }
                       onChange={(e) =>
                         updateLead(
-                          lead.id,
+                          lead.id || 0,
                           "notes",
                           e.target.value
                         )
