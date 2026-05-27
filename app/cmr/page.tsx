@@ -1,167 +1,428 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import React, {
+  useEffect,
+  useState
+} from "react";
+
+import { supabase }
+from "@/lib/supabase";
+
+/* =========================
+   TYPES
+========================= */
 
 type Lead = {
+
   id?: number;
+
   nom: string;
+
   telephone: string;
+
   email: string;
+
   annonce: string;
+
   statut: string;
+
 };
+
+/* =========================
+   PAGE
+========================= */
 
 export default function CRMPage() {
 
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [search, setSearch] = useState("");
+  /* =========================
+     STATES
+  ========================= */
+
+  const [leads, setLeads] =
+    useState<Lead[]>([]);
+
+  const [search, setSearch] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
+  /* =========================
+     LOAD LEADS
+  ========================= */
 
   useEffect(() => {
+
     loadLeads();
+
   }, []);
 
-  const loadLeads = async () => {
+  const loadLeads =
+  async () => {
 
-    const { data, error } = await supabase
-      .from("leads")
-      .select("*")
-      .order("id", { ascending: false });
+    try {
 
-    console.log("LOAD DATA", data);
-    console.log("LOAD ERROR", error);
+      const {
+        data,
+        error
+      } = await supabase
 
-    if (!error && data) {
-      setLeads(data as Lead[]);
+        .from("leads")
+
+        .select("*")
+
+        .order("id", {
+          ascending: false
+        });
+
+      console.log(
+        "LOAD DATA",
+        data
+      );
+
+      console.log(
+        "LOAD ERROR",
+        error
+      );
+
+      if (!error && data) {
+
+        setLeads(
+          data as Lead[]
+        );
+
+      }
+
+    } catch (err: any) {
+
+      console.log(err);
+
+      alert(
+        err.message
+      );
+
     }
 
   };
 
-  const testSupabase = async () => {
+  /* =========================
+     TEST SUPABASE
+  ========================= */
 
-    const { data, error } = await supabase
+  const testSupabase =
+  async () => {
+
+    const {
+      data,
+      error
+    } = await supabase
+
       .from("leads")
-      .select("*");
 
-    console.log("SUPABASE DATA", data);
-    console.log("SUPABASE ERROR", error);
+      .select("*")
 
-    alert("Check console F12");
+      .limit(1);
+
+    console.log(
+      "SUPABASE DATA",
+      data
+    );
+
+    console.log(
+      "SUPABASE ERROR",
+      error
+    );
+
+    if (error) {
+
+      alert(
+        error.message
+      );
+
+    } else {
+
+      alert(
+        "Supabase connecté"
+      );
+
+    }
 
   };
 
-  const handleCSV = async (
+  /* =========================
+     IMPORT CSV
+  ========================= */
+
+  const handleCSV =
+  async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
 
-    const file = e.target.files?.[0];
+    try {
 
-    if (!file) return;
+      setLoading(true);
 
-    const reader = new FileReader();
+      const file =
+        e.target.files?.[0];
 
-    reader.onload = async (event) => {
+      if (!file) {
 
-      const text = event.target?.result as string;
+        alert(
+          "Aucun fichier"
+        );
 
-      const rows = text.split("\n");
-
-      const parsed: Lead[] = rows
-        .slice(1)
-        .map((row: string) => {
-
-          const cols = row.split(";");
-
-          return {
-
-            nom: cols[3]?.trim() || "",
-            telephone: cols[4]?.trim() || "",
-            email: cols[5]?.trim() || "",
-            annonce: cols[1]?.trim() || "",
-            statut: "Nouveau",
-
-          };
-
-        })
-        .filter((lead: Lead) => lead.nom);
-
-      console.log("PARSED CSV", parsed);
-
-      const { data, error } = await supabase
-        .from("leads")
-        .insert(parsed)
-        .select();
-
-      console.log("INSERT DATA", data);
-      console.log("INSERT ERROR", error);
-
-      if (!error) {
-
-        alert("Import OK");
-
-        loadLeads();
-
-      } else {
-
-        alert("Erreur import");
+        return;
 
       }
 
-    };
+      const reader =
+        new FileReader();
 
-    reader.readAsText(file);
+      reader.onload =
+      async (event) => {
+
+        try {
+
+          const text =
+            event.target?.result
+            as string;
+
+          console.log(text);
+
+          const rows =
+            text.split(/\r?\n/);
+
+          console.log(rows);
+
+          const parsed:
+          Lead[] = rows
+
+            .slice(1)
+
+            .filter(
+              (row: string) =>
+                row.trim() !== ""
+            )
+
+            .map(
+              (row: string) => {
+
+              const cols =
+                row.split(",");
+
+              return {
+
+                nom:
+                  cols[3]
+                    ?.replace(/"/g, "")
+                    ?.trim() || "",
+
+                telephone:
+                  cols[4]
+                    ?.replace(/"/g, "")
+                    ?.trim() || "",
+
+                email:
+                  cols[5]
+                    ?.replace(/"/g, "")
+                    ?.trim() || "",
+
+                annonce:
+                  cols[1]
+                    ?.replace(/"/g, "")
+                    ?.trim() || "",
+
+                statut:
+                  "Nouveau",
+
+              };
+
+            })
+
+            .filter(
+              (lead: Lead) =>
+                lead.nom ||
+                lead.telephone ||
+                lead.email
+            );
+
+          console.log(
+            "PARSED CSV",
+            parsed
+          );
+
+          alert(
+            parsed.length +
+            " contacts détectés"
+          );
+
+          if (
+            parsed.length === 0
+          ) {
+
+            alert(
+              "Aucun contact trouvé"
+            );
+
+            return;
+
+          }
+
+          const {
+            data,
+            error
+          } = await supabase
+
+            .from("leads")
+
+            .insert(parsed)
+
+            .select();
+
+          console.log(
+            "INSERT DATA",
+            data
+          );
+
+          console.log(
+            "INSERT ERROR",
+            error
+          );
+
+          if (!error) {
+
+            alert(
+              "Import OK"
+            );
+
+            loadLeads();
+
+          } else {
+
+            alert(
+              "Erreur import : " +
+              error.message
+            );
+
+          }
+
+        } catch (err: any) {
+
+          console.log(err);
+
+          alert(
+            err.message
+          );
+
+        } finally {
+
+          setLoading(false);
+
+        }
+
+      };
+
+      reader.readAsText(file);
+
+    } catch (err: any) {
+
+      console.log(err);
+
+      alert(
+        err.message
+      );
+
+      setLoading(false);
+
+    }
 
   };
 
-  const filtered = leads.filter(
-    (lead: Lead) => {
+  /* =========================
+     SEARCH
+  ========================= */
 
-      const text = `
+  const filtered =
+    leads.filter(
+      (lead: Lead) => {
+
+      const text =
+        `
         ${lead.nom}
         ${lead.telephone}
         ${lead.email}
         ${lead.annonce}
-      `.toLowerCase();
+        `
+        .toLowerCase();
 
       return text.includes(
         search.toLowerCase()
       );
 
-    }
-  );
+    });
 
-  const exportCSV = () => {
+  /* =========================
+     EXPORT CSV
+  ========================= */
 
-    const rows = leads.map((lead: Lead) => [
+  const exportCSV =
+  () => {
 
-      lead.nom,
-      lead.telephone,
-      lead.email,
-      lead.annonce,
-      lead.statut,
+    const rows =
+      leads.map(
+        (lead: Lead) => [
 
-    ]);
+        lead.nom,
+
+        lead.telephone,
+
+        lead.email,
+
+        lead.annonce,
+
+        lead.statut,
+
+      ]);
 
     const csvContent =
-      "Nom,Téléphone,Email,Annonce,Statut\n" +
-      rows.map((e) => e.join(",")).join("\n");
 
-    const blob = new Blob(
-      [csvContent],
-      {
-        type: "text/csv;charset=utf-8;",
-      }
-    );
+      "Nom,Téléphone,Email,Annonce,Statut\n"
 
-    const link = document.createElement("a");
+      +
 
-    link.href = URL.createObjectURL(blob);
+      rows
+      .map((e) =>
+        e.join(",")
+      )
+      .join("\n");
 
-    link.download = "microdrive_crm.csv";
+    const blob =
+      new Blob(
+        [csvContent],
+        {
+          type:
+          "text/csv;charset=utf-8;"
+        }
+      );
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+    link.href =
+      URL.createObjectURL(blob);
+
+    link.download =
+      "microdrive_crm.csv";
 
     link.click();
 
   };
+
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
 
@@ -172,7 +433,9 @@ export default function CRMPage() {
       </h1>
 
       <button
-        onClick={testSupabase}
+        onClick={
+          testSupabase
+        }
         style={testBtn}
       >
         TEST SUPABASE
@@ -183,20 +446,26 @@ export default function CRMPage() {
         <input
           type="file"
           accept=".csv"
-          onChange={handleCSV}
+          onChange={
+            handleCSV
+          }
         />
 
         <input
           placeholder="Recherche..."
           value={search}
           onChange={(e) =>
-            setSearch(e.target.value)
+            setSearch(
+              e.target.value
+            )
           }
           style={searchInput}
         />
 
         <button
-          onClick={exportCSV}
+          onClick={
+            exportCSV
+          }
           style={exportBtn}
         >
           Export CSV
@@ -204,7 +473,20 @@ export default function CRMPage() {
 
       </div>
 
-      <div style={{ overflowX: "auto" }}>
+      {loading && (
+
+        <p>
+          Chargement...
+        </p>
+
+      )}
+
+      <div
+        style={{
+          overflowX:
+            "auto"
+        }}
+      >
 
         <table style={table}>
 
@@ -238,9 +520,18 @@ export default function CRMPage() {
 
           <tbody>
 
-            {filtered.map((lead: Lead) => (
+            {filtered.map(
+              (
+                lead: Lead,
+                index: number
+              ) => (
 
-              <tr key={lead.id}>
+              <tr
+                key={
+                  lead.id ||
+                  index
+                }
+              >
 
                 <td style={td}>
                   {lead.nom}
@@ -278,57 +569,113 @@ export default function CRMPage() {
 
 }
 
-const container: React.CSSProperties = {
+/* =========================
+   STYLES
+========================= */
+
+const container:
+React.CSSProperties = {
+
   padding: 20,
-  fontFamily: "Arial",
+
+  fontFamily:
+    "Arial",
+
 };
 
-const title: React.CSSProperties = {
+const title:
+React.CSSProperties = {
+
   fontSize: 50,
+
   marginBottom: 20,
+
 };
 
-const topBar: React.CSSProperties = {
+const topBar:
+React.CSSProperties = {
+
   display: "flex",
+
   gap: 10,
+
   marginBottom: 20,
+
   flexWrap: "wrap",
+
 };
 
-const searchInput: React.CSSProperties = {
+const searchInput:
+React.CSSProperties = {
+
   padding: 10,
+
   minWidth: 250,
-  border: "1px solid #ccc",
+
+  border:
+    "1px solid #ccc",
+
   borderRadius: 6,
+
 };
 
-const exportBtn: React.CSSProperties = {
+const exportBtn:
+React.CSSProperties = {
+
   background: "#000",
+
   color: "white",
+
   border: "none",
-  padding: "10px 15px",
+
+  padding:
+    "10px 15px",
+
   borderRadius: 6,
+
 };
 
-const testBtn: React.CSSProperties = {
+const testBtn:
+React.CSSProperties = {
+
   padding: 10,
+
   marginBottom: 20,
+
 };
 
-const table: React.CSSProperties = {
+const table:
+React.CSSProperties = {
+
   width: "100%",
-  borderCollapse: "collapse",
+
+  borderCollapse:
+    "collapse",
+
 };
 
-const th: React.CSSProperties = {
-  border: "1px solid #ddd",
+const th:
+React.CSSProperties = {
+
+  border:
+    "1px solid #ddd",
+
   padding: 10,
+
   background: "#000",
+
   color: "white",
+
   textAlign: "left",
+
 };
 
-const td: React.CSSProperties = {
-  border: "1px solid #ddd",
+const td:
+React.CSSProperties = {
+
+  border:
+    "1px solid #ddd",
+
   padding: 10,
+
 };
