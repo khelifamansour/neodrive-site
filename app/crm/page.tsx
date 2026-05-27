@@ -5,52 +5,20 @@ import React, {
   useState
 } from "react";
 
-import {
-  createClient
-} from "@supabase/supabase-js";
-
-/* =========================
-   SUPABASE
-========================= */
-
-const supabaseUrl =
-  "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
-
-const supabaseKey =
-  "sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd";
-
-const supabase =
-  createClient(
-    supabaseUrl,
-    supabaseKey
-  );
+import { supabase }
+from "@/lib/supabase";
 
 /* =========================
    TYPES
 ========================= */
 
 type Lead = {
-
   id?: number;
-
   nom: string;
-
   telephone: string;
-
   email: string;
-
   annonce: string;
-
   statut: string;
-
-  tag: string;
-
-  notes: string;
-
-  assigned_to: string;
-
-  selected: boolean;
-
 };
 
 /* =========================
@@ -58,10 +26,6 @@ type Lead = {
 ========================= */
 
 export default function CRMPage() {
-
-  /* =========================
-     STATES
-  ========================= */
 
   const [leads, setLeads] =
     useState<Lead[]>([]);
@@ -71,16 +35,6 @@ export default function CRMPage() {
 
   const [loading, setLoading] =
     useState(false);
-
-  /* =========================
-     SETTINGS
-  ========================= */
-
-  const website =
-    "https://easydrive-auto.fr";
-
-  const videoLink =
-    "https://youtube.com";
 
   /* =========================
      LOAD LEADS
@@ -101,19 +55,28 @@ export default function CRMPage() {
         data,
         error
       } = await supabase
+
         .from("leads")
+
         .select("*")
+
         .order("id", {
           ascending: false
         });
 
-      console.log(data);
-      console.log(error);
+      console.log(
+        "LOAD DATA",
+        data
+      );
+
+      console.log(
+        "LOAD ERROR",
+        error
+      );
 
       if (error) {
 
         alert(
-          "Erreur chargement : " +
           error.message
         );
 
@@ -122,7 +85,7 @@ export default function CRMPage() {
       }
 
       setLeads(
-        (data as Lead[]) || []
+        (data || []) as Lead[]
       );
 
     } catch (err: any) {
@@ -145,16 +108,29 @@ export default function CRMPage() {
   async () => {
 
     const {
+      data,
       error
     } = await supabase
+
       .from("leads")
+
       .select("*")
+
       .limit(1);
+
+    console.log(
+      "SUPABASE DATA",
+      data
+    );
+
+    console.log(
+      "SUPABASE ERROR",
+      error
+    );
 
     if (error) {
 
       alert(
-        "Erreur : " +
         error.message
       );
 
@@ -190,32 +166,36 @@ export default function CRMPage() {
           "Aucun fichier"
         );
 
+        setLoading(false);
+
         return;
 
       }
+
+      /* =========================
+         READ FILE
+      ========================= */
 
       const text =
         await file.text();
 
       console.log(text);
 
-      if (
-        !text.includes(";")
-      ) {
-
-        alert(
-          "CSV Leboncoin invalide"
-        );
-
-        return;
-
-      }
+      /* =========================
+         SPLIT ROWS
+      ========================= */
 
       const rows =
         text.split(/\r?\n/);
 
-      const parsed: Lead[] =
-        rows
+      console.log(rows);
+
+      /* =========================
+         PARSE CSV
+      ========================= */
+
+      const parsed:
+      Lead[] = rows
 
         .slice(1)
 
@@ -227,57 +207,52 @@ export default function CRMPage() {
         .map(
           (row: string) => {
 
-          const cols =
-            row.split(";");
+            /* =========================
+               SIMPLE SAFE CSV PARSER
+            ========================= */
 
-          const nom =
-            cols[3]
-              ?.replace(/"/g, "")
-              ?.trim() || "";
+            const cols =
+              row.match(
+                /(".*?"|[^",]+)(?=\s*,|\s*$)/g
+              ) || [];
 
-          const telephone =
-            String(
-              cols[4] || ""
-            )
-            .replace(/"/g, "")
-            .trim();
+            return {
 
-          const email =
-            cols[5]
-              ?.replace(/"/g, "")
-              ?.trim() || "";
+              nom:
+                String(
+                  cols[3] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
-          const annonce =
-            cols[1]
-              ?.replace(/"/g, "")
-              ?.trim() || "";
+              telephone:
+                String(
+                  cols[4] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
-          return {
+              email:
+                String(
+                  cols[5] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
-            nom,
+              annonce:
+                String(
+                  cols[1] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
-            telephone,
+              statut:
+                "Nouveau",
 
-            email,
+            };
 
-            annonce,
-
-            statut:
-              "Nouveau",
-
-            tag: "",
-
-            notes: "",
-
-            assigned_to:
-              "Mansour",
-
-            selected:
-              false
-
-          };
-
-        })
+          }
+        )
 
         .filter(
           (lead: Lead) =>
@@ -286,7 +261,10 @@ export default function CRMPage() {
             lead.email
         );
 
-      console.log(parsed);
+      console.log(
+        "PARSED CSV",
+        parsed
+      );
 
       alert(
         parsed.length +
@@ -301,41 +279,59 @@ export default function CRMPage() {
           "Aucun contact trouvé"
         );
 
+        setLoading(false);
+
         return;
 
       }
 
+      /* =========================
+         INSERT SUPABASE
+      ========================= */
+
       const {
+        data,
         error
       } = await supabase
-        .from("leads")
-        .insert(parsed);
 
-      console.log(error);
+        .from("leads")
+
+        .insert(parsed)
+
+        .select();
+
+      console.log(
+        "INSERT DATA",
+        data
+      );
+
+      console.log(
+        "INSERT ERROR",
+        error
+      );
 
       if (error) {
 
         alert(
-          "Erreur insert : " +
+          "Erreur import : " +
           error.message
         );
 
-        return;
+      } else {
+
+        alert(
+          "Import OK"
+        );
+
+        loadLeads();
 
       }
-
-      alert(
-        "Import réussi"
-      );
-
-      loadLeads();
 
     } catch (err: any) {
 
       console.log(err);
 
       alert(
-        "Erreur : " +
         err.message
       );
 
@@ -348,93 +344,6 @@ export default function CRMPage() {
   };
 
   /* =========================
-     UPDATE LEAD
-  ========================= */
-
-  const updateLead =
-  async (
-    id: number,
-    field: string,
-    value: any
-  ) => {
-
-    const {
-      error
-    } = await supabase
-      .from("leads")
-      .update({
-        [field]: value
-      })
-      .eq("id", id);
-
-    if (error) {
-
-      alert(
-        error.message
-      );
-
-      return;
-
-    }
-
-    setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === id
-          ? {
-              ...lead,
-              [field]: value
-            }
-          : lead
-      )
-    );
-
-  };
-
-  /* =========================
-     DELETE LEAD
-  ========================= */
-
-  const deleteLead =
-  async (
-    id?: number
-  ) => {
-
-    if (!id) return;
-
-    const ok =
-      confirm(
-        "Supprimer ce lead ?"
-      );
-
-    if (!ok) return;
-
-    const {
-      error
-    } = await supabase
-      .from("leads")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-
-      alert(
-        error.message
-      );
-
-      return;
-
-    }
-
-    setLeads((prev) =>
-      prev.filter(
-        (lead) =>
-          lead.id !== id
-      )
-    );
-
-  };
-
-  /* =========================
      SEARCH
   ========================= */
 
@@ -442,22 +351,21 @@ export default function CRMPage() {
     leads.filter(
       (lead: Lead) => {
 
-      const text =
-        `
-        ${lead.nom}
-        ${lead.telephone}
-        ${lead.email}
-        ${lead.annonce}
-        ${lead.tag}
-        ${lead.notes}
-        `
-        .toLowerCase();
+        const text =
+          `
+          ${lead.nom}
+          ${lead.telephone}
+          ${lead.email}
+          ${lead.annonce}
+          `
+          .toLowerCase();
 
-      return text.includes(
-        search.toLowerCase()
-      );
+        return text.includes(
+          search.toLowerCase()
+        );
 
-    });
+      }
+    );
 
   /* =========================
      EXPORT CSV
@@ -467,41 +375,40 @@ export default function CRMPage() {
   () => {
 
     const rows =
-      filtered.map(
+      leads.map(
         (lead: Lead) => [
 
-        lead.nom,
+          lead.nom,
 
-        lead.telephone,
+          lead.telephone,
 
-        lead.email,
+          lead.email,
 
-        lead.annonce,
+          lead.annonce,
 
-        lead.statut,
+          lead.statut,
 
-        lead.tag,
-
-        lead.notes
-
-      ]);
+        ]
+      );
 
     const csvContent =
 
-`Nom;Téléphone;Email;Annonce;Statut;Tag;Notes
-${rows
-  .map((e) =>
-    e.join(";")
-  )
-  .join("\n")}
-`;
+      "Nom,Téléphone,Email,Annonce,Statut\n"
+
+      +
+
+      rows
+        .map((e) =>
+          e.join(",")
+        )
+        .join("\n");
 
     const blob =
       new Blob(
         [csvContent],
         {
           type:
-          "text/csv;charset=utf-8;"
+            "text/csv;charset=utf-8;"
         }
       );
 
@@ -514,106 +421,9 @@ ${rows
       URL.createObjectURL(blob);
 
     link.download =
-      "crm_export.csv";
+      "microdrive_crm.csv";
 
     link.click();
-
-  };
-
-  /* =========================
-     BULK WHATSAPP
-  ========================= */
-
-  const sendBulkWhatsApp =
-  () => {
-
-    const selected =
-      leads.filter(
-        (lead: Lead) =>
-          lead.selected
-      );
-
-    if (
-      selected.length === 0
-    ) {
-
-      alert(
-        "Aucun contact sélectionné"
-      );
-
-      return;
-
-    }
-
-    selected.forEach(
-      (
-        lead: Lead,
-        index: number
-      ) => {
-
-      const phone =
-        String(
-          lead.telephone || ""
-        )
-        .replace(
-          /[^0-9]/g,
-          ""
-        );
-
-      const message =
-`Bonjour ${lead.nom},
-
-Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
-
-${website}
-
-Vidéo :
-${videoLink}`;
-
-      const url =
-`https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-
-      setTimeout(() => {
-
-        window.open(
-          url,
-          "_blank"
-        );
-
-      }, index * 800);
-
-    });
-
-  };
-
-  /* =========================
-     STATUS COLOR
-  ========================= */
-
-  const getStatusColor =
-  (status: string) => {
-
-    switch (status) {
-
-      case "Chaud":
-        return "#16a34a";
-
-      case "Contacté":
-        return "#2563eb";
-
-      case "Client":
-        return "#000";
-
-      case "Livraison":
-        return "#f97316";
-
-      case "Perdu":
-        return "#dc2626";
-
-      default:
-        return "#666";
-
-    }
 
   };
 
@@ -668,15 +478,6 @@ ${videoLink}`;
           Export CSV
         </button>
 
-        <button
-          onClick={
-            sendBulkWhatsApp
-          }
-          style={waBulkBtn}
-        >
-          WhatsApp groupé
-        </button>
-
       </div>
 
       {loading && (
@@ -701,10 +502,6 @@ ${videoLink}`;
             <tr>
 
               <th style={th}>
-                ✓
-              </th>
-
-              <th style={th}>
                 Nom
               </th>
 
@@ -724,22 +521,6 @@ ${videoLink}`;
                 Statut
               </th>
 
-              <th style={th}>
-                Tag
-              </th>
-
-              <th style={th}>
-                Assigné
-              </th>
-
-              <th style={th}>
-                Actions
-              </th>
-
-              <th style={th}>
-                Notes
-              </th>
-
             </tr>
 
           </thead>
@@ -750,21 +531,7 @@ ${videoLink}`;
               (
                 lead: Lead,
                 index: number
-              ) => {
-
-              const phone =
-                String(
-                  lead.telephone || ""
-                )
-                .replace(
-                  /[^0-9]/g,
-                  ""
-                );
-
-              const whatsapp =
-`https://wa.me/${phone}`;
-
-              return (
+              ) => (
 
                 <tr
                   key={
@@ -774,32 +541,11 @@ ${videoLink}`;
                 >
 
                   <td style={td}>
-
-                    <input
-                      type="checkbox"
-                      checked={
-                        lead.selected ||
-                        false
-                      }
-                      onChange={() =>
-                        updateLead(
-                          lead.id || 0,
-                          "selected",
-                          !lead.selected
-                        )
-                      }
-                    />
-
-                  </td>
-
-                  <td style={td}>
                     {lead.nom}
                   </td>
 
                   <td style={td}>
-                    {
-                      lead.telephone
-                    }
+                    {lead.telephone}
                   </td>
 
                   <td style={td}>
@@ -811,162 +557,13 @@ ${videoLink}`;
                   </td>
 
                   <td style={td}>
-
-                    <select
-                      value={
-                        lead.statut
-                      }
-                      onChange={(e) =>
-                        updateLead(
-                          lead.id || 0,
-                          "statut",
-                          e.target.value
-                        )
-                      }
-                      style={{
-                        background:
-                          getStatusColor(
-                            lead.statut
-                          ),
-
-                        color:
-                          "white",
-
-                        padding: 8,
-
-                        borderRadius: 6
-                      }}
-                    >
-
-                      <option>
-                        Nouveau
-                      </option>
-
-                      <option>
-                        Contacté
-                      </option>
-
-                      <option>
-                        Chaud
-                      </option>
-
-                      <option>
-                        Livraison
-                      </option>
-
-                      <option>
-                        Client
-                      </option>
-
-                      <option>
-                        SAV
-                      </option>
-
-                      <option>
-                        Perdu
-                      </option>
-
-                    </select>
-
-                  </td>
-
-                  <td style={td}>
-
-                    <input
-                      value={
-                        lead.tag || ""
-                      }
-                      onChange={(e) =>
-                        updateLead(
-                          lead.id || 0,
-                          "tag",
-                          e.target.value
-                        )
-                      }
-                      style={input}
-                    />
-
-                  </td>
-
-                  <td style={td}>
-                    {
-                      lead.assigned_to
-                    }
-                  </td>
-
-                  <td style={td}>
-
-                    <div
-                      style={{
-                        display:
-                          "flex",
-
-                        gap: 8,
-
-                        flexWrap:
-                          "wrap"
-                      }}
-                    >
-
-                      <a
-                        href={
-                          whatsapp
-                        }
-                        target="_blank"
-                        style={waBtn}
-                      >
-                        WhatsApp
-                      </a>
-
-                      <a
-                        href={`tel:${phone}`}
-                        style={callBtn}
-                      >
-                        Appeler
-                      </a>
-
-                      <button
-                        onClick={() =>
-                          deleteLead(
-                            lead.id
-                          )
-                        }
-                        style={
-                          deleteBtn
-                        }
-                      >
-                        Supprimer
-                      </button>
-
-                    </div>
-
-                  </td>
-
-                  <td style={td}>
-
-                    <textarea
-                      value={
-                        lead.notes || ""
-                      }
-                      onChange={(e) =>
-                        updateLead(
-                          lead.id || 0,
-                          "notes",
-                          e.target.value
-                        )
-                      }
-                      style={
-                        textarea
-                      }
-                    />
-
+                    {lead.statut}
                   </td>
 
                 </tr>
 
-              );
-
-            })}
+              )
+            )}
 
           </tbody>
 
@@ -990,7 +587,7 @@ React.CSSProperties = {
   padding: 20,
 
   fontFamily:
-    "Arial"
+    "Arial",
 
 };
 
@@ -999,7 +596,7 @@ React.CSSProperties = {
 
   fontSize: 50,
 
-  marginBottom: 20
+  marginBottom: 20,
 
 };
 
@@ -1012,7 +609,7 @@ React.CSSProperties = {
 
   marginBottom: 20,
 
-  flexWrap: "wrap"
+  flexWrap: "wrap",
 
 };
 
@@ -1026,21 +623,7 @@ React.CSSProperties = {
   border:
     "1px solid #ccc",
 
-  borderRadius: 6
-
-};
-
-const input:
-React.CSSProperties = {
-
-  padding: 8,
-
-  border:
-    "1px solid #ccc",
-
   borderRadius: 6,
-
-  width: 150
 
 };
 
@@ -1056,24 +639,7 @@ React.CSSProperties = {
   padding:
     "10px 15px",
 
-  borderRadius: 6
-
-};
-
-const waBulkBtn:
-React.CSSProperties = {
-
-  background:
-    "#25D366",
-
-  color: "white",
-
-  border: "none",
-
-  padding:
-    "10px 15px",
-
-  borderRadius: 6
+  borderRadius: 6,
 
 };
 
@@ -1082,7 +648,7 @@ React.CSSProperties = {
 
   padding: 10,
 
-  marginBottom: 20
+  marginBottom: 20,
 
 };
 
@@ -1092,7 +658,7 @@ React.CSSProperties = {
   width: "100%",
 
   borderCollapse:
-    "collapse"
+    "collapse",
 
 };
 
@@ -1108,7 +674,7 @@ React.CSSProperties = {
 
   color: "white",
 
-  textAlign: "left"
+  textAlign: "left",
 
 };
 
@@ -1119,74 +685,5 @@ React.CSSProperties = {
     "1px solid #ddd",
 
   padding: 10,
-
-  verticalAlign:
-    "top"
-
-};
-
-const waBtn:
-React.CSSProperties = {
-
-  background:
-    "#25D366",
-
-  color: "white",
-
-  padding:
-    "8px 12px",
-
-  borderRadius: 6,
-
-  textDecoration:
-    "none"
-
-};
-
-const callBtn:
-React.CSSProperties = {
-
-  background:
-    "#000",
-
-  color: "white",
-
-  padding:
-    "8px 12px",
-
-  borderRadius: 6,
-
-  textDecoration:
-    "none",
-
-  border: "none"
-
-};
-
-const deleteBtn:
-React.CSSProperties = {
-
-  background:
-    "#dc2626",
-
-  color: "white",
-
-  padding:
-    "8px 12px",
-
-  borderRadius: 6,
-
-  border: "none",
-
-  cursor: "pointer"
-
-};
-
-const textarea:
-React.CSSProperties = {
-
-  width: 220,
-
-  minHeight: 80
 
 };
