@@ -1,12 +1,33 @@
 "use client";
 
 import React, {
-  useState,
-  useEffect
+  useEffect,
+  useState
 } from "react";
 
-import { supabase }
-from "@/lib/supabase";
+import {
+  createClient
+} from "@supabase/supabase-js";
+
+/* =========================
+   SUPABASE
+========================= */
+
+const supabaseUrl =
+  "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
+
+const supabaseKey =
+  "sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd";
+
+const supabase =
+  createClient(
+    supabaseUrl,
+    supabaseKey
+  );
+
+/* =========================
+   PAGE
+========================= */
 
 export default function CRMPage() {
 
@@ -20,12 +41,12 @@ export default function CRMPage() {
   const [search, setSearch] =
     useState("");
 
+  const [loading, setLoading] =
+    useState(false);
+
   /* =========================
      SETTINGS
   ========================= */
-
-  const senderEmail =
-    "sales@easymicrodrive.com";
 
   const website =
     "https://easydrive-auto.fr";
@@ -34,7 +55,7 @@ export default function CRMPage() {
     "https://youtube.com";
 
   /* =========================
-     LOAD LEADS CLOUD
+     LOAD LEADS
   ========================= */
 
   useEffect(() => {
@@ -46,19 +67,35 @@ export default function CRMPage() {
   const loadLeads =
   async () => {
 
-    const { data, error } =
-    await supabase
+    console.log(
+      "Loading leads..."
+    );
+
+    const {
+      data,
+      error
+    } = await supabase
       .from("leads")
       .select("*")
       .order("id", {
         ascending: false
       });
 
-    if (!error && data) {
+    console.log(data);
+    console.log(error);
 
-      setLeads(data);
+    if (error) {
+
+      alert(
+        "Erreur chargement : " +
+        error.message
+      );
+
+      return;
 
     }
+
+    setLeads(data || []);
 
   };
 
@@ -69,18 +106,31 @@ export default function CRMPage() {
   const testSupabase =
   async () => {
 
-    const { data, error } =
-    await supabase
+    const {
+      data,
+      error
+    } = await supabase
       .from("leads")
-      .select("*");
+      .select("*")
+      .limit(1);
 
     console.log(data);
-
     console.log(error);
 
-    alert(
-      "Supabase connecté"
-    );
+    if (error) {
+
+      alert(
+        "Erreur : " +
+        error.message
+      );
+
+    } else {
+
+      alert(
+        "Supabase connecté"
+      );
+
+    }
 
   };
 
@@ -88,83 +138,232 @@ export default function CRMPage() {
      IMPORT CSV
   ========================= */
 
-  const handleCSV = async (
-    e: any
-  ) => {
+  const handleCSV =
+  async (e: any) => {
 
-    const file =
-      e.target.files[0];
+    try {
 
-    const reader =
-      new FileReader();
+      setLoading(true);
 
-    reader.onload =
-      async (
-        event: any
-      ) => {
+      const file =
+        e.target.files[0];
+
+      if (!file) {
+
+        alert(
+          "Aucun fichier"
+        );
+
+        return;
+
+      }
 
       const text =
-        event.target.result;
+        await file.text();
+
+      console.log(text);
 
       const rows =
         text.split("\n");
 
+      console.log(rows);
+
       const parsed =
         rows
         .slice(1)
+        .filter(
+          (row) =>
+            row.trim() !== ""
+        )
         .map(
-          (
-            row: string,
-            index: number
-          ) => {
+          (row) => {
 
           const cols =
-            row.split(",");
+            row.split(";");
+
+          const nom =
+            cols[3]
+              ?.replace(/"/g, "")
+              ?.trim() || "";
+
+          const telephone =
+            String(
+              cols[4] || ""
+            )
+            .replace(/"/g, "")
+            .trim();
+
+          const email =
+            cols[5]
+              ?.replace(/"/g, "")
+              ?.trim() || "";
+
+          const annonce =
+            cols[1]
+              ?.replace(/"/g, "")
+              ?.trim() || "";
 
           return {
 
-            nom:
-              cols[3] || "",
+            nom,
 
-            telephone:
-              cols[4] || "",
+            telephone,
 
-            email:
-              cols[5] || "",
+            email,
 
-            annonce:
-              cols[1] || "",
+            annonce,
 
             statut:
               "Nouveau",
 
-            tag:
-              "",
+            tag: "",
 
-            notes:
-              "",
+            notes: "",
 
             assigned_to:
-              "Mansour"
+              "Mansour",
+
+            selected:
+              false
 
           };
 
         });
 
-      const { error } =
-      await supabase
-        .from("leads")
-        .insert(parsed);
+      console.log(parsed);
 
-      if (!error) {
+      alert(
+        parsed.length +
+        " contacts détectés"
+      );
 
-        loadLeads();
+      if (
+        parsed.length === 0
+      ) {
+
+        alert(
+          "Aucun contact trouvé"
+        );
+
+        return;
 
       }
 
-    };
+      const {
+        data,
+        error
+      } = await supabase
+        .from("leads")
+        .insert(parsed)
+        .select();
 
-    reader.readAsText(file);
+      console.log(data);
+      console.log(error);
+
+      if (error) {
+
+        alert(
+          "Erreur insert : " +
+          error.message
+        );
+
+        return;
+
+      }
+
+      alert(
+        "Import réussi"
+      );
+
+      loadLeads();
+
+    } catch (err: any) {
+
+      console.log(err);
+
+      alert(
+        "Erreur : " +
+        err.message
+      );
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  };
+
+  /* =========================
+     UPDATE LEAD
+  ========================= */
+
+  const updateLead =
+  async (
+    id: number,
+    field: string,
+    value: any
+  ) => {
+
+    const {
+      error
+    } = await supabase
+      .from("leads")
+      .update({
+        [field]: value
+      })
+      .eq("id", id);
+
+    if (error) {
+
+      console.log(error);
+
+      alert(
+        error.message
+      );
+
+      return;
+
+    }
+
+    loadLeads();
+
+  };
+
+  /* =========================
+     DELETE LEAD
+  ========================= */
+
+  const deleteLead =
+  async (
+    id: number
+  ) => {
+
+    const ok =
+      confirm(
+        "Supprimer ce lead ?"
+      );
+
+    if (!ok) return;
+
+    const {
+      error
+    } = await supabase
+      .from("leads")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+
+      alert(
+        error.message
+      );
+
+      return;
+
+    }
+
+    loadLeads();
 
   };
 
@@ -176,12 +375,14 @@ export default function CRMPage() {
     leads.filter((lead) => {
 
     const text =
-      `${lead.nom}
+      `
+      ${lead.nom}
       ${lead.telephone}
       ${lead.email}
       ${lead.annonce}
       ${lead.tag}
-      ${lead.notes}`
+      ${lead.notes}
+      `
       .toLowerCase();
 
     return text.includes(
@@ -191,63 +392,41 @@ export default function CRMPage() {
   });
 
   /* =========================
-     UPDATE LEAD
-  ========================= */
-
-  const updateLead =
-  async (
-    id: number,
-    field: string,
-    value: string
-  ) => {
-
-    await supabase
-      .from("leads")
-      .update({
-        [field]: value
-      })
-      .eq("id", id);
-
-    loadLeads();
-
-  };
-
-  /* =========================
      EXPORT CSV
   ========================= */
 
-  const exportCSV = () => {
+  const exportCSV =
+  () => {
 
     const rows =
-      leads.map((lead) => [
+      filtered.map(
+        (lead) => [
 
-      lead.nom,
+        lead.nom,
 
-      lead.telephone,
+        lead.telephone,
 
-      lead.email,
+        lead.email,
 
-      lead.annonce,
+        lead.annonce,
 
-      lead.statut,
+        lead.statut,
 
-      lead.tag,
+        lead.tag,
 
-      lead.notes
+        lead.notes
 
-    ]);
+      ]);
 
     const csvContent =
 
-      "Nom,Téléphone,Email,Annonce,Statut,Tag,Notes\n"
-
-      +
-
-      rows
-      .map((e) =>
-        e.join(",")
-      )
-      .join("\n");
+`Nom;Téléphone;Email;Annonce;Statut;Tag;Notes
+${rows
+  .map((e) =>
+    e.join(";")
+  )
+  .join("\n")}
+`;
 
     const blob =
       new Blob(
@@ -267,47 +446,9 @@ export default function CRMPage() {
       URL.createObjectURL(blob);
 
     link.download =
-      "microdrive_crm.csv";
+      "crm_export.csv";
 
     link.click();
-
-  };
-
-  /* =========================
-     BULK EMAIL
-  ========================= */
-
-  const sendBulkEmail =
-  () => {
-
-    const emails =
-      leads
-      .filter(
-        (lead) =>
-          lead.selected
-      )
-      .map(
-        (lead) =>
-          lead.email
-      )
-      .join(",");
-
-    const message =
-`Bonjour,
-
-Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
-
-Découvrez notre site :
-${website}
-
-Vidéo :
-${videoLink}
-
-Cordialement,
-EasyMicrodrive`;
-
-    window.location.href =
-`mailto:${senderEmail}?bcc=${emails}&subject=${encodeURIComponent("EasyMicrodrive")}&body=${encodeURIComponent(message)}`;
 
   };
 
@@ -327,9 +468,11 @@ EasyMicrodrive`;
     selected.forEach(
       (lead, index) => {
 
-      const cleanPhone =
-        lead.telephone
-        ?.replace(
+      const phone =
+        String(
+          lead.telephone || ""
+        )
+        .replace(
           /[^0-9]/g,
           ""
         );
@@ -339,15 +482,18 @@ EasyMicrodrive`;
 
 Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
 
-${website}`;
+${website}
 
-      const link =
-`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+Vidéo :
+${videoLink}`;
+
+      const url =
+`https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
       setTimeout(() => {
 
         window.open(
-          link,
+          url,
           "_blank"
         );
 
@@ -362,15 +508,18 @@ ${website}`;
   ========================= */
 
   const getStatusColor =
-    (status: string) => {
+  (status: string) => {
 
     switch (status) {
 
       case "Chaud":
         return "#16a34a";
 
+      case "Contacté":
+        return "#2563eb";
+
       case "Client":
-        return "#0f172a";
+        return "#000";
 
       case "Livraison":
         return "#f97316";
@@ -378,11 +527,8 @@ ${website}`;
       case "Perdu":
         return "#dc2626";
 
-      case "Contacté":
-        return "#2563eb";
-
       default:
-        return "#777";
+        return "#666";
 
     }
 
@@ -401,8 +547,10 @@ ${website}`;
       </h1>
 
       <button
-      onClick={testSupabase}
-      style={testBtn}
+        onClick={
+          testSupabase
+        }
+        style={testBtn}
       >
         TEST SUPABASE
       </button>
@@ -412,7 +560,9 @@ ${website}`;
         <input
           type="file"
           accept=".csv"
-          onChange={handleCSV}
+          onChange={
+            handleCSV
+          }
         />
 
         <input
@@ -427,21 +577,18 @@ ${website}`;
         />
 
         <button
-          onClick={exportCSV}
+          onClick={
+            exportCSV
+          }
           style={exportBtn}
         >
           Export CSV
         </button>
 
         <button
-          onClick={sendBulkEmail}
-          style={bulkBtn}
-        >
-          Email groupé
-        </button>
-
-        <button
-          onClick={sendBulkWhatsApp}
+          onClick={
+            sendBulkWhatsApp
+          }
           style={waBulkBtn}
         >
           WhatsApp groupé
@@ -449,9 +596,18 @@ ${website}`;
 
       </div>
 
+      {loading && (
+
+        <p>
+          Chargement...
+        </p>
+
+      )}
+
       <div
         style={{
-          overflowX: "auto"
+          overflowX:
+            "auto"
         }}
       >
 
@@ -510,29 +666,17 @@ ${website}`;
             {filtered.map(
               (lead) => {
 
-              const cleanPhone =
-                lead.telephone
-                ?.replace(
+              const phone =
+                String(
+                  lead.telephone || ""
+                )
+                .replace(
                   /[^0-9]/g,
                   ""
                 );
 
-              const message =
-`Bonjour ${lead.nom},
-
-Merci pour votre intérêt concernant nos véhicules électriques sans permis EasyMicrodrive.
-
-Découvrez notre site :
-${website}
-
-Vidéo :
-${videoLink}`;
-
-              const whatsappLink =
-`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-
-              const emailLink =
-`mailto:${lead.email}?subject=${encodeURIComponent("EasyMicrodrive")}&body=${encodeURIComponent(message)}`;
+              const whatsapp =
+`https://wa.me/${phone}`;
 
               return (
 
@@ -545,24 +689,16 @@ ${videoLink}`;
                     <input
                       type="checkbox"
                       checked={
-                        lead.selected || false
+                        lead.selected ||
+                        false
                       }
-                      onChange={async () => {
-
-                        await supabase
-                          .from("leads")
-                          .update({
-                            selected:
-                            !lead.selected
-                          })
-                          .eq(
-                            "id",
-                            lead.id
-                          );
-
-                        loadLeads();
-
-                      }}
+                      onChange={() =>
+                        updateLead(
+                          lead.id,
+                          "selected",
+                          !lead.selected
+                        )
+                      }
                     />
 
                   </td>
@@ -598,7 +734,6 @@ ${videoLink}`;
                           e.target.value
                         )
                       }
-
                       style={{
                         background:
                           getStatusColor(
@@ -608,7 +743,7 @@ ${videoLink}`;
                         color:
                           "white",
 
-                        padding: 6,
+                        padding: 8,
 
                         borderRadius: 6
                       }}
@@ -659,7 +794,6 @@ ${videoLink}`;
                           e.target.value
                         )
                       }
-                      placeholder="Paris / SAV / Batterie"
                       style={input}
                     />
 
@@ -687,7 +821,7 @@ ${videoLink}`;
 
                       <a
                         href={
-                          whatsappLink
+                          whatsapp
                         }
                         target="_blank"
                         style={waBtn}
@@ -696,24 +830,24 @@ ${videoLink}`;
                       </a>
 
                       <a
-                        href={
-                          emailLink
-                        }
-                        style={
-                          emailBtn
-                        }
-                      >
-                        Email
-                      </a>
-
-                      <a
-                        href={`tel:${cleanPhone}`}
-                        style={
-                          callBtn
-                        }
+                        href={`tel:${phone}`}
+                        style={callBtn}
                       >
                         Appeler
                       </a>
+
+                      <button
+                        onClick={() =>
+                          deleteLead(
+                            lead.id
+                          )
+                        }
+                        style={
+                          deleteBtn
+                        }
+                      >
+                        Supprimer
+                      </button>
 
                     </div>
 
@@ -766,7 +900,8 @@ React.CSSProperties = {
 
   padding: 20,
 
-  fontFamily: "Arial"
+  fontFamily:
+    "Arial"
 
 };
 
@@ -816,7 +951,7 @@ React.CSSProperties = {
 
   borderRadius: 6,
 
-  width: 160
+  width: 150
 
 };
 
@@ -829,22 +964,8 @@ React.CSSProperties = {
 
   border: "none",
 
-  padding: "10px 15px",
-
-  borderRadius: 6
-
-};
-
-const bulkBtn:
-React.CSSProperties = {
-
-  background: "#2563eb",
-
-  color: "white",
-
-  border: "none",
-
-  padding: "10px 15px",
+  padding:
+    "10px 15px",
 
   borderRadius: 6
 
@@ -853,13 +974,15 @@ React.CSSProperties = {
 const waBulkBtn:
 React.CSSProperties = {
 
-  background: "#25D366",
+  background:
+    "#25D366",
 
   color: "white",
 
   border: "none",
 
-  padding: "10px 15px",
+  padding:
+    "10px 15px",
 
   borderRadius: 6
 
@@ -931,24 +1054,6 @@ React.CSSProperties = {
 
 };
 
-const emailBtn:
-React.CSSProperties = {
-
-  background:
-    "#ea4335",
-
-  color: "white",
-
-  padding:
-    "8px 12px",
-
-  borderRadius: 6,
-
-  textDecoration:
-    "none"
-
-};
-
 const callBtn:
 React.CSSProperties = {
 
@@ -963,7 +1068,28 @@ React.CSSProperties = {
   borderRadius: 6,
 
   textDecoration:
-    "none"
+    "none",
+
+  border: "none"
+
+};
+
+const deleteBtn:
+React.CSSProperties = {
+
+  background:
+    "#dc2626",
+
+  color: "white",
+
+  padding:
+    "8px 12px",
+
+  borderRadius: 6,
+
+  border: "none",
+
+  cursor: "pointer"
 
 };
 
