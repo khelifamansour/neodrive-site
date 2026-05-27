@@ -1,134 +1,398 @@
-// Full AI Recruitment Platform Prototype for Microdrive // Advanced candidate profiling: // - family background // - hobbies // - employer references // - French/English writing tests // - logic tests // - operational reasoning // - AI-style scoring structure // Next.js + React + Tailwind
+"use client";
 
-export default function RecruitmentAIScoringConcept() { const sections = [ { title: "Informations générales", items: [ "Nom / prénom", "Téléphone / WhatsApp / Email", "Ville / pays", "CV PDF", ], }, { title: "Formation", items: [ "Université / école", "Diplôme", "Notes mathématiques", "Niveau anglais / français", ], }, { title: "Expérience", items: [ "Employeurs précédents", "Téléphones références", "Email managers", "Responsabilités", ], }, { title: "Tests logiques", items: [ "Suites logiques", "Dominos", "Organisation logistique", "Résolution problèmes", ], }, { title: "Écriture & communication", items: [ "Réponse client difficile", "Email fournisseur", "Explication technique", ], }, ];
+import { useState } from "react";
 
-const scoring = [ { label: "Logique", score: "18/20", }, { label: "Communication", score: "15/20", }, { label: "Technique", score: "17/20", }, { label: "Anglais", score: "14/20", }, { label: "Autonomie", score: "19/20", }, ];
+export default function RecruitmentPage() {
 
-return ( <main className="min-h-screen bg-gray-100 p-6"> <div className="max-w-7xl mx-auto">
+  const [scores] = useState({
+    logic: 18,
+    communication: 15,
+    technical: 17,
+    autonomy: 19,
+    english: 14,
+  });
 
-<div className="bg-black text-white rounded-3xl p-10 mb-8 shadow-2xl">
-      <h1 className="text-5xl font-bold mb-4">
-        Microdrive Recruitment Platform
-      </h1>
+  const tests = [
+    {
+      title: "Logic Test",
+      question:
+        "A customer receives a vehicle that does not charge. Explain step-by-step what you do.",
+    },
 
-      <p className="text-lg opacity-90 max-w-3xl leading-relaxed">
-        AI-assisted recruitment and scoring platform for selecting high-potential technical,
-        operational and commercial talents.
-      </p>
-    </div>
+    {
+      title: "Customer Support",
+      question:
+        "Write a response to an angry customer waiting for delayed delivery.",
+    },
 
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    {
+      title: "Supplier Communication",
+      question:
+        "Write an email to supplier requesting urgent technical validation.",
+    },
 
-      <div className="bg-white rounded-3xl p-6 shadow-xl lg:col-span-2">
-        <h2 className="text-3xl font-bold mb-6">
-          Candidate Evaluation Pipeline
-        </h2>
+    {
+      title: "Operational Reasoning",
+      question:
+        "A container arrives late at port. Explain how you reorganize operations.",
+    },
+  ];
 
-        <div className="space-y-6">
-          {sections.map((section, index) => (
-            <div
-              key={index}
-              className="border rounded-2xl p-5"
-            >
-              <h3 className="text-xl font-bold mb-3">
-                {section.title}
-              </h3>
+  return (
 
-              <ul className="space-y-2 text-gray-700">
-                {section.items.map((item, i) => (
-                  <li key={i}>
-                    • {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+    <main className="min-h-screen bg-gray-100">
+
+      {/* HEADER */}
+
+      <div className="bg-black text-white py-16 px-8">
+
+        <div className="max-w-7xl mx-auto">
+
+          <h1 className="text-5xl font-bold mb-6">
+            Microdrive Recruitment Platform
+          </h1>
+
+          <p className="text-xl opacity-80 max-w-3xl">
+            AI-assisted recruitment system for operational,
+            technical and commercial talents.
+          </p>
+
         </div>
+
       </div>
 
-      <div className="bg-white rounded-3xl p-6 shadow-xl">
-        <h2 className="text-3xl font-bold mb-6">
-          AI Scoring
-        </h2>
+      {/* MAIN */}
 
-        <div className="space-y-4">
-          {scoring.map((item, index) => (
-            <div
-              key={index}
-              className="border rounded-2xl p-4"
-            >
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold">
-                  {item.label}
-                </span>
+      <div className="max-w-7xl mx-auto p-8">
 
-                <span className="font-bold text-xl">
-                  {item.score}
-                </span>
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div
-                  className="bg-black h-3 rounded-full"
-                  style={{ width: `${parseInt(item.score) * 5}%` }}
+          {/* LEFT COLUMN */}
+
+          <div className="lg:col-span-2 space-y-8">
+
+            {/* PERSONAL INFO */}
+
+            <div className="bg-white rounded-3xl shadow-xl p-8">
+
+              <h2 className="text-3xl font-bold mb-8">
+                Personal Information
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <input
+                  placeholder="Full Name"
+                  className="border rounded-2xl p-4"
                 />
+
+                <input
+                  placeholder="Email"
+                  className="border rounded-2xl p-4"
+                />
+
+                <input
+                  placeholder="Phone Number"
+                  className="border rounded-2xl p-4"
+                />
+
+                <input
+                  placeholder="WhatsApp"
+                  className="border rounded-2xl p-4"
+                />
+
+                <input
+                  placeholder="City / Country"
+                  className="border rounded-2xl p-4"
+                />
+
+                <input
+                  placeholder="LinkedIn"
+                  className="border rounded-2xl p-4"
+                />
+
               </div>
+
             </div>
-          ))}
-        </div>
 
-        <div className="mt-8 bg-green-100 border border-green-300 rounded-2xl p-5">
-          <h3 className="text-2xl font-bold mb-2">
-            Global Score
-          </h3>
+            {/* EDUCATION */}
 
-          <div className="text-5xl font-bold">
-            83/100
+            <div className="bg-white rounded-3xl shadow-xl p-8">
+
+              <h2 className="text-3xl font-bold mb-8">
+                Education
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <input
+                  placeholder="University / School"
+                  className="border rounded-2xl p-4"
+                />
+
+                <input
+                  placeholder="Degree"
+                  className="border rounded-2xl p-4"
+                />
+
+                <input
+                  placeholder="English Level"
+                  className="border rounded-2xl p-4"
+                />
+
+                <input
+                  placeholder="French Level"
+                  className="border rounded-2xl p-4"
+                />
+
+              </div>
+
+            </div>
+
+            {/* EXPERIENCE */}
+
+            <div className="bg-white rounded-3xl shadow-xl p-8">
+
+              <h2 className="text-3xl font-bold mb-8">
+                Professional Experience
+              </h2>
+
+              <div className="space-y-6">
+
+                <textarea
+                  rows={5}
+                  placeholder="Describe previous experience..."
+                  className="w-full border rounded-2xl p-4"
+                />
+
+                <input
+                  placeholder="Previous Employer"
+                  className="border rounded-2xl p-4 w-full"
+                />
+
+                <input
+                  placeholder="Manager Contact"
+                  className="border rounded-2xl p-4 w-full"
+                />
+
+              </div>
+
+            </div>
+
+            {/* FILE UPLOADS */}
+
+            <div className="bg-white rounded-3xl shadow-xl p-8">
+
+              <h2 className="text-3xl font-bold mb-8">
+                Uploads
+              </h2>
+
+              <div className="space-y-6">
+
+                <div className="border-2 border-dashed rounded-3xl p-10 text-center">
+
+                  <p className="font-semibold text-lg mb-3">
+                    Upload CV PDF
+                  </p>
+
+                  <input type="file" />
+
+                </div>
+
+                <div className="border-2 border-dashed rounded-3xl p-10 text-center">
+
+                  <p className="font-semibold text-lg mb-3">
+                    Upload Face Photo
+                  </p>
+
+                  <input type="file" />
+
+                </div>
+
+                <div className="border-2 border-dashed rounded-3xl p-10 text-center">
+
+                  <p className="font-semibold text-lg mb-3">
+                    Upload Introduction Video
+                  </p>
+
+                  <input type="file" />
+
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* LOGIC TESTS */}
+
+            <div className="bg-white rounded-3xl shadow-xl p-8">
+
+              <h2 className="text-3xl font-bold mb-8">
+                Operational & Logic Tests
+              </h2>
+
+              <div className="space-y-8">
+
+                {tests.map((test, index) => (
+
+                  <div
+                    key={index}
+                    className="border rounded-3xl p-6"
+                  >
+
+                    <h3 className="text-2xl font-bold mb-4">
+                      {test.title}
+                    </h3>
+
+                    <p className="text-gray-700 mb-5">
+                      {test.question}
+                    </p>
+
+                    <textarea
+                      rows={6}
+                      placeholder="Write your answer..."
+                      className="w-full border rounded-2xl p-4"
+                    />
+
+                  </div>
+
+                ))}
+
+              </div>
+
+            </div>
+
+            {/* SUBMIT */}
+
+            <button
+              className="w-full bg-black text-white rounded-3xl py-5 text-2xl font-bold hover:opacity-90 transition"
+            >
+              Submit Application
+            </button>
+
           </div>
 
-          <p className="mt-3 text-sm text-gray-700 leading-relaxed">
-            Strong operational and analytical profile.
-            Recommended for technical-commercial training.
-          </p>
+          {/* RIGHT COLUMN */}
+
+          <div className="space-y-8">
+
+            {/* AI SCORE */}
+
+            <div className="bg-white rounded-3xl shadow-xl p-8 sticky top-10">
+
+              <h2 className="text-3xl font-bold mb-8">
+                AI Candidate Scoring
+              </h2>
+
+              <div className="space-y-6">
+
+                {Object.entries(scores).map(([key, value]) => (
+
+                  <div key={key}>
+
+                    <div className="flex justify-between mb-2">
+
+                      <span className="capitalize font-semibold">
+                        {key}
+                      </span>
+
+                      <span className="font-bold">
+                        {value}/20
+                      </span>
+
+                    </div>
+
+                    <div className="bg-gray-200 rounded-full h-4">
+
+                      <div
+                        className="bg-black rounded-full h-4"
+                        style={{
+                          width: `${value * 5}%`,
+                        }}
+                      />
+
+                    </div>
+
+                  </div>
+
+                ))}
+
+              </div>
+
+              {/* GLOBAL SCORE */}
+
+              <div className="mt-10 bg-green-100 border border-green-300 rounded-3xl p-8">
+
+                <h3 className="text-2xl font-bold mb-4">
+                  Global Score
+                </h3>
+
+                <div className="text-6xl font-bold">
+                  83/100
+                </div>
+
+                <p className="mt-5 text-gray-700 leading-relaxed">
+                  Strong operational and analytical profile.
+                  Recommended for technical-commercial training.
+                </p>
+
+              </div>
+
+              {/* AI ANALYSIS */}
+
+              <div className="mt-8">
+
+                <h3 className="text-2xl font-bold mb-5">
+                  AI Analysis
+                </h3>
+
+                <div className="space-y-4">
+
+                  <div className="border rounded-2xl p-4">
+
+                    <h4 className="font-bold mb-2">
+                      Strengths
+                    </h4>
+
+                    <ul className="space-y-2 text-gray-700">
+
+                      <li>• Strong autonomy</li>
+                      <li>• Good operational reasoning</li>
+                      <li>• Strong communication</li>
+
+                    </ul>
+
+                  </div>
+
+                  <div className="border rounded-2xl p-4">
+
+                    <h4 className="font-bold mb-2">
+                      Weaknesses
+                    </h4>
+
+                    <ul className="space-y-2 text-gray-700">
+
+                      <li>• Needs technical training</li>
+                      <li>• Medium logistics experience</li>
+
+                    </ul>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
         </div>
+
       </div>
-    </div>
 
-    <div className="bg-white rounded-3xl p-8 shadow-xl">
-      <h2 className="text-3xl font-bold mb-6">
-        Suggested AI Evaluation Logic
-      </h2>
+    </main>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-700">
-        <div className="border rounded-2xl p-5">
-          <h3 className="text-xl font-bold mb-3">
-            Technical Potential
-          </h3>
+  );
 
-          <ul className="space-y-2">
-            <li>• Engineering background</li>
-            <li>• Logic test score</li>
-            <li>• Technical writing quality</li>
-            <li>• Diagnostic reasoning</li>
-          </ul>
-        </div>
-
-        <div className="border rounded-2xl p-5">
-          <h3 className="text-xl font-bold mb-3">
-            Operational Potential
-          </h3>
-
-          <ul className="space-y-2">
-            <li>• Communication quality</li>
-            <li>• Problem solving</li>
-            <li>• Motivation consistency</li>
-            <li>• References quality</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</main>
-
-); }
+}
