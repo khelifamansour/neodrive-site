@@ -5,6 +5,8 @@ import React, {
   useState
 } from "react";
 
+import Papa from "papaparse";
+
 import { supabase }
 from "@/lib/supabase";
 
@@ -13,12 +15,27 @@ from "@/lib/supabase";
 ========================= */
 
 type Lead = {
+
   id?: number;
+
   nom: string;
+
   telephone: string;
+
   email: string;
+
   annonce: string;
+
   statut: string;
+
+  phase?: string;
+
+  commentaire?: string;
+
+  operateur?: string;
+
+  derniere_relance?: string;
+
 };
 
 /* =========================
@@ -26,6 +43,10 @@ type Lead = {
 ========================= */
 
 export default function CRMPage() {
+
+  /* =========================
+     STATES
+  ========================= */
 
   const [leads, setLeads] =
     useState<Lead[]>([]);
@@ -64,15 +85,8 @@ export default function CRMPage() {
           ascending: false
         });
 
-      console.log(
-        "LOAD DATA",
-        data
-      );
-
-      console.log(
-        "LOAD ERROR",
-        error
-      );
+      console.log(data);
+      console.log(error);
 
       if (error) {
 
@@ -118,15 +132,8 @@ export default function CRMPage() {
 
       .limit(1);
 
-    console.log(
-      "SUPABASE DATA",
-      data
-    );
-
-    console.log(
-      "SUPABASE ERROR",
-      error
-    );
+    console.log(data);
+    console.log(error);
 
     if (error) {
 
@@ -172,160 +179,118 @@ export default function CRMPage() {
 
       }
 
-      /* =========================
-         READ FILE
-      ========================= */
+      Papa.parse(file, {
 
-      const text =
-        await file.text();
+        header: true,
 
-      console.log(text);
+        skipEmptyLines: true,
 
-      /* =========================
-         SPLIT ROWS
-      ========================= */
+        complete: async (
+          results: any
+        ) => {
 
-      const rows =
-        text.split(/\r?\n/);
+          console.log(results);
 
-      console.log(rows);
+          const parsed:
+          Lead[] = results.data
 
-      /* =========================
-         PARSE CSV
-      ========================= */
+            .map((row: any) => {
 
-      const parsed:
-      Lead[] = rows
+              return {
 
-        .slice(1)
+                nom:
+                  row["Nom"] ||
+                  "",
 
-        .filter(
-          (row: string) =>
-            row.trim() !== ""
-        )
+                telephone:
+                  row["Téléphone"] ||
+                  "",
 
-        .map(
-          (row: string) => {
+                email:
+                  row["Email"] ||
+                  "",
 
-            /* =========================
-               SIMPLE SAFE CSV PARSER
-            ========================= */
+                annonce:
+                  row["Annonce"] ||
+                  "",
 
-            const cols =
-              row.match(
-                /(".*?"|[^",]+)(?=\s*,|\s*$)/g
-              ) || [];
+                statut:
+                  "Nouveau",
 
-            return {
+                phase:
+                  "À contacter",
 
-              nom:
-                String(
-                  cols[3] || ""
-                )
-                .replace(/"/g, "")
-                .trim(),
+                commentaire:
+                  "",
 
-              telephone:
-                String(
-                  cols[4] || ""
-                )
-                .replace(/"/g, "")
-                .trim(),
+                operateur:
+                  "",
 
-              email:
-                String(
-                  cols[5] || ""
-                )
-                .replace(/"/g, "")
-                .trim(),
+                derniere_relance:
+                  "",
 
-              annonce:
-                String(
-                  cols[1] || ""
-                )
-                .replace(/"/g, "")
-                .trim(),
+              };
 
-              statut:
-                "Nouveau",
+            })
 
-            };
+            .filter(
+              (lead: Lead) =>
+                lead.nom ||
+                lead.telephone ||
+                lead.email
+            );
+
+          console.log(parsed);
+
+          alert(
+            parsed.length +
+            " contacts détectés"
+          );
+
+          if (
+            parsed.length === 0
+          ) {
+
+            alert(
+              "Aucun contact trouvé"
+            );
+
+            setLoading(false);
+
+            return;
 
           }
-        )
 
-        .filter(
-          (lead: Lead) =>
-            lead.nom ||
-            lead.telephone ||
-            lead.email
-        );
+          const {
+            error
+          } = await supabase
 
-      console.log(
-        "PARSED CSV",
-        parsed
-      );
+            .from("leads")
 
-      alert(
-        parsed.length +
-        " contacts détectés"
-      );
+            .insert(parsed);
 
-      if (
-        parsed.length === 0
-      ) {
+          if (error) {
 
-        alert(
-          "Aucun contact trouvé"
-        );
+            alert(
+              "Erreur import : " +
+              error.message
+            );
 
-        setLoading(false);
+          } else {
 
-        return;
+            alert(
+              "Import OK"
+            );
 
-      }
+            loadLeads();
 
-      /* =========================
-         INSERT SUPABASE
-      ========================= */
+          }
 
-      const {
-        data,
-        error
-      } = await supabase
+          setLoading(false);
 
-        .from("leads")
+        }
 
-        .insert(parsed)
-
-        .select();
-
-      console.log(
-        "INSERT DATA",
-        data
-      );
-
-      console.log(
-        "INSERT ERROR",
-        error
-      );
-
-      if (error) {
-
-        alert(
-          "Erreur import : " +
-          error.message
-        );
-
-      } else {
-
-        alert(
-          "Import OK"
-        );
-
-        loadLeads();
-
-      }
+      });
 
     } catch (err: any) {
 
@@ -335,11 +300,43 @@ export default function CRMPage() {
         err.message
       );
 
-    } finally {
-
       setLoading(false);
 
     }
+
+  };
+
+  /* =========================
+     UPDATE LEAD
+  ========================= */
+
+  const updateLead =
+  async (
+    id: number,
+    field: string,
+    value: string
+  ) => {
+
+    await supabase
+
+      .from("leads")
+
+      .update({
+        [field]: value
+      })
+
+      .eq("id", id);
+
+    setLeads((prev) =>
+      prev.map((lead) =>
+        lead.id === id
+          ? {
+              ...lead,
+              [field]: value
+            }
+          : lead
+      )
+    );
 
   };
 
@@ -351,21 +348,23 @@ export default function CRMPage() {
     leads.filter(
       (lead: Lead) => {
 
-        const text =
-          `
-          ${lead.nom}
-          ${lead.telephone}
-          ${lead.email}
-          ${lead.annonce}
-          `
-          .toLowerCase();
+      const text =
+        `
+        ${lead.nom}
+        ${lead.telephone}
+        ${lead.email}
+        ${lead.annonce}
+        ${lead.commentaire}
+        ${lead.phase}
+        ${lead.operateur}
+        `
+        .toLowerCase();
 
-        return text.includes(
-          search.toLowerCase()
-        );
+      return text.includes(
+        search.toLowerCase()
+      );
 
-      }
-    );
+    });
 
   /* =========================
      EXPORT CSV
@@ -378,37 +377,40 @@ export default function CRMPage() {
       leads.map(
         (lead: Lead) => [
 
-          lead.nom,
+        lead.nom,
 
-          lead.telephone,
+        lead.telephone,
 
-          lead.email,
+        lead.email,
 
-          lead.annonce,
+        lead.annonce,
 
-          lead.statut,
+        lead.statut,
 
-        ]
-      );
+        lead.phase,
+
+        lead.commentaire,
+
+      ]);
 
     const csvContent =
 
-      "Nom,Téléphone,Email,Annonce,Statut\n"
+      "Nom,Téléphone,Email,Annonce,Statut,Phase,Commentaire\n"
 
       +
 
       rows
-        .map((e) =>
-          e.join(",")
-        )
-        .join("\n");
+      .map((e) =>
+        e.join(",")
+      )
+      .join("\n");
 
     const blob =
       new Blob(
         [csvContent],
         {
           type:
-            "text/csv;charset=utf-8;"
+          "text/csv;charset=utf-8;"
         }
       );
 
@@ -521,6 +523,22 @@ export default function CRMPage() {
                 Statut
               </th>
 
+              <th style={th}>
+                Phase
+              </th>
+
+              <th style={th}>
+                Opérateur
+              </th>
+
+              <th style={th}>
+                Commentaire
+              </th>
+
+              <th style={th}>
+                Actions
+              </th>
+
             </tr>
 
           </thead>
@@ -531,7 +549,25 @@ export default function CRMPage() {
               (
                 lead: Lead,
                 index: number
-              ) => (
+              ) => {
+
+              const phone =
+                lead.telephone
+                ?.replace(
+                  /[^0-9+]/g,
+                  ""
+                );
+
+              const whatsapp =
+`https://wa.me/${phone}`;
+
+              const emailLink =
+`mailto:${lead.email}`;
+
+              const smsLink =
+`sms:${phone}`;
+
+              return (
 
                 <tr
                   key={
@@ -557,13 +593,192 @@ export default function CRMPage() {
                   </td>
 
                   <td style={td}>
-                    {lead.statut}
+
+                    <select
+
+                      value={
+                        lead.statut
+                      }
+
+                      onChange={(e) =>
+                        updateLead(
+                          lead.id || 0,
+                          "statut",
+                          e.target.value
+                        )
+                      }
+
+                    >
+
+                      <option>
+                        Nouveau
+                      </option>
+
+                      <option>
+                        Contacté
+                      </option>
+
+                      <option>
+                        Chaud
+                      </option>
+
+                      <option>
+                        Perdu
+                      </option>
+
+                      <option>
+                        Client
+                      </option>
+
+                    </select>
+
+                  </td>
+
+                  <td style={td}>
+
+                    <select
+
+                      value={
+                        lead.phase
+                      }
+
+                      onChange={(e) =>
+                        updateLead(
+                          lead.id || 0,
+                          "phase",
+                          e.target.value
+                        )
+                      }
+
+                    >
+
+                      <option>
+                        À contacter
+                      </option>
+
+                      <option>
+                        Attente réponse
+                      </option>
+
+                      <option>
+                        Réfléchit
+                      </option>
+
+                      <option>
+                        Relance
+                      </option>
+
+                      <option>
+                        RDV
+                      </option>
+
+                      <option>
+                        Livraison
+                      </option>
+
+                    </select>
+
+                  </td>
+
+                  <td style={td}>
+
+                    <input
+
+                      value={
+                        lead.operateur ||
+                        ""
+                      }
+
+                      onChange={(e) =>
+                        updateLead(
+                          lead.id || 0,
+                          "operateur",
+                          e.target.value
+                        )
+                      }
+
+                      placeholder="Nom opérateur"
+
+                      style={input}
+
+                    />
+
+                  </td>
+
+                  <td style={td}>
+
+                    <textarea
+
+                      value={
+                        lead.commentaire ||
+                        ""
+                      }
+
+                      onChange={(e) =>
+                        updateLead(
+                          lead.id || 0,
+                          "commentaire",
+                          e.target.value
+                        )
+                      }
+
+                      style={textarea}
+
+                    />
+
+                  </td>
+
+                  <td style={td}>
+
+                    <div
+                      style={{
+                        display:
+                          "flex",
+
+                        gap: 8,
+
+                        flexWrap:
+                          "wrap"
+                      }}
+                    >
+
+                      <a
+                        href={
+                          whatsapp
+                        }
+                        target="_blank"
+                        style={waBtn}
+                      >
+                        WhatsApp
+                      </a>
+
+                      <a
+                        href={
+                          emailLink
+                        }
+                        style={emailBtn}
+                      >
+                        Email
+                      </a>
+
+                      <a
+                        href={
+                          smsLink
+                        }
+                        style={smsBtn}
+                      >
+                        SMS
+                      </a>
+
+                    </div>
+
                   </td>
 
                 </tr>
 
-              )
-            )}
+              );
+
+            })}
 
           </tbody>
 
@@ -627,6 +842,24 @@ React.CSSProperties = {
 
 };
 
+const input:
+React.CSSProperties = {
+
+  padding: 8,
+
+  width: 150,
+
+};
+
+const textarea:
+React.CSSProperties = {
+
+  width: 220,
+
+  minHeight: 80,
+
+};
+
 const exportBtn:
 React.CSSProperties = {
 
@@ -685,5 +918,62 @@ React.CSSProperties = {
     "1px solid #ddd",
 
   padding: 10,
+
+  verticalAlign:
+    "top",
+
+};
+
+const waBtn:
+React.CSSProperties = {
+
+  background:
+    "#25D366",
+
+  color: "white",
+
+  padding:
+    "8px 12px",
+
+  borderRadius: 6,
+
+  textDecoration:
+    "none",
+
+};
+
+const emailBtn:
+React.CSSProperties = {
+
+  background:
+    "#2563eb",
+
+  color: "white",
+
+  padding:
+    "8px 12px",
+
+  borderRadius: 6,
+
+  textDecoration:
+    "none",
+
+};
+
+const smsBtn:
+React.CSSProperties = {
+
+  background:
+    "#f97316",
+
+  color: "white",
+
+  padding:
+    "8px 12px",
+
+  borderRadius: 6,
+
+  textDecoration:
+    "none",
 
 };
