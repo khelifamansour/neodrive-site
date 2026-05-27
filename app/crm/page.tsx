@@ -10,7 +10,7 @@ import {
 } from "@supabase/supabase-js";
 
 /* =========================
-   SUPABASE DIRECT
+   SUPABASE
 ========================= */
 
 const supabase =
@@ -24,6 +24,10 @@ const supabase =
 ========================= */
 
 export default function CRMPage() {
+
+  /* =========================
+     STATES
+  ========================= */
 
   const [leads, setLeads] =
     useState<any[]>([]);
@@ -85,9 +89,9 @@ export default function CRMPage() {
 
   const updateLead =
   async (
-    id: number,
-    field: string,
-    value: string
+    id,
+    field,
+    value
   ) => {
 
     try {
@@ -126,7 +130,7 @@ export default function CRMPage() {
   ========================= */
 
   const handleCSV =
-  async (e: any) => {
+  async (e) => {
 
     try {
 
@@ -149,11 +153,15 @@ export default function CRMPage() {
         .slice(1)
 
         .filter(
-          (row: string) =>
+          (row) =>
             row.trim() !== ""
         )
 
-        .map((row: string) => {
+        .map((row) => {
+
+          /* =========================
+             SAFE CSV PARSER
+          ========================= */
 
           const cols =
             row.match(
@@ -240,13 +248,9 @@ export default function CRMPage() {
 
       }
 
-    } catch (err: any) {
+    } catch (err) {
 
       console.log(err);
-
-      alert(
-        err.message
-      );
 
     } finally {
 
