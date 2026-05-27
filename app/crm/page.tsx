@@ -44,6 +44,10 @@ type Lead = {
 
 export default function CRMPage() {
 
+  /* =========================
+     STATES
+  ========================= */
+
   const [leads, setLeads] =
     useState<Lead[]>([]);
 
@@ -66,26 +70,44 @@ export default function CRMPage() {
   const loadLeads =
   async () => {
 
-    const {
-      data,
-      error
-    } = await supabase
+    try {
 
-      .from("leads")
+      const {
+        data,
+        error
+      } = await supabase
 
-      .select("*")
+        .from("leads")
 
-      .order("id", {
-        ascending: false
-      });
+        .select("*")
 
-    console.log(data);
-    console.log(error);
+        .order("id", {
+          ascending: false
+        });
 
-    if (!error && data) {
+      console.log(data);
+      console.log(error);
+
+      if (error) {
+
+        alert(
+          error.message
+        );
+
+        return;
+
+      }
 
       setLeads(
-        data as Lead[]
+        (data || []) as Lead[]
+      );
+
+    } catch (err: any) {
+
+      console.log(err);
+
+      alert(
+        err.message
       );
 
     }
@@ -140,26 +162,46 @@ export default function CRMPage() {
     value: string
   ) => {
 
-    await supabase
+    try {
 
-      .from("leads")
+      const {
+        error
+      } = await supabase
 
-      .update({
-        [field]: value
-      })
+        .from("leads")
 
-      .eq("id", id);
+        .update({
+          [field]: value
+        })
 
-    setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === id
-          ? {
-              ...lead,
-              [field]: value
-            }
-          : lead
-      )
-    );
+        .eq("id", id);
+
+      if (error) {
+
+        alert(
+          error.message
+        );
+
+        return;
+
+      }
+
+      setLeads((prev) =>
+        prev.map((lead) =>
+          lead.id === id
+            ? {
+                ...lead,
+                [field]: value
+              }
+            : lead
+        )
+      );
+
+    } catch (err: any) {
+
+      console.log(err);
+
+    }
 
   };
 
@@ -210,30 +252,44 @@ export default function CRMPage() {
         .map(
           (row: string) => {
 
+            /* =========================
+               SAFE CSV PARSER
+            ========================= */
+
             const cols =
-              row.split(",");
+              row.match(
+                /(".*?"|[^",]+)(?=\s*,|\s*$)/g
+              ) || [];
 
             return {
 
               nom:
-                cols[3]
-                  ?.replace(/"/g, "")
-                  ?.trim() || "",
+                String(
+                  cols[3] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
               telephone:
-                cols[4]
-                  ?.replace(/"/g, "")
-                  ?.trim() || "",
+                String(
+                  cols[4] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
               email:
-                cols[5]
-                  ?.replace(/"/g, "")
-                  ?.trim() || "",
+                String(
+                  cols[5] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
               annonce:
-                cols[1]
-                  ?.replace(/"/g, "")
-                  ?.trim() || "",
+                String(
+                  cols[1] || ""
+                )
+                .replace(/"/g, "")
+                .trim(),
 
               statut:
                 "Nouveau",
@@ -550,8 +606,9 @@ export default function CRMPage() {
               ) => {
 
               const phone =
-                lead.telephone
-                ?.replace(
+                String(
+                  lead.telephone || ""
+                ).replace(
                   /[^0-9+]/g,
                   ""
                 );
@@ -560,7 +617,7 @@ export default function CRMPage() {
 `https://wa.me/${phone}`;
 
               const emailLink =
-`mailto:${lead.email}`;
+`mailto:${String(lead.email || "")}`;
 
               const smsLink =
 `sms:${phone}`;
