@@ -1,3 +1,4 @@
+```javascript
 "use client";
 
 import React, {
@@ -419,10 +420,14 @@ try {
      PARSE FULL CSV
   ========================= */
 
-  const csv =
-    parseCSV(text);
+  const rows =
+    parseCSV(text)
+      .filter(
+        (row) =>
+          row.length > 1
+      );
 
-  if (csv.length <= 1) {
+  if (rows.length <= 1) {
 
     alert("CSV vide");
 
@@ -436,7 +441,7 @@ try {
 
   const headers =
 
-    csv[0].map((h) =>
+    rows[0].map((h) =>
 
       clean(h)
 
@@ -517,7 +522,7 @@ try {
 
   const parsed =
 
-    csv
+    rows
 
       .slice(1)
 
