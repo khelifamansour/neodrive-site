@@ -51,7 +51,7 @@ export default function HiringPage() {
 
       frenchLevel: "",
       englishLevel: "",
-      arabicLevel: "",
+      
 
       currentJob: "",
       yearsExperience: "",
