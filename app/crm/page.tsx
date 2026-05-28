@@ -168,15 +168,21 @@ export default function CRMPage() {
         .map((row) => {
 
           /* =========================
-             CSV PARSER
+             SAFE CSV PARSER
           ========================= */
 
           const cols =
-            row.split(
-              /,(?=(?:(?:[^"]*"){2})*[^"]*$)/
-            );
+            row.match(
+              /(".*?"|[^",]+)(?=\s*,|\s*$)/g
+            ) || [];
+
+          console.log(cols);
 
           return {
+
+            /* =========================
+               EXACT COLUMN ORDER
+            ========================= */
 
             nom:
               String(
