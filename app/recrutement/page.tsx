@@ -41,7 +41,6 @@ export default function HiringPage() {
 
       bacType: "",
       bacYear: "",
-      bacAverage: "",
       mathGrade: "",
       physicsGrade: "",
       englishGrade: "",
