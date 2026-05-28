@@ -1070,8 +1070,11 @@ const input = {
 };
 
 const textarea = {
-  width: 220,
-  minHeight: 80
+  width: 300,
+  minHeight: 120,
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+  overflowWrap: "break-word"
 };
 
 const exportBtn = {
