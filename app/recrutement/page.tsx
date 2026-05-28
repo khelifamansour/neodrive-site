@@ -1,4 +1,4 @@
-```javascript
+
 "use client";
 
 import React, {
@@ -679,4 +679,3 @@ const button = {
   cursor: "pointer",
   fontSize: 18
 };
-```
