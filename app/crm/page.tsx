@@ -409,51 +409,15 @@ export default function CRMPage() {
         }
 
         /* =========================
-           HEADERS
+           FIXED LEBONCOIN COLUMNS
         ========================= */
-
-        const headers =
-
-          rows[0].map((h) =>
-
-            clean(h)
-
-              .toLowerCase()
-
-              .normalize("NFD")
-
-              .replace(
-                /[\u0300-\u036f]/g,
-                ""
-              )
-
-          );
-
-        /* =========================
-           FIND COLUMN INDEX
-        ========================= */
-
-        const findIndex =
-          (names) => {
-
-            return headers.findIndex(
-              (header) =>
-
-                names.some(
-                  (name) =>
-                    header.includes(name)
-                )
-
-            );
-
-          };
 
         const annonceIndex = 1;
-const nomIndex = 3;
-const telIndex = 4;
-const emailIndex = 5;
-const infoIndex = 7;
-const messageIndex = 8;
+        const nomIndex = 3;
+        const telIndex = 4;
+        const emailIndex = 5;
+        const infoIndex = 7;
+        const messageIndex = 8;
 
         /* =========================
            BUILD LEADS
@@ -596,11 +560,8 @@ const messageIndex = 8;
         leads.map((lead) => [
 
           lead.nom,
-
           lead.telephone,
-
           lead.email,
-
           lead.annonce,
 
         ]);
@@ -746,7 +707,12 @@ const messageIndex = 8;
         }}
       >
 
-        <table style={table}>
+        <table
+          style={{
+            ...table,
+            tableLayout: "fixed"
+          }}
+        >
 
           <thead>
 
@@ -1070,11 +1036,12 @@ const input = {
 };
 
 const textarea = {
-  width: 300,
+  width: "100%",
   minHeight: 120,
   whiteSpace: "pre-wrap",
   wordBreak: "break-word",
-  overflowWrap: "break-word"
+  overflowWrap: "break-word",
+  boxSizing: "border-box"
 };
 
 const exportBtn = {
@@ -1109,7 +1076,9 @@ const th = {
 const td = {
   border: "1px solid #ddd",
   padding: 10,
-  verticalAlign: "top"
+  verticalAlign: "top",
+  maxWidth: 320,
+  overflow: "hidden"
 };
 
 const waBtn = {
