@@ -1,9 +1,7 @@
 
 "use client";
 
-import React, {
-  useState
-} from "react";
+import React, { useState } from "react";
 
 import {
   createClient
@@ -13,10 +11,9 @@ import {
 SUPABASE
 ========================= */
 
-const supabase =
-createClient(
+const supabase = createClient(
   "https://tzlsdjzcxdjaatcpwqwn.supabase.co",
-  "sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd"
+  "YOUR_PUBLIC_KEY"
 );
 
 /* =========================
@@ -25,251 +22,286 @@ PAGE
 
 export default function HiringPage() {
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [form, setForm] =
-    useState({
+  const [form, setForm] = useState({
 
-      fullName: "",
-      age: "",
-      country: "",
-      city: "",
-      phone: "",
-      whatsapp: "",
-      email: "",
+    fullName: "",
+    age: "",
+    country: "",
+    city: "",
+    phone: "",
+    whatsapp: "",
+    email: "",
 
-      bacType: "",
-      bacYear: "",
-      mathGrade: "",
-      physicsGrade: "",
-      englishGrade: "",
+    bacType: "",
+    bacYear: "",
+    bacAverage: "",
 
-      university: "",
-      degree: "",
+    university: "",
+    degree: "",
 
-      frenchLevel: "",
-      englishLevel: "",
-      
+    englishLevel: "",
+    frenchLevel: "",
 
-      currentJob: "",
-      yearsExperience: "",
-      previousCompanies: "",
+    currentJob: "",
+    yearsExperience: "",
 
-      hobbies: "",
-      sports: "",
-      projects: "",
+    logic1: "",
+    logic2: "",
+    logic3: "",
+    logic4: "",
 
-      logic1: "",
-      logic2: "",
-      logic3: "",
+    english1: "",
+    english2: "",
 
-      motivation: ""
+    technicalReport: "",
 
-    });
+    technicalExperience: ""
 
-  const [cvFile, setCvFile] =
-    useState(null);
+  });
 
-  const [photoFile, setPhotoFile] =
-    useState(null);
+  const [cvFile, setCvFile] = useState(null);
 
-  const [transcriptFile, setTranscriptFile] =
-    useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+
+  const [transcriptFile, setTranscriptFile] = useState(null);
 
   /* =========================
      HANDLE CHANGE
   ========================= */
 
-  const handleChange =
-    (e) => {
+  const handleChange = (e) => {
 
-      setForm({
+    setForm({
 
-        ...form,
+      ...form,
 
-        [e.target.name]:
-          e.target.value
+      [e.target.name]:
+        e.target.value
 
-      });
+    });
 
-    };
+  };
 
   /* =========================
      SUBMIT
   ========================= */
 
-  const handleSubmit =
-    async (e) => {
+  const handleSubmit = async (e) => {
 
-      e.preventDefault();
+    e.preventDefault();
 
-      try {
+    try {
 
-        setLoading(true);
+      setLoading(true);
 
-        /* =========================
-           SCORE
-        ========================= */
+      /* =========================
+         SCORE
+      ========================= */
 
-        let score = 0;
+      let score = 0;
 
-        if (
-          Number(form.mathGrade) >= 15
-        ) score += 20;
+      /* LOGIC */
 
-        if (
-          Number(form.physicsGrade) >= 15
-        ) score += 20;
+      if (form.logic1 === "C")
+        score += 10;
 
-        if (
-          Number(form.englishGrade) >= 15
-        ) score += 10;
+      if (form.logic2 === "B")
+        score += 10;
 
-        if (
-          form.englishLevel === "Excellent"
-        ) score += 10;
+      if (form.logic3 === "C")
+        score += 10;
 
-        if (
-          form.logic1 === "42"
-        ) score += 15;
+      if (form.logic4 === "C")
+        score += 10;
 
-        if (
-          form.logic2 === "128"
-        ) score += 15;
+      /* ENGLISH */
 
-        if (
-          form.logic3 === "256"
-        ) score += 10;
+      if (form.english1 === "B")
+        score += 10;
 
-        /* =========================
-           INSERT CANDIDATE
-        ========================= */
+      if (form.english2 === "A")
+        score += 10;
 
-        const {
-          data,
-          error
-        } = await supabase
+      /* EDUCATION */
 
-          .from("candidates")
+      if (
+        Number(form.bacAverage) >= 15
+      )
+        score += 10;
 
-          .insert([{
+      /* REPORT QUALITY */
 
-            ...form,
+      if (
+        form.technicalReport.length > 500
+      )
+        score += 20;
 
-            score
+      /* =========================
+         LEVEL
+      ========================= */
 
-          }])
+      let evaluation = "";
 
-          .select()
+      if (score < 40) {
 
-          .single();
+        evaluation =
+          "Rejected - Low competency";
 
-        console.log(data);
-        console.log(error);
+      } else if (score < 60) {
 
-        if (error) {
+        evaluation =
+          "Average candidate";
 
-          alert(error.message);
+      } else if (score < 80) {
 
-          return;
+        evaluation =
+          "Interesting candidate";
 
-        }
+      } else {
 
-        const candidateId =
-          data.id;
-
-        /* =========================
-           UPLOAD CV
-        ========================= */
-
-        if (cvFile) {
-
-          const {
-            error: cvError
-          } = await supabase.storage
-
-            .from("candidate-files")
-
-            .upload(
-
-              `cv/${candidateId}-${Date.now()}-${cvFile.name}`,
-
-              cvFile
-
-            );
-
-          console.log(cvError);
-
-        }
-
-        /* =========================
-           UPLOAD PHOTO
-        ========================= */
-
-        if (photoFile) {
-
-          const {
-            error: photoError
-          } = await supabase.storage
-
-            .from("candidate-files")
-
-            .upload(
-
-              `photos/${candidateId}-${Date.now()}-${photoFile.name}`,
-
-              photoFile
-
-            );
-
-          console.log(photoError);
-
-        }
-
-        /* =========================
-           UPLOAD TRANSCRIPT
-        ========================= */
-
-        if (transcriptFile) {
-
-          const {
-            error: transcriptError
-          } = await supabase.storage
-
-            .from("candidate-files")
-
-            .upload(
-
-              `transcripts/${candidateId}-${Date.now()}-${transcriptFile.name}`,
-
-              transcriptFile
-
-            );
-
-          console.log(transcriptError);
-
-        }
-
-        alert(
-          "Application submitted successfully"
-        );
-
-      } catch (err) {
-
-        console.log(err);
-
-        alert(
-          JSON.stringify(err)
-        );
-
-      } finally {
-
-        setLoading(false);
+        evaluation =
+          "High potential candidate";
 
       }
 
-    };
+      /* =========================
+         INSERT
+      ========================= */
+
+      const {
+        data,
+        error
+      } = await supabase
+
+        .from("candidates")
+
+        .insert([{
+
+          ...form,
+
+          score,
+          evaluation
+
+        }])
+
+        .select()
+
+        .single();
+
+      if (error) {
+
+        alert(error.message);
+
+        return;
+
+      }
+
+      const candidateId =
+        data.id;
+
+      /* =========================
+         UPLOAD CV
+      ========================= */
+
+      if (cvFile) {
+
+        const {
+          error: cvError
+        } = await supabase.storage
+
+          .from("candidate-files")
+
+          .upload(
+
+            `cv/${candidateId}-${Date.now()}-${cvFile.name}`,
+
+            cvFile
+
+          );
+
+        if (cvError) {
+
+          alert(cvError.message);
+
+        }
+
+      }
+
+      /* =========================
+         UPLOAD PHOTO
+      ========================= */
+
+      if (photoFile) {
+
+        const {
+          error: photoError
+        } = await supabase.storage
+
+          .from("candidate-files")
+
+          .upload(
+
+            `photos/${candidateId}-${Date.now()}-${photoFile.name}`,
+
+            photoFile
+
+          );
+
+        if (photoError) {
+
+          alert(photoError.message);
+
+        }
+
+      }
+
+      /* =========================
+         UPLOAD TRANSCRIPT
+      ========================= */
+
+      if (transcriptFile) {
+
+        const {
+          error: transcriptError
+        } = await supabase.storage
+
+          .from("candidate-files")
+
+          .upload(
+
+            `transcripts/${candidateId}-${Date.now()}-${transcriptFile.name}`,
+
+            transcriptFile
+
+          );
+
+        if (transcriptError) {
+
+          alert(transcriptError.message);
+
+        }
+
+      }
+
+      alert(
+        `Application submitted successfully.\nScore: ${score}\nEvaluation: ${evaluation}`
+      );
+
+    } catch (err) {
+
+      console.log(err);
+
+      alert(JSON.stringify(err));
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  };
 
   /* =========================
      RENDER
@@ -280,7 +312,7 @@ export default function HiringPage() {
     <main style={container}>
 
       <h1 style={title}>
-        Microdrive Hiring Platform
+        Microdrive Engineering Recruitment
       </h1>
 
       <form
@@ -288,11 +320,7 @@ export default function HiringPage() {
         style={formStyle}
       >
 
-        {/* BASIC */}
-
-        <h2>
-          Basic Information
-        </h2>
+        <h2>Basic Information</h2>
 
         <input
           name="fullName"
@@ -300,13 +328,6 @@ export default function HiringPage() {
           onChange={handleChange}
           style={input}
           required
-        />
-
-        <input
-          name="age"
-          placeholder="Age"
-          onChange={handleChange}
-          style={input}
         />
 
         <input
@@ -344,11 +365,7 @@ export default function HiringPage() {
           style={input}
         />
 
-        {/* EDUCATION */}
-
-        <h2>
-          Education
-        </h2>
+        <h2>Education</h2>
 
         <input
           name="bacType"
@@ -358,36 +375,8 @@ export default function HiringPage() {
         />
 
         <input
-          name="bacYear"
-          placeholder="Baccalaureate year"
-          onChange={handleChange}
-          style={input}
-        />
-
-        <input
           name="bacAverage"
           placeholder="Baccalaureate average"
-          onChange={handleChange}
-          style={input}
-        />
-
-        <input
-          name="mathGrade"
-          placeholder="Math grade"
-          onChange={handleChange}
-          style={input}
-        />
-
-        <input
-          name="physicsGrade"
-          placeholder="Physics grade"
-          onChange={handleChange}
-          style={input}
-        />
-
-        <input
-          name="englishGrade"
-          placeholder="English grade"
           onChange={handleChange}
           style={input}
         />
@@ -406,35 +395,7 @@ export default function HiringPage() {
           style={input}
         />
 
-        {/* LANGUAGES */}
-
-        <h2>
-          Languages
-        </h2>
-
-        <select
-          name="frenchLevel"
-          onChange={handleChange}
-          style={input}
-        >
-
-          <option>
-            French level
-          </option>
-
-          <option>
-            Beginner
-          </option>
-
-          <option>
-            Intermediate
-          </option>
-
-          <option>
-            Excellent
-          </option>
-
-        </select>
+        <h2>Languages</h2>
 
         <select
           name="englishLevel"
@@ -460,118 +421,159 @@ export default function HiringPage() {
 
         </select>
 
-        {/* EXPERIENCE */}
-
-        <h2>
-          Experience
-        </h2>
-
-        <textarea
-          name="currentJob"
-          placeholder="Current job"
-          onChange={handleChange}
-          style={textarea}
-        />
-
-        <textarea
-          name="previousCompanies"
-          placeholder="Previous companies"
-          onChange={handleChange}
-          style={textarea}
-        />
-
-        <input
-          name="yearsExperience"
-          placeholder="Years of experience"
-          onChange={handleChange}
-          style={input}
-        />
-
-        {/* PERSONALITY */}
-
-        <h2>
-          Personality / Projects
-        </h2>
-
-        <textarea
-          name="hobbies"
-          placeholder="Hobbies"
-          onChange={handleChange}
-          style={textarea}
-        />
-
-        <textarea
-          name="sports"
-          placeholder="Sports"
-          onChange={handleChange}
-          style={textarea}
-        />
-
-        <textarea
-          name="projects"
-          placeholder="Projects built"
-          onChange={handleChange}
-          style={textarea}
-        />
-
-        {/* LOGIC TEST */}
-
-        <h2>
-          Logic Test
-        </h2>
+        <h2>Logic Test</h2>
 
         <p>
-          6 × 7 = ?
+          A train travels 120 km in 1h30.
+          What is its average speed?
+        </p>
+
+        <p>
+          A) 60 km/h
+          <br />
+          B) 70 km/h
+          <br />
+          C) 80 km/h
+          <br />
+          D) 90 km/h
         </p>
 
         <input
           name="logic1"
+          placeholder="Answer"
           onChange={handleChange}
           style={input}
         />
 
         <p>
-          2⁷ = ?
+          If all batteries are electric devices,
+          and some electric devices are dangerous,
+          can we conclude that all batteries are dangerous?
+        </p>
+
+        <p>
+          A) Yes
+          <br />
+          B) No
         </p>
 
         <input
           name="logic2"
+          placeholder="Answer"
           onChange={handleChange}
           style={input}
         />
 
         <p>
-          16 × 16 = ?
+          What comes next?
+          <br />
+          2 - 6 - 12 - 20 - 30 - ?
+        </p>
+
+        <p>
+          A) 36
+          <br />
+          B) 40
+          <br />
+          C) 42
+          <br />
+          D) 44
         </p>
 
         <input
           name="logic3"
+          placeholder="Answer"
           onChange={handleChange}
           style={input}
         />
 
-        {/* MOTIVATION */}
+        <p>
+          A machine produces 5 parts in 5 minutes.
+          How many parts will 5 machines produce in 5 minutes?
+        </p>
 
-        <h2>
-          Motivation
-        </h2>
+        <p>
+          A) 5
+          <br />
+          B) 10
+          <br />
+          C) 25
+          <br />
+          D) 50
+        </p>
+
+        <input
+          name="logic4"
+          placeholder="Answer"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <h2>English Test</h2>
+
+        <p>
+          Choose the correct sentence:
+        </p>
+
+        <p>
+          A) He go to work yesterday
+          <br />
+          B) He went to work yesterday
+          <br />
+          C) He going to work yesterday
+          <br />
+          D) He gone to work yesterday
+        </p>
+
+        <input
+          name="english1"
+          placeholder="Answer"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <p>
+          What does voltage mean?
+        </p>
+
+        <p>
+          A) Electrical pressure
+          <br />
+          B) Mechanical force
+          <br />
+          C) Battery weight
+          <br />
+          D) Motor speed
+        </p>
+
+        <input
+          name="english2"
+          placeholder="Answer"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <h2>Technical Report</h2>
 
         <textarea
-          name="motivation"
-          placeholder="Why should we hire you?"
+          name="technicalReport"
+          placeholder="Explain how you would diagnose an electric vehicle that suddenly stops moving."
           onChange={handleChange}
           style={bigTextarea}
         />
 
-        {/* FILES */}
+        <h2>Technical Experience</h2>
 
-        <h2>
-          Documents
-        </h2>
+        <textarea
+          name="technicalExperience"
+          placeholder="Describe EXACTLY something technical you built or repaired yourself."
+          onChange={handleChange}
+          style={bigTextarea}
+        />
 
-        <label>
-          CV PDF
-        </label>
+        <h2>Documents</h2>
+
+        <label>CV PDF</label>
 
         <input
           type="file"
@@ -582,9 +584,7 @@ export default function HiringPage() {
           }
         />
 
-        <label>
-          Photo
-        </label>
+        <label>Photo</label>
 
         <input
           type="file"
@@ -595,9 +595,7 @@ export default function HiringPage() {
           }
         />
 
-        <label>
-          School transcripts
-        </label>
+        <label>School transcripts</label>
 
         <input
           type="file"
@@ -633,13 +631,13 @@ STYLES
 
 const container = {
   padding: 30,
-  maxWidth: 900,
+  maxWidth: 1000,
   margin: "0 auto",
   fontFamily: "Arial"
 };
 
 const title = {
-  fontSize: 48,
+  fontSize: 42,
   marginBottom: 30
 };
 
@@ -655,27 +653,19 @@ const input = {
   borderRadius: 6
 };
 
-const textarea = {
-  padding: 12,
-  border: "1px solid #ccc",
-  borderRadius: 6,
-  minHeight: 100
-};
-
 const bigTextarea = {
   padding: 12,
   border: "1px solid #ccc",
   borderRadius: 6,
-  minHeight: 200
+  minHeight: 250
 };
 
 const button = {
   background: "#000",
   color: "white",
-  padding: 15,
+  padding: 18,
   border: "none",
   borderRadius: 8,
   cursor: "pointer",
-  fontSize: 18
+  fontSize: 20
 };
-
