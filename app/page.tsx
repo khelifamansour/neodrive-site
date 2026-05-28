@@ -146,7 +146,7 @@ export default function Home() {
 
         <div style={box}>
 
-          ✔ Véhicule : à partir de 4 490 € TTC
+          ✔ Véhicule : à partir de 4 990 € TTC
           <br />
 
           ✔ Livraison partout en France via transport personnalisé
@@ -181,8 +181,7 @@ export default function Home() {
 
         <div style={box}>
 
-          ✔ Import direct usine
-          <br />
+          
 
           ✔ Pas de concession coûteuse
           <br />
@@ -256,15 +255,16 @@ export default function Home() {
           - Structure (châssis, carrosserie) : 2 ans
           <br />
 
-          - Composants électriques : 1 an
+          - Garantie composants : jusqu'à 24 mois selon les conditions de garantie
           <br />
 
-          - Batterie : 6 mois (usage normal)
+          - Assistance technique gratuite pendant 3 ans
+          <br />
+             - 20 % de remise sur les pièces pendant 3 ans
           <br />
           <br />
 
-          ✔ Assistance technique gratuite à vie (WhatsApp / téléphone)
-          <br />
+        
 
           ✔ Diagnostic rapide à distance
           <br />
