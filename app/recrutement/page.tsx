@@ -1,11 +1,9 @@
-
+```javascript id="g8p2rm"
 "use client";
 
 import React, { useState } from "react";
 
-import {
-  createClient
-} from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 /* =========================
 SUPABASE
@@ -13,7 +11,7 @@ SUPABASE
 
 const supabase = createClient(
   "https://tzlsdjzcxdjaatcpwqwn.supabase.co",
-  "YOUR_PUBLIC_KEY"
+  "sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd"
 );
 
 /* =========================
@@ -131,7 +129,7 @@ export default function HiringPage() {
       )
         score += 10;
 
-      /* REPORT QUALITY */
+      /* REPORT */
 
       if (
         form.technicalReport.length > 500
@@ -139,7 +137,7 @@ export default function HiringPage() {
         score += 20;
 
       /* =========================
-         LEVEL
+         EVALUATION
       ========================= */
 
       let evaluation = "";
@@ -331,6 +329,13 @@ export default function HiringPage() {
         />
 
         <input
+          name="age"
+          placeholder="Age"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
           name="country"
           placeholder="Country"
           onChange={handleChange}
@@ -370,6 +375,13 @@ export default function HiringPage() {
         <input
           name="bacType"
           placeholder="Baccalaureate type"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="bacYear"
+          placeholder="Baccalaureate year"
           onChange={handleChange}
           style={input}
         />
@@ -669,3 +681,4 @@ const button = {
   cursor: "pointer",
   fontSize: 20
 };
+```
