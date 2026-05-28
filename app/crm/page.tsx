@@ -1,10 +1,12 @@
-
+```tsx
 "use client";
 
 import React, {
   useEffect,
   useState
 } from "react";
+
+import Papa from "papaparse";
 
 import {
   createClient
@@ -25,10 +27,10 @@ const supabase = createClient(
 
 export default function CRMPage() {
 
-  const [leads, setLeads] = useState([]);
+  const [leads, setLeads] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState([]);
+  const [selected, setSelected] = useState<number[]>([]);
 
   /* =========================================
      LOAD LEADS
@@ -80,9 +82,9 @@ export default function CRMPage() {
 
   const updateLead =
     async (
-      id,
-      field,
-      value
+      id: number,
+      field: string,
+      value: string
     ) => {
 
       try {
@@ -243,380 +245,140 @@ export default function CRMPage() {
   };
 
   /* =========================================
-     TRUE CSV PARSER
-  ========================================= */
-
-  const parseCSV = (text) => {
-
-    const rows = [];
-
-    let row = [];
-    let current = "";
-
-    let insideQuotes = false;
-
-    for (
-      let i = 0;
-      i < text.length;
-      i++
-    ) {
-
-      const char = text[i];
-      const next = text[i + 1];
-
-      /* =========================
-         QUOTES
-      ========================= */
-
-      if (char === '"') {
-
-        if (
-          insideQuotes &&
-          next === '"'
-        ) {
-
-          current += '"';
-
-          i++;
-
-        } else {
-
-          insideQuotes =
-            !insideQuotes;
-
-        }
-
-      }
-
-      /* =========================
-         COLUMN
-      ========================= */
-
-      else if (
-        char === "," &&
-        !insideQuotes
-      ) {
-
-        row.push(current);
-
-        current = "";
-
-      }
-
-      /* =========================
-         NEW LINE
-      ========================= */
-
-      else if (
-        (char === "\n" ||
-          char === "\r") &&
-        !insideQuotes
-      ) {
-
-        if (
-          current !== "" ||
-          row.length > 0
-        ) {
-
-          row.push(current);
-
-          rows.push(row);
-
-          row = [];
-          current = "";
-
-        }
-
-        if (
-          char === "\r" &&
-          next === "\n"
-        ) {
-
-          i++;
-
-        }
-
-      }
-
-      /* =========================
-         NORMAL CHAR
-      ========================= */
-
-      else {
-
-        current += char;
-
-      }
-
-    }
-
-    /* =========================
-       LAST VALUE
-    ========================= */
-
-    if (
-      current !== "" ||
-      row.length > 0
-    ) {
-
-      row.push(current);
-
-      rows.push(row);
-
-    }
-
-    return rows;
-
-  };
-
-  /* =========================================
-     CLEAN
-  ========================================= */
-
-  const clean = (value) => {
-
-    if (!value) return "";
-
-    return String(value)
-
-      .replace(/\r/g, " ")
-
-      .replace(/\n/g, " ")
-
-      .replace(/\s+/g, " ")
-
-      .replace(/^"|"$/g, "")
-
-      .trim();
-
-  };
-
-  /* =========================================
      IMPORT CSV
   ========================================= */
 
   const handleCSV =
-    async (e) => {
+    async (
+      e: React.ChangeEvent<HTMLInputElement>
+    ) => {
 
       try {
 
         setLoading(true);
 
         const file =
-          e.target.files[0];
+          e.target.files?.[0];
 
         if (!file) return;
 
-        const text =
-          await file.text();
+        Papa.parse(file, {
 
-        /* =========================================
-           PARSE FULL CSV
-        ========================================= */
+          header: true,
 
-        const csv =
-          parseCSV(text);
+          skipEmptyLines: true,
 
-        if (csv.length <= 1) {
+          complete:
+            async (
+              results: any
+            ) => {
 
-          alert("CSV vide");
-          return;
+              const parsed =
 
-        }
+                results.data
 
-        /* =========================================
-           HEADERS
-        ========================================= */
+                  .map((row: any) => ({
 
-        const headers =
+                    annonce:
 
-          csv[0].map((h) =>
+                      row.Annonce ||
 
-            clean(h)
+                      row.annonce ||
 
-              .toLowerCase()
+                      "",
 
-              .normalize("NFD")
+                    nom:
 
-              .replace(
-                /[\u0300-\u036f]/g,
-                ""
-              )
+                      row.Nom ||
 
-          );
+                      row.nom ||
 
-        console.log(headers);
+                      "",
 
-        /* =========================================
-           FIND COLUMN INDEX
-        ========================================= */
+                    telephone:
 
-        const findIndex =
-          (names) => {
+                      row["Téléphone"] ||
 
-            return headers.findIndex(
-              (header) =>
+                      row.telephone ||
 
-                names.some(
-                  (name) =>
-                    header.includes(name)
-                )
+                      "",
 
-            );
+                    email:
 
-          };
+                      row.Email ||
 
-        const annonceIndex =
-          findIndex([
-            "annonce"
-          ]);
+                      row.email ||
 
-        const nomIndex =
-          findIndex([
-            "nom"
-          ]);
+                      "",
 
-        const telIndex =
-          findIndex([
-            "telephone"
-          ]);
+                    commentaire:
 
-        const emailIndex =
-          findIndex([
-            "email"
-          ]);
+                      row.Informations ||
 
-        const messageIndex =
-          findIndex([
-            "message"
-          ]);
+                      row.informations ||
 
-        const infoIndex =
-          findIndex([
-            "information"
-          ]);
+                      "",
 
-        console.log({
-          annonceIndex,
-          nomIndex,
-          telIndex,
-          emailIndex,
-          messageIndex,
-          infoIndex
+                    historique:
+
+                      row.Message ||
+
+                      row.message ||
+
+                      "",
+
+                    statut:
+                      "Nouveau",
+
+                    phase:
+                      "À contacter",
+
+                    operateur:
+                      "",
+
+                    derniere_relance:
+                      ""
+
+                  }))
+
+                  .filter(
+                    (lead: any) =>
+
+                      lead.nom ||
+                      lead.telephone ||
+                      lead.email
+
+                  );
+
+              console.log(parsed);
+
+              const {
+                error
+              } = await supabase
+
+                .from("leads")
+
+                .insert(parsed);
+
+              if (error) {
+
+                console.log(error);
+
+                alert(error.message);
+
+                return;
+
+              }
+
+              alert(
+                `${parsed.length} leads importés`
+              );
+
+              loadLeads();
+
+            }
+
         });
-
-        /* =========================================
-           BUILD LEADS
-        ========================================= */
-
-        const parsed =
-
-          csv
-
-            .slice(1)
-
-            .map((cols) => {
-
-              const annonce =
-                clean(
-                  cols[annonceIndex]
-                );
-
-              const nom =
-                clean(
-                  cols[nomIndex]
-                );
-
-              const telephone =
-                clean(
-                  cols[telIndex]
-                );
-
-              const email =
-                clean(
-                  cols[emailIndex]
-                );
-
-              const message =
-                clean(
-                  cols[messageIndex]
-                );
-
-              const infos =
-                clean(
-                  cols[infoIndex]
-                );
-
-              return {
-
-                annonce,
-
-                nom,
-
-                telephone,
-
-                email,
-
-                commentaire:
-                  infos,
-
-                historique:
-                  message,
-
-                statut:
-                  "Nouveau",
-
-                phase:
-                  "À contacter",
-
-                operateur:
-                  "",
-
-                derniere_relance:
-                  ""
-
-              };
-
-            })
-
-            .filter(
-              (lead) =>
-
-                lead.nom ||
-                lead.telephone ||
-                lead.email
-
-            );
-
-        console.log(parsed);
-
-        /* =========================================
-           INSERT
-        ========================================= */
-
-        const {
-          error
-        } = await supabase
-
-          .from("leads")
-
-          .insert(parsed);
-
-        if (error) {
-
-          console.log(error);
-
-          alert(error.message);
-
-          return;
-
-        }
-
-        alert(
-          `${parsed.length} leads importés`
-        );
-
-        loadLeads();
 
       } catch (err) {
 
@@ -752,7 +514,7 @@ export default function CRMPage() {
   ========================================= */
 
   const getStatusColor =
-    (status) => {
+    (status: string) => {
 
       switch (status) {
 
@@ -1168,110 +930,4 @@ export default function CRMPage() {
   );
 
 }
-
-/* =========================================
-   STYLES
-========================================= */
-
-const container = {
-  padding: 20,
-  fontFamily: "Arial"
-};
-
-const title = {
-  fontSize: 50,
-  marginBottom: 20
-};
-
-const topBar = {
-  display: "flex",
-  gap: 10,
-  marginBottom: 20,
-  flexWrap: "wrap"
-};
-
-const searchInput = {
-  padding: 10,
-  minWidth: 250,
-  border: "1px solid #ccc",
-  borderRadius: 6
-};
-
-const input = {
-  padding: 8,
-  width: 180
-};
-
-const textarea = {
-  width: 260,
-  minHeight: 120
-};
-
-const exportBtn = {
-  background: "#000",
-  color: "white",
-  border: "none",
-  padding: "10px 15px",
-  borderRadius: 6,
-  cursor: "pointer"
-};
-
-const deleteBtn = {
-  background: "#dc2626",
-  color: "white",
-  border: "none",
-  padding: "10px 15px",
-  borderRadius: 6,
-```javascript
-const waBtn = {
-  background: "#25D366",
-  color: "white",
-  padding: "8px 12px",
-  borderRadius: 6,
-  textDecoration: "none",
-  textAlign: "center",
-  border: "none",
-  cursor: "pointer"
-};
-
-const emailBtn = {
-  background: "#2563eb",
-  color: "white",
-  padding: "8px 12px",
-  borderRadius: 6,
-  textDecoration: "none",
-  textAlign: "center",
-  border: "none",
-  cursor: "pointer"
-};
-
-const smsBtn = {
-  background: "#f97316",
-  color: "white",
-  padding: "8px 12px",
-  borderRadius: 6,
-  textDecoration: "none",
-  textAlign: "center",
-  border: "none",
-  cursor: "pointer"
-};
-
-const table = {
-  width: "100%",
-  borderCollapse: "collapse"
-};
-
-const th = {
-  border: "1px solid #ddd",
-  padding: 10,
-  background: "#000",
-  color: "white",
-  textAlign: "left"
-};
-
-const td = {
-  border: "1px solid #ddd",
-  padding: 10,
-  verticalAlign: "top"
-};
-````
+```
