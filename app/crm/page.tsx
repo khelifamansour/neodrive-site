@@ -60,9 +60,6 @@ export default function CRMPage() {
             ascending: false
           });
 
-        console.log(data);
-        console.log(error);
-
         if (!error && data) {
 
           setLeads(data);
@@ -107,8 +104,6 @@ export default function CRMPage() {
           })
 
           .eq("id", id);
-
-        console.log(error);
 
         if (!error) {
 
@@ -158,8 +153,6 @@ export default function CRMPage() {
           .delete()
 
           .in("id", selected);
-
-        console.log(error);
 
         if (!error) {
 
@@ -289,10 +282,6 @@ export default function CRMPage() {
             const next =
               csvText[i + 1];
 
-            /* =========================
-               QUOTES
-            ========================= */
-
             if (char === '"') {
 
               if (
@@ -313,10 +302,6 @@ export default function CRMPage() {
 
             }
 
-            /* =========================
-               COLUMN
-            ========================= */
-
             else if (
               char === "," &&
               !insideQuotes
@@ -327,10 +312,6 @@ export default function CRMPage() {
               current = "";
 
             }
-
-            /* =========================
-               NEW LINE
-            ========================= */
 
             else if (
               (char === "\n" ||
@@ -363,10 +344,6 @@ export default function CRMPage() {
 
             }
 
-            /* =========================
-               NORMAL CHAR
-            ========================= */
-
             else {
 
               current += char;
@@ -374,10 +351,6 @@ export default function CRMPage() {
             }
 
           }
-
-          /* =========================
-             LAST VALUE
-          ========================= */
 
           if (
             current !== "" ||
@@ -456,8 +429,6 @@ export default function CRMPage() {
 
           );
 
-        console.log(headers);
-
         /* =========================
            FIND COLUMN INDEX
         ========================= */
@@ -507,15 +478,6 @@ export default function CRMPage() {
             "message"
           ]);
 
-        console.log({
-          annonceIndex,
-          nomIndex,
-          telIndex,
-          emailIndex,
-          infoIndex,
-          messageIndex
-        });
-
         /* =========================
            BUILD LEADS
         ========================= */
@@ -531,37 +493,31 @@ export default function CRMPage() {
               return {
 
                 annonce:
-
                   clean(
                     cols[annonceIndex]
                   ),
 
                 nom:
-
                   clean(
                     cols[nomIndex]
                   ),
 
                 telephone:
-
                   clean(
                     cols[telIndex]
                   ),
 
                 email:
-
                   clean(
                     cols[emailIndex]
                   ),
 
                 commentaire:
-
                   clean(
                     cols[infoIndex]
                   ),
 
                 historique:
-
                   clean(
                     cols[messageIndex]
                   ),
@@ -592,8 +548,6 @@ export default function CRMPage() {
                 lead.email
             );
 
-        console.log(parsed);
-
         /* =========================
            INSERT SUPABASE
         ========================= */
@@ -605,8 +559,6 @@ export default function CRMPage() {
           .from("leads")
 
           .insert(parsed);
-
-        console.log(error);
 
         if (error) {
 
@@ -1193,5 +1145,17 @@ const emailBtn = {
   background: "#2563eb",
   color: "white",
   padding: "8px 12px",
-  borderRadius: 6
+  borderRadius: 6,
+  textDecoration: "none",
+  textAlign: "center"
+};
+
+const smsBtn = {
+  background: "#f97316",
+  color: "white",
+  padding: "8px 12px",
+  borderRadius: 6,
+  textDecoration: "none",
+  textAlign: "center"
+};
 
