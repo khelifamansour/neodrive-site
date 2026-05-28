@@ -1,6 +1,5 @@
 "use client";
 
-
 import React, {
   useEffect,
   useState
@@ -27,7 +26,7 @@ const supabase =
 export default function CRMPage() {
 
   const [leads, setLeads] =
-    useState<any[]>([]);
+    useState([]);
 
   const [search, setSearch] =
     useState("");
@@ -38,12 +37,6 @@ export default function CRMPage() {
   /* =========================
      LOAD LEADS
   ========================= */
-
-  useEffect(() => {
-
-    loadLeads();
-
-  }, []);
 
   const loadLeads =
   async () => {
@@ -80,6 +73,12 @@ export default function CRMPage() {
 
   };
 
+  useEffect(() => {
+
+    loadLeads();
+
+  }, []);
+
   /* =========================
      UPDATE LEAD
   ========================= */
@@ -93,7 +92,9 @@ export default function CRMPage() {
 
     try {
 
-      await supabase
+      const {
+        error
+      } = await supabase
 
         .from("leads")
 
@@ -102,6 +103,16 @@ export default function CRMPage() {
         })
 
         .eq("id", id);
+
+      console.log(error);
+
+      if (error) {
+
+        alert(error.message);
+
+        return;
+
+      }
 
       setLeads((prev) =>
         prev.map((lead) =>
@@ -157,13 +168,13 @@ export default function CRMPage() {
         .map((row) => {
 
           /* =========================
-             SAFE CSV PARSER
+             CSV PARSER
           ========================= */
 
           const cols =
-            row.match(
-              /(".*?"|[^",]+)(?=\s*,|\s*$)/g
-            ) || [];
+            row.split(
+              /,(?=(?:(?:[^"]*"){2})*[^"]*$)/
+            );
 
           return {
 
@@ -231,15 +242,11 @@ export default function CRMPage() {
 
       if (error) {
 
-        alert(
-          error.message
-        );
+        alert(error.message);
 
       } else {
 
-        alert(
-          "Import OK"
-        );
+        alert("Import OK");
 
         loadLeads();
 
