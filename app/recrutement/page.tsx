@@ -1,4 +1,4 @@
-```javascript id="g8p2rm"
+
 "use client";
 
 import React, { useState } from "react";
@@ -681,4 +681,4 @@ const button = {
   cursor: "pointer",
   fontSize: 20
 };
-```
+
