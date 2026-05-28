@@ -1,398 +1,655 @@
+```javascript
 "use client";
 
-import { useState } from "react";
+import React, {
+  useState
+} from "react";
 
-export default function RecruitmentPage() {
+import {
+  createClient
+} from "@supabase/supabase-js";
 
-  const [scores] = useState({
-    logic: 18,
-    communication: 15,
-    technical: 17,
-    autonomy: 19,
-    english: 14,
-  });
+/* =========================
+SUPABASE
+========================= */
 
-  const tests = [
-    {
-      title: "Logic Test",
-      question:
-        "A customer receives a vehicle that does not charge. Explain step-by-step what you do.",
-    },
+const supabase =
+createClient(
+  "https://YOURPROJECT.supabase.co",
+  "YOUR_SUPABASE_ANON_KEY"
+);
 
-    {
-      title: "Customer Support",
-      question:
-        "Write a response to an angry customer waiting for delayed delivery.",
-    },
+/* =========================
+PAGE
+========================= */
 
-    {
-      title: "Supplier Communication",
-      question:
-        "Write an email to supplier requesting urgent technical validation.",
-    },
+export default function HiringPage() {
 
-    {
-      title: "Operational Reasoning",
-      question:
-        "A container arrives late at port. Explain how you reorganize operations.",
-    },
-  ];
+  const [loading, setLoading] =
+    useState(false);
+
+  const [form, setForm] =
+    useState({
+
+      /* BASIC */
+
+      fullName: "",
+      age: "",
+      country: "",
+      city: "",
+      phone: "",
+      whatsapp: "",
+      email: "",
+
+      /* EDUCATION */
+
+      bacType: "",
+      bacYear: "",
+      bacAverage: "",
+      mathGrade: "",
+      physicsGrade: "",
+      englishGrade: "",
+
+      university: "",
+      degree: "",
+
+      /* LANGUAGES */
+
+      frenchLevel: "",
+      englishLevel: "",
+      arabicLevel: "",
+
+      /* EXPERIENCE */
+
+      currentJob: "",
+      yearsExperience: "",
+      previousCompanies: "",
+
+      /* PERSONALITY */
+
+      hobbies: "",
+      sports: "",
+      projects: "",
+
+      /* TESTS */
+
+      logic1: "",
+      logic2: "",
+      logic3: "",
+
+      motivation: ""
+
+    });
+
+  const [cvFile, setCvFile] =
+    useState(null);
+
+  const [photoFile, setPhotoFile] =
+    useState(null);
+
+  const [transcriptFile, setTranscriptFile] =
+    useState(null);
+
+  /* =========================
+     HANDLE CHANGE
+  ========================= */
+
+  const handleChange =
+    (e) => {
+
+      setForm({
+
+        ...form,
+
+        [e.target.name]:
+          e.target.value
+
+      });
+
+    };
+
+  /* =========================
+     SUBMIT
+  ========================= */
+
+  const handleSubmit =
+    async (e) => {
+
+      e.preventDefault();
+
+      try {
+
+        setLoading(true);
+
+        /* =========================
+           SCORE
+        ========================= */
+
+        let score = 0;
+
+        if (
+          Number(form.mathGrade) >= 15
+        ) score += 20;
+
+        if (
+          Number(form.physicsGrade) >= 15
+        ) score += 20;
+
+        if (
+          Number(form.englishGrade) >= 15
+        ) score += 10;
+
+        if (
+          form.englishLevel === "Excellent"
+        ) score += 10;
+
+        if (
+          form.logic1 === "42"
+        ) score += 15;
+
+        if (
+          form.logic2 === "128"
+        ) score += 15;
+
+        if (
+          form.logic3 === "256"
+        ) score += 10;
+
+        /* =========================
+           INSERT
+        ========================= */
+
+        const {
+          data,
+          error
+        } = await supabase
+
+          .from("candidates")
+
+          .insert([{
+
+            ...form,
+
+            score
+
+          }])
+
+          .select()
+
+          .single();
+
+        if (error) {
+
+          alert(error.message);
+
+          return;
+
+        }
+
+        const candidateId =
+          data.id;
+
+        /* =========================
+           FILE UPLOADS
+        ========================= */
+
+        if (cvFile) {
+
+          await supabase.storage
+
+            .from("candidate-files")
+
+            .upload(
+
+              `cv/${candidateId}-${cvFile.name}`,
+
+              cvFile
+
+            );
+
+        }
+
+        if (photoFile) {
+
+          await supabase.storage
+
+            .from("candidate-files")
+
+            .upload(
+
+              `photos/${candidateId}-${photoFile.name}`,
+
+              photoFile
+
+            );
+
+        }
+
+        if (transcriptFile) {
+
+          await supabase.storage
+
+            .from("candidate-files")
+
+            .upload(
+
+              `transcripts/${candidateId}-${transcriptFile.name}`,
+
+              transcriptFile
+
+            );
+
+        }
+
+        alert(
+          "Application submitted successfully"
+        );
+
+      } catch (err) {
+
+        console.log(err);
+
+        alert("Error");
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    };
+
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
 
-    <main className="min-h-screen bg-gray-100">
-
-      {/* HEADER */}
-
-      <div className="bg-black text-white py-16 px-8">
-
-        <div className="max-w-7xl mx-auto">
-
-          <h1 className="text-5xl font-bold mb-6">
-            Microdrive Recruitment Platform
-          </h1>
-
-          <p className="text-xl opacity-80 max-w-3xl">
-            AI-assisted recruitment system for operational,
-            technical and commercial talents.
-          </p>
-
-        </div>
-
-      </div>
-
-      {/* MAIN */}
-
-      <div className="max-w-7xl mx-auto p-8">
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* LEFT COLUMN */}
-
-          <div className="lg:col-span-2 space-y-8">
-
-            {/* PERSONAL INFO */}
-
-            <div className="bg-white rounded-3xl shadow-xl p-8">
-
-              <h2 className="text-3xl font-bold mb-8">
-                Personal Information
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                <input
-                  placeholder="Full Name"
-                  className="border rounded-2xl p-4"
-                />
-
-                <input
-                  placeholder="Email"
-                  className="border rounded-2xl p-4"
-                />
-
-                <input
-                  placeholder="Phone Number"
-                  className="border rounded-2xl p-4"
-                />
-
-                <input
-                  placeholder="WhatsApp"
-                  className="border rounded-2xl p-4"
-                />
-
-                <input
-                  placeholder="City / Country"
-                  className="border rounded-2xl p-4"
-                />
-
-                <input
-                  placeholder="LinkedIn"
-                  className="border rounded-2xl p-4"
-                />
-
-              </div>
-
-            </div>
-
-            {/* EDUCATION */}
-
-            <div className="bg-white rounded-3xl shadow-xl p-8">
-
-              <h2 className="text-3xl font-bold mb-8">
-                Education
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                <input
-                  placeholder="University / School"
-                  className="border rounded-2xl p-4"
-                />
-
-                <input
-                  placeholder="Degree"
-                  className="border rounded-2xl p-4"
-                />
-
-                <input
-                  placeholder="English Level"
-                  className="border rounded-2xl p-4"
-                />
-
-                <input
-                  placeholder="French Level"
-                  className="border rounded-2xl p-4"
-                />
-
-              </div>
-
-            </div>
-
-            {/* EXPERIENCE */}
-
-            <div className="bg-white rounded-3xl shadow-xl p-8">
-
-              <h2 className="text-3xl font-bold mb-8">
-                Professional Experience
-              </h2>
-
-              <div className="space-y-6">
-
-                <textarea
-                  rows={5}
-                  placeholder="Describe previous experience..."
-                  className="w-full border rounded-2xl p-4"
-                />
-
-                <input
-                  placeholder="Previous Employer"
-                  className="border rounded-2xl p-4 w-full"
-                />
-
-                <input
-                  placeholder="Manager Contact"
-                  className="border rounded-2xl p-4 w-full"
-                />
-
-              </div>
-
-            </div>
-
-            {/* FILE UPLOADS */}
-
-            <div className="bg-white rounded-3xl shadow-xl p-8">
-
-              <h2 className="text-3xl font-bold mb-8">
-                Uploads
-              </h2>
-
-              <div className="space-y-6">
-
-                <div className="border-2 border-dashed rounded-3xl p-10 text-center">
-
-                  <p className="font-semibold text-lg mb-3">
-                    Upload CV PDF
-                  </p>
-
-                  <input type="file" />
-
-                </div>
-
-                <div className="border-2 border-dashed rounded-3xl p-10 text-center">
-
-                  <p className="font-semibold text-lg mb-3">
-                    Upload Face Photo
-                  </p>
-
-                  <input type="file" />
-
-                </div>
-
-                <div className="border-2 border-dashed rounded-3xl p-10 text-center">
-
-                  <p className="font-semibold text-lg mb-3">
-                    Upload Introduction Video
-                  </p>
-
-                  <input type="file" />
-
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* LOGIC TESTS */}
-
-            <div className="bg-white rounded-3xl shadow-xl p-8">
-
-              <h2 className="text-3xl font-bold mb-8">
-                Operational & Logic Tests
-              </h2>
-
-              <div className="space-y-8">
-
-                {tests.map((test, index) => (
-
-                  <div
-                    key={index}
-                    className="border rounded-3xl p-6"
-                  >
-
-                    <h3 className="text-2xl font-bold mb-4">
-                      {test.title}
-                    </h3>
-
-                    <p className="text-gray-700 mb-5">
-                      {test.question}
-                    </p>
-
-                    <textarea
-                      rows={6}
-                      placeholder="Write your answer..."
-                      className="w-full border rounded-2xl p-4"
-                    />
-
-                  </div>
-
-                ))}
-
-              </div>
-
-            </div>
-
-            {/* SUBMIT */}
-
-            <button
-              className="w-full bg-black text-white rounded-3xl py-5 text-2xl font-bold hover:opacity-90 transition"
-            >
-              Submit Application
-            </button>
-
-          </div>
-
-          {/* RIGHT COLUMN */}
-
-          <div className="space-y-8">
-
-            {/* AI SCORE */}
-
-            <div className="bg-white rounded-3xl shadow-xl p-8 sticky top-10">
-
-              <h2 className="text-3xl font-bold mb-8">
-                AI Candidate Scoring
-              </h2>
-
-              <div className="space-y-6">
-
-                {Object.entries(scores).map(([key, value]) => (
-
-                  <div key={key}>
-
-                    <div className="flex justify-between mb-2">
-
-                      <span className="capitalize font-semibold">
-                        {key}
-                      </span>
-
-                      <span className="font-bold">
-                        {value}/20
-                      </span>
-
-                    </div>
-
-                    <div className="bg-gray-200 rounded-full h-4">
-
-                      <div
-                        className="bg-black rounded-full h-4"
-                        style={{
-                          width: `${value * 5}%`,
-                        }}
-                      />
-
-                    </div>
-
-                  </div>
-
-                ))}
-
-              </div>
-
-              {/* GLOBAL SCORE */}
-
-              <div className="mt-10 bg-green-100 border border-green-300 rounded-3xl p-8">
-
-                <h3 className="text-2xl font-bold mb-4">
-                  Global Score
-                </h3>
-
-                <div className="text-6xl font-bold">
-                  83/100
-                </div>
-
-                <p className="mt-5 text-gray-700 leading-relaxed">
-                  Strong operational and analytical profile.
-                  Recommended for technical-commercial training.
-                </p>
-
-              </div>
-
-              {/* AI ANALYSIS */}
-
-              <div className="mt-8">
-
-                <h3 className="text-2xl font-bold mb-5">
-                  AI Analysis
-                </h3>
-
-                <div className="space-y-4">
-
-                  <div className="border rounded-2xl p-4">
-
-                    <h4 className="font-bold mb-2">
-                      Strengths
-                    </h4>
-
-                    <ul className="space-y-2 text-gray-700">
-
-                      <li>• Strong autonomy</li>
-                      <li>• Good operational reasoning</li>
-                      <li>• Strong communication</li>
-
-                    </ul>
-
-                  </div>
-
-                  <div className="border rounded-2xl p-4">
-
-                    <h4 className="font-bold mb-2">
-                      Weaknesses
-                    </h4>
-
-                    <ul className="space-y-2 text-gray-700">
-
-                      <li>• Needs technical training</li>
-                      <li>• Medium logistics experience</li>
-
-                    </ul>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
+    <main style={container}>
+
+      <h1 style={title}>
+        Microdrive Hiring Platform
+      </h1>
+
+      <form
+        onSubmit={handleSubmit}
+        style={formStyle}
+      >
+
+        {/* BASIC */}
+
+        <h2>Basic Information</h2>
+
+        <input
+          name="fullName"
+          placeholder="Full name"
+          onChange={handleChange}
+          style={input}
+          required
+        />
+
+        <input
+          name="age"
+          placeholder="Age"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="country"
+          placeholder="Country"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="city"
+          placeholder="City"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="phone"
+          placeholder="Phone"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="whatsapp"
+          placeholder="WhatsApp"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="email"
+          placeholder="Email"
+          onChange={handleChange}
+          style={input}
+        />
+
+        {/* EDUCATION */}
+
+        <h2>Education</h2>
+
+        <input
+          name="bacType"
+          placeholder="Baccalaureate type"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="bacYear"
+          placeholder="Baccalaureate year"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="bacAverage"
+          placeholder="Baccalaureate average"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="mathGrade"
+          placeholder="Math grade"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="physicsGrade"
+          placeholder="Physics grade"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="englishGrade"
+          placeholder="English grade"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="university"
+          placeholder="University"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <input
+          name="degree"
+          placeholder="Degree"
+          onChange={handleChange}
+          style={input}
+        />
+
+        {/* LANGUAGES */}
+
+        <h2>Languages</h2>
+
+        <select
+          name="frenchLevel"
+          onChange={handleChange}
+          style={input}
+        >
+
+          <option>
+            French level
+          </option>
+
+          <option>
+            Beginner
+          </option>
+
+          <option>
+            Intermediate
+          </option>
+
+          <option>
+            Excellent
+          </option>
+
+        </select>
+
+        <select
+          name="englishLevel"
+          onChange={handleChange}
+          style={input}
+        >
+
+          <option>
+            English level
+          </option>
+
+          <option>
+            Beginner
+          </option>
+
+          <option>
+            Intermediate
+          </option>
+
+          <option>
+            Excellent
+          </option>
+
+        </select>
+
+        {/* EXPERIENCE */}
+
+        <h2>Experience</h2>
+
+        <textarea
+          name="currentJob"
+          placeholder="Current job"
+          onChange={handleChange}
+          style={textarea}
+        />
+
+        <textarea
+          name="previousCompanies"
+          placeholder="Previous companies"
+          onChange={handleChange}
+          style={textarea}
+        />
+
+        <input
+          name="yearsExperience"
+          placeholder="Years of experience"
+          onChange={handleChange}
+          style={input}
+        />
+
+        {/* PERSONALITY */}
+
+        <h2>Personality / Projects</h2>
+
+        <textarea
+          name="hobbies"
+          placeholder="Hobbies"
+          onChange={handleChange}
+          style={textarea}
+        />
+
+        <textarea
+          name="sports"
+          placeholder="Sports"
+          onChange={handleChange}
+          style={textarea}
+        />
+
+        <textarea
+          name="projects"
+          placeholder="Projects built"
+          onChange={handleChange}
+          style={textarea}
+        />
+
+        {/* LOGIC TEST */}
+
+        <h2>Logic Test</h2>
+
+        <p>
+          6 x 7 = ?
+        </p>
+
+        <input
+          name="logic1"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <p>
+          2⁷ = ?
+        </p>
+
+        <input
+          name="logic2"
+          onChange={handleChange}
+          style={input}
+        />
+
+        <p>
+          16 x 16 = ?
+        </p>
+
+        <input
+          name="logic3"
+          onChange={handleChange}
+          style={input}
+        />
+
+        {/* MOTIVATION */}
+
+        <h2>
+          Motivation
+        </h2>
+
+        <textarea
+          name="motivation"
+          placeholder="Why should we hire you?"
+          onChange={handleChange}
+          style={bigTextarea}
+        />
+
+        {/* FILES */}
+
+        <h2>Documents</h2>
+
+        <label>
+          CV PDF
+        </label>
+
+        <input
+          type="file"
+          onChange={(e) =>
+            setCvFile(
+              e.target.files[0]
+            )
+          }
+        />
+
+        <label>
+          Photo
+        </label>
+
+        <input
+          type="file"
+          onChange={(e) =>
+            setPhotoFile(
+              e.target.files[0]
+            )
+          }
+        />
+
+        <label>
+          School transcripts
+        </label>
+
+        <input
+          type="file"
+          onChange={(e) =>
+            setTranscriptFile(
+              e.target.files[0]
+            )
+          }
+        />
+
+        <button
+          type="submit"
+          style={button}
+        >
+
+          {loading
+            ? "Submitting..."
+            : "Submit Application"}
+
+        </button>
+
+      </form>
 
     </main>
 
   );
 
 }
+
+/* =========================
+STYLES
+========================= */
+
+const container = {
+  padding: 30,
+  maxWidth: 900,
+  margin: "0 auto",
+  fontFamily: "Arial"
+};
+
+const title = {
+  fontSize: 48,
+  marginBottom: 30
+};
+
+const formStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 15
+};
+
+const input = {
+  padding: 12,
+  border: "1px solid #ccc",
+  borderRadius: 6
+};
+
+const textarea = {
+  padding: 12,
+  border: "1px solid #ccc",
+  borderRadius: 6,
+  minHeight: 100
+};
+
+const bigTextarea = {
+  padding: 12,
+  border: "1px solid #ccc",
+  borderRadius: 6,
+  minHeight: 200
+};
+
+const button = {
+  background: "#000",
+  color: "white",
+  padding: 15,
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontSize: 18
+};
+```
