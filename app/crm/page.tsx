@@ -448,35 +448,12 @@ export default function CRMPage() {
 
           };
 
-        const annonceIndex =
-          findIndex([
-            "annonce"
-          ]);
-
-        const nomIndex =
-          findIndex([
-            "nom"
-          ]);
-
-        const telIndex =
-          findIndex([
-            "telephone"
-          ]);
-
-        const emailIndex =
-          findIndex([
-            "email"
-          ]);
-
-        const infoIndex =
-          findIndex([
-            "information"
-          ]);
-
-        const messageIndex =
-          findIndex([
-            "message"
-          ]);
+        const annonceIndex = 1;
+const nomIndex = 3;
+const telIndex = 4;
+const emailIndex = 5;
+const infoIndex = 7;
+const messageIndex = 8;
 
         /* =========================
            BUILD LEADS
