@@ -41,33 +41,25 @@ export default function CRMPage() {
   const loadLeads =
   async () => {
 
-    try {
+    const {
+      data,
+      error
+    } = await supabase
 
-      const {
-        data,
-        error
-      } = await supabase
+      .from("leads")
 
-        .from("leads")
+      .select("*")
 
-        .select("*")
+      .order("id", {
+        ascending: false
+      });
 
-        .order("id", {
-          ascending: false
-        });
+    console.log(data);
+    console.log(error);
 
-      console.log(data);
-      console.log(error);
+    if (!error && data) {
 
-      if (!error && data) {
-
-        setLeads(data);
-
-      }
-
-    } catch (err) {
-
-      console.log(err);
+      setLeads(data);
 
     }
 
@@ -90,29 +82,21 @@ export default function CRMPage() {
     value
   ) => {
 
-    try {
+    const {
+      error
+    } = await supabase
 
-      const {
-        error
-      } = await supabase
+      .from("leads")
 
-        .from("leads")
+      .update({
+        [field]: value
+      })
 
-        .update({
-          [field]: value
-        })
+      .eq("id", id);
 
-        .eq("id", id);
+    console.log(error);
 
-      console.log(error);
-
-      if (error) {
-
-        alert(error.message);
-
-        return;
-
-      }
+    if (!error) {
 
       setLeads((prev) =>
         prev.map((lead) =>
@@ -124,10 +108,6 @@ export default function CRMPage() {
             : lead
         )
       );
-
-    } catch (err) {
-
-      console.log(err);
 
     }
 
@@ -168,49 +148,35 @@ export default function CRMPage() {
         .map((row) => {
 
           /* =========================
-             SAFE CSV PARSER
+             SIMPLE CSV SPLIT
           ========================= */
 
           const cols =
-            row.match(
-              /(".*?"|[^",]+)(?=\s*,|\s*$)/g
-            ) || [];
+            row.split(",");
 
           console.log(cols);
 
           return {
 
-            /* =========================
-               EXACT COLUMN ORDER
-            ========================= */
+            annonce:
+              String(
+                cols[1] || ""
+              ).trim(),
 
             nom:
               String(
                 cols[3] || ""
-              )
-              .replace(/"/g, "")
-              .trim(),
+              ).trim(),
 
             telephone:
               String(
                 cols[4] || ""
-              )
-              .replace(/"/g, "")
-              .trim(),
+              ).trim(),
 
             email:
               String(
                 cols[5] || ""
-              )
-              .replace(/"/g, "")
-              .trim(),
-
-            annonce:
-              String(
-                cols[1] || ""
-              )
-              .replace(/"/g, "")
-              .trim(),
+              ).trim(),
 
             statut:
               "Nouveau",
@@ -283,10 +249,6 @@ export default function CRMPage() {
         ${lead.telephone}
         ${lead.email}
         ${lead.annonce}
-        ${lead.commentaire}
-        ${lead.phase}
-        ${lead.operateur}
-        ${lead.historique}
         `
         .toLowerCase();
 
@@ -314,19 +276,11 @@ export default function CRMPage() {
 
         lead.annonce,
 
-        lead.statut,
-
-        lead.phase,
-
-        lead.commentaire,
-
-        lead.operateur,
-
       ]);
 
     const csvContent =
 
-      "Nom,Téléphone,Email,Annonce,Statut,Phase,Commentaire,Operateur\n"
+      "Nom,Téléphone,Email,Annonce\n"
 
       +
 
@@ -354,7 +308,7 @@ export default function CRMPage() {
       URL.createObjectURL(blob);
 
     link.download =
-      "microdrive_crm.csv";
+      "crm_export.csv";
 
     link.click();
 
@@ -425,7 +379,6 @@ export default function CRMPage() {
               <th style={th}>Opérateur</th>
               <th style={th}>Commentaire</th>
               <th style={th}>Historique</th>
-              <th style={th}>Relance</th>
               <th style={th}>Actions</th>
 
             </tr>
@@ -524,14 +477,6 @@ export default function CRMPage() {
                       </option>
 
                       <option>
-                        Relance
-                      </option>
-
-                      <option>
-                        RDV
-                      </option>
-
-                      <option>
                         Livraison
                       </option>
 
@@ -589,24 +534,6 @@ export default function CRMPage() {
                         )
                       }
                       style={textarea}
-                    />
-
-                  </td>
-
-                  <td style={td}>
-
-                    <input
-                      value={
-                        lead.derniere_relance || ""
-                      }
-                      onChange={(e) =>
-                        updateLead(
-                          lead.id,
-                          "derniere_relance",
-                          e.target.value
-                        )
-                      }
-                      style={input}
                     />
 
                   </td>
