@@ -1,4 +1,4 @@
-
+```javascript
 "use client";
 
 import React, {
@@ -15,8 +15,8 @@ SUPABASE
 
 const supabase =
 createClient(
-  "https://YOURPROJECT.supabase.co",
-  "YOUR_SUPABASE_ANON_KEY"
+  "https://tzlsdjzcxdjaatcpwqwn.supabase.co",
+  "sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd"
 );
 
 /* =========================
@@ -31,8 +31,6 @@ export default function HiringPage() {
   const [form, setForm] =
     useState({
 
-      /* BASIC */
-
       fullName: "",
       age: "",
       country: "",
@@ -40,8 +38,6 @@ export default function HiringPage() {
       phone: "",
       whatsapp: "",
       email: "",
-
-      /* EDUCATION */
 
       bacType: "",
       bacYear: "",
@@ -53,25 +49,17 @@ export default function HiringPage() {
       university: "",
       degree: "",
 
-      /* LANGUAGES */
-
       frenchLevel: "",
       englishLevel: "",
       arabicLevel: "",
-
-      /* EXPERIENCE */
 
       currentJob: "",
       yearsExperience: "",
       previousCompanies: "",
 
-      /* PERSONALITY */
-
       hobbies: "",
       sports: "",
       projects: "",
-
-      /* TESTS */
 
       logic1: "",
       logic2: "",
@@ -156,7 +144,7 @@ export default function HiringPage() {
         ) score += 10;
 
         /* =========================
-           INSERT
+           INSERT CANDIDATE
         ========================= */
 
         const {
@@ -178,6 +166,9 @@ export default function HiringPage() {
 
           .single();
 
+        console.log(data);
+        console.log(error);
+
         if (error) {
 
           alert(error.message);
@@ -190,54 +181,74 @@ export default function HiringPage() {
           data.id;
 
         /* =========================
-           FILE UPLOADS
+           UPLOAD CV
         ========================= */
 
         if (cvFile) {
 
-          await supabase.storage
+          const {
+            error: cvError
+          } = await supabase.storage
 
             .from("candidate-files")
 
             .upload(
 
-              `cv/${candidateId}-${cvFile.name}`,
+              `cv/${candidateId}-${Date.now()}-${cvFile.name}`,
 
               cvFile
 
             );
 
+          console.log(cvError);
+
         }
+
+        /* =========================
+           UPLOAD PHOTO
+        ========================= */
 
         if (photoFile) {
 
-          await supabase.storage
+          const {
+            error: photoError
+          } = await supabase.storage
 
             .from("candidate-files")
 
             .upload(
 
-              `photos/${candidateId}-${photoFile.name}`,
+              `photos/${candidateId}-${Date.now()}-${photoFile.name}`,
 
               photoFile
 
             );
 
+          console.log(photoError);
+
         }
+
+        /* =========================
+           UPLOAD TRANSCRIPT
+        ========================= */
 
         if (transcriptFile) {
 
-          await supabase.storage
+          const {
+            error: transcriptError
+          } = await supabase.storage
 
             .from("candidate-files")
 
             .upload(
 
-              `transcripts/${candidateId}-${transcriptFile.name}`,
+              `transcripts/${candidateId}-${Date.now()}-${transcriptFile.name}`,
 
               transcriptFile
 
             );
+
+          console.log(transcriptError);
 
         }
 
@@ -249,7 +260,9 @@ export default function HiringPage() {
 
         console.log(err);
 
-        alert("Error");
+        alert(
+          JSON.stringify(err)
+        );
 
       } finally {
 
@@ -278,7 +291,9 @@ export default function HiringPage() {
 
         {/* BASIC */}
 
-        <h2>Basic Information</h2>
+        <h2>
+          Basic Information
+        </h2>
 
         <input
           name="fullName"
@@ -332,7 +347,9 @@ export default function HiringPage() {
 
         {/* EDUCATION */}
 
-        <h2>Education</h2>
+        <h2>
+          Education
+        </h2>
 
         <input
           name="bacType"
@@ -392,7 +409,9 @@ export default function HiringPage() {
 
         {/* LANGUAGES */}
 
-        <h2>Languages</h2>
+        <h2>
+          Languages
+        </h2>
 
         <select
           name="frenchLevel"
@@ -444,7 +463,9 @@ export default function HiringPage() {
 
         {/* EXPERIENCE */}
 
-        <h2>Experience</h2>
+        <h2>
+          Experience
+        </h2>
 
         <textarea
           name="currentJob"
@@ -469,7 +490,9 @@ export default function HiringPage() {
 
         {/* PERSONALITY */}
 
-        <h2>Personality / Projects</h2>
+        <h2>
+          Personality / Projects
+        </h2>
 
         <textarea
           name="hobbies"
@@ -494,10 +517,12 @@ export default function HiringPage() {
 
         {/* LOGIC TEST */}
 
-        <h2>Logic Test</h2>
+        <h2>
+          Logic Test
+        </h2>
 
         <p>
-          6 x 7 = ?
+          6 × 7 = ?
         </p>
 
         <input
@@ -517,7 +542,7 @@ export default function HiringPage() {
         />
 
         <p>
-          16 x 16 = ?
+          16 × 16 = ?
         </p>
 
         <input
@@ -541,7 +566,9 @@ export default function HiringPage() {
 
         {/* FILES */}
 
-        <h2>Documents</h2>
+        <h2>
+          Documents
+        </h2>
 
         <label>
           CV PDF
@@ -652,4 +679,4 @@ const button = {
   cursor: "pointer",
   fontSize: 18
 };
-
+```
