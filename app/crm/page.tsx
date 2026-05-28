@@ -1,3 +1,4 @@
+````javascript
 "use client";
 
 import React, {
@@ -186,12 +187,15 @@ export default function CRMPage() {
       (lead, index) => {
 
         const phone =
+
           String(
             lead.telephone || ""
-          ).replace(
-            /[^0-9]/g,
-            ""
-          );
+          )
+
+            .replace(
+              /[^0-9]/g,
+              ""
+            );
 
         setTimeout(() => {
 
@@ -239,41 +243,104 @@ export default function CRMPage() {
   };
 
   /* =========================================
-     SAFE CSV PARSER
+     TRUE CSV PARSER
   ========================================= */
 
-  const parseCSVLine = (line) => {
+  const parseCSV = (text) => {
 
-    const result = [];
+    const rows = [];
 
+    let row = [];
     let current = "";
+
     let insideQuotes = false;
 
     for (
       let i = 0;
-      i < line.length;
+      i < text.length;
       i++
     ) {
 
-      const char = line[i];
+      const char = text[i];
+      const next = text[i + 1];
+
+      /* =========================
+         QUOTES
+      ========================= */
 
       if (char === '"') {
 
-        insideQuotes =
-          !insideQuotes;
+        if (
+          insideQuotes &&
+          next === '"'
+        ) {
+
+          current += '"';
+
+          i++;
+
+        } else {
+
+          insideQuotes =
+            !insideQuotes;
+
+        }
 
       }
+
+      /* =========================
+         COLUMN
+      ========================= */
 
       else if (
         char === "," &&
         !insideQuotes
       ) {
 
-        result.push(current);
+        row.push(current);
 
         current = "";
 
       }
+
+      /* =========================
+         NEW LINE
+      ========================= */
+
+      else if (
+        (char === "\n" ||
+          char === "\r") &&
+        !insideQuotes
+      ) {
+
+        if (
+          current !== "" ||
+          row.length > 0
+        ) {
+
+          row.push(current);
+
+          rows.push(row);
+
+          row = [];
+          current = "";
+
+        }
+
+        if (
+          char === "\r" &&
+          next === "\n"
+        ) {
+
+          i++;
+
+        }
+
+      }
+
+      /* =========================
+         NORMAL CHAR
+      ========================= */
 
       else {
 
@@ -283,14 +350,27 @@ export default function CRMPage() {
 
     }
 
-    result.push(current);
+    /* =========================
+       LAST VALUE
+    ========================= */
 
-    return result;
+    if (
+      current !== "" ||
+      row.length > 0
+    ) {
+
+      row.push(current);
+
+      rows.push(row);
+
+    }
+
+    return rows;
 
   };
 
   /* =========================================
-     CLEAN VALUE
+     CLEAN
   ========================================= */
 
   const clean = (value) => {
@@ -299,11 +379,13 @@ export default function CRMPage() {
 
     return String(value)
 
-      .replace(/^"|"$/g, "")
-
-      .replace(/\r/g, "")
+      .replace(/\r/g, " ")
 
       .replace(/\n/g, " ")
+
+      .replace(/\s+/g, " ")
+
+      .replace(/^"|"$/g, "")
 
       .trim();
 
@@ -328,61 +410,54 @@ export default function CRMPage() {
         const text =
           await file.text();
 
-        const rows =
+        /* =========================================
+           PARSE FULL CSV
+        ========================================= */
 
-          text
+        const csv =
+          parseCSV(text);
 
-            .split(/\r?\n/)
-
-            .filter(
-              (row) =>
-                row.trim() !== ""
-            );
-
-        if (rows.length <= 1) {
+        if (csv.length <= 1) {
 
           alert("CSV vide");
-
           return;
 
         }
 
         /* =========================================
-           HEADER
+           HEADERS
         ========================================= */
 
         const headers =
 
-          parseCSVLine(rows[0])
+          csv[0].map((h) =>
 
-            .map((h) =>
+            clean(h)
 
-              clean(h)
+              .toLowerCase()
 
-                .toLowerCase()
+              .normalize("NFD")
 
-                .normalize("NFD")
+              .replace(
+                /[\u0300-\u036f]/g,
+                ""
+              )
 
-                .replace(
-                  /[\u0300-\u036f]/g,
-                  ""
-                )
-
-            );
+          );
 
         console.log(headers);
 
         /* =========================================
-           FIND INDEX
+           FIND COLUMN INDEX
         ========================================= */
 
-        const getIndex =
-          (possibleNames) => {
+        const findIndex =
+          (names) => {
 
             return headers.findIndex(
               (header) =>
 
-                possibleNames.some(
+                names.some(
                   (name) =>
                     header.includes(name)
                 )
@@ -392,41 +467,33 @@ export default function CRMPage() {
           };
 
         const annonceIndex =
-          getIndex([
-            "annonce",
-            "reference",
-            "titre"
+          findIndex([
+            "annonce"
           ]);
 
         const nomIndex =
-          getIndex([
-            "nom",
-            "name"
+          findIndex([
+            "nom"
           ]);
 
         const telIndex =
-          getIndex([
-            "telephone",
-            "phone",
-            "mobile"
+          findIndex([
+            "telephone"
           ]);
 
         const emailIndex =
-          getIndex([
-            "email",
-            "mail"
+          findIndex([
+            "email"
           ]);
 
         const messageIndex =
-          getIndex([
-            "message",
-            "memo"
+          findIndex([
+            "message"
           ]);
 
         const infoIndex =
-          getIndex([
-            "information",
-            "infos"
+          findIndex([
+            "information"
           ]);
 
         console.log({
@@ -444,14 +511,16 @@ export default function CRMPage() {
 
         const parsed =
 
-          rows
+          csv
 
             .slice(1)
 
-            .map((row) => {
+            .map((cols) => {
 
-              const cols =
-                parseCSVLine(row);
+              const annonce =
+                clean(
+                  cols[annonceIndex]
+                );
 
               const nom =
                 clean(
@@ -468,9 +537,9 @@ export default function CRMPage() {
                   cols[emailIndex]
                 );
 
-              const annonce =
+              const message =
                 clean(
-                  cols[annonceIndex]
+                  cols[messageIndex]
                 );
 
               const infos =
@@ -478,12 +547,9 @@ export default function CRMPage() {
                   cols[infoIndex]
                 );
 
-              const message =
-                clean(
-                  cols[messageIndex]
-                );
-
               return {
+
+                annonce,
 
                 nom,
 
@@ -491,7 +557,11 @@ export default function CRMPage() {
 
                 email,
 
-                annonce,
+                commentaire:
+                  infos,
+
+                historique:
+                  message,
 
                 statut:
                   "Nouveau",
@@ -499,17 +569,11 @@ export default function CRMPage() {
                 phase:
                   "À contacter",
 
-                commentaire:
-                  infos || "",
-
-                historique:
-                  message || "",
-
                 operateur:
                   "",
 
                 derniere_relance:
-                  "",
+                  ""
 
               };
 
@@ -526,18 +590,8 @@ export default function CRMPage() {
 
         console.log(parsed);
 
-        if (parsed.length === 0) {
-
-          alert(
-            "Aucune donnée trouvée"
-          );
-
-          return;
-
-        }
-
         /* =========================================
-           INSERT SUPABASE
+           INSERT
         ========================================= */
 
         const {
@@ -1168,6 +1222,37 @@ const deleteBtn = {
   border: "none",
   padding: "10px 15px",
   borderRadius: 6,
+```javascript
+const waBtn = {
+  background: "#25D366",
+  color: "white",
+  padding: "8px 12px",
+  borderRadius: 6,
+  textDecoration: "none",
+  textAlign: "center",
+  border: "none",
+  cursor: "pointer"
+};
+
+const emailBtn = {
+  background: "#2563eb",
+  color: "white",
+  padding: "8px 12px",
+  borderRadius: 6,
+  textDecoration: "none",
+  textAlign: "center",
+  border: "none",
+  cursor: "pointer"
+};
+
+const smsBtn = {
+  background: "#f97316",
+  color: "white",
+  padding: "8px 12px",
+  borderRadius: 6,
+  textDecoration: "none",
+  textAlign: "center",
+  border: "none",
   cursor: "pointer"
 };
 
@@ -1189,13 +1274,4 @@ const td = {
   padding: 10,
   verticalAlign: "top"
 };
-
-const waBtn = {
-  background: "#25D366",
-  color: "white",
-  padding: "8px 12px",
-  borderRadius: 6,
-  textDecoration: "none",
-  textAlign: "center",
-  border: "none",
-  cursor: "pointer
+````
