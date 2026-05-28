@@ -34,6 +34,9 @@ export default function CRMPage() {
   const [loading, setLoading] =
     useState(false);
 
+  const [selected, setSelected] =
+    useState([]);
+
   /* =========================
      LOAD LEADS
   ========================= */
@@ -114,6 +117,110 @@ export default function CRMPage() {
   };
 
   /* =========================
+     DELETE SELECTED
+  ========================= */
+
+  const deleteSelected =
+  async () => {
+
+    const ok =
+      confirm(
+        "Supprimer les leads sélectionnés ?"
+      );
+
+    if (!ok) return;
+
+    const {
+      error
+    } = await supabase
+
+      .from("leads")
+
+      .delete()
+
+      .in("id", selected);
+
+    console.log(error);
+
+    if (!error) {
+
+      setSelected([]);
+
+      loadLeads();
+
+    }
+
+  };
+
+  /* =========================
+     BULK WHATSAPP
+  ========================= */
+
+  const bulkWhatsApp =
+  () => {
+
+    const leadsSelected =
+      leads.filter(
+        (lead) =>
+          selected.includes(
+            lead.id
+          )
+      );
+
+    leadsSelected.forEach(
+      (lead, index) => {
+
+      const phone =
+        String(
+          lead.telephone || ""
+        ).replace(
+          /[^0-9+]/g,
+          ""
+        );
+
+      setTimeout(() => {
+
+        window.open(
+          `https://wa.me/${phone}`,
+          "_blank"
+        );
+
+      }, index * 500);
+
+    });
+
+  };
+
+  /* =========================
+     BULK EMAIL
+  ========================= */
+
+  const bulkEmail =
+  () => {
+
+    const emails =
+      leads
+
+        .filter(
+          (lead) =>
+            selected.includes(
+              lead.id
+            )
+        )
+
+        .map(
+          (lead) =>
+            lead.email
+        )
+
+        .join(",");
+
+    window.location.href =
+      `mailto:?bcc=${emails}`;
+
+  };
+
+  /* =========================
      IMPORT CSV
   ========================= */
 
@@ -147,14 +254,8 @@ export default function CRMPage() {
 
         .map((row) => {
 
-          /* =========================
-             SIMPLE CSV SPLIT
-          ========================= */
-
           const cols =
             row.split(",");
-
-          console.log(cols);
 
           return {
 
@@ -315,6 +416,40 @@ export default function CRMPage() {
   };
 
   /* =========================
+     STATUS COLORS
+  ========================= */
+
+  const getStatusColor =
+  (status) => {
+
+    switch (status) {
+
+      case "Chaud":
+        return "#16a34a";
+
+      case "Contacté":
+        return "#2563eb";
+
+      case "Réfléchit":
+        return "#eab308";
+
+      case "Livraison":
+        return "#f97316";
+
+      case "Client":
+        return "#000";
+
+      case "Perdu":
+        return "#dc2626";
+
+      default:
+        return "#666";
+
+    }
+
+  };
+
+  /* =========================
      RENDER
   ========================= */
 
@@ -352,6 +487,27 @@ export default function CRMPage() {
           Export CSV
         </button>
 
+        <button
+          onClick={bulkWhatsApp}
+          style={waBtn}
+        >
+          WhatsApp groupé
+        </button>
+
+        <button
+          onClick={bulkEmail}
+          style={emailBtn}
+        >
+          Email groupé
+        </button>
+
+        <button
+          onClick={deleteSelected}
+          style={deleteBtn}
+        >
+          Supprimer sélection
+        </button>
+
       </div>
 
       {loading && (
@@ -370,6 +526,7 @@ export default function CRMPage() {
 
             <tr>
 
+              <th style={th}>✓</th>
               <th style={th}>Nom</th>
               <th style={th}>Téléphone</th>
               <th style={th}>Email</th>
@@ -407,6 +564,42 @@ export default function CRMPage() {
                 >
 
                   <td style={td}>
+
+                    <input
+                      type="checkbox"
+
+                      checked={
+                        selected.includes(
+                          lead.id
+                        )
+                      }
+
+                      onChange={(e) => {
+
+                        if (e.target.checked) {
+
+                          setSelected([
+                            ...selected,
+                            lead.id
+                          ]);
+
+                        } else {
+
+                          setSelected(
+                            selected.filter(
+                              (id) =>
+                                id !== lead.id
+                            )
+                          );
+
+                        }
+
+                      }}
+                    />
+
+                  </td>
+
+                  <td style={td}>
                     {lead.nom}
                   </td>
 
@@ -428,6 +621,7 @@ export default function CRMPage() {
                       value={
                         lead.statut || ""
                       }
+
                       onChange={(e) =>
                         updateLead(
                           lead.id,
@@ -435,6 +629,20 @@ export default function CRMPage() {
                           e.target.value
                         )
                       }
+
+                      style={{
+                        background:
+                          getStatusColor(
+                            lead.statut
+                          ),
+
+                        color:
+                          "white",
+
+                        padding: 8,
+
+                        borderRadius: 6
+                      }}
                     >
 
                       <option>Nouveau</option>
@@ -455,6 +663,7 @@ export default function CRMPage() {
                       value={
                         lead.phase || ""
                       }
+
                       onChange={(e) =>
                         updateLead(
                           lead.id,
@@ -490,6 +699,7 @@ export default function CRMPage() {
                       value={
                         lead.operateur || ""
                       }
+
                       onChange={(e) =>
                         updateLead(
                           lead.id,
@@ -497,6 +707,7 @@ export default function CRMPage() {
                           e.target.value
                         )
                       }
+
                       style={input}
                     />
 
@@ -508,6 +719,7 @@ export default function CRMPage() {
                       value={
                         lead.commentaire || ""
                       }
+
                       onChange={(e) =>
                         updateLead(
                           lead.id,
@@ -515,6 +727,7 @@ export default function CRMPage() {
                           e.target.value
                         )
                       }
+
                       style={textarea}
                     />
 
@@ -526,6 +739,7 @@ export default function CRMPage() {
                       value={
                         lead.historique || ""
                       }
+
                       onChange={(e) =>
                         updateLead(
                           lead.id,
@@ -533,6 +747,7 @@ export default function CRMPage() {
                           e.target.value
                         )
                       }
+
                       style={textarea}
                     />
 
@@ -634,6 +849,14 @@ const textarea = {
 
 const exportBtn = {
   background: "#000",
+  color: "white",
+  border: "none",
+  padding: "10px 15px",
+  borderRadius: 6
+};
+
+const deleteBtn = {
+  background: "#dc2626",
   color: "white",
   border: "none",
   padding: "10px 15px",
