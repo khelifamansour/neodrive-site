@@ -9,18 +9,18 @@ import {
   createClient
 } from "@supabase/supabase-js";
 
-/* ========================================
+/* =========================================
    SUPABASE
-======================================== */
+========================================= */
 
 const supabase = createClient(
   "https://tzlsdjzcxdjaatcpwqwn.supabase.co",
-  "sb_publishable_FxvXFqVpjdu3vYbCQo9qQ_lTlNrAMd"
+  "sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd"
 );
 
-/* ========================================
+/* =========================================
    PAGE
-======================================== */
+========================================= */
 
 export default function CRMPage() {
 
@@ -29,24 +29,26 @@ export default function CRMPage() {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState([]);
 
-  /* ========================================
+  /* =========================================
      LOAD LEADS
-  ======================================== */
+  ========================================= */
 
   const loadLeads = async () => {
 
     try {
 
-      const { data, error } =
-        await supabase
+      const {
+        data,
+        error
+      } = await supabase
 
-          .from("leads")
+        .from("leads")
 
-          .select("*")
+        .select("*")
 
-          .order("id", {
-            ascending: false
-          });
+        .order("id", {
+          ascending: false
+        });
 
       if (error) {
 
@@ -71,9 +73,9 @@ export default function CRMPage() {
 
   }, []);
 
-  /* ========================================
+  /* =========================================
      UPDATE LEAD
-  ======================================== */
+  ========================================= */
 
   const updateLead =
     async (
@@ -84,16 +86,17 @@ export default function CRMPage() {
 
       try {
 
-        const { error } =
-          await supabase
+        const {
+          error
+        } = await supabase
 
-            .from("leads")
+          .from("leads")
 
-            .update({
-              [field]: value
-            })
+          .update({
+            [field]: value
+          })
 
-            .eq("id", id);
+          .eq("id", id);
 
         if (error) {
 
@@ -121,30 +124,30 @@ export default function CRMPage() {
 
     };
 
-  /* ========================================
+  /* =========================================
      DELETE SELECTED
-  ======================================== */
+  ========================================= */
 
   const deleteSelected =
     async () => {
 
       try {
 
-        const ok =
-          confirm(
-            "Supprimer les leads sélectionnés ?"
-          );
+        const ok = confirm(
+          "Supprimer les leads sélectionnés ?"
+        );
 
         if (!ok) return;
 
-        const { error } =
-          await supabase
+        const {
+          error
+        } = await supabase
 
-            .from("leads")
+          .from("leads")
 
-            .delete()
+          .delete()
 
-            .in("id", selected);
+          .in("id", selected);
 
         if (error) {
 
@@ -165,16 +168,18 @@ export default function CRMPage() {
 
     };
 
-  /* ========================================
+  /* =========================================
      BULK WHATSAPP
-  ======================================== */
+  ========================================= */
 
   const bulkWhatsApp = () => {
 
     const leadsSelected =
       leads.filter(
         (lead) =>
-          selected.includes(lead.id)
+          selected.includes(
+            lead.id
+          )
       );
 
     leadsSelected.forEach(
@@ -202,18 +207,21 @@ export default function CRMPage() {
 
   };
 
-  /* ========================================
+  /* =========================================
      BULK EMAIL
-  ======================================== */
+  ========================================= */
 
   const bulkEmail = () => {
 
     const emails =
+
       leads
 
         .filter(
           (lead) =>
-            selected.includes(lead.id)
+            selected.includes(
+              lead.id
+            )
         )
 
         .map(
@@ -230,27 +238,33 @@ export default function CRMPage() {
 
   };
 
-  /* ========================================
+  /* =========================================
      SAFE CSV PARSER
-  ======================================== */
+  ========================================= */
 
   const parseCSVLine = (line) => {
 
     const result = [];
 
     let current = "";
-
     let insideQuotes = false;
 
-    for (let i = 0; i < line.length; i++) {
+    for (
+      let i = 0;
+      i < line.length;
+      i++
+    ) {
 
       const char = line[i];
 
       if (char === '"') {
 
-        insideQuotes = !insideQuotes;
+        insideQuotes =
+          !insideQuotes;
 
-      } else if (
+      }
+
+      else if (
         char === "," &&
         !insideQuotes
       ) {
@@ -259,7 +273,9 @@ export default function CRMPage() {
 
         current = "";
 
-      } else {
+      }
+
+      else {
 
         current += char;
 
@@ -273,9 +289,9 @@ export default function CRMPage() {
 
   };
 
-  /* ========================================
-     CLEAN TEXT
-  ======================================== */
+  /* =========================================
+     CLEAN VALUE
+  ========================================= */
 
   const clean = (value) => {
 
@@ -293,9 +309,9 @@ export default function CRMPage() {
 
   };
 
-  /* ========================================
+  /* =========================================
      IMPORT CSV
-  ======================================== */
+  ========================================= */
 
   const handleCSV =
     async (e) => {
@@ -313,8 +329,11 @@ export default function CRMPage() {
           await file.text();
 
         const rows =
+
           text
+
             .split(/\r?\n/)
+
             .filter(
               (row) =>
                 row.trim() !== ""
@@ -323,43 +342,54 @@ export default function CRMPage() {
         if (rows.length <= 1) {
 
           alert("CSV vide");
+
           return;
 
         }
 
-        /* ========================================
+        /* =========================================
            HEADER
-        ======================================== */
+        ========================================= */
 
         const headers =
-          parseCSVLine(rows[0]).map(
-            (h) =>
+
+          parseCSVLine(rows[0])
+
+            .map((h) =>
+
               clean(h)
+
                 .toLowerCase()
+
                 .normalize("NFD")
+
                 .replace(
                   /[\u0300-\u036f]/g,
                   ""
                 )
-          );
+
+            );
 
         console.log(headers);
 
-        /* ========================================
-           FIND COLUMN INDEX
-        ======================================== */
+        /* =========================================
+           FIND INDEX
+        ========================================= */
 
-        const getIndex = (possibleNames) => {
+        const getIndex =
+          (possibleNames) => {
 
-          return headers.findIndex(
-            (header) =>
-              possibleNames.some(
-                (name) =>
-                  header.includes(name)
-              )
-          );
+            return headers.findIndex(
+              (header) =>
 
-        };
+                possibleNames.some(
+                  (name) =>
+                    header.includes(name)
+                )
+
+            );
+
+          };
 
         const annonceIndex =
           getIndex([
@@ -390,8 +420,7 @@ export default function CRMPage() {
         const messageIndex =
           getIndex([
             "message",
-            "memo",
-            "commentaire"
+            "memo"
           ]);
 
         const infoIndex =
@@ -409,11 +438,12 @@ export default function CRMPage() {
           infoIndex
         });
 
-        /* ========================================
-           PARSE DATA
-        ======================================== */
+        /* =========================================
+           BUILD LEADS
+        ========================================= */
 
         const parsed =
+
           rows
 
             .slice(1)
@@ -443,14 +473,14 @@ export default function CRMPage() {
                   cols[annonceIndex]
                 );
 
-              const message =
-                clean(
-                  cols[messageIndex]
-                );
-
               const infos =
                 clean(
                   cols[infoIndex]
+                );
+
+              const message =
+                clean(
+                  cols[messageIndex]
                 );
 
               return {
@@ -487,9 +517,11 @@ export default function CRMPage() {
 
             .filter(
               (lead) =>
+
                 lead.nom ||
                 lead.telephone ||
                 lead.email
+
             );
 
         console.log(parsed);
@@ -504,16 +536,17 @@ export default function CRMPage() {
 
         }
 
-        /* ========================================
+        /* =========================================
            INSERT SUPABASE
-        ======================================== */
+        ========================================= */
 
-        const { error } =
-          await supabase
+        const {
+          error
+        } = await supabase
 
-            .from("leads")
+          .from("leads")
 
-            .insert(parsed);
+          .insert(parsed);
 
         if (error) {
 
@@ -547,14 +580,16 @@ export default function CRMPage() {
 
     };
 
-  /* ========================================
+  /* =========================================
      SEARCH
-  ======================================== */
+  ========================================= */
 
   const filtered =
+
     leads.filter((lead) => {
 
       const text =
+
         `
         ${lead.nom}
         ${lead.telephone}
@@ -571,13 +606,14 @@ export default function CRMPage() {
 
     });
 
-  /* ========================================
+  /* =========================================
      EXPORT CSV
-  ======================================== */
+  ========================================= */
 
   const exportCSV = () => {
 
     const headers = [
+
       "Nom",
       "Téléphone",
       "Email",
@@ -587,27 +623,21 @@ export default function CRMPage() {
       "Commentaire",
       "Historique",
       "Opérateur"
+
     ];
 
     const rows =
+
       leads.map((lead) => [
 
         lead.nom || "",
-
         lead.telephone || "",
-
         lead.email || "",
-
         lead.annonce || "",
-
         lead.statut || "",
-
         lead.phase || "",
-
         lead.commentaire || "",
-
         lead.historique || "",
-
         lead.operateur || ""
 
       ]);
@@ -623,16 +653,25 @@ export default function CRMPage() {
       +
 
       rows
+
         .map((e) =>
+
           e
+
             .map((v) =>
+
               `"${String(v).replace(/"/g, '""')}"`
+
             )
+
             .join(",")
+
         )
+
         .join("\n");
 
     const blob =
+
       new Blob(
         [csvContent],
         {
@@ -654,9 +693,9 @@ export default function CRMPage() {
 
   };
 
-  /* ========================================
+  /* =========================================
      STATUS COLORS
-  ======================================== */
+  ========================================= */
 
   const getStatusColor =
     (status) => {
@@ -688,9 +727,9 @@ export default function CRMPage() {
 
     };
 
-  /* ========================================
+  /* =========================================
      RENDER
-  ======================================== */
+  ========================================= */
 
   return (
 
@@ -774,7 +813,9 @@ export default function CRMPage() {
               <th style={th}>Phase</th>
               <th style={th}>Opérateur</th>
               <th style={th}>Commentaire</th>
-              <th style={th}>Historique / Message client</th>
+              <th style={th}>
+                Message initial client
+              </th>
               <th style={th}>Actions</th>
 
             </tr>
@@ -787,12 +828,15 @@ export default function CRMPage() {
               (lead, index) => {
 
                 const phone =
+
                   String(
                     lead.telephone || ""
-                  ).replace(
-                    /[^0-9]/g,
-                    ""
-                  );
+                  )
+
+                    .replace(
+                      /[^0-9]/g,
+                      ""
+                    );
 
                 return (
 
@@ -815,7 +859,9 @@ export default function CRMPage() {
 
                         onChange={(e) => {
 
-                          if (e.target.checked) {
+                          if (
+                            e.target.checked
+                          ) {
 
                             setSelected([
                               ...selected,
@@ -884,13 +930,33 @@ export default function CRMPage() {
                         }}
                       >
 
-                        <option>Nouveau</option>
-                        <option>Contacté</option>
-                        <option>Chaud</option>
-                        <option>Réfléchit</option>
-                        <option>Livraison</option>
-                        <option>Client</option>
-                        <option>Perdu</option>
+                        <option>
+                          Nouveau
+                        </option>
+
+                        <option>
+                          Contacté
+                        </option>
+
+                        <option>
+                          Chaud
+                        </option>
+
+                        <option>
+                          Réfléchit
+                        </option>
+
+                        <option>
+                          Livraison
+                        </option>
+
+                        <option>
+                          Client
+                        </option>
+
+                        <option>
+                          Perdu
+                        </option>
 
                       </select>
 
@@ -1049,9 +1115,9 @@ export default function CRMPage() {
 
 }
 
-/* ========================================
+/* =========================================
    STYLES
-======================================== */
+========================================= */
 
 const container = {
   padding: 20,
@@ -1132,19 +1198,4 @@ const waBtn = {
   textDecoration: "none",
   textAlign: "center",
   border: "none",
-  cursor: "pointer"
-};
-
-const emailBtn = {
-  background: "#2563eb",
-  color: "white",
-  padding: "8px 12px",
-  borderRadius: 6,
-  textDecoration: "none",
-  textAlign: "center",
-  border: "none",
-  cursor: "pointer"
-};
-
-const smsBtn = {
- 
+  cursor: "pointer
