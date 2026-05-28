@@ -1,4 +1,4 @@
-````javascript
+
 "use client";
 
 import React, {
