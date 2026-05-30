@@ -34,25 +34,42 @@ useEffect(() => {
 
 const loadQuestions = async () => {
 
-  const { data, error } = await supabase
-    .from("recruitment_questions")
-    .select("*");
+ const { data, error } = await supabase
+.from("recruitment_questions")
+.select("*");
 
-  console.log("SUPABASE DATA:", data);
-  console.log("SUPABASE ERROR:", error);
+if (error) {
+setErrorMessage(error.message);
+setLoading(false);
+return;
+}
 
-  if (error) {
-    setErrorMessage(error.message);
-    setLoading(false);
-    return;
-  }
+const allQuestions = data || [];
 
- const shuffled = (data || [])
-  .sort(() => Math.random() - 0.5)
-  .slice(0, 10);
+const logicQuestions = allQuestions
+.filter((q) => q.category === "logic")
+.sort(() => Math.random() - 0.5)
+.slice(0, 4);
 
-setQuestions(shuffled);
-  setLoading(false);
+const frenchQuestions = allQuestions
+.filter((q) => q.category === "french")
+.sort(() => Math.random() - 0.5)
+.slice(0, 3);
+
+const englishQuestions = allQuestions
+.filter((q) => q.category === "english")
+.sort(() => Math.random() - 0.5)
+.slice(0, 3);
+
+const finalExam = [
+...logicQuestions,
+...frenchQuestions,
+...englishQuestions
+].sort(() => Math.random() - 0.5);
+
+setQuestions(finalExam);
+setLoading(false);
+
 };
 
 loadQuestions();
