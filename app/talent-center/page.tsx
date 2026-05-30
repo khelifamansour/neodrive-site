@@ -29,6 +29,13 @@ export default function HiringPage() {
 const [timeLeft, setTimeLeft] = useState(EXAM_DURATION);
 
 const [examFinished, setExamFinished] = useState(false);
+  const [questions, setQuestions] = useState([]);
+const [answers, setAnswers] = useState({});
+const [score, setScore] = useState(null);
+
+const [logicScore, setLogicScore] = useState(0);
+const [frenchScore, setFrenchScore] = useState(0);
+const [englishScore, setEnglishScore] = useState(0);
 
   const [form, setForm] = useState({
 
@@ -94,6 +101,50 @@ const [examFinished, setExamFinished] = useState(false);
   return () => clearInterval(timer);
 
 }, [examFinished]);
+
+  useEffect(() => {
+
+  const loadQuestions = async () => {
+
+    const { data, error } = await supabase
+      .from("recruitment_questions")
+      .select("*");
+
+    if (error) {
+      console.log(error);
+      return;
+    }
+
+    const allQuestions = data || [];
+
+    const logicQuestions = allQuestions
+      .filter(q => q.category === "logic")
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 10);
+
+    const frenchQuestions = allQuestions
+      .filter(q => q.category === "french")
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 10);
+
+    const englishQuestions = allQuestions
+      .filter(q => q.category === "english")
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 10);
+
+    const finalExam = [
+      ...logicQuestions,
+      ...frenchQuestions,
+      ...englishQuestions
+    ].sort(() => Math.random() - 0.5);
+
+    setQuestions(finalExam);
+
+  };
+
+  loadQuestions();
+
+}, []);
 
   /* =========================
      HANDLE CHANGE
@@ -511,26 +562,64 @@ if (motivationLetterFile) {
 
         </select>
 
-        <p>
-          What does voltage mean?
-        </p>
+       <h2>Recruitment Exam</h2>
 
-        <p>
-          A) Electrical pressure
-          <br />
-          B) Mechanical force
-          <br />
-          C) Battery weight
-          <br />
-          D) Motor speed
-        </p>
+{questions.map((q) => (
+
+  <div
+    key={q.id}
+    style={{
+      border: "1px solid #ddd",
+      padding: 15,
+      marginBottom: 15,
+      borderRadius: 8
+    }}
+  >
+
+    <h3>
+      {q.category.toUpperCase()}
+    </h3>
+
+    <p>
+      <strong>{q.question}</strong>
+    </p>
+
+    {["A","B","C","D"].map(letter => (
+
+      <label
+        key={letter}
+        style={{
+          display: "block",
+          marginBottom: 8
+        }}
+      >
 
         <input
-          name="english2"
-          placeholder="Answer"
-          onChange={handleChange}
-          style={input}
+          type="radio"
+          name={`question-${q.id}`}
+          value={letter}
+          onChange={(e) =>
+            setAnswers({
+              ...answers,
+              [q.id]: e.target.value
+            })
+          }
         />
+
+        {" "}
+
+        {letter === "A" && q.answer_a}
+        {letter === "B" && q.answer_b}
+        {letter === "C" && q.answer_c}
+        {letter === "D" && q.answer_d}
+
+      </label>
+
+    ))}
+
+  </div>
+
+))}
 
         <h2>Technical Report</h2>
 
