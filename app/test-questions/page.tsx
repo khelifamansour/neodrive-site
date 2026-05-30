@@ -73,7 +73,7 @@ const frenchQuestions = allQuestions
 const englishQuestions = allQuestions
 .filter((q) => q.category === "english")
 .sort(() => Math.random() - 0.5)
-.slice(0, 1O);
+.slice(0, 10);
 
 const finalExam = [
 ...logicQuestions,
