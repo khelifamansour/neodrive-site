@@ -80,6 +80,7 @@ setScore(total);
 
 return (
 
+<>
 <button
 onClick={calculateScore}
 style={{
@@ -231,8 +232,11 @@ Submit Exam </button>
     ))
   }
 
-</main>
 
+
+  </main>
+
+</>
 
 );
 
