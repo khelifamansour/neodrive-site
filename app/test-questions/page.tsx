@@ -81,17 +81,7 @@ setScore(total);
 return (
 
 <>
-<button
-onClick={calculateScore}
-style={{
-padding: "15px",
-fontSize: "18px",
-marginTop: "20px"
-}}
 
->
-
-Submit Exam </button>
 
 {score !== null && (
 
@@ -219,9 +209,7 @@ Submit Exam </button>
 </label>
 
 
-        <p>
-          Correct answer: {q.correct_answer}
-        </p>
+    
 
         <p>
           Difficulty: {q.difficulty}
@@ -232,7 +220,29 @@ Submit Exam </button>
     ))
   }
 
+<div
+  style={{
+    marginTop: "30px",
+    textAlign: "center"
+  }}
+>
+  <button
+    onClick={calculateScore}
+    style={{
+      padding: "15px 30px",
+      fontSize: "18px",
+      cursor: "pointer"
+    }}
+  >
+    Submit Exam
+  </button>
 
+  {score !== null && (
+    <h2>
+      Score: {score} / {questions.length}
+    </h2>
+  )}
+</div>
 
   </main>
 
