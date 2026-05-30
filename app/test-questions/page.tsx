@@ -27,6 +27,11 @@ const [loading, setLoading] = useState(true);
 const [errorMessage, setErrorMessage] = useState("");
 const [answers, setAnswers] = useState<Record<number, string>>({});
 const [score, setScore] = useState<number | null>(null);
+const EXAM_DURATION = 25 * 60;
+
+const [timeLeft, setTimeLeft] = useState(EXAM_DURATION);
+
+const [examFinished, setExamFinished] = useState(false);
 
 
 useEffect(() => {
@@ -43,6 +48,39 @@ setErrorMessage(error.message);
 setLoading(false);
 return;
 }
+
+ useEffect(() => {
+
+if (examFinished) return;
+
+const timer = setInterval(() => {
+
+
+setTimeLeft((prev) => {
+
+  if (prev <= 1) {
+
+    clearInterval(timer);
+
+    setExamFinished(true);
+
+    calculateScore();
+
+    return 0;
+
+  }
+
+  return prev - 1;
+
+});
+
+
+}, 1000);
+
+return () => clearInterval(timer);
+
+}, [examFinished]);
+
 
 const allQuestions = data || [];
 
@@ -95,6 +133,44 @@ setScore(total);
 
 };
 
+ const formatTime = (seconds: number) => {
+
+const mins = Math.floor(seconds / 60);
+
+const secs = seconds % 60;
+
+return `${mins}:${secs
+    .toString()
+    .padStart(2, "0")}`;
+
+};
+
+ if (examFinished) {
+
+return (
+
+<main
+  style={{
+    maxWidth: "1000px",
+    margin: "0 auto",
+    padding: "30px",
+    textAlign: "center"
+  }}
+>
+
+  <h1>Exam Finished</h1>
+
+  <h2>
+    Score: {score} / {questions.length}
+  </h2>
+
+</main>
+
+);
+
+}
+
+
 return (
 
 <>
@@ -117,6 +193,20 @@ return (
 >
 
   <h1>Test Questions</h1>
+ <div
+  style={{
+    background: "#ffeeba",
+    padding: "15px",
+    borderRadius: "8px",
+    marginBottom: "20px",
+    fontSize: "24px",
+    fontWeight: "bold",
+    textAlign: "center"
+  }}
+>
+  Time Remaining: {formatTime(timeLeft)}
+</div>
+
 
   <p>
     Number of questions loaded: {questions.length}
