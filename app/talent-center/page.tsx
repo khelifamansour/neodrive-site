@@ -174,7 +174,32 @@ const [englishScore, setEnglishScore] = useState(0);
     try {
 
       setLoading(true);
+let score = 0;
+let logic = 0;
+let french = 0;
+let english = 0;
 
+questions.forEach((q) => {
+
+  const correct =
+    answers[q.id] === q.correct_answer;
+
+  if (correct) {
+
+    score++;
+
+    if (q.category === "logic")
+      logic++;
+
+    if (q.category === "french")
+      french++;
+
+    if (q.category === "english")
+      english++;
+
+  }
+
+});
    
 
       /* EDUCATION */
@@ -182,14 +207,14 @@ const [englishScore, setEnglishScore] = useState(0);
       if (
         Number(form.bacAverage) >= 15
       )
-        score += 10;
+        score += 2;
 
       /* REPORT */
 
       if (
         form.technicalReport.length > 500
       )
-        score += 20;
+        score += 3;
 
       /* =========================
          EVALUATION
@@ -230,14 +255,18 @@ const [englishScore, setEnglishScore] = useState(0);
 
         .from("candidates")
 
-        .insert([{
+.insert([{
 
-          ...form,
+  ...form,
 
-          score,
-          evaluation
+  score,
+  logicScore: logic,
+  frenchScore: french,
+  englishScore: english,
 
-        }])
+  evaluation
+
+}])
 
         .select()
 
