@@ -49,37 +49,7 @@ setLoading(false);
 return;
 }
 
- useEffect(() => {
 
-if (examFinished) return;
-
-const timer = setInterval(() => {
-
-
-setTimeLeft((prev) => {
-
-  if (prev <= 1) {
-
-    clearInterval(timer);
-
-    setExamFinished(true);
-
-    calculateScore();
-
-    return 0;
-
-  }
-
-  return prev - 1;
-
-});
-
-
-}, 1000);
-
-return () => clearInterval(timer);
-
-}, [examFinished]);
 
 
 const allQuestions = data || [];
@@ -114,6 +84,38 @@ loadQuestions();
 
 
 }, []);
+
+  useEffect(() => {
+
+if (examFinished) return;
+
+const timer = setInterval(() => {
+
+
+setTimeLeft((prev) => {
+
+  if (prev <= 1) {
+
+    clearInterval(timer);
+
+    setExamFinished(true);
+
+    calculateScore();
+
+    return 0;
+
+  }
+
+  return prev - 1;
+
+});
+
+
+}, 1000);
+
+return () => clearInterval(timer);
+
+}, [examFinished]);
 
   const calculateScore = () => {
 
