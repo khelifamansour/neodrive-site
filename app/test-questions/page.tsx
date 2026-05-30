@@ -123,7 +123,7 @@ return () => clearInterval(timer);
 
 }, [examFinished]);
 
-const calculateScore = () => {
+const calculateScore = async () => {
 
 let total = 0;
 
@@ -133,7 +133,7 @@ let english = 0;
 
 questions.forEach((q) => {
 
-
+```
 const correct =
   answers[q.id] === q.correct_answer;
 
@@ -151,9 +151,37 @@ if (correct) {
     english++;
 
 }
-
+```
 
 });
+
+setScore(total);
+
+setLogicScore(logic);
+setFrenchScore(french);
+setEnglishScore(english);
+
+const { data, error } = await supabase
+.from("exam_results")
+.insert([{
+full_name: fullName,
+email: email,
+score: total,
+logic_score: logic,
+french_score: french,
+english_score: english
+}]);
+
+console.log("INSERT DATA", data);
+console.log("INSERT ERROR", error);
+
+if (error) {
+alert(error.message);
+} else {
+alert("Result saved successfully");
+}
+
+};
 
 setScore(total);
 
