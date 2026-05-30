@@ -4,51 +4,117 @@ import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  "TON_URL",
-  "TA_CLE"
+"https://tzlsdjzcxdjaatcpwqwn.supabase.co",
+"sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd"
 );
+
+type Question = {
+id: number;
+category: string;
+question: string;
+answer_a: string;
+answer_b: string;
+answer_c: string;
+answer_d: string;
+correct_answer: string;
+difficulty: number;
+};
 
 export default function TestQuestions() {
 
-  const [questions, setQuestions] = useState([]);
+const [questions, setQuestions] = useState<Question[]>([]);
+const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+useEffect(() => {
 
-    const load = async () => {
+```
+const loadQuestions = async () => {
 
-      const { data, error } = await supabase
-        .from("recruitment_questions")
-        .select("*")
-        .eq("category", "logic");
+  const { data, error } = await supabase
+    .from("recruitment_questions")
+    .select("*")
+    .eq("category", "logic");
 
-      console.log(data);
+  if (error) {
+    console.error(error);
+    return;
+  }
 
-      setQuestions(data || []);
+  setQuestions(data || []);
+  setLoading(false);
+};
 
-    };
+loadQuestions();
+```
 
-    load();
+}, []);
 
-  }, []);
+return (
 
-  return (
+```
+<main
+  style={{
+    maxWidth: "1000px",
+    margin: "0 auto",
+    padding: "30px",
+    fontFamily: "Arial"
+  }}
+>
 
-    <div>
+  <h1>
+    Test Questions
+  </h1>
 
-      <h1>Questions Logic</h1>
+  <p>
+    Number of questions loaded: {questions.length}
+  </p>
 
-      {questions.map((q) => (
+  {loading && (
+    <p>Loading...</p>
+  )}
 
-        <div key={q.id}>
+  {!loading &&
 
-          <p>{q.question}</p>
+    questions.map((q) => (
 
-        </div>
+      <div
+        key={q.id}
+        style={{
+          border: "1px solid #ddd",
+          padding: "15px",
+          marginBottom: "15px",
+          borderRadius: "8px"
+        }}
+      >
 
-      ))}
+        <h3>
+          #{q.id} - {q.category}
+        </h3>
 
-    </div>
+        <p>
+          <strong>
+            {q.question}
+          </strong>
+        </p>
 
-  );
+        <p>A) {q.answer_a}</p>
+        <p>B) {q.answer_b}</p>
+        <p>C) {q.answer_c}</p>
+        <p>D) {q.answer_d}</p>
+
+        <p>
+          Difficulty: {q.difficulty}
+        </p>
+
+      </div>
+
+    ))
+
+  }
+
+</main>
+```
+
+);
 
 }
