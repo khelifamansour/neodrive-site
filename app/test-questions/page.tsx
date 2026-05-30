@@ -25,6 +25,9 @@ export default function TestQuestions() {
 const [questions, setQuestions] = useState<Question[]>([]);
 const [loading, setLoading] = useState(true);
 const [errorMessage, setErrorMessage] = useState("");
+const [answers, setAnswers] = useState<Record<number, string>>({});
+const [score, setScore] = useState<number | null>(null);
+
 
 useEffect(() => {
 
@@ -57,8 +60,44 @@ loadQuestions();
 
 }, []);
 
+  const calculateScore = () => {
+
+let total = 0;
+
+questions.forEach((q) => {
+
+
+if (answers[q.id] === q.correct_answer) {
+  total++;
+}
+
+
+});
+
+setScore(total);
+
+};
+
 return (
 
+<button
+onClick={calculateScore}
+style={{
+padding: "15px",
+fontSize: "18px",
+marginTop: "20px"
+}}
+
+>
+
+Submit Exam </button>
+
+{score !== null && (
+
+  <h2>
+    Score: {score} / {questions.length}
+  </h2>
+)}
 
 <main
   style={{
@@ -112,10 +151,72 @@ return (
           <strong>{q.question}</strong>
         </p>
 
-        <p>A) {q.answer_a}</p>
-        <p>B) {q.answer_b}</p>
-        <p>C) {q.answer_c}</p>
-        <p>D) {q.answer_d}</p>
+    <label>
+  <input
+    type="radio"
+    name={`question-${q.id}`}
+    value="A"
+    onChange={(e) =>
+      setAnswers({
+        ...answers,
+        [q.id]: e.target.value
+      })
+    }
+  />
+  A) {q.answer_a}
+</label>
+
+<br />
+
+<label>
+  <input
+    type="radio"
+    name={`question-${q.id}`}
+    value="B"
+    onChange={(e) =>
+      setAnswers({
+        ...answers,
+        [q.id]: e.target.value
+      })
+    }
+  />
+  B) {q.answer_b}
+</label>
+
+<br />
+
+<label>
+  <input
+    type="radio"
+    name={`question-${q.id}`}
+    value="C"
+    onChange={(e) =>
+      setAnswers({
+        ...answers,
+        [q.id]: e.target.value
+      })
+    }
+  />
+  C) {q.answer_c}
+</label>
+
+<br />
+
+<label>
+  <input
+    type="radio"
+    name={`question-${q.id}`}
+    value="D"
+    onChange={(e) =>
+      setAnswers({
+        ...answers,
+        [q.id]: e.target.value
+      })
+    }
+  />
+  D) {q.answer_d}
+</label>
+
 
         <p>
           Correct answer: {q.correct_answer}
