@@ -174,7 +174,7 @@ const [englishScore, setEnglishScore] = useState(0);
     try {
 
       setLoading(true);
-let score = 0;
+let candidateScore = 0;
 let logic = 0;
 let french = 0;
 let english = 0;
@@ -186,7 +186,7 @@ questions.forEach((q) => {
 
   if (correct) {
 
-    score++;
+    candidateScore++;
 
     if (q.category === "logic")
       logic++;
