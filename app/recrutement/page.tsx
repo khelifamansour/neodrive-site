@@ -1,7 +1,10 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, {
+  useState,
+  useEffect
+} from "react";
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -21,6 +24,11 @@ PAGE
 export default function HiringPage() {
 
   const [loading, setLoading] = useState(false);
+  const EXAM_DURATION = 25 * 60;
+
+const [timeLeft, setTimeLeft] = useState(EXAM_DURATION);
+
+const [examFinished, setExamFinished] = useState(false);
 
   const [form, setForm] = useState({
 
@@ -65,6 +73,34 @@ export default function HiringPage() {
 
   const [transcriptFile, setTranscriptFile] = useState(null);
   const [motivationLetterFile, setMotivationLetterFile] = useState(null);
+
+  useEffect(() => {
+
+  if (examFinished) return;
+
+  const timer = setInterval(() => {
+
+    setTimeLeft(prev => {
+
+      if (prev <= 1) {
+
+        clearInterval(timer);
+
+        setExamFinished(true);
+
+        return 0;
+
+      }
+
+      return prev - 1;
+
+    });
+
+  }, 1000);
+
+  return () => clearInterval(timer);
+
+}, [examFinished]);
 
   /* =========================
      HANDLE CHANGE
@@ -334,13 +370,59 @@ if (motivationLetterFile) {
      RENDER
   ========================= */
 
+  const formatTime = (seconds) => {
+
+  const mins = Math.floor(seconds / 60);
+
+  const secs = seconds % 60;
+
+  return `${mins}:${secs
+    .toString()
+    .padStart(2, "0")}`;
+
+};
+  if (examFinished) {
+
   return (
 
     <main style={container}>
 
-      <h1 style={title}>
-        Microdrive Engineering Recruitment
+      <h1>
+        Time is over
       </h1>
+
+      <p>
+        The recruitment test has ended.
+      </p>
+
+    </main>
+
+  );
+
+}
+  
+
+  return (
+
+    <main style={container}>
+
+  <h1 style={title}>
+    Microdrive Engineering Recruitment
+  </h1>
+
+  <div
+    style={{
+      background: "#ffeeba",
+      padding: 15,
+      borderRadius: 8,
+      fontSize: 24,
+      fontWeight: "bold",
+      textAlign: "center",
+      marginBottom: 20
+    }}
+  >
+    Time Remaining: {formatTime(timeLeft)}
+  </div>
 
       <form
         onSubmit={handleSubmit}
