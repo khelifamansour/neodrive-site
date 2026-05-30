@@ -183,23 +183,7 @@ alert("Result saved successfully");
 
 };
 
-setScore(total);
 
-setLogicScore(logic);
-setFrenchScore(french);
-setEnglishScore(english);
-
-supabase
-  .from("exam_results")
-  .insert([{
-    full_name: fullName,
-    email: email,
-    score: total,
-    logic_score: logic,
-    french_score: french,
-    english_score: english
-  }]);
- };
 
 
  const formatTime = (seconds: number) => {
