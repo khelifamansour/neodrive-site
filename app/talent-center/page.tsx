@@ -1,6 +1,7 @@
 
 "use client";
 
+
 import React, {
   useState,
   useEffect
@@ -259,10 +260,11 @@ questions.forEach((q) => {
 
   ...form,
 
-  score: candidateScore,
-  logicScore: logic,
-  frenchScore: french,
-  englishScore: english,
+  score,
+
+  logicscore: logic,
+  frenchscore: french,
+  englishscore: english,
 
   evaluation
 
