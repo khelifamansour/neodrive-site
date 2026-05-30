@@ -171,6 +171,7 @@ supabase
     french_score: french,
     english_score: english
   }]);
+ };
 
 
  const formatTime = (seconds: number) => {
