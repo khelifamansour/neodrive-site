@@ -24,19 +24,22 @@ export default function TestQuestions() {
 
 const [questions, setQuestions] = useState<Question[]>([]);
 const [loading, setLoading] = useState(true);
+const [errorMessage, setErrorMessage] = useState("");
 
 useEffect(() => {
-
 
 const loadQuestions = async () => {
 
   const { data, error } = await supabase
     .from("recruitment_questions")
-    .select("*")
-    .eq("category", "logic");
+    .select("*");
+
+  console.log("SUPABASE DATA:", data);
+  console.log("SUPABASE ERROR:", error);
 
   if (error) {
-    console.error(error);
+    setErrorMessage(error.message);
+    setLoading(false);
     return;
   }
 
@@ -51,7 +54,6 @@ loadQuestions();
 
 return (
 
-
 <main
   style={{
     maxWidth: "1000px",
@@ -61,20 +63,29 @@ return (
   }}
 >
 
-  <h1>
-    Test Questions
-  </h1>
+  <h1>Test Questions</h1>
 
   <p>
     Number of questions loaded: {questions.length}
   </p>
+
+  {errorMessage && (
+    <div
+      style={{
+        background: "#ffdddd",
+        padding: "15px",
+        marginBottom: "20px"
+      }}
+    >
+      Error: {errorMessage}
+    </div>
+  )}
 
   {loading && (
     <p>Loading...</p>
   )}
 
   {!loading &&
-
     questions.map((q) => (
 
       <div
@@ -92,9 +103,7 @@ return (
         </h3>
 
         <p>
-          <strong>
-            {q.question}
-          </strong>
+          <strong>{q.question}</strong>
         </p>
 
         <p>A) {q.answer_a}</p>
@@ -103,13 +112,16 @@ return (
         <p>D) {q.answer_d}</p>
 
         <p>
+          Correct answer: {q.correct_answer}
+        </p>
+
+        <p>
           Difficulty: {q.difficulty}
         </p>
 
       </div>
 
     ))
-
   }
 
 </main>
