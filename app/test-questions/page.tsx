@@ -27,6 +27,10 @@ const [loading, setLoading] = useState(true);
 const [errorMessage, setErrorMessage] = useState("");
 const [answers, setAnswers] = useState<Record<number, string>>({});
 const [score, setScore] = useState<number | null>(null);
+ const [logicScore, setLogicScore] = useState(0);
+const [frenchScore, setFrenchScore] = useState(0);
+const [englishScore, setEnglishScore] = useState(0);
+
 const EXAM_DURATION = 25 * 60;
 
 const [timeLeft, setTimeLeft] = useState(EXAM_DURATION);
@@ -117,15 +121,33 @@ return () => clearInterval(timer);
 
 }, [examFinished]);
 
-  const calculateScore = () => {
+const calculateScore = () => {
 
 let total = 0;
+
+let logic = 0;
+let french = 0;
+let english = 0;
 
 questions.forEach((q) => {
 
 
-if (answers[q.id] === q.correct_answer) {
+const correct =
+  answers[q.id] === q.correct_answer;
+
+if (correct) {
+
   total++;
+
+  if (q.category === "logic")
+    logic++;
+
+  if (q.category === "french")
+    french++;
+
+  if (q.category === "english")
+    english++;
+
 }
 
 
@@ -133,7 +155,12 @@ if (answers[q.id] === q.correct_answer) {
 
 setScore(total);
 
+setLogicScore(logic);
+setFrenchScore(french);
+setEnglishScore(english);
+
 };
+
 
  const formatTime = (seconds: number) => {
 
