@@ -133,7 +133,7 @@ let english = 0;
 
 questions.forEach((q) => {
 
-```
+
 const correct =
   answers[q.id] === q.correct_answer;
 
@@ -151,7 +151,7 @@ if (correct) {
     english++;
 
 }
-```
+
 
 });
 
