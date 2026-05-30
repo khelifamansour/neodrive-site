@@ -49,7 +49,7 @@ const loadQuestions = async () => {
 };
 
 loadQuestions();
-```
+
 
 }, []);
 
