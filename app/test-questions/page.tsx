@@ -28,6 +28,7 @@ const [errorMessage, setErrorMessage] = useState("");
 
 useEffect(() => {
 
+
 const loadQuestions = async () => {
 
   const { data, error } = await supabase
@@ -48,12 +49,13 @@ const loadQuestions = async () => {
 };
 
 loadQuestions();
-
+```
 
 }, []);
 
 return (
 
+```
 <main
   style={{
     maxWidth: "1000px",
