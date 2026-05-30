@@ -64,6 +64,7 @@ export default function HiringPage() {
   const [photoFile, setPhotoFile] = useState(null);
 
   const [transcriptFile, setTranscriptFile] = useState(null);
+  const [motivationLetterFile, setMotivationLetterFile] = useState(null);
 
   /* =========================
      HANDLE CHANGE
@@ -254,6 +255,34 @@ export default function HiringPage() {
         }
 
       }
+
+      /* =========================
+UPLOAD MOTIVATION LETTER
+========================= */
+
+if (motivationLetterFile) {
+
+  const {
+    error: motivationError
+  } = await supabase.storage
+
+    .from("candidate-files")
+
+    .upload(
+
+      `motivation-letters/${candidateId}-${Date.now()}-${motivationLetterFile.name}`,
+
+      motivationLetterFile
+
+    );
+
+  if (motivationError) {
+
+    alert(motivationError.message);
+
+  }
+
+}
 
       /* =========================
          UPLOAD TRANSCRIPT
@@ -596,6 +625,8 @@ export default function HiringPage() {
           }
         />
 
+        
+
         <label>Photo</label>
 
         <input
@@ -606,6 +637,18 @@ export default function HiringPage() {
             )
           }
         />
+
+        <label>Handwritten Motivation Letter</label>
+
+<input
+  type="file"
+  onChange={(e) =>
+    setMotivationLetterFile(
+      e.target.files[0]
+    )
+  }
+  required
+/>
 
         <label>School transcripts</label>
 
