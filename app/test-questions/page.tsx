@@ -27,6 +27,8 @@ const [loading, setLoading] = useState(true);
 const [errorMessage, setErrorMessage] = useState("");
 const [answers, setAnswers] = useState<Record<number, string>>({});
 const [score, setScore] = useState<number | null>(null);
+ const [fullName, setFullName] = useState("");
+const [email, setEmail] = useState("");
  const [logicScore, setLogicScore] = useState(0);
 const [frenchScore, setFrenchScore] = useState(0);
 const [englishScore, setEnglishScore] = useState(0);
@@ -61,17 +63,17 @@ const allQuestions = data || [];
 const logicQuestions = allQuestions
 .filter((q) => q.category === "logic")
 .sort(() => Math.random() - 0.5)
-.slice(0, 4);
+.slice(0, 10);
 
 const frenchQuestions = allQuestions
 .filter((q) => q.category === "french")
 .sort(() => Math.random() - 0.5)
-.slice(0, 3);
+.slice(0, 10);
 
 const englishQuestions = allQuestions
 .filter((q) => q.category === "english")
 .sort(() => Math.random() - 0.5)
-.slice(0, 3);
+.slice(0, 1O);
 
 const finalExam = [
 ...logicQuestions,
@@ -159,7 +161,16 @@ setLogicScore(logic);
 setFrenchScore(french);
 setEnglishScore(english);
 
-};
+supabase
+  .from("exam_results")
+  .insert([{
+    full_name: fullName,
+    email: email,
+    score: total,
+    logic_score: logic,
+    french_score: french,
+    english_score: english
+  }]);
 
 
  const formatTime = (seconds: number) => {
@@ -239,7 +250,27 @@ return (
     fontFamily: "Arial"
   }}
 >
+<input
+  placeholder="Full Name"
+  value={fullName}
+  onChange={(e) => setFullName(e.target.value)}
+  style={{
+    width: "100%",
+    padding: "12px",
+    marginBottom: "10px"
+  }}
+/>
 
+<input
+  placeholder="Email"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  style={{
+    width: "100%",
+    padding: "12px",
+    marginBottom: "20px"
+  }}
+/>
   <h1>Test Questions</h1>
  <div
   style={{
