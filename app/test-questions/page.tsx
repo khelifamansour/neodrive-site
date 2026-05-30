@@ -44,7 +44,11 @@ const loadQuestions = async () => {
     return;
   }
 
-  setQuestions(data || []);
+ const shuffled = (data || [])
+  .sort(() => Math.random() - 0.5)
+  .slice(0, 10);
+
+setQuestions(shuffled);
   setLoading(false);
 };
 
