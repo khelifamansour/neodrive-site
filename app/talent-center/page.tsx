@@ -54,14 +54,7 @@ const [examFinished, setExamFinished] = useState(false);
     currentJob: "",
     yearsExperience: "",
 
-    logic1: "",
-    logic2: "",
-    logic3: "",
-    logic4: "",
-
-    english1: "",
-    english2: "",
-
+   
     technicalReport: "",
 
     technicalExperience: ""
@@ -132,33 +125,7 @@ const [examFinished, setExamFinished] = useState(false);
 
       setLoading(true);
 
-      /* =========================
-         SCORE
-      ========================= */
-
-      let score = 0;
-
-      /* LOGIC */
-
-      if (form.logic1 === "C")
-        score += 10;
-
-      if (form.logic2 === "B")
-        score += 10;
-
-      if (form.logic3 === "C")
-        score += 10;
-
-      if (form.logic4 === "C")
-        score += 10;
-
-      /* ENGLISH */
-
-      if (form.english1 === "B")
-        score += 10;
-
-      if (form.english2 === "A")
-        score += 10;
+   
 
       /* EDUCATION */
 
@@ -544,117 +511,6 @@ if (motivationLetterFile) {
           </option>
 
         </select>
-
-        <h2>Logic Test</h2>
-
-        <p>
-          A train travels 120 km in 1h30.
-          What is its average speed?
-        </p>
-
-        <p>
-          A) 60 km/h
-          <br />
-          B) 70 km/h
-          <br />
-          C) 80 km/h
-          <br />
-          D) 90 km/h
-        </p>
-
-        <input
-          name="logic1"
-          placeholder="Answer"
-          onChange={handleChange}
-          style={input}
-        />
-
-        <p>
-          If all batteries are electric devices,
-          and some electric devices are dangerous,
-          can we conclude that all batteries are dangerous?
-        </p>
-
-        <p>
-          A) Yes
-          <br />
-          B) No
-        </p>
-
-        <input
-          name="logic2"
-          placeholder="Answer"
-          onChange={handleChange}
-          style={input}
-        />
-
-        <p>
-          What comes next?
-          <br />
-          2 - 6 - 12 - 20 - 30 - ?
-        </p>
-
-        <p>
-          A) 36
-          <br />
-          B) 40
-          <br />
-          C) 42
-          <br />
-          D) 44
-        </p>
-
-        <input
-          name="logic3"
-          placeholder="Answer"
-          onChange={handleChange}
-          style={input}
-        />
-
-        <p>
-          A machine produces 5 parts in 5 minutes.
-          How many parts will 5 machines produce in 5 minutes?
-        </p>
-
-        <p>
-          A) 5
-          <br />
-          B) 10
-          <br />
-          C) 25
-          <br />
-          D) 50
-        </p>
-
-        <input
-          name="logic4"
-          placeholder="Answer"
-          onChange={handleChange}
-          style={input}
-        />
-
-        <h2>English Test</h2>
-
-        <p>
-          Choose the correct sentence:
-        </p>
-
-        <p>
-          A) He go to work yesterday
-          <br />
-          B) He went to work yesterday
-          <br />
-          C) He going to work yesterday
-          <br />
-          D) He gone to work yesterday
-        </p>
-
-        <input
-          name="english1"
-          placeholder="Answer"
-          onChange={handleChange}
-          style={input}
-        />
 
         <p>
           What does voltage mean?
