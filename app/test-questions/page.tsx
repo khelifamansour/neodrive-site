@@ -204,13 +204,32 @@ return (
 
 <>
 
-
 {score !== null && (
 
-  <h2>
-    Score: {score} / {questions.length}
-  </h2>
+  <div>
+
+
+<h2>
+  Total Score: {score} / {questions.length}
+</h2>
+
+<h3>
+  Logic: {logicScore}
+</h3>
+
+<h3>
+  French: {frenchScore}
+</h3>
+
+<h3>
+  English: {englishScore}
+</h3>
+
+
+  </div>
+
 )}
+
 
 <main
   style={{
