@@ -207,14 +207,14 @@ questions.forEach((q) => {
       if (
         Number(form.bacAverage) >= 15
       )
-        score += 2;
+        candidateScore += 2;
 
       /* REPORT */
 
       if (
         form.technicalReport.length > 500
       )
-        score += 3;
+        candidateScore += 3;
 
       /* =========================
          EVALUATION
@@ -222,7 +222,7 @@ questions.forEach((q) => {
 
       let evaluation = "";
 
-      if (score < 40) {
+     if (candidateScore < 15) {
 
         evaluation =
           "Rejected - Low competency";
@@ -259,7 +259,7 @@ questions.forEach((q) => {
 
   ...form,
 
-  score,
+  score: candidateScore,
   logicScore: logic,
   frenchScore: french,
   englishScore: english,
@@ -396,7 +396,7 @@ if (motivationLetterFile) {
       }
 
       alert(
-        `Application submitted successfully.\nScore: ${score}\nEvaluation: ${evaluation}`
+        `Application submitted successfully.\nScore: ${candidateScore}`
       );
 
     } catch (err) {
