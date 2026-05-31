@@ -63,13 +63,41 @@ onClick={() => {
 
 console.log(c);
 
+<button
+onClick={async () => {
+
+const response =
+  await fetch(
+    "/api/generate-report",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type":
+          "application/json"
+      },
+      body:
+        JSON.stringify(c)
+    }
+  );
+
+const report =
+  await response.json();
+
 alert(
   JSON.stringify(
-    c,
+    report,
     null,
     2
   )
 );
+
+
+}}
+
+>
+
+Generate AI Report </button>
+
 
 
 }}
