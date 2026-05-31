@@ -276,6 +276,8 @@ questions.forEach((q) => {
   frenchscore: french,
   englishscore: english,
 
+  situation_answers: answers,
+
   evaluation
 
 }])
