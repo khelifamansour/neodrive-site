@@ -32,7 +32,7 @@ export default function Produit() {
         </p>
 
         <h2 style={price}>
-          À partir de 4 990 €
+          À partir de 5490 €
         </h2>
 
         <div style={center}>
