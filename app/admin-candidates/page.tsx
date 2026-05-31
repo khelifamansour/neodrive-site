@@ -57,9 +57,27 @@ return (
 
       <p>Score: {c.score}</p>
 
-      <button>
-        Generate AI Report
-      </button>
+   <button
+onClick={() => {
+
+
+console.log(c);
+
+alert(
+  JSON.stringify(
+    c,
+    null,
+    2
+  )
+);
+
+
+}}
+
+>
+
+Generate AI Report </button>
+
 
     </div>
 
