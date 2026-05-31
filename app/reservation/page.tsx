@@ -191,12 +191,18 @@ const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity)
     <option value="68">Haut-Rhin (68)</option>
   </optgroup>
 
-</select>
-          <input
+</select><input
   type="number"
   min="1"
   value={quantity}
-  <input
+  onChange={(e) =>
+    setQuantity(Number(e.target.value))
+  }
+  style={input}
+  placeholder="Nombre de véhicules"
+/>
+
+<input
   type="number"
   value={manualTransport}
   onChange={(e) =>
@@ -204,10 +210,6 @@ const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity)
   }
   style={input}
   placeholder="Transport personnalisé (€)"
-/>
-  onChange={(e) => setQuantity(Number(e.target.value))}
-  style={input}
-  placeholder="Nombre de véhicules"
 />
           <label style={{ display: "flex", alignItems: "center", marginTop: 10 }}>
   <input
