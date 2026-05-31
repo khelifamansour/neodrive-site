@@ -355,6 +355,9 @@ ARTICLE 3 – RÉSERVE DE PROPRIÉTÉ
 
 Le véhicule demeure la propriété exclusive de MICRODRIVE jusqu'au paiement intégral de son prix.
 
+Le Partenaire ne peut vendre, céder, transférer, donner en garantie, louer ou remettre le véhicule à un tiers sans autorisation écrite préalable de MICRODRIVE.
+
+
 ARTICLE 4 – RÉCEPTION DU VÉHICULE
 
 Le Partenaire reconnaît avoir réceptionné le véhicule dans un état conforme sauf réserves écrites formulées dans un délai maximal de 48 heures.
@@ -379,6 +382,14 @@ Toute disparition ou dégradation engage la responsabilité du Partenaire.
 ARTICLE 8 – INTERDICTION DE RÉTENTION
 
 Le Partenaire ne pourra retenir le véhicule ou ses documents.
+ARTICLE 8 BIS – INTERDICTION DE COMPENSATION
+
+Le Partenaire ne pourra retenir le véhicule, les clés, les documents administratifs ou tout accessoire à titre de compensation, garantie ou moyen de pression.
+
+Toute créance éventuelle devra faire l'objet d'une procédure distincte.
+
+Le Partenaire reconnaît que le véhicule demeure la propriété exclusive de MICRODRIVE.
+
 
 ARTICLE 9 – COMMANDES ET VENTES
 
@@ -390,11 +401,23 @@ Commission actuelle : 500 € TTC par véhicule vendu.
 
 ARTICLE 11 – SERVICE APRÈS-VENTE
 
-Toute intervention doit être validée par MICRODRIVE.
+Toute intervention doit être validée préalablement par MICRODRIVE.
+
+Le taux horaire maximal pris en charge est fixé à 40 € HT par heure.
+
+Aucune facturation complémentaire de main-d'œuvre, déplacement, diagnostic, transport ou autre frais ne pourra être imposée à MICRODRIVE sans accord écrit préalable.
+
+Toute facture émise sans accord écrit préalable sera réputée refusée.
 
 ARTICLE 12 – RESTITUTION
 
 MICRODRIVE peut demander à tout moment la restitution du véhicule.
+
+Le Partenaire dispose d'un délai maximal de 30 jours pour restituer le véhicule.
+
+En cas de non-restitution, MICRODRIVE pourra engager toute procédure judiciaire nécessaire afin d'obtenir la restitution du véhicule et la réparation intégrale de son préjudice.
+
+En cas d'impossibilité de restitution, MICRODRIVE pourra réclamer le paiement de la valeur contractuelle du véhicule.
 
 ARTICLE 13 – DURÉE
 
