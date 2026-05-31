@@ -14,7 +14,7 @@ export default function Home() {
       <section style={center}>
 
         <h1 style={title}>
-          Voiture sans permis neuve dès 4 990 € TTC
+          Voiture sans permis neuve dès 5 490  € TTC
         </h1>
 
         <p style={subtitle}>
@@ -146,7 +146,7 @@ export default function Home() {
 
         <div style={box}>
 
-          ✔ Véhicule : à partir de 4 990 € TTC
+          ✔ Véhicule : à partir de 5 490 € TTC
           <br />
 
           ✔ Livraison partout en France via transport personnalisé
