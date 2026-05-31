@@ -58,89 +58,47 @@ return (
       <p>Score: {c.score}</p>
 
 <button
-  onClick={async () => {
-
-    const response =
-      await fetch(
-        "/api/generate-report",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(c)
-        }
-      );
-
-  const report =
-  await response.json();
-
-const { data, error } =
-await supabase
-.from("candidate_ai_reports")
-.insert([{
+onClick={async () => {
 
 
-  candidate_id: c.id,
+try {
 
-  overall_score:
-    report.overall_score,
+  alert("STEP 1");
 
-  communication_score:
-    report.communication_score,
+  const response =
+    await fetch(
+      "/api/generate-report",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(c)
+      }
+    );
 
-  logic_score:
-    report.logic_score,
+  alert("STEP 2");
 
-  leadership_score:
-    report.leadership_score,
+  const text =
+    await response.text();
 
-  learning_score:
-    report.learning_score,
+  alert(text);
 
-  customer_score:
-    report.customer_score,
+} catch (err) {
 
-  potential_score:
-    report.potential_score,
-
-  strengths:
-    report.strengths,
-
-  weaknesses:
-    report.weaknesses,
-
-  recommendation:
-    report.recommendation,
-
-  full_report:
-    report.full_report
-
-}]);
-
-
-if (error) {
-
-alert(
-JSON.stringify(
-error,
-null,
-2
-)
-);
-
-} else {
-
-alert(
-"AI Report Generated"
-);
+  alert(
+    JSON.stringify(err)
+  );
 
 }
 
 
-  }}
+}}
+
 >
-  Generate AI Report
+
+Generate AI Report 
+
 </button>
 
 
