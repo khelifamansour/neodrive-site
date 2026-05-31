@@ -142,10 +142,16 @@ const englishQuestions = allQuestions
   .sort(() => Math.random() - 0.5)
   .slice(0, 20);
 
+    const situationQuestions = allQuestions
+  .filter(q => q.category === "situation")
+  .sort(() => Math.random() - 0.5)
+  .slice(0, 5);
+
     const finalExam = [
-      ...logicQuestions,
-      ...frenchQuestions,
-      ...englishQuestions
+  ...logicQuestions,
+  ...frenchQuestions,
+  ...englishQuestions,
+  ...situationQuestions
     ].sort(() => Math.random() - 0.5);
 
     setQuestions(finalExam);
@@ -676,42 +682,60 @@ style={input}
       <strong>{q.question}</strong>
     </p>
 
-    {["A","B","C","D"].map(letter => (
+  {q.category === "situation" ? (
 
-      <label
-        key={letter}
-        style={{
-          display: "block",
-          marginBottom: 8
-        }}
-      >
+  <textarea
+    rows={6}
+    style={{
+      width: "100%",
+      padding: 10,
+      marginTop: 10
+    }}
+    placeholder="Write your answer here..."
+    onChange={(e) =>
+      setAnswers({
+        ...answers,
+        [q.id]: e.target.value
+      })
+    }
+  />
 
-        <input
-          type="radio"
-          name={`question-${q.id}`}
-          value={letter}
-          onChange={(e) =>
-            setAnswers({
-              ...answers,
-              [q.id]: e.target.value
-            })
-          }
-        />
+) : (
 
-        {" "}
+  ["A","B","C","D"].map(letter => (
 
-        {letter === "A" && q.answer_a}
-        {letter === "B" && q.answer_b}
-        {letter === "C" && q.answer_c}
-        {letter === "D" && q.answer_d}
+    <label
+      key={letter}
+      style={{
+        display: "block",
+        marginBottom: 8
+      }}
+    >
 
-      </label>
+      <input
+        type="radio"
+        name={`question-${q.id}`}
+        value={letter}
+        onChange={(e) =>
+          setAnswers({
+            ...answers,
+            [q.id]: e.target.value
+          })
+        }
+      />
 
-    ))}
+      {" "}
 
-  </div>
+      {letter === "A" && q.answer_a}
+      {letter === "B" && q.answer_b}
+      {letter === "C" && q.answer_c}
+      {letter === "D" && q.answer_d}
 
-))}
+    </label>
+
+  ))
+
+)}
 
         <h2>Technical Report</h2>
 
