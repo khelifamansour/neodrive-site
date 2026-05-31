@@ -25,7 +25,7 @@ PAGE
 export default function HiringPage() {
 
   const [loading, setLoading] = useState(false);
-  const EXAM_DURATION = 25 * 60;
+  const EXAM_DURATION = 60 * 60;
 
 const [timeLeft, setTimeLeft] = useState(EXAM_DURATION);
 
@@ -118,20 +118,20 @@ const [englishScore, setEnglishScore] = useState(0);
 
     const allQuestions = data || [];
 
-    const logicQuestions = allQuestions
-      .filter(q => q.category === "logic")
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 10);
+ const logicQuestions = allQuestions
+  .filter(q => q.category === "logic")
+  .sort(() => Math.random() - 0.5)
+  .slice(0, 20);
 
-    const frenchQuestions = allQuestions
-      .filter(q => q.category === "french")
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 10);
+const frenchQuestions = allQuestions
+  .filter(q => q.category === "french")
+  .sort(() => Math.random() - 0.5)
+  .slice(0, 20);
 
-    const englishQuestions = allQuestions
-      .filter(q => q.category === "english")
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 10);
+const englishQuestions = allQuestions
+  .filter(q => q.category === "english")
+  .sort(() => Math.random() - 0.5)
+  .slice(0, 20);
 
     const finalExam = [
       ...logicQuestions,
