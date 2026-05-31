@@ -51,6 +51,12 @@ const [englishScore, setEnglishScore] = useState(0);
     bacType: "",
     bacYear: "",
     bacAverage: "",
+    bacFrench: "",
+bacEnglish: "",
+bacMath: "",
+bacPhysics: "",
+bacHistory: "",
+
 
     university: "",
     degree: "",
@@ -60,6 +66,9 @@ const [englishScore, setEnglishScore] = useState(0);
 
     currentJob: "",
     yearsExperience: "",
+    experienceCompany: "",
+experienceMission: "",
+
 
    
     technicalReport: "",
@@ -549,9 +558,46 @@ if (motivationLetterFile) {
         <input
           name="bacAverage"
           placeholder="Baccalaureate average"
+          
           onChange={handleChange}
           style={input}
         />
+
+        <input
+name="bacFrench"
+placeholder="French grade at Baccalaureate"
+onChange={handleChange}
+style={input}
+/>
+
+<input
+name="bacEnglish"
+placeholder="English grade at Baccalaureate"
+onChange={handleChange}
+style={input}
+/>
+
+<input
+name="bacMath"
+placeholder="Mathematics grade at Baccalaureate"
+onChange={handleChange}
+style={input}
+/>
+
+<input
+name="bacPhysics"
+placeholder="Physics grade at Baccalaureate"
+onChange={handleChange}
+style={input}
+/>
+
+<input
+name="bacHistory"
+placeholder="History grade at Baccalaureate"
+onChange={handleChange}
+style={input}
+/>
+
 
         <input
           name="university"
@@ -592,6 +638,21 @@ if (motivationLetterFile) {
           </option>
 
         </select>
+<h2>Professional Experience</h2>
+
+<input
+name="experienceCompany"
+placeholder="Company name"
+onChange={handleChange}
+style={input}
+/>
+
+<textarea
+  name="experienceMission"
+  placeholder="Describe your missions and responsibilities"
+  onChange={handleChange}
+  style={bigTextarea}
+/>
 
        <h2>Recruitment Exam</h2>
 
