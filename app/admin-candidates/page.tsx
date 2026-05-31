@@ -57,12 +57,6 @@ return (
 
       <p>Score: {c.score}</p>
 
-   <button
-onClick={() => {
-
-
-console.log(c);
-
 <button
 onClick={async () => {
 
@@ -72,11 +66,9 @@ const response =
     {
       method: "POST",
       headers: {
-        "Content-Type":
-          "application/json"
+        "Content-Type": "application/json"
       },
-      body:
-        JSON.stringify(c)
+      body: JSON.stringify(c)
     }
   );
 
@@ -96,7 +88,8 @@ alert(
 
 >
 
-Generate AI Report </button>
+Generate AI Report 
+ </button>
 
 
 
