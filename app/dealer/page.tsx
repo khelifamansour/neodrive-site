@@ -434,9 +434,11 @@ Signature et cachet du Partenaire
 
 </div>
 
+</div>
+
 <button
 type="button"
-type="button"
+
 onClick={() => {
   window.print();
 }}
