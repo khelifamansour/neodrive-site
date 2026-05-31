@@ -58,37 +58,35 @@ return (
       <p>Score: {c.score}</p>
 
 <button
-onClick={async () => {
+  onClick={async () => {
 
-const response =
-  await fetch(
-    "/api/generate-report",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(c)
-    }
-  );
+    const response =
+      await fetch(
+        "/api/generate-report",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(c)
+        }
+      );
 
-const report =
-  await response.json();
+    const report =
+      await response.json();
 
-alert(
-  JSON.stringify(
-    report,
-    null,
-    2
-  )
-);
+    alert(
+      JSON.stringify(
+        report,
+        null,
+        2
+      )
+    );
 
-}}
-
-
-
-
-Generate AI Report
+  }}
+>
+  Generate AI Report
+</button>
 
 
     </div>
