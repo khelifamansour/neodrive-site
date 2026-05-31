@@ -400,7 +400,10 @@ Signature MICRODRIVE
 Signature et cachet du Partenaire
 </p>
 
+</div>
+
 <button
+type="button"
 type="button"
 onClick={() => {
   window.print();
