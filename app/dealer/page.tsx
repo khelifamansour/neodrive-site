@@ -302,59 +302,109 @@ e.target.files?.[0] || null
       <h2>
         Résumé du contrat de dépôt
       </h2>
+<h2>
+CONTRAT DE DÉPÔT, DISTRIBUTION ET SERVICE APRÈS-VENTE MICRODRIVE
+</h2>
 
-      <p>
-        Société : {form.company_name}
-      </p>
+<p>
+Entre :
+</p>
 
-      <p>
-        SIREN : {form.siren}
-      </p>
+<p>
+MK HOLDING – MICRODRIVE<br/>
+31 rue Jean Nougaro<br/>
+31600 Muret<br/>
+SIREN : 908 645 393
+</p>
 
-      <p>
-        Responsable : {form.manager_name}
-      </p>
+<p>
+Et :
+</p>
 
-      <p>
-        Numéro de série : {form.vin}
-      </p>
+<p>
+Société : {form.company_name}<br/>
+SIREN : {form.siren}<br/>
+Adresse : {form.address}<br/>
+Représentée par : {form.manager_name}
+</p>
 
-      <p>
-        Couleur : {form.color}
-      </p>
+<h3>ARTICLE 1 – OBJET</h3>
 
-      <p>
-        Kilométrage : {form.mileage}
-      </p>
+<p>
+MICRODRIVE confie au Partenaire un véhicule destiné à être exposé, promu et commercialisé auprès de sa clientèle.
+</p>
 
-      <p>
-        Nombre de clés : {form.keys_count}
-      </p>
+<h3>ARTICLE 2 – VÉHICULE DÉPOSÉ</h3>
 
-      <p>
-        Chargeur fourni : {form.charger_provided}
-      </p>
+<p>
+Numéro de série : {form.vin}
+</p>
 
-      <p>
-        Valeur contractuelle du véhicule :
-        5 490 € TTC
-      </p>
+<p>
+Couleur : {form.color}
+</p>
 
-      <p>
-        Le véhicule demeure la propriété
-        exclusive de MICRODRIVE.
-      </p>
+<p>
+Kilométrage : {form.mileage}
+</p>
 
-      <p>
-        Le concessionnaire reconnaît avoir
-        réceptionné le véhicule dans l'état
-        indiqué ci-dessus.
-      </p>
+<p>
+Valeur contractuelle : 5 490 € TTC
+</p>
 
-    </div>
+<h3>ANNEXE DE RÉCEPTION</h3>
+
+<p>
+Numéro de série : {form.vin}
+</p>
+
+<p>
+Couleur : {form.color}
+</p>
+
+<p>
+Kilométrage : {form.mileage}
+</p>
+
+<p>
+Nombre de clés : {form.keys_count}
+</p>
+
+<p>
+Chargeur fourni : {form.charger_provided}
+</p>
+
+<p>
+Observations :
+</p>
+
+<p>
+{form.observations}
+</p>
+
+<br/><br/><br/>
+
+<p>
+Le Partenaire reconnaît avoir reçu le véhicule dans l'état décrit ci-dessus.
+</p>
+
+<br/><br/>
+
+<p>
+Signature MICRODRIVE
+</p>
+
+<br/><br/><br/>
+
+<p>
+Signature et cachet du Partenaire
+</p>
+
 <button
 type="button"
-onClick={() => window.print()}
+onClick={() => {
+  window.print();
+}}
 style={{
 padding: 15,
 fontSize: 18,
