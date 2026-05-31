@@ -20,6 +20,7 @@ export default function Reservation() {
   const [noDelivery, setNoDelivery] = useState(false);
 
 const [quantity, setQuantity] = useState(1);
+const [manualTransport, setManualTransport] = useState("");
 
   
 
@@ -36,9 +37,13 @@ const [quantity, setQuantity] = useState(1);
 
   return 790;
 };
-  const transport = noDelivery
+const transport = noDelivery
   ? 0
-  : getTransportPrice(client.code_postal?.substring(0,2) || "");
+  : manualTransport
+      ? Number(manualTransport)
+      : getTransportPrice(
+          client.code_postal?.substring(0,2) || ""
+        );
 const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity);
 
   const printRef = useRef<HTMLDivElement>(null);
@@ -191,6 +196,15 @@ const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity)
   type="number"
   min="1"
   value={quantity}
+  <input
+  type="number"
+  value={manualTransport}
+  onChange={(e) =>
+    setManualTransport(e.target.value)
+  }
+  style={input}
+  placeholder="Transport personnalisé (€)"
+/>
   onChange={(e) => setQuantity(Number(e.target.value))}
   style={input}
   placeholder="Nombre de véhicules"
