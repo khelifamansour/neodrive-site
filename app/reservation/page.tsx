@@ -308,6 +308,36 @@ const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity)
   </tr>
 </tbody>
           </table>
+     COORDONNÉES BANCAIRES
+
+Titulaire du compte :
+MK HOLDING
+
+Banque :
+REVOLUT
+
+IBAN :
+FR76 2823 3000 0142 1307 1051 008
+
+BIC :
+REVOFRP2
+
+Devise :
+EUR
+
+Référence à indiquer lors du virement :
+Nom et prénom du client
+
+Le paiement peut être effectué par virement bancaire sur le compte ci-dessus.
+
+Pour toute question relative au règlement, merci de nous contacter avant l'émission du virement.
+IMPORTANT
+
+Merci d'indiquer votre nom et prénom dans le motif du virement.
+
+La livraison ou la remise du véhicule est effectuée après réception du règlement selon les modalités convenues entre les parties.
+
+          
 
           <div style={{ marginTop: 60 }}>
             <p>Signature précédée de "Lu et approuvé"</p>
