@@ -6,7 +6,7 @@ import Script from "next/script";
 export default function Reservation() {
 
   const today = new Date().toLocaleDateString("fr-FR");
-    const prixVehicule = 4490;
+    const prixVehicule = 5490;
   const carteGrise = 150;
   const [client, setClient] = useState({
     nom: "",
