@@ -51,11 +51,11 @@ const [englishScore, setEnglishScore] = useState(0);
     bacType: "",
     bacYear: "",
     bacAverage: "",
-    bacFrench: "",
-bacEnglish: "",
-bacMath: "",
-bacPhysics: "",
-bacHistory: "",
+    bacfrench: "",
+bacenglish: "",
+bacmath: "",
+bacphysics: "",
+bachistory: "",
 
 
     university: "",
@@ -65,8 +65,8 @@ bacHistory: "",
     frenchLevel: "",
 
     currentJob: "",
-    yearsExperience: "",
-    experienceCompany: "",
+    yearsexperience: "",
+    experiencecompany: "",
 experienceMission: "",
 
 
