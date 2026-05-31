@@ -11,6 +11,8 @@ const supabase = createClient(
 export default function DealerPage() {
 
 const [loading, setLoading] = useState(false);
+const [kbisFile, setKbisFile] = useState<File | null>(null);
+const [signedContract, setSignedContract] = useState<File | null>(null);
 
 const [form, setForm] = useState({
 
@@ -63,10 +65,54 @@ try {
 
   setLoading(true);
 
-  const { error } =
-    await supabase
-      .from("dealers")
-      .insert([form]);
+  const { data, error } =
+await supabase
+.from("dealers")
+.insert([form])
+.select()
+.single();
+
+if (error) {
+
+alert(error.message);
+return;
+
+}
+
+const dealerId =
+data.id;
+if (kbisFile) {
+
+await supabase.storage
+.from("dealer-files")
+.upload(
+
+
+  `kbis/${dealerId}-${kbisFile.name}`,
+
+  kbisFile
+
+);
+
+
+}
+
+if (signedContract) {
+
+await supabase.storage
+.from("dealer-files")
+.upload(
+
+
+  `contracts/${dealerId}-${signedContract.name}`,
+
+  signedContract
+
+);
+
+
+}
+
 
   if (error) {
 
@@ -128,6 +174,36 @@ return (
       placeholder="Nom de la société"
       onChange={handleChange}
     />
+    <h2>
+Documents
+</h2>
+
+<label>
+KBIS
+</label>
+
+<input
+type="file"
+onChange={(e) =>
+setKbisFile(
+e.target.files?.[0] || null
+)
+}
+/>
+
+<label>
+Contrat signé
+</label>
+
+<input
+type="file"
+onChange={(e) =>
+setSignedContract(
+e.target.files?.[0] || null
+)
+}
+/>
+
 
     <input
       name="siren"
@@ -276,6 +352,22 @@ return (
       </p>
 
     </div>
+<button
+type="button"
+onClick={() => window.print()}
+style={{
+padding: 15,
+fontSize: 18,
+background: "#444",
+color: "#fff",
+border: "none",
+borderRadius: 8,
+cursor: "pointer"
+}}
+
+>
+
+Télécharger le contrat PDF </button>
 
     <button
       type="submit"
