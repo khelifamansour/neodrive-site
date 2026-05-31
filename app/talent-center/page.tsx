@@ -641,14 +641,14 @@ style={input}
 <h2>Professional Experience</h2>
 
 <input
-name="experienceCompany"
+name="experiencecompany"
 placeholder="Company name"
 onChange={handleChange}
 style={input}
 />
 
 <textarea
-  name="experienceMission"
+  name="experiencemission"
   placeholder="Describe your missions and responsibilities"
   onChange={handleChange}
   style={bigTextarea}
