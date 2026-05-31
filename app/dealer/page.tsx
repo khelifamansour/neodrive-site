@@ -299,106 +299,138 @@ e.target.files?.[0] || null
       }}
     >
 
-      <h2>
-        Résumé du contrat de dépôt
-      </h2>
-<h2>
+    <div
+  style={{
+    marginTop: 30,
+    padding: 20,
+    border: "1px solid #ddd",
+    borderRadius: 8,
+    background: "#fff",
+    whiteSpace: "pre-line",
+    lineHeight: "1.8"
+  }}
+>
+
+{`
 CONTRAT DE DÉPÔT, DISTRIBUTION ET SERVICE APRÈS-VENTE MICRODRIVE
-</h2>
 
-<p>
 Entre :
-</p>
 
-<p>
-MK HOLDING – MICRODRIVE<br/>
-31 rue Jean Nougaro<br/>
-31600 Muret<br/>
+MK HOLDING – MICRODRIVE
+31 rue Jean Nougaro
+31600 Muret
 SIREN : 908 645 393
-</p>
 
-<p>
+Ci-après dénommée « MICRODRIVE »
+
 Et :
-</p>
 
-<p>
-Société : {form.company_name}<br/>
-SIREN : {form.siren}<br/>
-Adresse : {form.address}<br/>
-Représentée par : {form.manager_name}
-</p>
+Société : ${form.company_name}
 
-<h3>ARTICLE 1 – OBJET</h3>
+SIREN : ${form.siren}
 
-<p>
+Adresse : ${form.address}
+
+Représentée par : ${form.manager_name}
+
+Ci-après dénommée « le Partenaire »
+
+ARTICLE 1 – OBJET
+
 MICRODRIVE confie au Partenaire un véhicule destiné à être exposé, promu et commercialisé auprès de sa clientèle.
-</p>
 
-<h3>ARTICLE 2 – VÉHICULE DÉPOSÉ</h3>
+Le véhicule demeure à tout moment la propriété exclusive de MICRODRIVE.
 
-<p>
-Numéro de série : {form.vin}
-</p>
+ARTICLE 2 – VÉHICULE DÉPOSÉ
 
-<p>
-Couleur : {form.color}
-</p>
+Numéro de série : ${form.vin}
 
-<p>
-Kilométrage : {form.mileage}
-</p>
+Couleur : ${form.color}
 
-<p>
-Valeur contractuelle : 5 490 € TTC
-</p>
+Date de remise : ${new Date().toLocaleDateString("fr-FR")}
 
-<h3>ANNEXE DE RÉCEPTION</h3>
+Valeur contractuelle du véhicule : 5 490 € TTC
 
-<p>
-Numéro de série : {form.vin}
-</p>
+ARTICLE 3 – RÉSERVE DE PROPRIÉTÉ
 
-<p>
-Couleur : {form.color}
-</p>
+Le véhicule demeure la propriété exclusive de MICRODRIVE jusqu'au paiement intégral de son prix.
 
-<p>
-Kilométrage : {form.mileage}
-</p>
+ARTICLE 4 – RÉCEPTION DU VÉHICULE
 
-<p>
-Nombre de clés : {form.keys_count}
-</p>
+Le Partenaire reconnaît avoir réceptionné le véhicule dans un état conforme sauf réserves écrites formulées dans un délai maximal de 48 heures.
 
-<p>
-Chargeur fourni : {form.charger_provided}
-</p>
+ARTICLE 5 – STOCKAGE ET ENTRETIEN
 
-<p>
+Le Partenaire s'engage à :
+
+- conserver le véhicule dans un lieu sécurisé
+- protéger le véhicule contre les intempéries
+- maintenir la batterie chargée
+- informer immédiatement MICRODRIVE de toute anomalie
+
+ARTICLE 6 – ASSURANCE
+
+Le Partenaire s'engage à assurer le véhicule contre le vol, l'incendie et les dégradations.
+
+ARTICLE 7 – PERTE, VOL OU DÉGRADATION
+
+Toute disparition ou dégradation engage la responsabilité du Partenaire.
+
+ARTICLE 8 – INTERDICTION DE RÉTENTION
+
+Le Partenaire ne pourra retenir le véhicule ou ses documents.
+
+ARTICLE 9 – COMMANDES ET VENTES
+
+MICRODRIVE demeure vendeur du véhicule auprès du client final.
+
+ARTICLE 10 – COMMISSION
+
+Commission actuelle : 500 € TTC par véhicule vendu.
+
+ARTICLE 11 – SERVICE APRÈS-VENTE
+
+Toute intervention doit être validée par MICRODRIVE.
+
+ARTICLE 12 – RESTITUTION
+
+MICRODRIVE peut demander à tout moment la restitution du véhicule.
+
+ARTICLE 13 – DURÉE
+
+Le présent contrat est conclu pour une durée indéterminée.
+
+ARTICLE 14 – JURIDICTION
+
+Tribunaux compétents : Toulouse.
+
+ANNEXE DE RÉCEPTION
+
+Numéro de série : ${form.vin}
+
+Couleur : ${form.color}
+
+Kilométrage : ${form.mileage}
+
+Nombre de clés : ${form.keys_count}
+
+Chargeur fourni : ${form.charger_provided}
+
 Observations :
-</p>
 
-<p>
-{form.observations}
-</p>
+${form.observations}
 
-<br/><br/><br/>
-
-<p>
 Le Partenaire reconnaît avoir reçu le véhicule dans l'état décrit ci-dessus.
-</p>
 
-<br/><br/>
+Fait à ______________________
 
-<p>
+Le _________________________
+
 Signature MICRODRIVE
-</p>
 
-<br/><br/><br/>
 
-<p>
 Signature et cachet du Partenaire
-</p>
+`}
 
 </div>
 
