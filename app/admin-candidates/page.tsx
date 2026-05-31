@@ -83,21 +83,12 @@ alert(
   )
 );
 
-
 }}
 
->
-
-Generate AI Report 
- </button>
 
 
 
-}}
-
->
-
-Generate AI Report </button>
+Generate AI Report
 
 
     </div>
