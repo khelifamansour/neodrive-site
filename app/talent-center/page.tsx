@@ -240,26 +240,21 @@ questions.forEach((q) => {
 
      if (candidateScore < 15) {
 
-        evaluation =
-          "Rejected - Low competency";
+  evaluation = "Rejected - Low competency";
 
-      } else if (score < 60) {
+} else if (candidateScore < 35) {
 
-        evaluation =
-          "Average candidate";
+  evaluation = "Average candidate";
 
-      } else if (score < 80) {
+} else if (candidateScore < 55) {
 
-        evaluation =
-          "Interesting candidate";
+  evaluation = "Interesting candidate";
 
-      } else {
+} else {
 
-        evaluation =
-          "High potential candidate";
+  evaluation = "High potential candidate";
 
-      }
-
+}
       /* =========================
          INSERT
       ========================= */
@@ -275,7 +270,7 @@ questions.forEach((q) => {
 
   ...form,
 
-  score,
+  score: candidateScore,
 
   logicscore: logic,
   frenchscore: french,
@@ -570,35 +565,35 @@ if (motivationLetterFile) {
         />
 
         <input
-name="bacFrench"
+name="bacfrench"
 placeholder="French grade at Baccalaureate"
 onChange={handleChange}
 style={input}
 />
 
 <input
-name="bacEnglish"
+name="bacenglish"
 placeholder="English grade at Baccalaureate"
 onChange={handleChange}
 style={input}
 />
 
 <input
-name="bacMath"
+name="bacmath"
 placeholder="Mathematics grade at Baccalaureate"
 onChange={handleChange}
 style={input}
 />
 
 <input
-name="bacPhysics"
+name="bacphysics"
 placeholder="Physics grade at Baccalaureate"
 onChange={handleChange}
 style={input}
 />
 
 <input
-name="bacHistory"
+name="bachistory"
 placeholder="History grade at Baccalaureate"
 onChange={handleChange}
 style={input}
@@ -660,7 +655,7 @@ style={input}
   style={bigTextarea}
 />
 
-       <h2>Recruitment Exam</h2>
+      <h2>Recruitment Exam</h2>
 
 {questions.map((q) => (
 
@@ -674,15 +669,16 @@ style={input}
     }}
   >
 
-    <h3>
-      {q.category.toUpperCase()}
-    </h3>
 
-    <p>
-      <strong>{q.question}</strong>
-    </p>
+<h3>
+  {q.category.toUpperCase()}
+</h3>
 
-  {q.category === "situation" ? (
+<p>
+  <strong>{q.question}</strong>
+</p>
+
+{q.category === "situation" ? (
 
   <textarea
     rows={6}
@@ -736,6 +732,11 @@ style={input}
   ))
 
 )}
+
+
+  </div>
+
+))}
 
         <h2>Technical Report</h2>
 
