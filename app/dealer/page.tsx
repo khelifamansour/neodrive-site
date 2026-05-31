@@ -42,6 +42,7 @@ HTMLSelectElement
 >
 ) => {
 
+
 setForm({
   ...form,
   [e.target.name]:
@@ -75,7 +76,7 @@ try {
   }
 
   alert(
-    "Dealer saved successfully"
+    "Concessionnaire enregistré avec succès"
   );
 
 } catch (err) {
@@ -106,7 +107,7 @@ return (
 >
 
   <h1>
-    Dealer Registration
+    Portail Concessionnaire Microdrive
   </h1>
 
   <form
@@ -119,70 +120,70 @@ return (
   >
 
     <h2>
-      Company
+      Informations du concessionnaire
     </h2>
 
     <input
       name="company_name"
-      placeholder="Company name"
+      placeholder="Nom de la société"
       onChange={handleChange}
     />
 
     <input
       name="siren"
-      placeholder="SIREN"
+      placeholder="Numéro SIREN"
       onChange={handleChange}
     />
 
     <input
       name="manager_name"
-      placeholder="Manager name"
+      placeholder="Nom du responsable"
       onChange={handleChange}
     />
 
     <input
       name="phone"
-      placeholder="Phone"
+      placeholder="Téléphone"
       onChange={handleChange}
     />
 
     <input
       name="email"
-      placeholder="Email"
+      placeholder="Adresse e-mail"
       onChange={handleChange}
     />
 
     <input
       name="address"
-      placeholder="Address"
+      placeholder="Adresse"
       onChange={handleChange}
     />
 
     <h2>
-      Vehicle
+      Véhicule confié
     </h2>
 
     <input
       name="vin"
-      placeholder="VIN"
+      placeholder="Numéro de série (VIN)"
       onChange={handleChange}
     />
 
     <input
       name="color"
-      placeholder="Color"
+      placeholder="Couleur"
       onChange={handleChange}
     />
 
     <input
       name="mileage"
-      placeholder="Mileage"
+      placeholder="Kilométrage"
       onChange={handleChange}
     />
 
     <input
       name="keys_count"
-      placeholder="Number of keys"
+      placeholder="Nombre de clés"
       onChange={handleChange}
     />
 
@@ -192,22 +193,22 @@ return (
     >
 
       <option value="">
-        Charger provided?
+        Chargeur fourni ?
       </option>
 
-      <option value="Yes">
-        Yes
+      <option value="Oui">
+        Oui
       </option>
 
-      <option value="No">
-        No
+      <option value="Non">
+        Non
       </option>
 
     </select>
 
     <textarea
       name="observations"
-      placeholder="Vehicle condition and observations"
+      placeholder="Observations sur l'état du véhicule"
       rows={8}
       onChange={handleChange}
     />
@@ -216,52 +217,62 @@ return (
       style={{
         marginTop: 30,
         padding: 20,
-        border: "1px solid #ddd"
+        border: "1px solid #ddd",
+        borderRadius: 8,
+        background: "#f8f8f8"
       }}
     >
 
       <h2>
-        Deposit Contract Summary
+        Résumé du contrat de dépôt
       </h2>
 
       <p>
-        Company:
-        {" "}
-        {form.company_name}
+        Société : {form.company_name}
       </p>
 
       <p>
-        SIREN:
-        {" "}
-        {form.siren}
+        SIREN : {form.siren}
       </p>
 
       <p>
-        VIN:
-        {" "}
-        {form.vin}
+        Responsable : {form.manager_name}
       </p>
 
       <p>
-        Color:
-        {" "}
-        {form.color}
+        Numéro de série : {form.vin}
       </p>
 
       <p>
-        Mileage:
-        {" "}
-        {form.mileage}
+        Couleur : {form.color}
       </p>
 
       <p>
-        Vehicle remains the exclusive
-        property of MICRODRIVE.
+        Kilométrage : {form.mileage}
       </p>
 
       <p>
-        Contract value:
+        Nombre de clés : {form.keys_count}
+      </p>
+
+      <p>
+        Chargeur fourni : {form.charger_provided}
+      </p>
+
+      <p>
+        Valeur contractuelle du véhicule :
         5 490 € TTC
+      </p>
+
+      <p>
+        Le véhicule demeure la propriété
+        exclusive de MICRODRIVE.
+      </p>
+
+      <p>
+        Le concessionnaire reconnaît avoir
+        réceptionné le véhicule dans l'état
+        indiqué ci-dessus.
       </p>
 
     </div>
@@ -270,13 +281,18 @@ return (
       type="submit"
       style={{
         padding: 15,
-        fontSize: 18
+        fontSize: 18,
+        background: "#000",
+        color: "#fff",
+        border: "none",
+        borderRadius: 8,
+        cursor: "pointer"
       }}
     >
 
       {loading
-        ? "Saving..."
-        : "Save Dealer"}
+        ? "Enregistrement..."
+        : "Enregistrer le concessionnaire"}
 
     </button>
 
