@@ -75,48 +75,68 @@ return (
   const report =
   await response.json();
 
+const { data, error } =
 await supabase
-  .from("candidate_ai_reports")
-  .insert([{
+.from("candidate_ai_reports")
+.insert([{
 
-    candidate_id: c.id,
 
-    overall_score:
-      report.overall_score,
+  candidate_id: c.id,
 
-    communication_score:
-      report.communication_score,
+  overall_score:
+    report.overall_score,
 
-    logic_score:
-      report.logic_score,
+  communication_score:
+    report.communication_score,
 
-    leadership_score:
-      report.leadership_score,
+  logic_score:
+    report.logic_score,
 
-    learning_score:
-      report.learning_score,
+  leadership_score:
+    report.leadership_score,
 
-    customer_score:
-      report.customer_score,
+  learning_score:
+    report.learning_score,
 
-    potential_score:
-      report.potential_score,
+  customer_score:
+    report.customer_score,
 
-    strengths:
-      report.strengths,
+  potential_score:
+    report.potential_score,
 
-    weaknesses:
-      report.weaknesses,
+  strengths:
+    report.strengths,
 
-    recommendation:
-      report.recommendation,
+  weaknesses:
+    report.weaknesses,
 
-    full_report:
-      report.full_report
+  recommendation:
+    report.recommendation,
 
-  }]);
+  full_report:
+    report.full_report
 
-alert("AI Report Generated");
+}]);
+
+
+if (error) {
+
+alert(
+JSON.stringify(
+error,
+null,
+2
+)
+);
+
+} else {
+
+alert(
+"AI Report Generated"
+);
+
+}
+
 
   }}
 >
