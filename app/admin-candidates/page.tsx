@@ -72,16 +72,51 @@ return (
         }
       );
 
-    const report =
-      await response.json();
+  const report =
+  await response.json();
 
-    alert(
-      JSON.stringify(
-        report,
-        null,
-        2
-      )
-    );
+await supabase
+  .from("candidate_ai_reports")
+  .insert([{
+
+    candidate_id: c.id,
+
+    overall_score:
+      report.overall_score,
+
+    communication_score:
+      report.communication_score,
+
+    logic_score:
+      report.logic_score,
+
+    leadership_score:
+      report.leadership_score,
+
+    learning_score:
+      report.learning_score,
+
+    customer_score:
+      report.customer_score,
+
+    potential_score:
+      report.potential_score,
+
+    strengths:
+      report.strengths,
+
+    weaknesses:
+      report.weaknesses,
+
+    recommendation:
+      report.recommendation,
+
+    full_report:
+      report.full_report
+
+  }]);
+
+alert("AI Report Generated");
 
   }}
 >
