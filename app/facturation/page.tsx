@@ -7,7 +7,7 @@ export default function Facturation() {
 
   const today = new Date().toLocaleDateString("fr-FR");
 
-  const prixVehicule = 4490;
+  const prixVehicule = 5990;
   const carteGrise = 150;
 
   const invoiceNumber = `FAC-${Date.now()}`;
