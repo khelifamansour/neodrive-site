@@ -14,7 +14,7 @@ export default function Home() {
       <section style={center}>
 
         <h1 style={title}>
-          Voiture sans permis neuve dès 5 490  € TTC
+          Voiture sans permis neuve dès 5 990  € TTC
         </h1>
 
         <p style={subtitle}>
@@ -71,17 +71,6 @@ export default function Home() {
 
         <div style={box}>
 
-          ✔ Aucun acompte demandé
-          <br />
-
-          ✔ Paiement uniquement à la livraison
-          <br />
-
-          ✔ Inspection complète du véhicule avant paiement
-          <br />
-
-          ✔ Refus possible si non conforme
-          <br />
 
           ✔ Aucun engagement tant que vous n’avez pas validé
 
@@ -146,7 +135,7 @@ export default function Home() {
 
         <div style={box}>
 
-          ✔ Véhicule : à partir de 5 490 € TTC
+          ✔ Véhicule : à partir de 5 990 € TTC
           <br />
 
           ✔ Livraison partout en France via transport personnalisé
