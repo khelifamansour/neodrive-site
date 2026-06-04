@@ -6,8 +6,8 @@ import Script from "next/script";
 export default function Reservation() {
 
   const today = new Date().toLocaleDateString("fr-FR");
-    const prixVehicule = 5990;
-  const carteGrise = 150;
+    const prixVehicule = 5790;
+  const carteGrise = 249;
   const [client, setClient] = useState({
     nom: "",
     prenom: "",
@@ -298,7 +298,7 @@ const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity)
   )}
 
   <tr>
-  <td>Carte grise x{quantity}</td>
+  <td>Pack frais de mise en route et Carte grise x{quantity}</td>
 <td style={right}>{carteGrise * quantity} €</td>
   </tr>
 
