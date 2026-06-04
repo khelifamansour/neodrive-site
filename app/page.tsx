@@ -135,7 +135,7 @@ export default function Home() {
 
         <div style={box}>
 
-          ✔ Véhicule : à partir de 5 990 € TTC
+          ✔ Véhicule : à partir de 5 790 € TTC
           <br />
 
           ✔ Livraison partout en France via transport personnalisé
