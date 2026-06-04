@@ -14,7 +14,7 @@ export default function Home() {
       <section style={center}>
 
         <h1 style={title}>
-          Voiture sans permis neuve dès 5 990  € TTC
+          Voiture sans permis neuve dès 5 790  € TTC
         </h1>
 
         <p style={subtitle}>
