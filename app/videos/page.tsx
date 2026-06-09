@@ -1,7 +1,11 @@
 export default function VideosPage() {
   const videos = [
+        {
+      title: "Présentation du véhicule chez notre partenaire",
+      file: "/presentation1.mp4",
+    },
     {
-      title: "Présentation du véhicule",
+      title: "Présentation du véhicule à l'extérieur",
       file: "/presentation.mp4",
     },
     {
@@ -13,8 +17,12 @@ export default function VideosPage() {
       file: "/essai-route.mp4",
     },
     {
-      title: "Livraison chez le client",
+      title: "Livraison chez notre client dans la région de Strasbourg",
       file: "/videos/client1.mp4",
+    },
+        {
+      title: "Livraison et test chez notre client à Brest",
+      file: "/videos/client2.mp4",
     },
    
   ];
