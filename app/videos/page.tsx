@@ -6,19 +6,19 @@ export default function VideosPage() {
     },
     {
       title: "Découverte de l'intérieur",
-      file: "/videos/interieur.mp4",
+      file: "/interieur.mp4",
     },
     {
       title: "Essai sur route",
-      file: "/videos/essai-route.mp4",
+      file: "/essai-route.mp4",
     },
     {
-      title: "Test en montée",
-      file: "/videos/montee.mp4",
+      title: "Livraison chez le client",
+      file: "/videos/client1.mp4",
     },
     {
-      title: "Avis client",
-      file: "/videos/client.mp4",
+      title: "Test client",
+      file: "/videos/client2.mp4",
     },
   ];
 
