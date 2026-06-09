@@ -2,7 +2,7 @@ export default function VideosPage() {
   const videos = [
     {
       title: "Présentation du véhicule",
-      file: "/videos/presentation.mp4",
+      file: "/presentation.mp4",
     },
     {
       title: "Découverte de l'intérieur",
