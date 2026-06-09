@@ -18,11 +18,11 @@ export default function VideosPage() {
     },
     {
       title: "Livraison chez notre client dans la région de Strasbourg",
-      file: "client1.mp4",
+      file: "/client1.mp4",
     },
         {
       title: "Livraison et test chez notre client à Brest",
-      file: "client2.mp4",
+      file: "/client2.mp4",
     },
    
   ];
