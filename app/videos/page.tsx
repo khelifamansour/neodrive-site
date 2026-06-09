@@ -28,8 +28,7 @@ export default function VideosPage() {
 
         <p className="text-gray-600 max-w-3xl mx-auto">
           Découvrez notre véhicule électrique sans permis à travers
-          plusieurs vidéos de présentation, d'essais routiers et de
-          témoignages clients.
+          plusieurs vidéos de présentation et d'essais routiers.
         </p>
       </div>
 
