@@ -16,10 +16,7 @@ export default function VideosPage() {
       title: "Livraison chez le client",
       file: "/videos/client1.mp4",
     },
-    {
-      title: "Test client",
-      file: "/videos/client2.mp4",
-    },
+   
   ];
 
   return (
