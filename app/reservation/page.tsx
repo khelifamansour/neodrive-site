@@ -194,8 +194,10 @@ const totalTTC =
     <option value="67">Bas-Rhin (67)</option>
     <option value="68">Haut-Rhin (68)</option>
   </optgroup>
+</select>
 
-</select><input
+<p style={label}>Nombre de véhicules</p>
+<input
   type="number"
   min="1"
   value={quantity}
@@ -206,6 +208,7 @@ const totalTTC =
   placeholder="Nombre de véhicules"
 />
 
+<p style={label}>Transport personnalisé (€)</p>
 <input
   type="number"
   value={manualTransport}
@@ -215,6 +218,8 @@ const totalTTC =
   style={input}
   placeholder="Transport personnalisé (€)"
 />
+
+<p style={label}>Remise / Promotion (€)</p>
 <input
   type="number"
   value={discount}
@@ -318,16 +323,17 @@ const totalTTC =
 <td style={right}>{carteGrise * quantity} €</td>
   </tr>
 
-  <tr style={totalRow}>
-    {discount > 0 && (
+{discount > 0 && (
   <tr>
     <td>Remise commerciale</td>
     <td style={right}>- {discount} €</td>
   </tr>
 )}
-    <td>Total TTC</td>
-    <td style={right}>{totalTTC} €</td>
-  </tr>
+
+<tr style={totalRow}>
+  <td>Total TTC</td>
+  <td style={right}>{totalTTC} €</td>
+</tr>
 </tbody>
           </table>
      COORDONNÉES BANCAIRES
@@ -1012,6 +1018,13 @@ const input: React.CSSProperties = {
   marginTop: 8,
   border: "1px solid #ccc",
   borderRadius: 4
+};
+
+const label: React.CSSProperties = {
+  marginTop: 12,
+  marginBottom: 2,
+  fontWeight: "bold",
+  fontSize: 14
 };
 
 const pdf: React.CSSProperties = {
