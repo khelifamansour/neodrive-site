@@ -21,7 +21,7 @@ export default function Reservation() {
 
 const [quantity, setQuantity] = useState(1);
 const [manualTransport, setManualTransport] = useState("");
-
+const [discount, setDiscount] = useState(0);
   
 
   const getTransportPrice = (dept: string) => {
@@ -44,7 +44,11 @@ const transport = noDelivery
       : getTransportPrice(
           client.code_postal?.substring(0,2) || ""
         );
-const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity);
+const totalTTC =
+  (prixVehicule * quantity)
+  + transport
+  + (carteGrise * quantity)
+  - discount;
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -211,6 +215,16 @@ const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity)
   style={input}
   placeholder="Transport personnalisé (€)"
 />
+<input
+  type="number"
+  value={discount}
+  onChange={(e) =>
+    setDiscount(Number(e.target.value) || 0)
+  }
+  style={input}
+  placeholder="Remise / Promotion (€)"
+/>
+          
           <label style={{ display: "flex", alignItems: "center", marginTop: 10 }}>
   <input
     type="checkbox"
@@ -218,6 +232,8 @@ const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity)
     onChange={(e) => setNoDelivery(e.target.checked)}
     style={{ marginRight: 8 }}
   />
+
+            
   Retrait sur place (pas de livraison)
 </label>
           <input name="ville" placeholder="Ville" style={input} onChange={handleChange} required />
@@ -303,6 +319,12 @@ const totalTTC = (prixVehicule * quantity) + transport + (carteGrise * quantity)
   </tr>
 
   <tr style={totalRow}>
+    {discount > 0 && (
+  <tr>
+    <td>Remise commerciale</td>
+    <td style={right}>- {discount} €</td>
+  </tr>
+)}
     <td>Total TTC</td>
     <td style={right}>{totalTTC} €</td>
   </tr>
