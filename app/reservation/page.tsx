@@ -224,7 +224,7 @@ const totalTTC =
   style={input}
   placeholder="Remise / Promotion (€)"
 />
-          
+      
           <label style={{ display: "flex", alignItems: "center", marginTop: 10 }}>
   <input
     type="checkbox"
