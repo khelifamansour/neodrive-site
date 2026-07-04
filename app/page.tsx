@@ -241,8 +241,7 @@ const hero: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   padding: "0 10%",
-  backgroundImage:
-    "linear-gradient(to right, rgba(4,12,20,0.92) 0%, rgba(4,12,20,0.75) 35%, rgba(4,12,20,0.25) 60%, rgba(4,12,20,0.05) 100%), url('/hero.png')",
+  backgroundImage: "url('/hero.png')",
   backgroundSize: "cover",
   backgroundPosition: "center",
   backgroundRepeat: "no-repeat",
