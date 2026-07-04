@@ -5,346 +5,560 @@ import React from "react";
 export default function Home() {
   return (
     <main style={page}>
+      <nav style={nav}>
+        <div style={logo}>
+          <span style={logoIcon}>N</span> NEODRIVE
+        </div>
+        <div style={navLinks}>
+          <span>Accueil</span>
+          <span>Versions</span>
+          <span>Équipements</span>
+          <span>Achat sécurisé</span>
+          <span>Livraison</span>
+        </div>
+      </nav>
+
       <section style={hero}>
-        <div style={badge}>🚗 Nouvelle voiture sans permis électrique</div>
+        <div style={heroOverlay}>
+          <div style={heroText}>
+            <div style={badge}>🇫🇷 Marque toulousaine</div>
 
-        <h1 style={title}>
-          La liberté de rouler, sans permis, dès 3 990 €
-        </h1>
+            <h1 style={title}>
+              La liberté de rouler,
+              <br />
+              sans permis.
+            </h1>
 
-        <p style={subtitle}>
-          Même voiture, 3 versions selon votre budget et vos envies.
-          Simple, élégante, économique et parfaite pour le quotidien.
-        </p>
+            <p style={priceHero}>Dès 3 990 €</p>
 
-        <img src="/voiture.jpg" alt="Voiture sans permis électrique" style={carImage} />
+            <p style={subtitle}>
+              Même voiture, 3 versions selon vos besoins.
+              <br />
+              Électrique, économique et élégante.
+            </p>
 
-        <div style={heroButtons}>
-          <a href="/reservation">
-            <button style={btnPrimary}>Réserver sans paiement</button>
-          </a>
+            <div style={icons}>
+              <div>⚡<br />100% électrique</div>
+              <div>💶<br />Économique</div>
+              <div>🚗<br />Sans permis</div>
+              <div>🛠️<br />Garantie & SAV</div>
+            </div>
+          </div>
 
-          <a href="https://wa.me/33628261446" target="_blank" rel="noopener noreferrer">
-            <button style={btnWhatsapp}>Voir la voiture en vidéo</button>
-          </a>
+          <img src="/voiture.jpg" alt="Voiture sans permis Neodrive" style={heroCar} />
         </div>
       </section>
 
       <section style={section}>
-        <h2 style={sectionTitle}>Choisissez votre version</h2>
+        <h2 style={sectionTitle}>3 versions. 1 même voiture. À vous de choisir.</h2>
         <p style={sectionSubtitle}>
-          La même voiture, le même design, mais avec des équipements différents.
+          La même qualité, le même design, avec des équipements adaptés à votre quotidien.
         </p>
 
         <div style={cards}>
-          <div style={card}>
-            <div style={versionBadge}>Essentiel</div>
+          <article style={card}>
+            <span style={tagGreen}>ESSENTIEL</span>
             <h3 style={cardTitle}>Version Essentiel</h3>
-            <p style={price}>3 990 € TTC</p>
-            <p style={desc}>
+            <p style={cardPrice}>3 990 € TTC</p>
+            <p style={cardText}>
               La version simple et accessible pour rouler au meilleur prix.
             </p>
             <ul style={list}>
-              <li>✔ Voiture neuve</li>
-              <li>✔ 100% électrique</li>
-              <li>✔ Grand coffre</li>
-              <li>✔ Batterie incluse</li>
+              <li>Voiture neuve</li>
+              <li>100% électrique</li>
+              <li>Grand coffre</li>
+              <li>Batterie incluse</li>
             </ul>
-          </div>
+          </article>
 
-          <div style={cardHighlight}>
-            <div style={popular}>⭐ La plus demandée</div>
-            <div style={versionBadgeGold}>Confort</div>
+          <article style={cardDark}>
+            <span style={tagOrange}>LA PLUS CHOISIE</span>
             <h3 style={cardTitle}>Version Confort</h3>
-            <p style={price}>4 990 € TTC</p>
-            <p style={desc}>
-              La version idéale avec le pack équipement complet.
+            <p style={cardPriceWhite}>4 990 € TTC</p>
+            <p style={cardTextWhite}>
+              Le meilleur compromis avec le pack équipement complet.
             </p>
-            <ul style={list}>
-              <li>✔ Pack Confort inclus</li>
-              <li>✔ Alarme antivol</li>
-              <li>✔ Caméra de recul</li>
-              <li>✔ Chauffage</li>
-              <li>✔ Ventilation</li>
+            <ul style={listWhite}>
+              <li>Pack Confort inclus</li>
+              <li>Alarme antivol</li>
+              <li>Caméra de recul</li>
+              <li>Chauffage</li>
+              <li>Ventilation</li>
             </ul>
-          </div>
+          </article>
 
-          <div style={card}>
-            <div style={versionBadge}>Confort Plus+</div>
+          <article style={card}>
+            <span style={tagPurple}>CONFORT PLUS+</span>
             <h3 style={cardTitle}>Version Confort Plus+</h3>
-            <p style={price}>Sur demande</p>
-            <p style={desc}>
+            <p style={cardPrice}>Sur demande</p>
+            <p style={cardText}>
               Plus d’autonomie, charge rapide et équipements premium.
             </p>
             <ul style={list}>
-              <li>✔ Pack Confort inclus</li>
-              <li>✔ Charge rapide</li>
-              <li>✔ Plus d’autonomie</li>
-              <li>✔ Idéale usage intensif</li>
+              <li>Pack Confort inclus</li>
+              <li>Charge rapide</li>
+              <li>Plus d’autonomie</li>
+              <li>Idéale usage intensif</li>
             </ul>
-          </div>
+          </article>
         </div>
       </section>
 
       <section style={emotion}>
-        <h2 style={emotionTitle}>Une petite voiture qui change le quotidien</h2>
-        <p style={emotionText}>
-          Pour aller au travail, faire vos courses, déposer les enfants ou garder votre autonomie :
-          une voiture pratique, jolie et économique.
-        </p>
-      </section>
-
-      <section style={trust}>
-        <h2 style={sectionTitle}>Achat simple et rassurant</h2>
-
-        <div style={trustGrid}>
-          <div style={trustBox}>🔒 Aucun paiement à l’avance</div>
-          <div style={trustBox}>🎥 Vidéo réelle disponible</div>
-          <div style={trustBox}>🚚 Livraison partout en France</div>
-          <div style={trustBox}>🇫🇷 Entreprise française</div>
-          <div style={trustBox}>🧾 Facture + documents</div>
-          <div style={trustBox}>🛠 SAV + pièces disponibles</div>
+        <div>
+          <h2 style={emotionTitle}>Une petite voiture qui change le quotidien</h2>
+          <p style={emotionText}>
+            Aller au travail, faire vos courses, déposer les enfants ou retrouver votre autonomie :
+            Neodrive rend votre quotidien plus simple, plus économique et plus agréable.
+          </p>
         </div>
       </section>
 
-      <section style={bottom}>
-        <h2 style={bottomTitle}>Envie de la voir en vrai ?</h2>
-        <p style={bottomText}>
-          Contactez-nous, recevez les photos et vidéos, puis réservez votre véhicule sans paiement.
+      <section style={presentation}>
+        <div style={presentationText}>
+          <h2 style={sectionTitleLeft}>NEODRIVE, 6 ans d’expérience à vos côtés</h2>
+
+          <p style={paragraph}>
+            Après 6 années dans le domaine de la voiture sans permis, nous avons pris le pari
+            de vous offrir une voiture neuve, bien équipée et fiable à moins de 5 000 €.
+          </p>
+
+          <p style={paragraph}>
+            Neodrive est une marque toulousaine, proche de ses clients, qui place la transparence,
+            la qualité et le service au cœur de son engagement.
+          </p>
+
+          <div style={stats}>
+            <div>
+              🏅
+              <strong>6 ans</strong>
+              <span>d’expérience</span>
+            </div>
+            <div>
+              📍
+              <strong>Toulouse</strong>
+              <span>marque locale</span>
+            </div>
+            <div>
+              🛡️
+              <strong>Véhicules</strong>
+              <span>neufs et garantis</span>
+            </div>
+          </div>
+        </div>
+
+        <img src="/voiture.jpg" alt="Neodrive Toulouse" style={presentationImage} />
+      </section>
+
+      <section style={whySection}>
+        <h2 style={whyTitle}>Pourquoi choisir Neodrive ?</h2>
+
+        <div style={whyGrid}>
+          <div style={whyCard}>🔒<strong>Achat sécurisé</strong><span>Aucun paiement à l’avance.</span></div>
+          <div style={whyCard}>🎥<strong>Vidéo réelle</strong><span>Découverte du véhicule sur demande.</span></div>
+          <div style={whyCard}>🚚<strong>Livraison France</strong><span>Transport personnalisé.</span></div>
+          <div style={whyCard}>🧾<strong>Documents fournis</strong><span>Facture + immatriculation.</span></div>
+          <div style={whyCard}>🛠️<strong>SAV disponible</strong><span>Assistance et pièces en France.</span></div>
+        </div>
+      </section>
+
+      <section style={featuresSection}>
+        <h2 style={sectionTitle}>Des caractéristiques pensées pour vous</h2>
+
+        <div style={features}>
+          <div>🔋<br />Jusqu’à 70 km d’autonomie</div>
+          <div>🔌<br />Recharge sur prise standard</div>
+          <div>🚘<br />Compacte et facile à garer</div>
+          <div>🧳<br />Grand coffre pratique</div>
+          <div>😊<br />Conduite simple et confortable</div>
+        </div>
+      </section>
+
+      <section style={finalCta}>
+        <h2 style={finalTitle}>Prêt à découvrir NEODRIVE ?</h2>
+        <p style={finalText}>
+          Contactez-nous dès maintenant, obtenez votre vidéo et réservez sans engagement.
         </p>
 
-        <a href="/reservation">
-          <button style={btnPrimary}>Réserver sans paiement</button>
-        </a>
+        <div style={finalButtons}>
+          <a href="/reservation">
+            <button style={btnReserve}>📅 Réserver sans paiement</button>
+          </a>
 
-        <a href="https://wa.me/33628261446" target="_blank" rel="noopener noreferrer">
-          <button style={btnWhatsapp}>Contactez-nous sur WhatsApp</button>
-        </a>
+          <a href="https://wa.me/33628261446" target="_blank" rel="noopener noreferrer">
+            <button style={btnWhatsapp}>💬 Contactez-nous sur WhatsApp</button>
+          </a>
+        </div>
 
-        <p style={phone}>📞 06 28 26 14 46</p>
+        <p style={response}>Réponse rapide — Vidéo disponible immédiatement</p>
       </section>
+
+      <footer style={footer}>
+        <div style={logoFooter}>
+          <span style={logoIcon}>N</span> NEODRIVE
+        </div>
+        <div>
+          Marque toulousaine — 31 rue Jean Nougaro, 31600 Muret
+          <br />
+          SIREN 908 645 393
+        </div>
+        <strong>📞 06 28 26 14 46</strong>
+      </footer>
     </main>
   );
 }
 
 const page: React.CSSProperties = {
-  maxWidth: 1100,
-  margin: "0 auto",
-  padding: 14,
   fontFamily: "Arial, sans-serif",
-  color: "#1b1b1b",
-  background: "#fffaf3",
+  background: "#ffffff",
+  color: "#111",
+};
+
+const nav: React.CSSProperties = {
+  maxWidth: 1180,
+  margin: "0 auto",
+  padding: "18px 24px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+};
+
+const logo: React.CSSProperties = {
+  fontSize: 24,
+  fontWeight: 900,
+};
+
+const logoFooter: React.CSSProperties = {
+  fontSize: 20,
+  fontWeight: 900,
+};
+
+const logoIcon: React.CSSProperties = {
+  color: "#ff8a00",
+  fontWeight: 900,
+  marginRight: 6,
+};
+
+const navLinks: React.CSSProperties = {
+  display: "flex",
+  gap: 24,
+  fontSize: 14,
+  fontWeight: 700,
 };
 
 const hero: React.CSSProperties = {
-  textAlign: "center",
-  padding: "45px 18px",
-  borderRadius: 28,
-  background: "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
+  background: "linear-gradient(135deg, #08111f 0%, #12395a 50%, #f39c12 100%)",
+  color: "white",
+};
+
+const heroOverlay: React.CSSProperties = {
+  maxWidth: 1180,
+  margin: "0 auto",
+  padding: "70px 24px",
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 40,
+  alignItems: "center",
+};
+
+const heroText: React.CSSProperties = {
+  zIndex: 2,
 };
 
 const badge: React.CSSProperties = {
   display: "inline-block",
-  background: "#ffffff",
-  color: "#e85d04",
-  padding: "9px 16px",
+  background: "white",
+  color: "#111",
+  padding: "10px 16px",
   borderRadius: 999,
-  fontWeight: 800,
-  fontSize: 14,
-  marginBottom: 18,
+  fontWeight: 900,
+  marginBottom: 22,
 };
 
 const title: React.CSSProperties = {
-  fontSize: 42,
-  lineHeight: "1.1",
-  fontWeight: 900,
+  fontSize: 62,
+  lineHeight: "1.03",
   margin: 0,
+  fontWeight: 900,
+};
+
+const priceHero: React.CSSProperties = {
+  fontSize: 46,
+  color: "#ff8a00",
+  fontWeight: 900,
+  margin: "18px 0 10px",
 };
 
 const subtitle: React.CSSProperties = {
-  maxWidth: 720,
-  margin: "18px auto 0",
-  fontSize: 19,
-  lineHeight: "1.55",
-  color: "#4a2d1f",
+  fontSize: 20,
+  lineHeight: "1.5",
+  color: "#f1f1f1",
 };
 
-const carImage: React.CSSProperties = {
-  width: "100%",
-  maxWidth: 760,
-  marginTop: 30,
-  borderRadius: 26,
-  boxShadow: "0 25px 60px rgba(0,0,0,0.25)",
-};
-
-const heroButtons: React.CSSProperties = {
+const icons: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, 1fr)",
+  gap: 12,
   marginTop: 28,
+  fontSize: 13,
+  fontWeight: 700,
+  textAlign: "center",
+};
+
+const heroCar: React.CSSProperties = {
+  width: "100%",
+  borderRadius: 26,
+  boxShadow: "0 30px 70px rgba(0,0,0,0.45)",
+  background: "white",
 };
 
 const section: React.CSSProperties = {
-  padding: "50px 8px",
+  maxWidth: 1180,
+  margin: "0 auto",
+  padding: "60px 24px",
 };
 
 const sectionTitle: React.CSSProperties = {
   textAlign: "center",
-  fontSize: 32,
-  marginBottom: 8,
+  fontSize: 36,
+  marginBottom: 10,
+  fontWeight: 900,
+};
+
+const sectionTitleLeft: React.CSSProperties = {
+  fontSize: 34,
+  marginBottom: 18,
   fontWeight: 900,
 };
 
 const sectionSubtitle: React.CSSProperties = {
   textAlign: "center",
-  color: "#666",
-  fontSize: 17,
-  marginBottom: 28,
+  fontSize: 18,
+  color: "#555",
+  marginBottom: 36,
 };
 
 const cards: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-  gap: 18,
+  gridTemplateColumns: "repeat(3, 1fr)",
+  gap: 32,
 };
 
 const card: React.CSSProperties = {
-  background: "#ffffff",
-  borderRadius: 24,
-  padding: 24,
-  boxShadow: "0 15px 35px rgba(0,0,0,0.08)",
+  padding: 34,
+  borderRadius: 28,
+  background: "white",
+  boxShadow: "0 20px 45px rgba(0,0,0,0.10)",
+  border: "1px solid #eee",
 };
 
-const cardHighlight: React.CSSProperties = {
-  background: "linear-gradient(180deg, #111 0%, #2b2b2b 100%)",
+const cardDark: React.CSSProperties = {
+  padding: 34,
+  borderRadius: 28,
   color: "white",
-  borderRadius: 24,
-  padding: 24,
-  boxShadow: "0 20px 45px rgba(0,0,0,0.25)",
-  transform: "scale(1.03)",
+  background: "linear-gradient(180deg, #0f0f0f 0%, #272727 100%)",
+  boxShadow: "0 25px 55px rgba(0,0,0,0.30)",
+  transform: "scale(1.04)",
 };
 
-const popular: React.CSSProperties = {
-  background: "#ffbe0b",
-  color: "#111",
-  display: "inline-block",
-  padding: "7px 12px",
-  borderRadius: 999,
+const tagGreen: React.CSSProperties = {
+  color: "#16a34a",
+  fontWeight: 900,
   fontSize: 13,
-  fontWeight: 900,
-  marginBottom: 12,
 };
 
-const versionBadge: React.CSSProperties = {
-  color: "#e85d04",
+const tagOrange: React.CSSProperties = {
+  display: "inline-block",
+  background: "#ff8a00",
+  color: "white",
+  padding: "8px 14px",
+  borderRadius: 999,
   fontWeight: 900,
-  fontSize: 14,
-  marginBottom: 8,
+  fontSize: 13,
 };
 
-const versionBadgeGold: React.CSSProperties = {
-  color: "#ffbe0b",
+const tagPurple: React.CSSProperties = {
+  color: "#7c3aed",
   fontWeight: 900,
-  fontSize: 14,
-  marginBottom: 8,
+  fontSize: 13,
 };
 
 const cardTitle: React.CSSProperties = {
   fontSize: 24,
-  margin: "5px 0",
+  margin: "18px 0 8px",
 };
 
-const price: React.CSSProperties = {
-  fontSize: 30,
+const cardPrice: React.CSSProperties = {
+  fontSize: 34,
   fontWeight: 900,
-  margin: "10px 0",
+  margin: "0 0 18px",
 };
 
-const desc: React.CSSProperties = {
-  lineHeight: "1.5",
-  color: "inherit",
-  opacity: 0.85,
+const cardPriceWhite: React.CSSProperties = {
+  fontSize: 38,
+  fontWeight: 900,
+  margin: "0 0 18px",
+};
+
+const cardText: React.CSSProperties = {
+  color: "#555",
+  lineHeight: "1.6",
+};
+
+const cardTextWhite: React.CSSProperties = {
+  color: "#eee",
+  lineHeight: "1.6",
 };
 
 const list: React.CSSProperties = {
-  paddingLeft: 18,
-  lineHeight: "1.9",
-  fontWeight: 600,
+  lineHeight: "2",
+  fontWeight: 700,
+  paddingLeft: 20,
+};
+
+const listWhite: React.CSSProperties = {
+  lineHeight: "2",
+  fontWeight: 700,
+  paddingLeft: 20,
 };
 
 const emotion: React.CSSProperties = {
-  textAlign: "center",
-  padding: "45px 22px",
-  borderRadius: 28,
-  background: "linear-gradient(135deg, #fb8500 0%, #ff006e 100%)",
+  maxWidth: 1180,
+  margin: "0 auto",
+  padding: "45px 36px",
+  borderRadius: 30,
+  background: "linear-gradient(135deg, #ff7a00 0%, #ff006e 100%)",
   color: "white",
 };
 
 const emotionTitle: React.CSSProperties = {
-  fontSize: 32,
+  fontSize: 34,
   marginBottom: 12,
 };
 
 const emotionText: React.CSSProperties = {
-  maxWidth: 750,
-  margin: "0 auto",
   fontSize: 19,
   lineHeight: "1.6",
+  maxWidth: 850,
 };
 
-const trust: React.CSSProperties = {
-  padding: "50px 8px",
-};
-
-const trustGrid: React.CSSProperties = {
+const presentation: React.CSSProperties = {
+  maxWidth: 1180,
+  margin: "0 auto",
+  padding: "70px 24px",
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-  gap: 12,
+  gridTemplateColumns: "1.2fr 0.8fr",
+  gap: 50,
+  alignItems: "center",
 };
 
-const trustBox: React.CSSProperties = {
-  background: "#ffffff",
-  padding: 18,
-  borderRadius: 18,
-  fontWeight: 800,
-  boxShadow: "0 10px 25px rgba(0,0,0,0.07)",
+const presentationText: React.CSSProperties = {};
+
+const paragraph: React.CSSProperties = {
+  fontSize: 17,
+  lineHeight: "1.8",
+  color: "#444",
 };
 
-const bottom: React.CSSProperties = {
+const stats: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, 1fr)",
+  gap: 20,
+  marginTop: 30,
   textAlign: "center",
-  padding: "45px 18px",
+};
+
+const presentationImage: React.CSSProperties = {
+  width: "100%",
   borderRadius: 28,
+  boxShadow: "0 20px 45px rgba(0,0,0,0.18)",
+};
+
+const whySection: React.CSSProperties = {
   background: "#111",
   color: "white",
-  marginBottom: 30,
+  padding: "60px 24px",
 };
 
-const bottomTitle: React.CSSProperties = {
-  fontSize: 32,
-  marginBottom: 10,
+const whyTitle: React.CSSProperties = {
+  textAlign: "center",
+  fontSize: 36,
+  marginBottom: 36,
 };
 
-const bottomText: React.CSSProperties = {
+const whyGrid: React.CSSProperties = {
+  maxWidth: 1180,
+  margin: "0 auto",
+  display: "grid",
+  gridTemplateColumns: "repeat(5, 1fr)",
+  gap: 18,
+};
+
+const whyCard: React.CSSProperties = {
+  background: "#222",
+  padding: 24,
+  borderRadius: 20,
+  textAlign: "center",
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+};
+
+const featuresSection: React.CSSProperties = {
+  maxWidth: 1180,
+  margin: "0 auto",
+  padding: "60px 24px",
+};
+
+const features: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5, 1fr)",
+  gap: 24,
+  textAlign: "center",
+  fontWeight: 700,
+  marginTop: 35,
+};
+
+const finalCta: React.CSSProperties = {
+  maxWidth: 1180,
+  margin: "0 auto 20px",
+  padding: "45px 24px",
+  borderRadius: 28,
+  background: "linear-gradient(135deg, #111 0%, #222 100%)",
+  color: "white",
+  textAlign: "center",
+};
+
+const finalTitle: React.CSSProperties = {
+  fontSize: 36,
+  margin: "0 0 10px",
+};
+
+const finalText: React.CSSProperties = {
   color: "#ddd",
-  fontSize: 17,
-  marginBottom: 20,
+  fontSize: 18,
 };
 
-const btnPrimary: React.CSSProperties = {
-  width: "100%",
-  maxWidth: 430,
-  padding: 17,
+const finalButtons: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "center",
+  gap: 22,
+  marginTop: 24,
+};
+
+const btnReserve: React.CSSProperties = {
+  padding: "18px 42px",
   border: "none",
   borderRadius: 14,
-  background: "linear-gradient(135deg, #ff7b00 0%, #ff006e 100%)",
+  background: "linear-gradient(135deg, #ff7a00 0%, #ff006e 100%)",
   color: "white",
   fontSize: 17,
   fontWeight: 900,
   cursor: "pointer",
-  marginTop: 10,
 };
 
 const btnWhatsapp: React.CSSProperties = {
-  width: "100%",
-  maxWidth: 430,
-  padding: 17,
+  padding: "18px 42px",
   border: "none",
   borderRadius: 14,
   background: "#25D366",
@@ -352,11 +566,20 @@ const btnWhatsapp: React.CSSProperties = {
   fontSize: 17,
   fontWeight: 900,
   cursor: "pointer",
-  marginTop: 10,
 };
 
-const phone: React.CSSProperties = {
+const response: React.CSSProperties = {
   marginTop: 18,
-  fontSize: 18,
-  fontWeight: 900,
+  color: "#ddd",
+};
+
+const footer: React.CSSProperties = {
+  maxWidth: 1180,
+  margin: "0 auto",
+  padding: "18px 24px 30px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  fontSize: 14,
+  color: "#333",
 };
