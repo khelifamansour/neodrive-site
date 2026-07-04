@@ -23,118 +23,105 @@ export default function Home() {
             <div>⚡ 100% électrique</div>
             <div>💶 Économique</div>
             <div>🚗 Sans permis</div>
-            <div>🛠️ SAV en France</div>
+            <div>🛠️ SAV France</div>
           </div>
         </div>
       </section>
 
-      <section id="versions" className="section">
-        <h2>3 versions. 1 même voiture.</h2>
-
-        <p className="sectionText">
-          Choisissez la version qui correspond à votre besoin, votre budget et
-          votre délai de livraison.
-        </p>
+      <section id="versions" className="section versionsSection">
+        <div className="sectionHeader">
+          <span className="miniBadge">Nos modèles</span>
+          <h2>3 versions. 1 même voiture.</h2>
+          <p>
+            Choisissez la version adaptée à votre budget, votre usage et votre
+            délai de livraison.
+          </p>
+        </div>
 
         <div className="versions">
-          <div className="card">
+          <article className="card simple">
             <span className="tag green">ESSENTIEL</span>
-
             <h3>Version Essentiel</h3>
-
             <p className="cardPrice">3 990 € TTC</p>
+            <p className="cardText">
+              La solution la plus accessible pour rouler en voiture électrique
+              sans permis.
+            </p>
 
-            <p>La version simple et accessible pour rouler au meilleur prix.</p>
-
-            <div className="infoBox">
-              <strong>⏳ Délai estimé</strong>
-              <span>6 à 8 mois environ</span>
-            </div>
-
-            <div className="infoBox">
-              <strong>🛡️ Garantie</strong>
-              <span>Structure et châssis 2 ans</span>
-              <span>Pièces 3 mois</span>
+            <div className="quickInfo">
+              <div><strong>⏳ Délai</strong><span>6 à 8 mois</span></div>
+              <div><strong>🛡️ Garantie</strong><span>Châssis 2 ans / pièces 3 mois</span></div>
             </div>
 
             <ul>
-              <li>✔️ Voiture neuve</li>
-              <li>✔️ 100% électrique</li>
-              <li>✔️ Grand coffre</li>
-              <li>✔️ Batterie incluse</li>
+              <li>Voiture neuve</li>
+              <li>100% électrique</li>
+              <li>Grand coffre</li>
+              <li>Batterie incluse</li>
             </ul>
-          </div>
 
-          <div className="card dark">
+            <a href="/reservation" className="chooseBtn lightBtn">
+              Choisir Essentiel
+            </a>
+          </article>
+
+          <article className="card featured">
             <span className="tag orange">LA PLUS CHOISIE</span>
-
             <h3>Version Confort</h3>
-
             <p className="cardPrice">4 990 € TTC</p>
-
-            <p>
-              La version la plus équilibrée : bien équipée, rassurante et
-              disponible plus rapidement.
+            <p className="cardText">
+              Le meilleur équilibre : livraison rapide, équipements utiles et
+              accompagnement renforcé.
             </p>
 
-            <div className="infoBox darkInfo">
-              <strong>🚚 Livraison express</strong>
-              <span>2 à 8 semaines environ</span>
-            </div>
-
-            <div className="infoBox darkInfo">
-              <strong>🛡️ Garantie & assistance</strong>
-              <span>Structure et châssis 2 ans</span>
-              <span>Pièces 6 mois</span>
-              <span>Assistance technique gratuite 2 ans</span>
-              <span>Remises sur pièces détachées jusqu’à 2 ans</span>
-              <span>Réparation à domicile possible</span>
+            <div className="quickInfo darkInfo">
+              <div><strong>🚚 Livraison express</strong><span>2 à 8 semaines environ</span></div>
+              <div><strong>🛡️ Garantie & assistance</strong><span>Châssis 2 ans / pièces 6 mois</span></div>
             </div>
 
             <ul>
-              <li>✔️ Alarme antivol</li>
-              <li>✔️ Caméra de recul</li>
-              <li>✔️ Chauffage</li>
-              <li>✔️ Ventilation</li>
-              <li>✔️ Bluetooth / USB</li>
-              <li>✔️ Aide au démarrage en côte</li>
-              <li>✔️ Aide au stationnement en côte</li>
-              <li>✔️ Alarme clé laissée sur contact</li>
+              <li>Alarme antivol</li>
+              <li>Caméra de recul</li>
+              <li>Chauffage & ventilation</li>
+              <li>Bluetooth / USB</li>
+              <li>Aide démarrage & stationnement en côte</li>
+              <li>Alarme clé laissée sur contact</li>
+              <li>Assistance technique gratuite 2 ans</li>
+              <li>Remises pièces détachées jusqu’à 2 ans</li>
             </ul>
-          </div>
 
-          <div className="card premium">
+            <a href="/reservation" className="chooseBtn orangeBtn">
+              Choisir Confort
+            </a>
+          </article>
+
+          <article className="card premium">
             <span className="tag purple">CONFORT PLUS+</span>
-
             <h3>Version Confort Plus+</h3>
-
             <p className="cardPrice">5 990 € TTC</p>
-
-            <p>
-              La version premium avec plus d’autonomie, charge rapide et
-              garantie renforcée.
+            <p className="cardText">
+              La version la plus complète avec plus d’autonomie, charge rapide
+              et garantie renforcée.
             </p>
 
-            <div className="infoBox">
-              <strong>🚚 Livraison</strong>
-              <span>Selon disponibilité</span>
-            </div>
-
-            <div className="infoBox">
-              <strong>🛡️ Garantie renforcée</strong>
-              <span>Structure et châssis 2 ans</span>
-              <span>Pièces 2 ans</span>
-              <span>Assistance technique gratuite 2 ans</span>
+            <div className="quickInfo">
+              <div><strong>🚚 Livraison</strong><span>Selon disponibilité</span></div>
+              <div><strong>🛡️ Garantie renforcée</strong><span>Châssis 2 ans / pièces 2 ans</span></div>
             </div>
 
             <ul>
-              <li>✔️ Pack Confort inclus</li>
-              <li>✔️ Charge rapide</li>
-              <li>✔️ Plus d’autonomie</li>
-              <li>✔️ Usage intensif</li>
-              <li>✔️ SAV renforcé</li>
+              <li>Pack Confort inclus</li>
+              <li>Charge rapide</li>
+              <li>Plus d’autonomie</li>
+              <li>Usage intensif</li>
+              <li>SAV renforcé</li>
+              <li>Assistance technique gratuite 2 ans</li>
             </ul>
-          </div>
+
+            <a href="/reservation" className="chooseBtn lightBtn">
+              Choisir Confort Plus+
+            </a>
+          </article>
         </div>
       </section>
 
@@ -147,29 +134,35 @@ export default function Home() {
       </section>
 
       <section id="presentation" className="presentation">
-        <h2>NeoDrive, 6 ans d’expérience</h2>
+        <div className="presentationCard">
+          <span className="miniBadge">Notre engagement</span>
+          <h2>NeoDrive, 6 ans d’expérience</h2>
 
-        <p>
-          Après 6 années dans le domaine de la voiture sans permis, nous avons
-          pris le pari de vous offrir une voiture neuve, bien équipée et fiable à
-          moins de 5 000 €.
-        </p>
+          <p>
+            Après 6 années dans le domaine de la voiture sans permis, nous avons
+            pris le pari de vous offrir une voiture neuve, bien équipée et
+            fiable à moins de 5 000 €.
+          </p>
 
-        <p>
-          NeoDrive est une marque toulousaine, proche de ses clients, avec un
-          accompagnement sérieux avant et après l’achat.
-        </p>
+          <p>
+            NeoDrive est une marque toulousaine, proche de ses clients, avec un
+            accompagnement sérieux avant et après l’achat.
+          </p>
 
-        <div className="stats">
-          <div><span>🏅</span><strong>6 ans</strong><small>d’expérience</small></div>
-          <div><span>📍</span><strong>Toulouse</strong><small>marque locale</small></div>
-          <div><span>🛡️</span><strong>Neuf</strong><small>et garanti</small></div>
-          <div><span>🤝</span><strong>SAV</strong><small>proche client</small></div>
+          <div className="stats">
+            <div><span>🏅</span><strong>6 ans</strong><small>d’expérience</small></div>
+            <div><span>📍</span><strong>Toulouse</strong><small>marque locale</small></div>
+            <div><span>🛡️</span><strong>Neuf</strong><small>et garanti</small></div>
+            <div><span>🤝</span><strong>SAV</strong><small>proche client</small></div>
+          </div>
         </div>
       </section>
 
       <section id="avantages" className="darkSection">
-        <h2>Pourquoi choisir NeoDrive ?</h2>
+        <div className="sectionHeader white">
+          <span className="miniBadge darkMini">Pourquoi nous choisir</span>
+          <h2>Un achat simple, clair et sécurisé.</h2>
+        </div>
 
         <div className="advantages">
           <div><span>🔒</span><h3>Achat sécurisé</h3><p>Inspection du véhicule avant paiement.</p></div>
@@ -182,7 +175,6 @@ export default function Home() {
 
       <section id="contact" className="contact">
         <h2>Prêt à découvrir NeoDrive ?</h2>
-
         <p>Recevez les photos, vidéos et disponibilités de nos véhicules.</p>
 
         <div className="buttons">
@@ -228,7 +220,6 @@ export default function Home() {
         .hero {
           position: relative;
           min-height: 680px;
-          width: 100%;
           background-image: url("/hero.png");
           background-size: cover;
           background-position: center;
@@ -250,15 +241,25 @@ export default function Home() {
           max-width: 680px;
         }
 
-        .badge {
+        .badge, .miniBadge {
           display: inline-block;
           background: white;
           color: #111;
           padding: 12px 20px;
           border-radius: 999px;
           font-weight: 950;
-          font-size: 17px;
-          margin-bottom: 22px;
+          font-size: 15px;
+          margin-bottom: 20px;
+        }
+
+        .miniBadge {
+          background: #fff3e8;
+          color: #f97316;
+        }
+
+        .darkMini {
+          background: rgba(255,255,255,0.12);
+          color: white;
         }
 
         h1 {
@@ -274,14 +275,12 @@ export default function Home() {
           font-size: clamp(44px, 6vw, 66px);
           font-weight: 950;
           margin: 24px 0 18px;
-          line-height: 1;
         }
 
         .subtitle {
           font-size: 23px;
           line-height: 1.45;
           max-width: 560px;
-          margin: 0;
           color: #f4f4f4;
         }
 
@@ -290,7 +289,6 @@ export default function Home() {
           grid-template-columns: repeat(4, 1fr);
           gap: 14px;
           margin-top: 32px;
-          max-width: 680px;
         }
 
         .heroIcons div {
@@ -307,54 +305,73 @@ export default function Home() {
           padding: 75px 10%;
         }
 
-        .section h2, .presentation h2, .darkSection h2 {
+        .sectionHeader {
+          text-align: center;
+          max-width: 760px;
+          margin: 0 auto 44px;
+        }
+
+        .sectionHeader h2,
+        .presentation h2,
+        .darkSection h2 {
           font-size: clamp(36px, 5vw, 52px);
           line-height: 1.05;
-          text-align: center;
           margin: 0;
           font-weight: 950;
           letter-spacing: -2px;
         }
 
-        .sectionText {
-          text-align: center;
+        .sectionHeader p {
           color: #555;
           font-size: 19px;
           line-height: 1.5;
-          max-width: 720px;
-          margin: 18px auto 42px;
+          margin: 18px auto 0;
+        }
+
+        .white h2 {
+          color: white;
         }
 
         .versions {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
           gap: 28px;
+          align-items: stretch;
         }
 
         .card {
-          border-radius: 30px;
-          padding: 32px;
+          border-radius: 34px;
+          padding: 34px;
           background: white;
-          box-shadow: 0 18px 45px rgba(0,0,0,0.11);
+          box-shadow: 0 20px 55px rgba(0,0,0,0.10);
           border: 1px solid #eee;
+          display: flex;
+          flex-direction: column;
         }
 
-        .card.dark {
-          background: linear-gradient(180deg, #090909, #242424);
+        .simple {
+          background: linear-gradient(180deg, #ffffff, #fbfffc);
+        }
+
+        .featured {
+          background: linear-gradient(180deg, #060606, #222);
           color: white;
+          transform: translateY(-18px);
+          box-shadow: 0 30px 75px rgba(0,0,0,0.30);
         }
 
         .premium {
-          background: linear-gradient(180deg, #ffffff, #faf7ff);
+          background: linear-gradient(180deg, #ffffff, #fbf7ff);
           border: 1px solid #eadcff;
         }
 
         .tag {
-          display: inline-block;
+          width: fit-content;
           border-radius: 999px;
-          padding: 8px 15px;
+          padding: 9px 16px;
           font-size: 13px;
           font-weight: 950;
+          margin-bottom: 22px;
         }
 
         .green { color: #16a34a; background: #dcfce7; }
@@ -362,64 +379,101 @@ export default function Home() {
         .purple { color: #7c3aed; background: #ede9fe; }
 
         .card h3 {
-          font-size: 27px;
-          margin: 22px 0 8px;
-          line-height: 1.15;
+          font-size: 29px;
+          margin: 0 0 10px;
+          line-height: 1.12;
         }
 
         .cardPrice {
-          font-size: 35px;
+          font-size: 38px;
           font-weight: 950;
-          margin: 8px 0;
+          margin: 0 0 20px;
         }
 
-        .card p {
-          font-size: 17px;
+        .cardText {
+          font-size: 18px;
           line-height: 1.55;
+          margin: 0 0 22px;
           color: inherit;
         }
 
-        .infoBox {
-          margin-top: 12px;
-          padding: 13px 14px;
-          border-radius: 15px;
-          background: #f4f4f5;
-          display: flex;
-          flex-direction: column;
-          gap: 3px;
-          font-size: 15px;
-          line-height: 1.35;
+        .quickInfo {
+          display: grid;
+          gap: 12px;
+          margin-bottom: 24px;
         }
 
-        .infoBox strong {
-          font-size: 15px;
+        .quickInfo div {
+          background: #f4f4f5;
+          border-radius: 18px;
+          padding: 15px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .quickInfo strong {
+          font-size: 16px;
           font-weight: 950;
         }
 
-        .infoBox span {
+        .quickInfo span {
           color: #444;
-          font-weight: 750;
+          font-weight: 800;
+          line-height: 1.35;
         }
 
-        .darkInfo {
+        .darkInfo div {
           background: rgba(255,255,255,0.12);
         }
 
         .darkInfo span {
-          color: #f2f2f2;
+          color: #f4f4f4;
         }
 
         ul {
           list-style: none;
           padding: 0;
-          margin: 20px 0 0;
+          margin: 0 0 28px;
         }
 
         li {
+          position: relative;
+          padding-left: 32px;
           font-size: 18px;
-          line-height: 1.6;
+          line-height: 1.5;
           font-weight: 850;
-          margin-bottom: 8px;
+          margin-bottom: 12px;
+        }
+
+        li::before {
+          content: "✓";
+          position: absolute;
+          left: 0;
+          top: 0;
+          color: #f97316;
+          font-weight: 950;
+        }
+
+        .chooseBtn {
+          margin-top: auto;
+          display: block;
+          text-align: center;
+          text-decoration: none;
+          padding: 17px 20px;
+          border-radius: 17px;
+          font-weight: 950;
+          font-size: 17px;
+        }
+
+        .lightBtn {
+          background: #111;
+          color: white;
+        }
+
+        .orangeBtn {
+          background: linear-gradient(135deg, #ff7a00, #ff006e);
+          color: white;
         }
 
         .emotion {
@@ -446,8 +500,15 @@ export default function Home() {
 
         .presentation {
           text-align: center;
-          max-width: 1000px;
+        }
+
+        .presentationCard {
+          max-width: 980px;
           margin: 0 auto;
+          background: #fafafa;
+          border: 1px solid #eee;
+          border-radius: 38px;
+          padding: 56px;
         }
 
         .presentation p {
@@ -461,14 +522,14 @@ export default function Home() {
         .stats {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 22px;
+          gap: 18px;
           margin-top: 42px;
         }
 
         .stats div {
-          background: #fafafa;
+          background: white;
           border: 1px solid #eee;
-          border-radius: 22px;
+          border-radius: 24px;
           padding: 22px 14px;
           display: flex;
           flex-direction: column;
@@ -496,11 +557,11 @@ export default function Home() {
           background: linear-gradient(180deg, #242424, #141414);
           border: 1px solid #333;
           border-radius: 26px;
-          padding: 26px 20px;
+          padding: 28px 20px;
           text-align: center;
         }
 
-        .advantages span { font-size: 34px; }
+        .advantages span { font-size: 36px; }
         .advantages h3 { margin: 14px 0 8px; font-size: 22px; }
         .advantages p { color: #ddd; margin: 0; font-size: 16px; line-height: 1.45; }
 
@@ -566,7 +627,7 @@ export default function Home() {
           }
 
           .heroOverlay {
-            background: linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.82));
+            background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.84));
           }
 
           h1 {
@@ -585,18 +646,17 @@ export default function Home() {
             padding: 55px 24px;
           }
 
-          .section h2, .presentation h2, .darkSection h2 {
-            font-size: 36px;
-            letter-spacing: -1.5px;
-          }
-
           .versions {
             grid-template-columns: 1fr;
           }
 
+          .featured {
+            transform: none;
+          }
+
           .card {
-            padding: 26px;
-            border-radius: 26px;
+            padding: 28px;
+            border-radius: 30px;
           }
 
           .emotion, .contact {
@@ -606,12 +666,9 @@ export default function Home() {
             border-radius: 28px;
           }
 
-          .emotion h2, .contact h2 {
-            font-size: 36px;
-          }
-
-          .emotion p, .contact p {
-            font-size: 18px;
+          .presentationCard {
+            padding: 38px 24px;
+            border-radius: 30px;
           }
 
           .stats {
@@ -621,7 +678,6 @@ export default function Home() {
 
           .advantages {
             grid-template-columns: 1fr;
-            gap: 18px;
           }
 
           .buttons {
@@ -630,7 +686,6 @@ export default function Home() {
 
           .buttons a {
             width: 100%;
-            padding: 18px 20px;
           }
 
           .footer {
@@ -657,13 +712,20 @@ export default function Home() {
             padding: 48px 18px;
           }
 
-          .section h2, .presentation h2, .darkSection h2 {
+          .sectionHeader h2,
+          .presentation h2,
+          .darkSection h2 {
             font-size: 32px;
             line-height: 1.08;
           }
 
-          .card h3 { font-size: 24px; }
-          .cardPrice { font-size: 31px; }
+          .sectionHeader p {
+            font-size: 17px;
+          }
+
+          .card h3 { font-size: 25px; }
+          .cardPrice { font-size: 32px; }
+          .cardText { font-size: 17px; }
           li { font-size: 17px; }
 
           .emotion, .contact {
