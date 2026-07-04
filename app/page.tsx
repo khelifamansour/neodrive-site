@@ -28,7 +28,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="versions" className="section versionsSection">
+      <section id="versions" className="section">
         <div className="sectionHeader">
           <span className="miniBadge">Nos modèles</span>
           <h2>3 versions. 1 même voiture.</h2>
@@ -49,8 +49,15 @@ export default function Home() {
             </p>
 
             <div className="quickInfo">
-              <div><strong>⏳ Délai</strong><span>6 à 8 mois</span></div>
-              <div><strong>🛡️ Garantie</strong><span>Châssis 2 ans / pièces 3 mois</span></div>
+              <div>
+                <strong>⏳ Délai</strong>
+                <span>6 à 8 mois environ</span>
+              </div>
+              <div>
+                <strong>🛡️ Garantie</strong>
+                <span>Structure et châssis 2 ans</span>
+                <span>Pièces 3 mois</span>
+              </div>
             </div>
 
             <ul>
@@ -60,8 +67,8 @@ export default function Home() {
               <li>Batterie incluse</li>
             </ul>
 
-            <a href="/reservation" className="chooseBtn lightBtn">
-              Choisir Essentiel
+            <a className="chooseBtn lightBtn" href="https://wa.me/33628261446" target="_blank">
+              Demander cette version
             </a>
           </article>
 
@@ -75,8 +82,18 @@ export default function Home() {
             </p>
 
             <div className="quickInfo darkInfo">
-              <div><strong>🚚 Livraison express</strong><span>2 à 8 semaines environ</span></div>
-              <div><strong>🛡️ Garantie & assistance</strong><span>Châssis 2 ans / pièces 6 mois</span></div>
+              <div>
+                <strong>🚚 Livraison express</strong>
+                <span>2 à 8 semaines environ</span>
+              </div>
+              <div>
+                <strong>🛡️ Garantie & assistance</strong>
+                <span>Structure et châssis 2 ans</span>
+                <span>Pièces 6 mois</span>
+                <span>Assistance technique gratuite 2 ans</span>
+                <span>Remises pièces détachées jusqu’à 2 ans</span>
+                <span>Réparation à domicile possible</span>
+              </div>
             </div>
 
             <ul>
@@ -86,12 +103,10 @@ export default function Home() {
               <li>Bluetooth / USB</li>
               <li>Aide démarrage & stationnement en côte</li>
               <li>Alarme clé laissée sur contact</li>
-              <li>Assistance technique gratuite 2 ans</li>
-              <li>Remises pièces détachées jusqu’à 2 ans</li>
             </ul>
 
-            <a href="/reservation" className="chooseBtn orangeBtn">
-              Choisir Confort
+            <a className="chooseBtn orangeBtn" href="https://wa.me/33628261446" target="_blank">
+              Demander la Confort
             </a>
           </article>
 
@@ -105,8 +120,16 @@ export default function Home() {
             </p>
 
             <div className="quickInfo">
-              <div><strong>🚚 Livraison</strong><span>Selon disponibilité</span></div>
-              <div><strong>🛡️ Garantie renforcée</strong><span>Châssis 2 ans / pièces 2 ans</span></div>
+              <div>
+                <strong>🚚 Livraison</strong>
+                <span>Selon disponibilité</span>
+              </div>
+              <div>
+                <strong>🛡️ Garantie renforcée</strong>
+                <span>Structure et châssis 2 ans</span>
+                <span>Pièces 2 ans</span>
+                <span>Assistance technique gratuite 2 ans</span>
+              </div>
             </div>
 
             <ul>
@@ -115,11 +138,10 @@ export default function Home() {
               <li>Plus d’autonomie</li>
               <li>Usage intensif</li>
               <li>SAV renforcé</li>
-              <li>Assistance technique gratuite 2 ans</li>
             </ul>
 
-            <a href="/reservation" className="chooseBtn lightBtn">
-              Choisir Confort Plus+
+            <a className="chooseBtn lightBtn" href="https://wa.me/33628261446" target="_blank">
+              Demander la Plus+
             </a>
           </article>
         </div>
@@ -140,8 +162,8 @@ export default function Home() {
 
           <p>
             Après 6 années dans le domaine de la voiture sans permis, nous avons
-            pris le pari de vous offrir une voiture neuve, bien équipée et
-            fiable à moins de 5 000 €.
+            pris le pari de vous offrir une voiture neuve, bien équipée et fiable
+            à moins de 5 000 €.
           </p>
 
           <p>
@@ -161,28 +183,45 @@ export default function Home() {
       <section id="avantages" className="darkSection">
         <div className="sectionHeader white">
           <span className="miniBadge darkMini">Pourquoi nous choisir</span>
-          <h2>Un achat simple, clair et sécurisé.</h2>
+          <h2>Une voiture simple, pratique et bien accompagnée.</h2>
         </div>
 
         <div className="advantages">
-          <div><span>🔒</span><h3>Achat sécurisé</h3><p>Inspection du véhicule avant paiement.</p></div>
-          <div><span>🎥</span><h3>Vidéo réelle</h3><p>Photos et vidéos disponibles avant réservation.</p></div>
-          <div><span>🚚</span><h3>Livraison France</h3><p>Livraison possible à domicile ou en point relais.</p></div>
-          <div><span>🧾</span><h3>Documents fournis</h3><p>Facture et documents pour l’immatriculation.</p></div>
-          <div><span>🛠️</span><h3>SAV & pièces</h3><p>Assistance et pièces disponibles en France.</p></div>
+          <div>
+            <span>🎥</span>
+            <h3>Photos & vidéos</h3>
+            <p>Recevez les photos et vidéos du véhicule avant de vous déplacer.</p>
+          </div>
+
+          <div>
+            <span>🚚</span>
+            <h3>Livraison France</h3>
+            <p>Livraison possible à domicile ou en point relais.</p>
+          </div>
+
+          <div>
+            <span>🧾</span>
+            <h3>Documents fournis</h3>
+            <p>Facture et documents pour l’immatriculation.</p>
+          </div>
+
+          <div>
+            <span>🛠️</span>
+            <h3>SAV & pièces</h3>
+            <p>Assistance et pièces disponibles en France.</p>
+          </div>
         </div>
       </section>
 
       <section id="contact" className="contact">
-        <h2>Prêt à découvrir NeoDrive ?</h2>
-        <p>Recevez les photos, vidéos et disponibilités de nos véhicules.</p>
+        <h2>Envie d’en savoir plus ?</h2>
+        <p>
+          Contactez-nous sur WhatsApp pour recevoir les photos, vidéos et
+          disponibilités.
+        </p>
 
         <div className="buttons">
-          <a className="reserve" href="/reservation">
-            📅 Réserver sans paiement
-          </a>
-
-          <a className="whatsapp" href="https://wa.me/33628261446" target="_blank">
+          <a className="whatsappBig" href="https://wa.me/33628261446" target="_blank">
             💬 WhatsApp
           </a>
         </div>
@@ -548,7 +587,7 @@ export default function Home() {
 
         .advantages {
           display: grid;
-          grid-template-columns: repeat(5, 1fr);
+          grid-template-columns: repeat(4, 1fr);
           gap: 18px;
           margin-top: 42px;
         }
@@ -592,21 +631,18 @@ export default function Home() {
         .buttons {
           display: flex;
           justify-content: center;
-          gap: 18px;
-          flex-wrap: wrap;
         }
 
         .buttons a {
           text-decoration: none;
           color: white;
-          padding: 19px 34px;
-          border-radius: 16px;
+          padding: 20px 46px;
+          border-radius: 17px;
           font-weight: 950;
-          font-size: 18px;
+          font-size: 20px;
         }
 
-        .reserve { background: linear-gradient(135deg, #ff7a00, #ff006e); }
-        .whatsapp { background: #25d366; }
+        .whatsappBig { background: #25d366; }
 
         .footer {
           display: flex;
@@ -630,11 +666,7 @@ export default function Home() {
             background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.84));
           }
 
-          h1 {
-            font-size: 48px;
-            letter-spacing: -2px;
-          }
-
+          h1 { font-size: 48px; letter-spacing: -2px; }
           .price { font-size: 45px; }
           .subtitle { font-size: 18px; max-width: 360px; }
 
@@ -646,7 +678,7 @@ export default function Home() {
             padding: 55px 24px;
           }
 
-          .versions {
+          .versions, .advantages {
             grid-template-columns: 1fr;
           }
 
@@ -676,16 +708,9 @@ export default function Home() {
             gap: 14px;
           }
 
-          .advantages {
-            grid-template-columns: 1fr;
-          }
-
-          .buttons {
-            flex-direction: column;
-          }
-
           .buttons a {
             width: 100%;
+            text-align: center;
           }
 
           .footer {
