@@ -47,7 +47,7 @@ export default function RootLayout({
                 fontSize: "16px",
               }}
             >
-              Microdrive
+              Neodrive
             </div>
 
             {/* WHATSAPP BUTTON */}
