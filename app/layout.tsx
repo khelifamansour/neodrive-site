@@ -7,132 +7,273 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-
   const [open, setOpen] = useState(false);
 
   return (
     <html lang="fr">
-      <body
-        style={{
-          margin: 0,
-          fontFamily: "system-ui, Arial",
-          background: "#ffffff",
-        }}
-      >
+      <body>
+        <nav className="navbar">
+          <div className="brandRow">
+            <a href="/" className="brand">
+              <span className="brandIcon">N</span>
+              <span className="brandText">
+                <strong>NeoDrive</strong>
+                <small>Voiture sans permis électrique</small>
+              </span>
+            </a>
 
-        {/* NAVBAR */}
-        <nav
-          style={{
-            padding: "10px",
-            borderBottom: "1px solid #eee",
-            position: "sticky",
-            top: 0,
-            background: "#fff",
-            zIndex: 1000,
-          }}
-        >
-
-          {/* TOP ROW */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            {/* LOGO */}
-            <div
-              style={{
-                fontWeight: "700",
-                fontSize: "16px",
-              }}
+            <a
+              href="https://wa.me/33628261446"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="whatsapp"
             >
-              Neodrive
-            </div>
-
-            {/* WHATSAPP BUTTON */}
-            <a href="https://wa.me/33628261446" style={ctaSmall}>
-              WhatsApp
+              💬 WhatsApp
             </a>
           </div>
 
-          {/* MENU */}
-          <div
-            style={{
-              marginTop: 10,
-              display: "flex",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              gap: 14,
-              fontSize: "13px",
-            }}
-          >
-            <a href="/" style={link}>Accueil</a>
-            <a href="/produit" style={link}>Véhicule</a>
-            <a href="/livraison" style={link}>Livraison</a>
-            <a href="/carte-grise" style={link}>Carte grise</a>
-            <a href="/QuiSommesNous" style={link}>Qui sommes-nous</a>
-            <a href="/facturation" style={link}>Facturation</a>
+          <div className="menu">
+            <a href="/">Accueil</a>
+            <a href="/produit">Véhicules</a>
+            <a href="/livraison">Livraison</a>
+            <a href="/carte-grise">Carte grise</a>
+            <a href="/QuiSommesNous">Qui sommes-nous</a>
 
-            {/* DROPDOWN SERVICE */}
-            <div
-              style={{ position: "relative" }}
-              onMouseEnter={() => setOpen(true)}
-              onMouseLeave={() => setOpen(false)}
-            >
-              <span style={{ cursor: "pointer", fontWeight: 500 }}>
+            <div className="service">
+              <button onClick={() => setOpen(!open)}>
                 Service & Assistance ▾
-              </span>
+              </button>
 
               {open && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "22px",
-                    left: 0,
-                    background: "#fff",
-                    border: "1px solid #eee",
-                    borderRadius: "6px",
-                    padding: "10px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                    minWidth: "180px",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <a href="/sav" style={link}>Service après-vente</a>
-                  <a href="/pieces" style={link}>Pièces détachées</a>
-                  <a href="/faq" style={link}>Questions fréquentes</a>
+                <div className="dropdown">
+                  <a href="/sav">Service après-vente</a>
+                  <a href="/pieces">Pièces détachées</a>
+                  <a href="/faq">Questions fréquentes</a>
                 </div>
               )}
             </div>
 
-            <a href="/contact" style={link}>Contact</a>
+            <a href="/contact">Contact</a>
           </div>
-
         </nav>
 
         {children}
 
+        <style jsx global>{`
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            font-family: system-ui, Arial, sans-serif;
+            overflow-x: hidden;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+        `}</style>
+
+        <style jsx>{`
+          .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(18px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            padding: 14px 28px 12px;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.045);
+          }
+
+          .brandRow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 18px;
+            max-width: 1180px;
+            margin: 0 auto;
+          }
+
+          .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: #111;
+          }
+
+          .brandIcon {
+            width: 44px;
+            height: 44px;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #ff7a00, #ff006e);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 950;
+            font-size: 25px;
+            box-shadow: 0 12px 28px rgba(255, 122, 0, 0.28);
+          }
+
+          .brandText {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.1;
+          }
+
+          .brandText strong {
+            font-size: 28px;
+            font-weight: 950;
+            letter-spacing: -1.2px;
+          }
+
+          .brandText small {
+            margin-top: 4px;
+            color: #666;
+            font-size: 13px;
+            font-weight: 700;
+          }
+
+          .whatsapp {
+            background: #25d366;
+            color: white;
+            text-decoration: none;
+            padding: 13px 22px;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 900;
+            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.25);
+            white-space: nowrap;
+          }
+
+          .menu {
+            max-width: 1180px;
+            margin: 15px auto 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+          }
+
+          .menu a,
+          .service button {
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            background: #f7f7f7;
+            color: #222;
+            text-decoration: none;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-size: 15px;
+            font-weight: 850;
+            cursor: pointer;
+            font-family: inherit;
+            transition: 0.2s ease;
+          }
+
+          .menu a:hover,
+          .service button:hover {
+            background: #111;
+            color: white;
+            transform: translateY(-1px);
+          }
+
+          .service {
+            position: relative;
+          }
+
+          .dropdown {
+            position: absolute;
+            top: 46px;
+            left: 0;
+            min-width: 230px;
+            background: white;
+            border: 1px solid #eeeeee;
+            border-radius: 18px;
+            padding: 10px;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          .dropdown a {
+            display: block;
+            background: white;
+            border-radius: 12px;
+          }
+
+          .dropdown a:hover {
+            background: #111;
+            color: white;
+          }
+
+          @media (max-width: 768px) {
+            .navbar {
+              padding: 12px 14px 10px;
+            }
+
+            .brandRow {
+              gap: 12px;
+            }
+
+            .brandIcon {
+              width: 40px;
+              height: 40px;
+              border-radius: 14px;
+              font-size: 23px;
+            }
+
+            .brandText strong {
+              font-size: 25px;
+            }
+
+            .brandText small {
+              font-size: 11px;
+              max-width: 170px;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            .whatsapp {
+              padding: 11px 15px;
+              border-radius: 14px;
+              font-size: 14px;
+            }
+
+            .menu {
+              justify-content: flex-start;
+              flex-wrap: nowrap;
+              overflow-x: auto;
+              gap: 10px;
+              padding-bottom: 5px;
+              scrollbar-width: none;
+            }
+
+            .menu::-webkit-scrollbar {
+              display: none;
+            }
+
+            .menu a,
+            .service button {
+              white-space: nowrap;
+              font-size: 14px;
+              padding: 10px 15px;
+            }
+
+            .dropdown {
+              position: fixed;
+              top: 104px;
+              left: 14px;
+              right: 14px;
+              min-width: auto;
+            }
+          }
+        `}</style>
       </body>
     </html>
   );
 }
-
-/* STYLES */
-
-const ctaSmall = {
-  background: "#25D366",
-  color: "#fff",
-  padding: "8px 12px",
-  borderRadius: "6px",
-  textDecoration: "none",
-  fontSize: "12px",
-  fontWeight: 600,
-};
-
-const link = {
-  textDecoration: "none",
-  color: "#333",
-};
