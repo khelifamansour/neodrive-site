@@ -9,15 +9,15 @@ export default function Reservation() {
   const today = new Date().toLocaleDateString("fr-FR");
 const versions = {
   essentiel: {
-    label: "Version Essentiel",
+    label: " VSP Version Essentiel",
     prix: 3990,
   },
   confort: {
-    label: "Version Confort",
+    label: "VSP Version Confort",
     prix: 4990,
   },
   confortPlus: {
-    label: "Version Confort Plus+",
+    label: " VSP Version Confort Plus+",
     prix: 5990,
   },
 };
@@ -408,17 +408,17 @@ La livraison ou la remise du véhicule est effectuée après réception du règl
           <div style={cgvStyle}>
 {`CONDITIONS GÉNÉRALES DE VENTE
 
-PHILOSOPHIE DE LA GARANTIE MICRODRIVE
+PHILOSOPHIE DE LA GARANTIE Neodrive
 
-La philosophie Microdrive n'est pas de concentrer l'intégralité de la protection du client sur une courte période, mais de l'accompagner sur plusieurs années.
+La philosophie Neodrive n'est pas de concentrer l'intégralité de la protection du client sur une courte période, mais de l'accompagner sur plusieurs années.
 
-Pendant les 24 premiers mois, Microdrive participe au remplacement des composants selon un système de prise en charge dégressive.
+Pendant les 24 premiers mois, Neodrive participe au remplacement des composants selon un système de prise en charge dégressive.
 
 Parallèlement, le premier propriétaire bénéficie pendant 3 ans :
 
 - d'une assistance technique gratuite ;
 - d'un diagnostic à distance gratuit ;
-- d'une remise permanente de 20 % sur les pièces détachées achetées auprès de Microdrive.
+- d'une remise permanente de 20 % sur les pièces détachées achetées auprès de Neodrive.
 
 Cette approche permet au client de continuer à bénéficier d'un accompagnement et d'un avantage économique même après la période principale de garantie.
 
@@ -439,15 +439,15 @@ SIREN : 908 645 393
 
 France
 
-Marque commerciale : MICRODRIVE
+Marque commerciale : Neodrive
 
-Email : sales@easymicrodrive.com
+Email : sales@easyNeodrive.com
 
-Site internet : easymicrodrive.com
+Site internet : easyNeodrive.com
 
 2. OBJET
 
-Les présentes Conditions Générales de Vente régissent la vente des véhicules électriques sans permis commercialisés sous la marque Microdrive ainsi que les accessoires, pièces détachées et services associés.
+Les présentes Conditions Générales de Vente régissent la vente des véhicules électriques sans permis commercialisés sous la marque Neodrive ainsi que les accessoires, pièces détachées et services associés.
 
 Toute commande implique l'acceptation pleine et entière des présentes Conditions Générales de Vente.
 
@@ -457,7 +457,7 @@ Les véhicules proposés à la vente sont des véhicules électriques sans permi
 
 Les descriptions, caractéristiques techniques, photographies, dimensions, poids, équipements, options et autonomies figurant sur les supports commerciaux, catalogues ou sites internet sont communiqués à titre indicatif.
 
-Dans une démarche d'amélioration continue, Microdrive se réserve le droit d'apporter à tout moment des modifications techniques, esthétiques ou fonctionnelles à ses produits sans obligation de modifier les véhicules déjà livrés.
+Dans une démarche d'amélioration continue, Neodrive se réserve le droit d'apporter à tout moment des modifications techniques, esthétiques ou fonctionnelles à ses produits sans obligation de modifier les véhicules déjà livrés.
 
 4. COMMANDE
 
@@ -604,7 +604,7 @@ RECHARGE
 - recharger régulièrement le véhicule ;
 - éviter autant que possible les décharges profondes ;
 - éviter de rouler jusqu'à décharge complète ;
-- utiliser exclusivement le chargeur fourni ou recommandé par Microdrive ;
+- utiliser exclusivement le chargeur fourni ou recommandé par Neodrive ;
 - effectuer des charges complètes régulièrement ;
 - éviter de laisser le véhicule sans recharge pendant une période prolongée.
 
@@ -667,7 +667,7 @@ Le client s'engage à vérifier régulièrement :
 - l'absence de fuite ;
 - l'absence de gonflement.
 
-En cas d'odeur inhabituelle, de chauffe anormale ou de comportement anormal du véhicule, le client s'engage à interrompre immédiatement l'utilisation du véhicule et à contacter Microdrive.
+En cas d'odeur inhabituelle, de chauffe anormale ou de comportement anormal du véhicule, le client s'engage à interrompre immédiatement l'utilisation du véhicule et à contacter Neodrive.
 
 17. RESPONSABILITÉ DU CLIENT CONCERNANT LES BATTERIES
 
@@ -685,7 +685,7 @@ Les dommages résultant notamment :
 
 pourront entraîner l'exclusion de la garantie applicable aux composants concernés.
 
-Le vendeur recommande au client de contacter Microdrive dès l'apparition d'un comportement anormal afin de limiter les risques d'aggravation du problème.
+Le vendeur recommande au client de contacter Neodrive dès l'apparition d'un comportement anormal afin de limiter les risques d'aggravation du problème.
 
 18. GARANTIE STRUCTURE
 
@@ -707,7 +707,7 @@ Sont notamment exclus de cette garantie :
 
 Les composants mécaniques, électriques et électroniques du véhicule, y compris les batteries, bénéficient d'un programme de participation dégressive au remplacement pendant une durée maximale de 24 mois à compter de la date de livraison du véhicule.
 
-La participation de Microdrive est calculée sur le prix public TTC de la pièce vendue par Microdrive au moment de la demande.
+La participation de Neodrive est calculée sur le prix public TTC de la pièce vendue par Neodrive au moment de la demande.
 
 Barème de participation :
 
@@ -729,7 +729,7 @@ Cette participation concerne exclusivement les pièces reconnues défectueuses a
 
 La garantie porte exclusivement sur la pièce concernée.
 
-La main-d'œuvre, les déplacements, les frais annexes et les frais d'immobilisation ne sont pas couverts sauf accord écrit préalable de Microdrive.
+La main-d'œuvre, les déplacements, les frais annexes et les frais d'immobilisation ne sont pas couverts sauf accord écrit préalable de Neodrive.
 
 20. PIÈCES EXCLUES DE LA GARANTIE
 
@@ -745,7 +745,7 @@ Sont notamment considérés comme des éléments d'usure et exclus de la garanti
 
 21. PROCÉDURE DE DIAGNOSTIC
 
-Avant toute prise en charge, Microdrive pourra demander au client :
+Avant toute prise en charge, Neodrive pourra demander au client :
 
 - des photographies ;
 - des vidéos ;
@@ -754,11 +754,11 @@ Avant toute prise en charge, Microdrive pourra demander au client :
 - des essais simples ;
 - tout document ou information utile au diagnostic.
 
-Le client s'engage à coopérer avec Microdrive afin de permettre l'identification de la panne.
+Le client s'engage à coopérer avec Neodrive afin de permettre l'identification de la panne.
 
-Lorsque le diagnostic à distance ne permet pas d'identifier avec certitude l'origine du problème, Microdrive pourra demander le retour de la pièce concernée afin de procéder à une expertise technique.
+Lorsque le diagnostic à distance ne permet pas d'identifier avec certitude l'origine du problème, Neodrive pourra demander le retour de la pièce concernée afin de procéder à une expertise technique.
 
-Les frais d'expédition de la pièce vers Microdrive restent à la charge du client.
+Les frais d'expédition de la pièce vers Neodrive restent à la charge du client.
 
 Après expertise :
 
@@ -788,9 +788,9 @@ Concernant les batteries, sont notamment exclus :
 - l'utilisation d'un chargeur non recommandé ;
 - les dommages résultant du non-respect des consignes figurant dans les présentes CGV ou dans le manuel utilisateur.
 
-23. PROGRAMME ASSISTANCE MICRODRIVE
+23. PROGRAMME ASSISTANCE Neodrive
 
-Microdrive privilégie l'accompagnement de ses clients sur le long terme.
+Neodrive privilégie l'accompagnement de ses clients sur le long terme.
 
 Le premier propriétaire du véhicule bénéficie pendant une durée de 3 ans à compter de la date de livraison :
 
@@ -800,27 +800,27 @@ Le premier propriétaire du véhicule bénéficie pendant une durée de 3 ans à
 - assistance WhatsApp ;
 - aide à la recherche de panne ;
 - accès aux procédures techniques disponibles ;
-- remise de 20 % sur les pièces détachées achetées auprès de Microdrive.
+- remise de 20 % sur les pièces détachées achetées auprès de Neodrive.
 
-Ce programme est réservé au premier acheteur du véhicule et n'est pas transférable sauf accord écrit de Microdrive.
+Ce programme est réservé au premier acheteur du véhicule et n'est pas transférable sauf accord écrit de Neodrive.
 
 L'assistance technique a pour objectif d'aider le client à diagnostiquer, comprendre et résoudre les éventuels problèmes rencontrés sur le véhicule.
 
 Cette assistance ne constitue pas une garantie supplémentaire sur les pièces ou sur le véhicule.
 
-24. SERVICE APRÈS-VENTE MICRODRIVE
+24. SERVICE APRÈS-VENTE Neodrive
 
-Microdrive privilégie une approche basée sur l'assistance technique, le diagnostic et la réparation locale afin de réduire les délais d'immobilisation du véhicule et les coûts supportés par le client.
+Neodrive privilégie une approche basée sur l'assistance technique, le diagnostic et la réparation locale afin de réduire les délais d'immobilisation du véhicule et les coûts supportés par le client.
 
-L'objectif de Microdrive est d'accompagner ses clients dans l'identification et la résolution des problèmes pouvant survenir au cours de l'utilisation du véhicule.
+L'objectif de Neodrive est d'accompagner ses clients dans l'identification et la résolution des problèmes pouvant survenir au cours de l'utilisation du véhicule.
 
-Le client s'engage à contacter Microdrive dès l'apparition d'un dysfonctionnement afin de permettre un diagnostic rapide et d'éviter toute aggravation éventuelle de la panne.
+Le client s'engage à contacter Neodrive dès l'apparition d'un dysfonctionnement afin de permettre un diagnostic rapide et d'éviter toute aggravation éventuelle de la panne.
 
 25. DIAGNOSTIC À DISTANCE
 
-Lorsqu'un problème est signalé, Microdrive procède en priorité à un diagnostic à distance.
+Lorsqu'un problème est signalé, Neodrive procède en priorité à un diagnostic à distance.
 
-Afin de permettre l'identification de l'origine du problème, Microdrive pourra demander au client :
+Afin de permettre l'identification de l'origine du problème, Neodrive pourra demander au client :
 
 - des photographies ;
 - des vidéos ;
@@ -830,15 +830,15 @@ Afin de permettre l'identification de l'origine du problème, Microdrive pourra 
 - des essais simples ;
 - toute information utile au diagnostic.
 
-Le client s'engage à coopérer avec Microdrive dans le cadre de la recherche de panne.
+Le client s'engage à coopérer avec Neodrive dans le cadre de la recherche de panne.
 
-Microdrive pourra guider le client étape par étape afin de réaliser certains contrôles simples lorsque cela est nécessaire.
+Neodrive pourra guider le client étape par étape afin de réaliser certains contrôles simples lorsque cela est nécessaire.
 
 26. PANNES SIMPLES
 
-Lorsqu'une panne peut être identifiée et résolue à distance, Microdrive accompagne gratuitement le client dans la recherche de panne.
+Lorsqu'une panne peut être identifiée et résolue à distance, Neodrive accompagne gratuitement le client dans la recherche de panne.
 
-Selon la situation, Microdrive pourra :
+Selon la situation, Neodrive pourra :
 
 - fournir des conseils techniques ;
 - transmettre des procédures de contrôle ;
@@ -850,19 +850,19 @@ Les conditions de garantie prévues aux présentes Conditions Générales de Ven
 
 27. PANNES COMPLEXES
 
-Lorsque la panne nécessite l'intervention d'un professionnel, Microdrive pourra orienter le client vers un réparateur ou un professionnel compétent.
+Lorsque la panne nécessite l'intervention d'un professionnel, Neodrive pourra orienter le client vers un réparateur ou un professionnel compétent.
 
-Microdrive pourra également assister ce professionnel à distance afin de faciliter le diagnostic et la réparation.
+Neodrive pourra également assister ce professionnel à distance afin de faciliter le diagnostic et la réparation.
 
-Avant toute intervention susceptible de faire l'objet d'une demande de prise en charge ou de participation financière, le client devra obtenir l'accord préalable écrit de Microdrive.
+Avant toute intervention susceptible de faire l'objet d'une demande de prise en charge ou de participation financière, le client devra obtenir l'accord préalable écrit de Neodrive.
 
 À défaut d'accord préalable écrit, les frais engagés demeureront intégralement à la charge du client.
 
-Le recours à un professionnel tiers ne crée aucune obligation de prise en charge financière par Microdrive.
+Le recours à un professionnel tiers ne crée aucune obligation de prise en charge financière par Neodrive.
 
 28. TRANSPORT DU VÉHICULE
 
-Sauf accord écrit exceptionnel préalable, Microdrive ne prend pas en charge :
+Sauf accord écrit exceptionnel préalable, Neodrive ne prend pas en charge :
 
 - le transport du véhicule ;
 - le remorquage ;
@@ -879,22 +879,22 @@ Ces frais demeurent intégralement à la charge du client.
 
 29. MAIN-D'ŒUVRE ET INTERVENTIONS
 
-Microdrive privilégie la fourniture :
+Neodrive privilégie la fourniture :
 
 - d'assistance technique ;
 - d'accompagnement au diagnostic ;
 - de support technique à distance ;
 - de pièces détachées.
 
-Les réparations réalisées par un garage, un réparateur ou tout autre prestataire extérieur demeurent à la charge du client sauf accord écrit préalable de Microdrive.
+Les réparations réalisées par un garage, un réparateur ou tout autre prestataire extérieur demeurent à la charge du client sauf accord écrit préalable de Neodrive.
 
-Aucune facture de réparation, de diagnostic, de recherche de panne, de déplacement, de transport ou de main-d'œuvre ne pourra faire l'objet d'un remboursement sans accord écrit préalable de Microdrive.
+Aucune facture de réparation, de diagnostic, de recherche de panne, de déplacement, de transport ou de main-d'œuvre ne pourra faire l'objet d'un remboursement sans accord écrit préalable de Neodrive.
 
-Lorsque Microdrive accepte exceptionnellement une participation financière à une intervention, cette participation fera l'objet d'un accord écrit précisant son montant et ses conditions.
+Lorsque Neodrive accepte exceptionnellement une participation financière à une intervention, cette participation fera l'objet d'un accord écrit précisant son montant et ses conditions.
 
 30. CONTRÔLE TECHNIQUE DES PIÈCES ET DEMANDES DE GARANTIE
 
-Dans le cadre d'une demande de garantie ou d'une demande de prise en charge, Microdrive pourra demander au client le retour de la pièce concernée afin de procéder à une expertise technique.
+Dans le cadre d'une demande de garantie ou d'une demande de prise en charge, Neodrive pourra demander au client le retour de la pièce concernée afin de procéder à une expertise technique.
 
 Cette procédure peut notamment s'appliquer aux :
 
@@ -907,24 +907,24 @@ Cette procédure peut notamment s'appliquer aux :
 - composants électroniques ;
 - ou toute autre pièce concernée par la demande.
 
-Les frais d'expédition de la pièce vers Microdrive demeurent à la charge du client.
+Les frais d'expédition de la pièce vers Neodrive demeurent à la charge du client.
 
-Après réception, Microdrive procédera aux vérifications, mesures et contrôles techniques jugés nécessaires afin de déterminer l'origine de la défaillance.
+Après réception, Neodrive procédera aux vérifications, mesures et contrôles techniques jugés nécessaires afin de déterminer l'origine de la défaillance.
 
 À l'issue de cette expertise :
 
 - si la défaillance est reconnue comme couverte par les présentes Conditions Générales de Vente, la garantie ou la participation applicable sera accordée conformément aux dispositions prévues ;
 - si la défaillance résulte d'une usure normale, d'un défaut d'entretien, d'une mauvaise utilisation, d'une modification non autorisée ou de toute autre cause exclue de garantie, aucune prise en charge ne sera accordée.
 
-Microdrive se réserve le droit de demander le retour de toute pièce avant validation définitive d'une demande de garantie.
+Neodrive se réserve le droit de demander le retour de toute pièce avant validation définitive d'une demande de garantie.
 
 Les frais de retour de la pièce vers le client demeurent à la charge du client lorsque la garantie n'est pas applicable.
 
-Le client reconnaît que l'expertise technique réalisée par Microdrive constitue la base permettant de déterminer l'éligibilité ou non à une prise en charge au titre de la garantie.
+Le client reconnaît que l'expertise technique réalisée par Neodrive constitue la base permettant de déterminer l'éligibilité ou non à une prise en charge au titre de la garantie.
 
-31. PROGRAMME ASSISTANCE MICRODRIVE
+31. PROGRAMME ASSISTANCE Neodrive
 
-Microdrive privilégie l'accompagnement de ses clients sur le long terme.
+Neodrive privilégie l'accompagnement de ses clients sur le long terme.
 
 Le premier propriétaire du véhicule bénéficie pendant une durée de 3 ans à compter de la date de livraison :
 
@@ -933,19 +933,19 @@ Le premier propriétaire du véhicule bénéficie pendant une durée de 3 ans à
 - assistance par téléphone ou messagerie ;
 - aide à la recherche de panne ;
 - accès aux procédures techniques disponibles ;
-- remise de 20 % sur les pièces détachées achetées auprès de Microdrive.
+- remise de 20 % sur les pièces détachées achetées auprès de Neodrive.
 
 Ce programme est réservé au premier acheteur du véhicule.
 
-Le programme Assistance Microdrive constitue un accompagnement technique et commercial destiné à faciliter l'entretien et la réparation du véhicule.
+Le programme Assistance Neodrive constitue un accompagnement technique et commercial destiné à faciliter l'entretien et la réparation du véhicule.
 
 Il ne constitue pas une extension de garantie au-delà des dispositions prévues dans les présentes Conditions Générales de Vente.
 
 32. RESPONSABILITÉ
 
-La responsabilité de Microdrive est strictement limitée aux obligations prévues dans les présentes Conditions Générales de Vente.
+La responsabilité de Neodrive est strictement limitée aux obligations prévues dans les présentes Conditions Générales de Vente.
 
-Microdrive ne pourra être tenu responsable :
+Neodrive ne pourra être tenu responsable :
 
 - d'une mauvaise utilisation du véhicule ;
 - d'un défaut d'entretien ;
@@ -974,7 +974,7 @@ Aucune autonomie minimale ne peut être garantie dans toutes les conditions d'ut
 
 34. MODIFICATIONS DU VÉHICULE
 
-Toute modification technique réalisée sans accord écrit préalable de Microdrive peut entraîner l'exclusion totale ou partielle des garanties prévues aux présentes Conditions Générales de Vente.
+Toute modification technique réalisée sans accord écrit préalable de Neodrive peut entraîner l'exclusion totale ou partielle des garanties prévues aux présentes Conditions Générales de Vente.
 
 35. DROIT APPLICABLE ET LITIGES
 
