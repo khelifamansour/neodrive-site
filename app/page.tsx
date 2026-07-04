@@ -135,8 +135,8 @@ export default function Home() {
               <li>Pack Confort inclus</li>
               <li>Charge rapide</li>
               <li>Plus d’autonomie</li>
-              <li>Usage intensif</li>
-              <li>SAV renforcé</li>
+            
+             
             </ul>
 
             <a className="chooseBtn lightBtn" href="https://wa.me/33628261446" target="_blank">
