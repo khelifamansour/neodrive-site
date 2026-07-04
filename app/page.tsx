@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <main className="page">
       <section className="hero">
-        <div className="overlay" />
+        <div className="heroOverlay" />
 
         <div className="heroContent">
           <div className="badge">🇫🇷 Marque toulousaine</div>
@@ -16,8 +16,7 @@ export default function Home() {
           <p className="price">Dès 3 990 €</p>
 
           <p className="subtitle">
-            Même voiture, 3 versions selon vos besoins. Électrique, économique
-            et élégante.
+            Une voiture électrique neuve, économique et bien équipée.
           </p>
 
           <div className="heroIcons">
@@ -32,7 +31,7 @@ export default function Home() {
       <section className="section">
         <h2>3 versions. 1 même voiture.</h2>
         <p className="sectionText">
-          La même qualité, le même design, des équipements adaptés à votre quotidien.
+          Choisissez la version adaptée à votre besoin et à votre budget.
         </p>
 
         <div className="versions">
@@ -40,7 +39,7 @@ export default function Home() {
             <span className="tag green">ESSENTIEL</span>
             <h3>Version Essentiel</h3>
             <p className="cardPrice">3 990 € TTC</p>
-            <p>La version simple et accessible pour rouler au meilleur prix.</p>
+            <p>La version simple et accessible.</p>
             <ul>
               <li>✔️ Voiture neuve</li>
               <li>✔️ 100% électrique</li>
@@ -53,9 +52,8 @@ export default function Home() {
             <span className="tag orange">LA PLUS CHOISIE</span>
             <h3>Version Confort</h3>
             <p className="cardPrice">4 990 € TTC</p>
-            <p>Le meilleur compromis avec le pack équipement complet.</p>
+            <p>La version avec le pack équipement complet.</p>
             <ul>
-              <li>✔️ Pack Confort inclus</li>
               <li>✔️ Alarme antivol</li>
               <li>✔️ Caméra de recul</li>
               <li>✔️ Chauffage</li>
@@ -69,12 +67,12 @@ export default function Home() {
             <span className="tag purple">CONFORT PLUS+</span>
             <h3>Version Confort Plus+</h3>
             <p className="cardPrice">Sur demande</p>
-            <p>Plus d’autonomie, charge rapide et équipements premium.</p>
+            <p>Plus d’autonomie et charge rapide.</p>
             <ul>
               <li>✔️ Pack Confort inclus</li>
               <li>✔️ Batterie lithium</li>
               <li>✔️ Charge rapide</li>
-              <li>✔️ Plus d’autonomie</li>
+              <li>✔️ Usage intensif</li>
             </ul>
           </div>
         </div>
@@ -83,34 +81,31 @@ export default function Home() {
       <section className="emotion">
         <h2>Une petite voiture qui change le quotidien</h2>
         <p>
-          Aller au travail, faire vos courses, déposer les enfants ou retrouver
-          votre autonomie : Neodrive rend votre quotidien plus simple, économique
-          et agréable.
+          Aller au travail, faire vos courses ou retrouver votre autonomie :
+          Neodrive rend vos déplacements simples, économiques et agréables.
         </p>
       </section>
 
       <section className="presentation">
         <div>
-          <h2>NEODRIVE, 6 ans d’expérience à vos côtés</h2>
+          <h2>NEODRIVE, 6 ans d’expérience</h2>
           <p>
-            Après 6 années dans le domaine de la voiture sans permis, nous avons
-            pris le pari de vous offrir une voiture neuve, bien équipée et fiable
-            à moins de 5 000 €.
+            Après 6 années dans la voiture sans permis, nous avons pris le pari
+            de vous offrir une voiture neuve, bien équipée et fiable à moins de
+            5 000 €.
           </p>
           <p>
-            Neodrive est une marque toulousaine, proche de ses clients, qui place
-            la transparence, la qualité et le service au cœur de son engagement.
+            Neodrive est une marque toulousaine, proche de ses clients, avec un
+            vrai service après-vente.
           </p>
 
           <div className="stats">
             <div>🏅<strong>6 ans</strong><span>d’expérience</span></div>
             <div>📍<strong>Marque</strong><span>toulousaine</span></div>
-            <div>🛡️<strong>Véhicules</strong><span>neufs garantis</span></div>
+            <div>🛡️<strong>Neuf</strong><span>et garanti</span></div>
             <div>🤝<strong>SAV</strong><span>proche client</span></div>
           </div>
         </div>
-
-        <img src="/voiture.jpg" alt="Voiture Neodrive" />
       </section>
 
       <section className="darkSection">
@@ -120,40 +115,38 @@ export default function Home() {
           <div>🔒<h3>Achat sécurisé</h3><p>Inspection avant paiement.</p></div>
           <div>🎥<h3>Vidéo réelle</h3><p>Photos et vidéos avant réservation.</p></div>
           <div>🚚<h3>Livraison France</h3><p>À domicile ou point relais.</p></div>
-          <div>🧾<h3>Documents fournis</h3><p>Facture et immatriculation.</p></div>
-          <div>🛠️<h3>SAV & pièces</h3><p>Assistance rapide en France.</p></div>
-        </div>
-      </section>
-
-      <section className="features">
-        <h2>Des caractéristiques pensées pour vous</h2>
-
-        <div className="featuresGrid">
-          <div>🔋 Jusqu’à 70 km d’autonomie</div>
-          <div>🔌 Recharge prise standard</div>
-          <div>🚗 Facile à garer</div>
-          <div>🧳 Grand coffre pratique</div>
-          <div>😊 Conduite simple</div>
+          <div>🧾<h3>Documents fournis</h3><p>Facture et carte grise.</p></div>
+          <div>🛠️<h3>SAV & pièces</h3><p>Assistance rapide.</p></div>
         </div>
       </section>
 
       <section className="contact">
         <h2>Prêt à découvrir NEODRIVE ?</h2>
-        <p>Contactez-nous maintenant et recevez photos, vidéos et informations.</p>
+        <p>Contactez-nous pour recevoir photos, vidéos et disponibilités.</p>
 
         <div className="buttons">
           <a href="/reservation">📅 Réserver sans paiement</a>
-          <a href="https://wa.me/33628261446" target="_blank">💬 WhatsApp</a>
+          <a href="https://wa.me/33628261446" target="_blank">
+            💬 WhatsApp
+          </a>
         </div>
 
         <strong>📞 06 28 26 14 46</strong>
       </section>
 
-      <footer>
-        <strong>NEODRIVE</strong>
-        <span>Marque toulousaine – 31 rue Jean Nougaro, 31600 Muret</span>
-        <span>SIREN 908 645 393</span>
-      </footer>
+      <style jsx global>{`
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          overflow-x: hidden;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+      `}</style>
 
       <style jsx>{`
         .page {
@@ -161,128 +154,144 @@ export default function Home() {
           overflow-x: hidden;
           font-family: Arial, sans-serif;
           color: #111;
-          background: white;
+          background: #fff;
         }
 
         .hero {
           position: relative;
-          min-height: 720px;
+          min-height: 560px;
+          width: 100%;
           background-image: url("/hero.png");
           background-size: cover;
           background-position: center;
           display: flex;
-          align-items: center;
-          padding: 0 10%;
+          align-items: flex-end;
+          padding: 32px 18px;
           color: white;
         }
 
-        .overlay {
+        .heroOverlay {
           position: absolute;
           inset: 0;
-          background: linear-gradient(90deg, rgba(0,0,0,0.65), rgba(0,0,0,0.15));
+          background: linear-gradient(
+            180deg,
+            rgba(0, 0, 0, 0.15),
+            rgba(0, 0, 0, 0.78)
+          );
         }
 
         .heroContent {
           position: relative;
           z-index: 2;
-          max-width: 620px;
+          width: 100%;
+          max-width: 520px;
         }
 
         .badge {
           display: inline-block;
           background: white;
           color: #111;
-          padding: 10px 18px;
+          padding: 9px 15px;
           border-radius: 999px;
           font-weight: 900;
-          margin-bottom: 24px;
+          font-size: 15px;
+          margin-bottom: 18px;
         }
 
         h1 {
-          font-size: clamp(42px, 8vw, 82px);
+          font-size: 45px;
           line-height: 0.95;
           margin: 0;
           font-weight: 950;
+          letter-spacing: -2px;
         }
 
         .price {
           color: #ff8a00;
-          font-size: clamp(40px, 7vw, 64px);
+          font-size: 43px;
           font-weight: 950;
-          margin: 22px 0;
+          margin: 18px 0;
+          line-height: 1;
         }
 
         .subtitle {
-          font-size: 22px;
-          line-height: 1.5;
-          max-width: 560px;
+          font-size: 18px;
+          line-height: 1.45;
+          margin: 0;
+          max-width: 320px;
         }
 
         .heroIcons {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 14px;
-          margin-top: 32px;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          margin-top: 24px;
+          width: 100%;
         }
 
         .heroIcons div {
-          background: rgba(255,255,255,0.18);
+          background: rgba(255, 255, 255, 0.17);
           backdrop-filter: blur(8px);
-          padding: 16px 12px;
-          border-radius: 18px;
-          text-align: center;
+          padding: 14px 10px;
+          border-radius: 16px;
+          font-size: 14px;
           font-weight: 900;
+          text-align: center;
         }
 
         .section,
-        .features {
-          padding: 70px 10%;
+        .presentation,
+        .darkSection {
+          width: 100%;
+          padding: 48px 18px;
         }
 
         .section h2,
-        .features h2,
+        .presentation h2,
         .darkSection h2 {
+          font-size: 34px;
+          line-height: 1.05;
           text-align: center;
-          font-size: clamp(32px, 5vw, 46px);
-          line-height: 1.1;
           margin: 0;
           font-weight: 950;
+          letter-spacing: -1px;
         }
 
         .sectionText {
           text-align: center;
-          font-size: 18px;
           color: #555;
-          margin: 18px auto 40px;
-          max-width: 700px;
+          font-size: 17px;
+          line-height: 1.5;
+          margin: 16px auto 30px;
+          max-width: 420px;
         }
 
         .versions {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 28px;
-          align-items: stretch;
+          grid-template-columns: 1fr;
+          gap: 22px;
+          width: 100%;
         }
 
         .card {
+          width: 100%;
+          border-radius: 24px;
+          padding: 24px;
           background: white;
-          border-radius: 28px;
-          padding: 32px;
-          box-shadow: 0 18px 45px rgba(0,0,0,0.10);
+          box-shadow: 0 12px 35px rgba(0, 0, 0, 0.11);
           border: 1px solid #eee;
         }
 
         .card.dark {
           background: linear-gradient(180deg, #090909, #242424);
           color: white;
-          transform: scale(1.03);
         }
 
         .tag {
           display: inline-block;
           border-radius: 999px;
-          padding: 7px 14px;
-          font-size: 13px;
+          padding: 7px 13px;
+          font-size: 12px;
           font-weight: 900;
         }
 
@@ -302,87 +311,78 @@ export default function Home() {
         }
 
         .card h3 {
-          font-size: 26px;
-          margin: 22px 0 8px;
+          font-size: 25px;
+          margin: 20px 0 8px;
+          line-height: 1.15;
         }
 
         .cardPrice {
-          font-size: 34px;
+          font-size: 32px;
           font-weight: 950;
           margin: 8px 0;
         }
 
         .card p {
+          font-size: 17px;
+          line-height: 1.5;
           color: inherit;
-          line-height: 1.6;
         }
 
         ul {
-          padding-left: 0;
+          padding: 0;
+          margin: 18px 0 0;
           list-style: none;
-          line-height: 1.9;
+        }
+
+        li {
+          font-size: 18px;
+          line-height: 1.55;
           font-weight: 800;
-          margin-bottom: 0;
+          margin-bottom: 8px;
         }
 
         .emotion {
-          margin: 0 10%;
-          border-radius: 30px;
-          padding: 48px;
+          width: calc(100% - 36px);
+          margin: 0 18px 28px;
+          border-radius: 24px;
+          padding: 32px 24px;
           background: linear-gradient(135deg, #ff7a00, #ff006e);
           color: white;
         }
 
         .emotion h2 {
-          font-size: clamp(32px, 5vw, 48px);
-          line-height: 1.1;
-          margin: 0 0 18px;
+          font-size: 34px;
+          line-height: 1.08;
+          margin: 0 0 14px;
+          letter-spacing: -1px;
         }
 
         .emotion p {
-          font-size: 20px;
-          line-height: 1.6;
+          font-size: 18px;
+          line-height: 1.55;
           margin: 0;
-        }
-
-        .presentation {
-          display: grid;
-          grid-template-columns: 1.2fr 0.8fr;
-          gap: 42px;
-          align-items: center;
-          padding: 75px 10%;
-        }
-
-        .presentation h2 {
-          font-size: clamp(32px, 5vw, 44px);
-          line-height: 1.15;
         }
 
         .presentation p {
           font-size: 18px;
-          line-height: 1.75;
+          line-height: 1.65;
           color: #333;
-        }
-
-        .presentation img {
-          width: 100%;
-          border-radius: 28px;
-          box-shadow: 0 20px 50px rgba(0,0,0,0.18);
         }
 
         .stats {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
-          margin-top: 30px;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 18px;
+          margin-top: 28px;
         }
 
         .stats div {
           display: flex;
           flex-direction: column;
+          align-items: center;
           text-align: center;
-          gap: 6px;
-          font-size: 14px;
+          gap: 4px;
+          font-size: 15px;
         }
 
         .stats strong {
@@ -390,241 +390,159 @@ export default function Home() {
         }
 
         .darkSection {
-          background: #080808;
+          background: #050505;
           color: white;
-          padding: 70px 10%;
         }
 
         .advantages {
           display: grid;
-          grid-template-columns: repeat(5, 1fr);
-          gap: 18px;
-          margin-top: 40px;
+          grid-template-columns: 1fr;
+          gap: 16px;
+          margin-top: 32px;
         }
 
         .advantages div {
           background: linear-gradient(180deg, #242424, #141414);
           border: 1px solid #333;
           border-radius: 22px;
-          padding: 22px;
+          padding: 24px;
           text-align: center;
         }
 
-        .featuresGrid {
-          display: grid;
-          grid-template-columns: repeat(5, 1fr);
-          gap: 20px;
-          margin-top: 35px;
+        .advantages h3 {
+          margin: 12px 0 6px;
+          font-size: 21px;
         }
 
-        .featuresGrid div {
-          text-align: center;
-          font-size: 17px;
-          font-weight: 800;
+        .advantages p {
+          color: #ddd;
+          margin: 0;
+          font-size: 16px;
+          line-height: 1.45;
         }
 
         .contact {
-          margin: 0 10% 30px;
-          border-radius: 30px;
-          padding: 48px;
+          width: calc(100% - 36px);
+          margin: 28px 18px;
+          border-radius: 24px;
+          padding: 34px 24px;
           background: linear-gradient(135deg, #080808, #1f2937);
           color: white;
           text-align: center;
         }
 
         .contact h2 {
-          font-size: clamp(32px, 5vw, 44px);
+          font-size: 32px;
+          line-height: 1.1;
           margin: 0;
         }
 
         .contact p {
           color: #ddd;
-          font-size: 18px;
+          font-size: 17px;
+          line-height: 1.5;
         }
 
         .buttons {
-          display: flex;
-          justify-content: center;
-          gap: 18px;
-          flex-wrap: wrap;
-          margin: 28px 0;
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 12px;
+          margin: 24px 0;
         }
 
         .buttons a {
+          display: block;
+          width: 100%;
           text-decoration: none;
           color: white;
           background: linear-gradient(135deg, #ff7a00, #ff006e);
-          padding: 18px 28px;
+          padding: 16px 18px;
           border-radius: 14px;
           font-weight: 900;
+          font-size: 16px;
         }
 
         .buttons a:nth-child(2) {
           background: #25d366;
         }
 
-        footer {
-          display: flex;
-          justify-content: space-between;
-          gap: 15px;
-          padding: 22px 10%;
-          font-size: 13px;
-          color: #555;
-          flex-wrap: wrap;
-        }
-
-        @media (max-width: 900px) {
+        @media (min-width: 768px) {
           .hero {
-            min-height: 640px;
-            padding: 55px 24px;
-            align-items: flex-end;
-            background-position: center;
+            min-height: 720px;
+            padding: 0 10%;
+            align-items: center;
           }
 
-          .overlay {
-            background: linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.78));
-          }
-
-          .heroContent {
-            max-width: 100%;
-          }
-
-          .subtitle {
-            font-size: 20px;
-          }
-
-          .heroIcons {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .section,
-          .features,
-          .presentation,
-          .darkSection {
-            padding: 55px 24px;
-          }
-
-          .versions {
-            grid-template-columns: 1fr;
-          }
-
-          .card,
-          .card.dark {
-            transform: none;
-            padding: 28px;
-          }
-
-          .emotion,
-          .contact {
-            margin: 0 24px 30px;
-            padding: 34px 26px;
-          }
-
-          .presentation {
-            grid-template-columns: 1fr;
-          }
-
-          .stats {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .advantages,
-          .featuresGrid {
-            grid-template-columns: 1fr;
-          }
-
-          footer {
-            padding: 22px 24px;
-            flex-direction: column;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .hero {
-            min-height: 620px;
-            padding: 40px 18px;
+          .heroOverlay {
+            background: linear-gradient(
+              90deg,
+              rgba(0, 0, 0, 0.65),
+              rgba(0, 0, 0, 0.15)
+            );
           }
 
           h1 {
-            font-size: 48px;
+            font-size: 72px;
           }
 
           .price {
-            font-size: 42px;
+            font-size: 60px;
           }
 
           .subtitle {
-            font-size: 18px;
+            font-size: 22px;
+            max-width: 560px;
           }
 
           .heroIcons {
-            display: flex;
-            overflow-x: auto;
-            gap: 12px;
-            padding-bottom: 6px;
-          }
-
-          .heroIcons div {
-            min-width: 135px;
-            font-size: 14px;
+            grid-template-columns: repeat(4, 1fr);
           }
 
           .section,
-          .features,
           .presentation,
           .darkSection {
-            padding: 45px 18px;
+            padding: 75px 10%;
           }
 
           .section h2,
-          .features h2,
+          .presentation h2,
           .darkSection h2 {
-            font-size: 34px;
+            font-size: 44px;
           }
 
-          .card {
-            border-radius: 24px;
-            padding: 24px;
-          }
-
-          .card h3 {
-            font-size: 24px;
-          }
-
-          .cardPrice {
-            font-size: 32px;
-          }
-
-          ul {
-            font-size: 17px;
-            line-height: 1.8;
+          .versions {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
           }
 
           .emotion,
           .contact {
-            margin: 0 18px 28px;
-            border-radius: 24px;
-          }
-
-          .emotion h2 {
-            font-size: 34px;
-          }
-
-          .emotion p {
-            font-size: 18px;
+            width: auto;
+            margin-left: 10%;
+            margin-right: 10%;
           }
 
           .stats {
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(4, 1fr);
+          }
+
+          .advantages {
+            grid-template-columns: repeat(5, 1fr);
+          }
+
+          .contact {
+            padding: 48px;
           }
 
           .buttons {
-            flex-direction: column;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
           }
 
           .buttons a {
-            width: 100%;
-            box-sizing: border-box;
+            width: auto;
+            padding: 18px 28px;
           }
         }
       `}</style>
