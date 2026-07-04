@@ -115,8 +115,8 @@ export default function Home() {
             <h3>Version Confort Plus+</h3>
             <p className="cardPrice">5 990 € TTC</p>
             <p className="cardText">
-              La version la plus complète avec plus d’autonomie, charge rapide
-              et garantie renforcée.
+              La version la plus complète avec plus d’autonomie et charge rapide
+              .
             </p>
 
             <div className="quickInfo">
@@ -125,7 +125,6 @@ export default function Home() {
                 <span>Selon disponibilité</span>
               </div>
               <div>
-                <strong>🛡️ Garantie renforcée</strong>
                 <span>Structure et châssis 2 ans</span>
                 <span>Pièces 2 ans</span>
                 <span>Assistance technique gratuite 2 ans</span>
