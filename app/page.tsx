@@ -5,22 +5,6 @@ import React from "react";
 export default function Home() {
   return (
     <main className="page">
-      <header className="header">
-        <div className="logo">NeoDrive</div>
-
-        <nav className="nav">
-          <a href="#">Accueil</a>
-          <a href="#versions">Véhicules</a>
-          <a href="#presentation">Qui sommes-nous</a>
-          <a href="#avantages">Avantages</a>
-          <a href="#contact">Contact</a>
-        </nav>
-
-        <a className="topWhatsapp" href="https://wa.me/33628261446" target="_blank">
-          WhatsApp
-        </a>
-      </header>
-
       <section className="hero">
         <div className="heroOverlay" />
 
@@ -60,9 +44,7 @@ export default function Home() {
 
             <p className="cardPrice">3 990 € TTC</p>
 
-            <p>
-              La version simple et accessible pour rouler au meilleur prix.
-            </p>
+            <p>La version simple et accessible pour rouler au meilleur prix.</p>
 
             <div className="infoBox">
               <strong>⏳ Délai estimé</strong>
@@ -71,7 +53,8 @@ export default function Home() {
 
             <div className="infoBox">
               <strong>🛡️ Garantie</strong>
-              <span>Garantie pièces 3 mois</span>
+              <span>Structure et châssis 2 ans</span>
+              <span>Pièces 3 mois</span>
             </div>
 
             <ul>
@@ -100,8 +83,12 @@ export default function Home() {
             </div>
 
             <div className="infoBox darkInfo">
-              <strong>🛡️ Garantie</strong>
-              <span>Véhicule 2 ans / pièces 6 mois</span>
+              <strong>🛡️ Garantie & assistance</strong>
+              <span>Structure et châssis 2 ans</span>
+              <span>Pièces 6 mois</span>
+              <span>Assistance technique gratuite 2 ans</span>
+              <span>Remises sur pièces détachées jusqu’à 2 ans</span>
+              <span>Réparation à domicile possible</span>
             </div>
 
             <ul>
@@ -112,7 +99,7 @@ export default function Home() {
               <li>✔️ Bluetooth / USB</li>
               <li>✔️ Aide au démarrage en côte</li>
               <li>✔️ Aide au stationnement en côte</li>
-              <li>✔️ Alarme de protection passager</li>
+              <li>✔️ Alarme clé laissée sur contact</li>
             </ul>
           </div>
 
@@ -121,11 +108,11 @@ export default function Home() {
 
             <h3>Version Confort Plus+</h3>
 
-            <p className="cardPrice">Sur demande</p>
+            <p className="cardPrice">5 990 € TTC</p>
 
             <p>
-              La version premium avec batterie lithium, charge rapide et garantie
-              renforcée.
+              La version premium avec plus d’autonomie, charge rapide et
+              garantie renforcée.
             </p>
 
             <div className="infoBox">
@@ -135,15 +122,17 @@ export default function Home() {
 
             <div className="infoBox">
               <strong>🛡️ Garantie renforcée</strong>
-              <span>Véhicule 2 ans / pièces 2 ans</span>
+              <span>Structure et châssis 2 ans</span>
+              <span>Pièces 2 ans</span>
+              <span>Assistance technique gratuite 2 ans</span>
             </div>
 
             <ul>
               <li>✔️ Pack Confort inclus</li>
-              <li>✔️ Batterie lithium</li>
               <li>✔️ Charge rapide</li>
               <li>✔️ Plus d’autonomie</li>
               <li>✔️ Usage intensif</li>
+              <li>✔️ SAV renforcé</li>
             </ul>
           </div>
         </div>
@@ -172,26 +161,10 @@ export default function Home() {
         </p>
 
         <div className="stats">
-          <div>
-            <span>🏅</span>
-            <strong>6 ans</strong>
-            <small>d’expérience</small>
-          </div>
-          <div>
-            <span>📍</span>
-            <strong>Toulouse</strong>
-            <small>marque locale</small>
-          </div>
-          <div>
-            <span>🛡️</span>
-            <strong>Neuf</strong>
-            <small>et garanti</small>
-          </div>
-          <div>
-            <span>🤝</span>
-            <strong>SAV</strong>
-            <small>proche client</small>
-          </div>
+          <div><span>🏅</span><strong>6 ans</strong><small>d’expérience</small></div>
+          <div><span>📍</span><strong>Toulouse</strong><small>marque locale</small></div>
+          <div><span>🛡️</span><strong>Neuf</strong><small>et garanti</small></div>
+          <div><span>🤝</span><strong>SAV</strong><small>proche client</small></div>
         </div>
       </section>
 
@@ -199,35 +172,11 @@ export default function Home() {
         <h2>Pourquoi choisir NeoDrive ?</h2>
 
         <div className="advantages">
-          <div>
-            <span>🔒</span>
-            <h3>Achat sécurisé</h3>
-            <p>Inspection du véhicule avant paiement.</p>
-          </div>
-
-          <div>
-            <span>🎥</span>
-            <h3>Vidéo réelle</h3>
-            <p>Photos et vidéos disponibles avant réservation.</p>
-          </div>
-
-          <div>
-            <span>🚚</span>
-            <h3>Livraison France</h3>
-            <p>Livraison possible à domicile ou en point relais.</p>
-          </div>
-
-          <div>
-            <span>🧾</span>
-            <h3>Documents fournis</h3>
-            <p>Facture et documents pour l’immatriculation.</p>
-          </div>
-
-          <div>
-            <span>🛠️</span>
-            <h3>SAV & pièces</h3>
-            <p>Assistance et pièces disponibles en France.</p>
-          </div>
+          <div><span>🔒</span><h3>Achat sécurisé</h3><p>Inspection du véhicule avant paiement.</p></div>
+          <div><span>🎥</span><h3>Vidéo réelle</h3><p>Photos et vidéos disponibles avant réservation.</p></div>
+          <div><span>🚚</span><h3>Livraison France</h3><p>Livraison possible à domicile ou en point relais.</p></div>
+          <div><span>🧾</span><h3>Documents fournis</h3><p>Facture et documents pour l’immatriculation.</p></div>
+          <div><span>🛠️</span><h3>SAV & pièces</h3><p>Assistance et pièces disponibles en France.</p></div>
         </div>
       </section>
 
@@ -254,8 +203,7 @@ export default function Home() {
       </footer>
 
       <style jsx global>{`
-        html,
-        body {
+        html, body {
           margin: 0;
           padding: 0;
           width: 100%;
@@ -277,59 +225,6 @@ export default function Home() {
           background: white;
         }
 
-        .header {
-          position: sticky;
-          top: 0;
-          z-index: 50;
-          width: 100%;
-          background: rgba(255, 255, 255, 0.96);
-          backdrop-filter: blur(14px);
-          border-bottom: 1px solid #eee;
-          padding: 14px 24px;
-          display: grid;
-          grid-template-columns: auto 1fr auto;
-          align-items: center;
-          gap: 22px;
-        }
-
-        .logo {
-          font-size: 24px;
-          font-weight: 950;
-          letter-spacing: -0.8px;
-        }
-
-        .nav {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 8px;
-          flex-wrap: wrap;
-        }
-
-        .nav a {
-          text-decoration: none;
-          color: #222;
-          font-weight: 800;
-          font-size: 15px;
-          padding: 9px 13px;
-          border-radius: 999px;
-          transition: 0.2s;
-        }
-
-        .nav a:hover {
-          background: #f2f2f2;
-        }
-
-        .topWhatsapp {
-          text-decoration: none;
-          color: white;
-          background: #25d366;
-          padding: 12px 18px;
-          border-radius: 13px;
-          font-weight: 900;
-          white-space: nowrap;
-        }
-
         .hero {
           position: relative;
           min-height: 680px;
@@ -346,11 +241,7 @@ export default function Home() {
         .heroOverlay {
           position: absolute;
           inset: 0;
-          background: linear-gradient(
-            90deg,
-            rgba(0, 0, 0, 0.72),
-            rgba(0, 0, 0, 0.2)
-          );
+          background: linear-gradient(90deg, rgba(0,0,0,0.72), rgba(0,0,0,0.2));
         }
 
         .heroContent {
@@ -403,7 +294,7 @@ export default function Home() {
         }
 
         .heroIcons div {
-          background: rgba(255, 255, 255, 0.16);
+          background: rgba(255,255,255,0.16);
           backdrop-filter: blur(8px);
           padding: 17px 12px;
           border-radius: 18px;
@@ -412,15 +303,11 @@ export default function Home() {
           font-size: 15px;
         }
 
-        .section,
-        .presentation,
-        .darkSection {
+        .section, .presentation, .darkSection {
           padding: 75px 10%;
         }
 
-        .section h2,
-        .presentation h2,
-        .darkSection h2 {
+        .section h2, .presentation h2, .darkSection h2 {
           font-size: clamp(36px, 5vw, 52px);
           line-height: 1.05;
           text-align: center;
@@ -448,14 +335,13 @@ export default function Home() {
           border-radius: 30px;
           padding: 32px;
           background: white;
-          box-shadow: 0 18px 45px rgba(0, 0, 0, 0.11);
+          box-shadow: 0 18px 45px rgba(0,0,0,0.11);
           border: 1px solid #eee;
         }
 
         .card.dark {
           background: linear-gradient(180deg, #090909, #242424);
           color: white;
-          box-shadow: 0 25px 65px rgba(0, 0, 0, 0.28);
         }
 
         .premium {
@@ -471,20 +357,9 @@ export default function Home() {
           font-weight: 950;
         }
 
-        .green {
-          color: #16a34a;
-          background: #dcfce7;
-        }
-
-        .orange {
-          color: white;
-          background: #f97316;
-        }
-
-        .purple {
-          color: #7c3aed;
-          background: #ede9fe;
-        }
+        .green { color: #16a34a; background: #dcfce7; }
+        .orange { color: white; background: #f97316; }
+        .purple { color: #7c3aed; background: #ede9fe; }
 
         .card h3 {
           font-size: 27px;
@@ -527,7 +402,7 @@ export default function Home() {
         }
 
         .darkInfo {
-          background: rgba(255, 255, 255, 0.12);
+          background: rgba(255,255,255,0.12);
         }
 
         .darkInfo span {
@@ -601,18 +476,9 @@ export default function Home() {
           gap: 6px;
         }
 
-        .stats span {
-          font-size: 32px;
-        }
-
-        .stats strong {
-          font-size: 20px;
-        }
-
-        .stats small {
-          color: #555;
-          font-size: 15px;
-        }
+        .stats span { font-size: 32px; }
+        .stats strong { font-size: 20px; }
+        .stats small { color: #555; font-size: 15px; }
 
         .darkSection {
           background: #050505;
@@ -634,21 +500,9 @@ export default function Home() {
           text-align: center;
         }
 
-        .advantages span {
-          font-size: 34px;
-        }
-
-        .advantages h3 {
-          margin: 14px 0 8px;
-          font-size: 22px;
-        }
-
-        .advantages p {
-          color: #ddd;
-          margin: 0;
-          font-size: 16px;
-          line-height: 1.45;
-        }
+        .advantages span { font-size: 34px; }
+        .advantages h3 { margin: 14px 0 8px; font-size: 22px; }
+        .advantages p { color: #ddd; margin: 0; font-size: 16px; line-height: 1.45; }
 
         .contact {
           margin: 48px 10%;
@@ -690,13 +544,8 @@ export default function Home() {
           font-size: 18px;
         }
 
-        .reserve {
-          background: linear-gradient(135deg, #ff7a00, #ff006e);
-        }
-
-        .whatsapp {
-          background: #25d366;
-        }
+        .reserve { background: linear-gradient(135deg, #ff7a00, #ff006e); }
+        .whatsapp { background: #25d366; }
 
         .footer {
           display: flex;
@@ -710,55 +559,14 @@ export default function Home() {
         }
 
         @media (max-width: 900px) {
-          .header {
-            grid-template-columns: 1fr auto;
-            gap: 12px;
-            padding: 12px 16px;
-          }
-
-          .logo {
-            font-size: 23px;
-          }
-
-          .nav {
-            grid-column: 1 / -1;
-            order: 3;
-            justify-content: flex-start;
-            overflow-x: auto;
-            flex-wrap: nowrap;
-            padding-bottom: 4px;
-            scrollbar-width: none;
-          }
-
-          .nav::-webkit-scrollbar {
-            display: none;
-          }
-
-          .nav a {
-            background: #f5f5f5;
-            white-space: nowrap;
-            font-size: 14px;
-            padding: 9px 13px;
-          }
-
-          .topWhatsapp {
-            padding: 10px 15px;
-            font-size: 14px;
-          }
-
           .hero {
             min-height: 650px;
             padding: 48px 24px;
             align-items: flex-end;
-            background-position: center;
           }
 
           .heroOverlay {
-            background: linear-gradient(
-              180deg,
-              rgba(0, 0, 0, 0.2),
-              rgba(0, 0, 0, 0.82)
-            );
+            background: linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.82));
           }
 
           h1 {
@@ -766,28 +574,18 @@ export default function Home() {
             letter-spacing: -2px;
           }
 
-          .price {
-            font-size: 45px;
-          }
-
-          .subtitle {
-            font-size: 18px;
-            max-width: 360px;
-          }
+          .price { font-size: 45px; }
+          .subtitle { font-size: 18px; max-width: 360px; }
 
           .heroIcons {
             grid-template-columns: repeat(2, 1fr);
           }
 
-          .section,
-          .presentation,
-          .darkSection {
+          .section, .presentation, .darkSection {
             padding: 55px 24px;
           }
 
-          .section h2,
-          .presentation h2,
-          .darkSection h2 {
+          .section h2, .presentation h2, .darkSection h2 {
             font-size: 36px;
             letter-spacing: -1.5px;
           }
@@ -801,22 +599,18 @@ export default function Home() {
             border-radius: 26px;
           }
 
-          .emotion,
-          .contact {
+          .emotion, .contact {
             margin-left: 24px;
             margin-right: 24px;
             padding: 36px 26px;
             border-radius: 28px;
           }
 
-          .emotion h2,
-          .contact h2 {
+          .emotion h2, .contact h2 {
             font-size: 36px;
-            letter-spacing: -1.5px;
           }
 
-          .emotion p,
-          .contact p {
+          .emotion p, .contact p {
             font-size: 18px;
           }
 
@@ -846,18 +640,9 @@ export default function Home() {
         }
 
         @media (max-width: 480px) {
-          .header {
-            padding: 11px 14px;
-          }
-
           .hero {
             min-height: 620px;
             padding: 38px 18px;
-          }
-
-          .badge {
-            font-size: 15px;
-            padding: 10px 16px;
           }
 
           h1 {
@@ -866,62 +651,29 @@ export default function Home() {
             letter-spacing: -1.6px;
           }
 
-          .price {
-            font-size: 41px;
-          }
+          .price { font-size: 41px; }
 
-          .heroIcons div {
-            font-size: 14px;
-            padding: 15px 8px;
-          }
-
-          .section,
-          .presentation,
-          .darkSection {
+          .section, .presentation, .darkSection {
             padding: 48px 18px;
           }
 
-          .section h2,
-          .presentation h2,
-          .darkSection h2 {
+          .section h2, .presentation h2, .darkSection h2 {
             font-size: 32px;
             line-height: 1.08;
           }
 
-          .sectionText {
-            font-size: 17px;
-          }
+          .card h3 { font-size: 24px; }
+          .cardPrice { font-size: 31px; }
+          li { font-size: 17px; }
 
-          .card h3 {
-            font-size: 24px;
-          }
-
-          .cardPrice {
-            font-size: 31px;
-          }
-
-          li {
-            font-size: 17px;
-          }
-
-          .infoBox {
-            font-size: 14px;
-          }
-
-          .emotion,
-          .contact {
+          .emotion, .contact {
             margin-left: 18px;
             margin-right: 18px;
             padding: 32px 24px;
           }
 
-          .emotion h2,
-          .contact h2 {
+          .emotion h2, .contact h2 {
             font-size: 32px;
-          }
-
-          .stats div {
-            padding: 18px 10px;
           }
         }
       `}</style>
