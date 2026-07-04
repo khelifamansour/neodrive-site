@@ -320,7 +320,7 @@ const totalTTC =
           <p>{client.telephone}</p>
           <p>{client.email}</p>
 
-          <h3>Détail</h3>
+          <h3>Détail achat voiture sans permis </h3>
 
           <table style={table}>
            <tbody>
