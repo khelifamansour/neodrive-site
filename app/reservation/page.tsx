@@ -6,7 +6,24 @@ import Script from "next/script";
 export default function Reservation() {
 
   const today = new Date().toLocaleDateString("fr-FR");
-    const prixVehicule = 5790;
+const versions = {
+  essentiel: {
+    label: "Version Essentiel",
+    prix: 3990,
+  },
+  confort: {
+    label: "Version Confort",
+    prix: 4990,
+  },
+  confortPlus: {
+    label: "Version Confort Plus+",
+    prix: 5990,
+  },
+};
+
+const [version, setVersion] = useState<keyof typeof versions>("confort");
+
+const prixVehicule = versions[version].prix;
   const carteGrise = 249;
   const [client, setClient] = useState({
     nom: "",
@@ -117,6 +134,19 @@ const totalTTC =
 
         <div style={section}>
           <h3>Informations client</h3>
+          <p style={label}>Version souhaitée</p>
+
+<select
+  name="version"
+  value={version}
+  onChange={(e) => setVersion(e.target.value as keyof typeof versions)}
+  style={input}
+  required
+>
+  <option value="essentiel">Version Essentiel — 3 990 € TTC</option>
+  <option value="confort">Version Confort — 4 990 € TTC</option>
+  <option value="confortPlus">Version Confort Plus+ — 5 990 € TTC</option>
+</select>
 
           <input name="nom" placeholder="Nom" style={input} onChange={handleChange} required />
           <input name="prenom" placeholder="Prénom" style={input} onChange={handleChange} required />
@@ -294,7 +324,7 @@ const totalTTC =
           <table style={table}>
            <tbody>
   <tr>
-<td>Véhicule électrique x{quantity}</td>
+<td>{versions[version].label} x{quantity}</td>
 <td style={right}>{prixVehicule * quantity} €</td>
   </tr>
 
