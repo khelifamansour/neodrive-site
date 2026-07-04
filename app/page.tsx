@@ -1,436 +1,283 @@
-
 "use client";
 
 import React from "react";
 
 export default function Home() {
-
   return (
-
     <main style={container}>
-
-      {/* HERO */}
-
-      <section style={center}>
+      <section style={hero}>
+        <div style={badge}>Voiture sans permis électrique</div>
 
         <h1 style={title}>
-          Voiture sans permis neuve dès 5 790  € TTC
+          Une voiture neuve, élégante et accessible dès 5 790 € TTC
         </h1>
 
         <p style={subtitle}>
-          Électrique – simple – économique
+          Design moderne, conduite simple, grand coffre et équipements utiles au quotidien.
         </p>
 
-        <p style={alert}>
-          Stock limité – livraison rapide partout en France
-        </p>
+        <img src="/voiture.jpg" alt="Voiture sans permis électrique" style={image} />
 
-        <img
-          src="/voiture.jpg"
-          alt="voiture sans permis"
-          style={image}
-        />
-
-        <div style={ctaBox}>
-
-          <a
-            href="https://wa.me/33628261446"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-
-            <button style={btnGreen}>
-              Voir le véhicule réel en vidéo maintenant
-            </button>
-
-          </a>
-
-          <a href="/reservation">
-
-            <button style={btnBlack}>
-              Réserver sans paiement
-            </button>
-
-          </a>
-
+        <div style={priceBox}>
+          <span style={smallText}>À partir de</span>
+          <strong style={price}>5 790 € TTC</strong>
+          <span style={smallText}>Batterie incluse • Aucun frais caché</span>
         </div>
-
-        <p style={safeStrong}>
-          🔒 Achat 100% sécurisé : aucun paiement à l’avance – inspection avant paiement
-        </p>
-
       </section>
 
-      {/* SECURITY */}
-
       <section style={section}>
+        <h2 style={h2}>Un design qui fait la différence</h2>
 
-        <h2 style={h2}>
-          Achat sécurisé
-        </h2>
-
-        <div style={box}>
-
-
-          ✔ Aucun engagement tant que vous n’avez pas validé
-
+        <div style={grid}>
+          <div style={card}>✔ Look moderne et compact</div>
+          <div style={card}>✔ Idéale pour la ville</div>
+          <div style={card}>✔ Grand coffre pratique</div>
+          <div style={card}>✔ Véhicule neuf, jamais immatriculé</div>
         </div>
-
       </section>
 
-      {/* TRUST */}
+      <section style={sectionDark}>
+        <h2 style={h2White}>Version Confort bien équipée</h2>
+
+        <div style={features}>
+          <span>Caméra de recul</span>
+          <span>Bluetooth</span>
+          <span>USB</span>
+          <span>Chauffage</span>
+          <span>Ventilation</span>
+          <span>Alarme antivol</span>
+          <span>Bruiteur de recul</span>
+          <span>Aide au démarrage en côte</span>
+        </div>
+      </section>
 
       <section style={section}>
+        <h2 style={h2}>Achat simple et sécurisé</h2>
 
         <div style={box}>
-
-          <strong>
-            Entreprise Française
-          </strong>
-
+          🔒 Aucun paiement à l’avance.
           <br />
+          Vous voyez le véhicule en vidéo, vous validez, puis vous payez uniquement après inspection.
+        </div>
 
-          MK HOLDING – SIREN 908 645 393
+        <div style={box}>
+          Entreprise française : <strong>MK HOLDING</strong>
           <br />
-
+          SIREN 908 645 393
+          <br />
           31 rue Jean Nougaro – 31600 Muret
-          <br />
-
-          Véhicules conformes à la réglementation française
-          <br />
-
-          Facture fournie + documents pour immatriculation
-
         </div>
-
-        <div style={box}>
-          ✔ Véhicule neuf – jamais immatriculé
-        </div>
-
-        <div style={box}>
-          ✔ Batterie incluse – aucun frais caché
-        </div>
-
-        <div style={box}>
-          ✔ Paiement sécurisé à la livraison
-        </div>
-
-        <div style={box}>
-          ✔ SAV + pièces disponibles en France
-        </div>
-
-        <div style={box}>
-          ✔ Assistance rapide WhatsApp / téléphone
-        </div>
-
       </section>
-
-      {/* PRICE */}
 
       <section style={section}>
-
-        <h2 style={h2}>
-          Prix clair
-        </h2>
+        <h2 style={h2}>Livraison & documents</h2>
 
         <div style={box}>
-
-          ✔ Véhicule : à partir de 5 790 € TTC
+          ✔ Livraison possible partout en France
           <br />
-
-          ✔ Livraison partout en France via transport personnalisé
+          ✔ Retrait possible selon disponibilité
           <br />
-
-          ✔ Paiement uniquement à la livraison
+          ✔ Facture fournie
           <br />
-
-          ✔ Possibilité d’organiser votre propre transporteur
+          ✔ Documents pour immatriculation
           <br />
-
-          ✔ Carte grise : 150 €
-          <br />
-
-          ✔ Aucun frais caché
-          <br />
-          <br />
-
-          👉 Voir les détails dans la section Livraison
-
+          ✔ Assistance WhatsApp / téléphone
         </div>
-
       </section>
 
-      {/* WHY PRICE */}
+      <section style={ctaFinal}>
+        <h2 style={finalTitle}>Prêt à découvrir le véhicule ?</h2>
 
-      <section style={section}>
-
-        <h2 style={h2}>
-          Pourquoi ce prix ?
-        </h2>
-
-        <div style={box}>
-
-          
-
-          ✔ Pas de concession coûteuse
-          <br />
-
-          ✔ Pas de leasing imposé
-          <br />
-
-          ✔ Structure légère = prix réduit pour le client
-
-        </div>
-
-      </section>
-
-      {/* PROCESS */}
-
-      <section style={section}>
-
-        <h2 style={h2}>
-          Comment ça marche (simple et sécurisé)
-        </h2>
-
-        <div style={box}>
-
-          1. Contact WhatsApp ou téléphone
-          <br />
-
-          2. Vidéo réelle du véhicule disponible
-          <br />
-
-          3. Validation sans engagement
-          <br />
-
-          4. Préparation du véhicule
-          <br />
-
-          5. Livraison à domicile ou retrait
-          <br />
-
-          6. Inspection complète AVANT paiement
-          <br />
-
-          7. Paiement uniquement si tout est conforme
-          <br />
-
-          8. Aide pour immatriculation
-
-        </div>
-
-      </section>
-
-      {/* WARRANTY */}
-
-      <section style={section}>
-
-        <h2 style={h2}>
-          Garantie & assistance
-        </h2>
-
-        <div style={box}>
-
-          <strong>
-            ✔ Vous n’êtes jamais seul après l’achat
-          </strong>
-
-          <br />
-          <br />
-
-          ✔ Garantie constructeur :
-          <br />
-
-          - Structure (châssis, carrosserie) : 2 ans
-          <br />
-
-          - Garantie composants : jusqu'à 24 mois selon les conditions de garantie
-          <br />
-
-          - Assistance technique gratuite pendant 3 ans
-          <br />
-             - 20 % de remise sur les pièces pendant 3 ans
-          <br />
-          <br />
-
-        
-
-          ✔ Diagnostic rapide à distance
-          <br />
-
-          ✔ Pièces disponibles durablement (suivi assuré)
-          <br />
-
-          ✔ Envoi de pièces partout en France
-          <br />
-
-          ✔ Main d’œuvre prise en charge après validation pour pannes couvertes
-          <br />
-          <br />
-
-          ✔ Accompagnement réel :
-          <br />
-
-          Nous vous guidons étape par étape pour résoudre rapidement toute situation.
-
-        </div>
-
-      </section>
-
-      {/* DIFFERENCE */}
-
-      <section style={center}>
-
-        <h2 style={h2}>
-          Pourquoi nous choisir
-        </h2>
-
-        <p style={why}>
-
-          ✔ Pas de leasing (contrairement à Ami)
-          <br />
-
-          ✔ Pas d’abonnement mensuel
-          <br />
-
-          ✔ Vous êtes propriétaire du véhicule
-          <br />
-
-          ✔ Prix direct import sans intermédiaire
-          <br />
-
-          ✔ Process simple et transparent
-          <br />
-
-          ✔ Achat sans risque
-
+        <p style={finalText}>
+          Demandez une vidéo réelle du véhicule ou réservez sans paiement.
         </p>
 
-      </section>
-
-      {/* FINAL CTA */}
-
-      <section style={center}>
+        <a href="/reservation">
+          <button style={btnBlack}>Réserver sans paiement</button>
+        </a>
 
         <a
           href="https://wa.me/33628261446"
           target="_blank"
           rel="noopener noreferrer"
         >
-
-          <button style={btnGreen}>
-            Voir le véhicule en vidéo maintenant
-          </button>
-
+          <button style={btnGreen}>Contactez-nous sur WhatsApp</button>
         </a>
 
-        <p style={safe}>
-          Réponse rapide – vidéo réelle disponible immédiatement
+        <p style={contact}>
+          Contactez-nous : 06 28 26 14 46
         </p>
-
       </section>
-
     </main>
-
   );
-
 }
 
-/* =========================
-STYLES
-========================= */
-
 const container: React.CSSProperties = {
-  maxWidth: 900,
+  maxWidth: 980,
   margin: "0 auto",
-  padding: 10,
-  fontFamily: "Arial"
+  padding: 14,
+  fontFamily: "Arial, sans-serif",
+  background: "#ffffff",
+  color: "#111",
 };
 
-const center: React.CSSProperties = {
+const hero: React.CSSProperties = {
   textAlign: "center",
-  padding: "30px 10px"
+  padding: "35px 12px",
+  background: "linear-gradient(180deg, #f5f7fb 0%, #ffffff 100%)",
+  borderRadius: 18,
 };
 
-const section: React.CSSProperties = {
-  padding: "20px 10px"
+const badge: React.CSSProperties = {
+  display: "inline-block",
+  padding: "8px 14px",
+  background: "#111",
+  color: "white",
+  borderRadius: 999,
+  fontSize: 13,
+  fontWeight: 700,
+  marginBottom: 18,
 };
 
 const title: React.CSSProperties = {
-  fontSize: 24,
-  fontWeight: 700
+  fontSize: 32,
+  lineHeight: "1.15",
+  fontWeight: 800,
+  margin: 0,
 };
 
 const subtitle: React.CSSProperties = {
+  fontSize: 17,
   color: "#555",
-  marginTop: 10
-};
-
-const alert: React.CSSProperties = {
-  color: "red",
-  fontWeight: 600,
-  marginTop: 5
+  marginTop: 14,
+  lineHeight: "1.5",
 };
 
 const image: React.CSSProperties = {
   width: "100%",
-  marginTop: 20,
-  borderRadius: 10
+  maxWidth: 720,
+  marginTop: 24,
+  borderRadius: 18,
+  boxShadow: "0 18px 45px rgba(0,0,0,0.16)",
 };
 
-const ctaBox: React.CSSProperties = {
-  marginTop: 20
+const priceBox: React.CSSProperties = {
+  margin: "25px auto 0",
+  padding: 18,
+  maxWidth: 360,
+  background: "white",
+  borderRadius: 16,
+  boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+};
+
+const price: React.CSSProperties = {
+  display: "block",
+  fontSize: 30,
+  margin: "5px 0",
+};
+
+const smallText: React.CSSProperties = {
+  fontSize: 13,
+  color: "#666",
+};
+
+const section: React.CSSProperties = {
+  padding: "35px 8px",
+};
+
+const sectionDark: React.CSSProperties = {
+  padding: "35px 18px",
+  background: "#111",
+  color: "white",
+  borderRadius: 18,
+  marginTop: 15,
+};
+
+const h2: React.CSSProperties = {
+  fontSize: 24,
+  marginBottom: 18,
+};
+
+const h2White: React.CSSProperties = {
+  fontSize: 24,
+  marginBottom: 18,
+  color: "white",
+};
+
+const grid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+  gap: 12,
+};
+
+const card: React.CSSProperties = {
+  background: "#f5f5f5",
+  padding: 16,
+  borderRadius: 14,
+  fontWeight: 600,
+};
+
+const features: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: 10,
 };
 
 const box: React.CSSProperties = {
   background: "#f7f7f7",
-  padding: 12,
-  borderRadius: 8,
-  marginBottom: 10,
-  lineHeight: "1.6"
+  padding: 18,
+  borderRadius: 14,
+  lineHeight: "1.7",
+  marginBottom: 12,
+};
+
+const ctaFinal: React.CSSProperties = {
+  textAlign: "center",
+  padding: "40px 14px",
+  background: "#f5f7fb",
+  borderRadius: 18,
+  marginBottom: 30,
+};
+
+const finalTitle: React.CSSProperties = {
+  fontSize: 26,
+  marginBottom: 8,
+};
+
+const finalText: React.CSSProperties = {
+  color: "#555",
+  marginBottom: 18,
 };
 
 const btnBlack: React.CSSProperties = {
-  marginTop: 10,
-  padding: 15,
   width: "100%",
-  background: "#000",
+  padding: 16,
+  background: "#111",
   color: "white",
   border: "none",
-  borderRadius: 8,
-  cursor: "pointer"
+  borderRadius: 12,
+  fontSize: 16,
+  fontWeight: 700,
+  cursor: "pointer",
+  marginTop: 10,
 };
 
 const btnGreen: React.CSSProperties = {
-  marginTop: 10,
-  padding: 15,
   width: "100%",
+  padding: 16,
   background: "#25D366",
   color: "white",
   border: "none",
-  borderRadius: 8,
-  cursor: "pointer"
-};
-
-const h2: React.CSSProperties = {
-  marginBottom: 10
-};
-
-const why: React.CSSProperties = {
-  color: "#555",
-  marginTop: 10
-};
-
-const safe: React.CSSProperties = {
+  borderRadius: 12,
+  fontSize: 16,
+  fontWeight: 700,
+  cursor: "pointer",
   marginTop: 10,
-  fontSize: 12,
-  color: "#444"
 };
 
-const safeStrong: React.CSSProperties = {
-  marginTop: 12,
+const contact: React.CSSProperties = {
+  marginTop: 18,
   fontSize: 14,
-  color: "#000",
-  fontWeight: 700
+  color: "#333",
+  fontWeight: 700,
 };
-
