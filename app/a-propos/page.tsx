@@ -1,3 +1,4 @@
+"use client"
 export const metadata = {
   title: "À propos de NeoDrive | Voiture sans permis électrique",
   description:
