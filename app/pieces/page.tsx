@@ -26,7 +26,7 @@ export default function Pieces() {
         <h2>Un service après-vente prioritaire</h2>
 
         <p style={text}>
-          Chez Microdrive, le service après-vente est une priorité.
+          Chez Neodrive, le service après-vente est une priorité.
           Nous savons que la disponibilité des pièces est essentielle
           pour garantir la fiabilité de votre véhicule.
         </p>
