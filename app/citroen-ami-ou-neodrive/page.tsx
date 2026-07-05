@@ -1,3 +1,4 @@
+"use client"
 export const metadata = {
   title: "Citroën Ami ou NeoDrive ? Comparatif voiture sans permis électrique",
   description:
