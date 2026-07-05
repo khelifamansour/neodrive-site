@@ -8,7 +8,7 @@ export default function SAV() {
       <h1 style={title}>Service après-vente en France</h1>
 
       <p style={subtitle}>
-        Microdrive n’est pas seulement un vendeur de véhicules sans permis.  
+        Neodrive n’est pas seulement un vendeur de véhicules sans permis.  
         Nous avons construit un écosystème complet : pièces détachées, support technique et réseau de garages.
       </p>
 
