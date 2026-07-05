@@ -9,7 +9,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr">
   <html lang="fr">
   <body>
-  <body
+  
         <header className="header">
           <div className="top">
             <a href="/" className="brand">
