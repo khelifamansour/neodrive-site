@@ -226,6 +226,17 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="seoLinks">
+  <h2>En savoir plus sur NeoDrive</h2>
+
+  <div className="seoGrid">
+    <a href="/a-propos">À propos de NeoDrive</a>
+    <a href="/financement">Financement voiture sans permis</a>
+    <a href="/voiture-sans-permis-electrique">Voiture sans permis électrique</a>
+    <a href="/citroen-ami-ou-neodrive">Citroën Ami ou NeoDrive ?</a>
+  </div>
+</section>
+
    <footer className="footer">
   <strong>NeoDrive</strong>
 
@@ -308,6 +319,39 @@ export default function Home() {
           background: rgba(255,255,255,0.12);
           color: white;
         }
+        .seoLinks {
+  padding: 60px 10%;
+  background: #fafafa;
+  text-align: center;
+}
+
+.seoLinks h2 {
+  font-size: 38px;
+  margin-bottom: 28px;
+}
+
+.seoGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.seoGrid a {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 18px;
+  padding: 22px;
+  color: #111;
+  text-decoration: none;
+  font-weight: 900;
+  box-shadow: 0 12px 35px rgba(0,0,0,0.08);
+}
+
+@media (max-width: 900px) {
+  .seoGrid {
+    grid-template-columns: 1fr;
+  }
+}
 
         h1 {
           font-size: clamp(46px, 7vw, 82px);
