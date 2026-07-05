@@ -1,9 +1,5 @@
 "use client"
-export const metadata = {
-  title: "Guide voiture sans permis électrique | Prix, leasing, occasion | NeoDrive",
-  description:
-    "Guide complet pour choisir une voiture sans permis électrique : prix, leasing, occasion, Aixam, Ligier, Chatenet, Citroën Ami et alternative NeoDrive dès 3 990 €.",
-};
+
 
 export default function GuideVoitureSansPermis() {
   return (
