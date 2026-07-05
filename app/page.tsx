@@ -226,11 +226,16 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="footer">
-        <strong>NeoDrive</strong>
-        <span>Marque toulousaine – 31 rue Jean Nougaro, 31600 Muret</span>
-        <span>SIREN 908 645 393</span>
-      </footer>
+   <footer className="footer">
+  <strong>NeoDrive</strong>
+
+  <a href="/guide-voiture-sans-permis">
+    Guide voiture sans permis
+  </a>
+
+  <span>Marque toulousaine – 31 rue Jean Nougaro, 31600 Muret</span>
+  <span>SIREN 908 645 393</span>
+</footer>
 
       <style jsx global>{`
         html, body {
