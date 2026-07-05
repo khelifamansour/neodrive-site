@@ -1,9 +1,4 @@
 "use client"
-export const metadata = {
-  title: "Financement voiture sans permis électrique | NeoDrive",
-  description:
-    "Financez votre voiture sans permis électrique NeoDrive. Mensualités accessibles, coût d'utilisation réduit, assurance moins chère et véhicule neuf.",
-};
 
 export default function FinancementPage() {
   return (
