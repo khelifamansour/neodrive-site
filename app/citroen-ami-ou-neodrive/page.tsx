@@ -1,9 +1,5 @@
 "use client"
-export const metadata = {
-  title: "Citroën Ami ou NeoDrive ? Comparatif voiture sans permis électrique",
-  description:
-    "Comparez Citroën Ami et NeoDrive : équipements, confort, coffre, structure acier, SAV, financement et rapport qualité/prix.",
-};
+
 
 export default function CitroenAmiOuNeoDrivePage() {
   return (
