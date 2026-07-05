@@ -1,9 +1,4 @@
-export const metadata = {
-  title: "Voiture sans permis électrique neuve | NeoDrive",
-  description:
-    "Découvrez NeoDrive, voiture sans permis électrique neuve, économique, bien équipée, avec structure en acier, grand coffre, SAV France et financement possible.",
-};
-
+"use client"
 export default function VoitureSansPermisElectriquePage() {
   return (
     <main className="page">
