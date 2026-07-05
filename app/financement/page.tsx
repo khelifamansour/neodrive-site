@@ -1,3 +1,4 @@
+"use client"
 export const metadata = {
   title: "Financement voiture sans permis électrique | NeoDrive",
   description:
