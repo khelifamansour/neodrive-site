@@ -237,15 +237,9 @@ export default function Home() {
   <span>SIREN 908 645 393</span>
 </footer>
 
-      .footer a {
-  color: #111;
-  font-weight: 800;
-  text-decoration: none;
-}
+    
 
-.footer a:hover {
-  text-decoration: underline;
-}
+      
 
       <style jsx global>{`
         html, body {
@@ -668,6 +662,16 @@ export default function Home() {
           flex-wrap: wrap;
           border-top: 1px solid #eee;
         }
+
+        .footer a {
+  color: #111;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
 
         @media (max-width: 900px) {
           .hero {
