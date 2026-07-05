@@ -1,3 +1,4 @@
+"use client"
 export const metadata = {
   title: "Guide voiture sans permis électrique | Prix, leasing, occasion | NeoDrive",
   description:
