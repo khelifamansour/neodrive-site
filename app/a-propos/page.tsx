@@ -1,9 +1,5 @@
 "use client"
-export const metadata = {
-  title: "À propos de NeoDrive | Voiture sans permis électrique",
-  description:
-    "Découvrez NeoDrive, marque toulousaine spécialisée depuis plus de 6 ans dans la voiture sans permis électrique neuve. SAV France, pièces détachées, financement et livraison partout en France.",
-};
+
 
 export default function APropos() {
   return (
