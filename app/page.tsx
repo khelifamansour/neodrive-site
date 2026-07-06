@@ -226,14 +226,71 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="seoLinks">
-  <h2>En savoir plus sur NeoDrive</h2>
+   <section className="seoLinks">
+  <h2>Guides et conseils NeoDrive</h2>
 
   <div className="seoGrid">
     <a href="/a-propos">À propos de NeoDrive</a>
-    <a href="/financement">Financement voiture sans permis</a>
-    <a href="/voiture-sans-permis-electrique">Voiture sans permis électrique</a>
-    <a href="/citroen-ami-ou-neodrive">Citroën Ami ou NeoDrive ?</a>
+
+    <a href="/financement">
+      Financement voiture sans permis
+    </a>
+
+    <a href="/voiture-sans-permis-electrique">
+      Voiture sans permis électrique
+    </a>
+
+    <a href="/citroen-ami-ou-neodrive">
+      Citroën Ami ou NeoDrive ?
+    </a>
+
+    <a href="/voiture-sans-permis-occasion">
+      Voiture sans permis d'occasion
+    </a>
+
+    <a href="/quelle-voiture-sans-permis-choisir">
+      Quelle voiture sans permis choisir ?
+    </a>
+
+    <a href="/prix-voiture-sans-permis">
+      Prix d'une voiture sans permis
+    </a>
+
+    <a href="/fiat-topolino-ou-neodrive">
+      Fiat Topolino ou NeoDrive ?
+    </a>
+
+    <a href="/meilleure-voiture-sans-permis-electrique">
+      Meilleure voiture sans permis électrique
+    </a>
+
+    <a href="/assurance-voiture-sans-permis">
+      Assurance voiture sans permis
+    </a>
+
+    <a href="/guide-voiture-sans-permis">
+      Guide complet voiture sans permis
+    </a>
+
+    <a href="/livraison">
+      Livraison partout en France
+    </a>
+
+    <a href="/carte-grise">
+      Carte grise voiture sans permis
+    </a>
+
+    <a href="/pieces">
+      Pièces détachées
+    </a>
+
+    <a href="/sav">
+      Service après-vente
+    </a>
+
+    <a href="/faq">
+      Questions fréquentes
+    </a>
   </div>
 </section>
 
@@ -332,7 +389,7 @@ export default function Home() {
 
 .seoGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 18px;
 }
 
