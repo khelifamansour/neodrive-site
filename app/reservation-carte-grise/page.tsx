@@ -78,8 +78,20 @@ const totalTTC =
  
 
 
-  const handleChange = (e: any) => {
-    setClient({ ...client, [e.target.name]: e.target.value });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    setClient((previousClient) => ({
+      ...previousClient,
+      [name]: value
+    }));
+
+    if (name === "code_postal") {
+      const normalizedPostalCode = value.replace(/\s/g, "");
+      if (/^\d{5}$/.test(normalizedPostalCode)) {
+        setDepartementLivraison(normalizedPostalCode.substring(0, 2));
+      }
+    }
   };
 
   const downloadMandat = () => {
@@ -106,15 +118,17 @@ const totalTTC =
       ville: String(formData?.get("ville") || client.ville || "").trim()
     };
 
-    if (
-      !mandatClient.nom ||
-      !mandatClient.prenom ||
-      !mandatClient.adresse ||
-      !mandatClient.code_postal ||
-      !mandatClient.ville
-    ) {
+    const champsManquants = [
+      !mandatClient.nom && "nom",
+      !mandatClient.prenom && "prénom",
+      !mandatClient.adresse && "adresse",
+      !mandatClient.code_postal && "code postal",
+      !mandatClient.ville && "ville"
+    ].filter(Boolean);
+
+    if (champsManquants.length > 0) {
       alert(
-        "Merci de compléter votre nom, prénom, adresse, code postal et ville avant de télécharger le mandat."
+        `Merci de compléter les champs suivants avant de télécharger le mandat : ${champsManquants.join(", ")}.`
       );
       return;
     }
@@ -235,12 +249,27 @@ const totalTTC =
   <option value="confortPlus">Version Confort Plus+ — 5 990 € TTC</option>
 </select>
 
+          <p style={label}>Nom</p>
           <input name="nom" value={client.nom} placeholder="Nom" style={input} onChange={handleChange} required />
+
+          <p style={label}>Prénom</p>
           <input name="prenom" value={client.prenom} placeholder="Prénom" style={input} onChange={handleChange} required />
+
+          <p style={label}>Téléphone</p>
           <input name="telephone" value={client.telephone} placeholder="Téléphone" style={input} onChange={handleChange} required />
+
+          <p style={label}>Adresse e-mail</p>
           <input name="email" value={client.email} type="email" placeholder="Email" style={input} onChange={handleChange} required />
+
+          <p style={label}>Adresse</p>
           <input name="adresse" value={client.adresse} placeholder="Adresse" style={input} onChange={handleChange} required />
+
+          <p style={label}>Code postal</p>
           <input name="code_postal" value={client.code_postal} placeholder="Code postal" style={input} onChange={handleChange} required />
+
+          <p style={label}>Ville</p>
+          <input name="ville" value={client.ville} placeholder="Ville" style={input} onChange={handleChange} required />
+          <p style={label}>Département de livraison</p>
         <select
   name="departement_livraison"
   style={input}
@@ -382,7 +411,7 @@ const totalTTC =
             
   Retrait sur place (pas de livraison)
 </label>
-          <input name="ville" value={client.ville} placeholder="Ville" style={input} onChange={handleChange} required />
+
         </div>
 
         <div style={section}>
