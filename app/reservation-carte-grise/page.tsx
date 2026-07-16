@@ -25,7 +25,7 @@ const versions = {
 const [version, setVersion] = useState<keyof typeof versions>("confort");
 
 const prixVehicule = versions[version].prix;
-  const packMiseEnRouteCarteGrise = 249;
+  const packMiseEnRouteCarteGrise = 150;
   const [client, setClient] = useState({
     nom: "",
     prenom: "",
