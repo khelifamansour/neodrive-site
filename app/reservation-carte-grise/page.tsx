@@ -37,6 +37,7 @@ const prixVehicule = versions[version].prix;
   });
   const [noDelivery, setNoDelivery] = useState(false);
   const [wantsCarteGrise, setWantsCarteGrise] = useState(true);
+  const [departementLivraison, setDepartementLivraison] = useState("");
 
 const [quantity, setQuantity] = useState(1);
 const [manualTransport, setManualTransport] = useState("");
@@ -61,7 +62,7 @@ const transport = noDelivery
   : manualTransport
       ? Number(manualTransport)
       : getTransportPrice(
-          client.code_postal?.substring(0,2) || ""
+          departementLivraison || client.code_postal?.substring(0,2) || ""
         );
 const totalTTC =
   (prixVehicule * quantity)
@@ -70,6 +71,7 @@ const totalTTC =
   - discount;
 
   const printRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
 
 
@@ -84,26 +86,51 @@ const totalTTC =
     const jsPDF = (window as any).jspdf?.jsPDF;
 
     if (!jsPDF) {
-      alert("Le générateur PDF est encore en cours de chargement. Merci de réessayer dans quelques secondes.");
+      alert(
+        "Le générateur PDF est encore en cours de chargement. Merci de réessayer dans quelques secondes."
+      );
       return;
     }
 
-    if (!client.nom || !client.prenom || !client.adresse || !client.code_postal || !client.ville) {
-      alert("Merci de compléter vos coordonnées avant de télécharger le mandat.");
+    const formData = formRef.current
+      ? new FormData(formRef.current)
+      : null;
+
+    const mandatClient = {
+      nom: String(formData?.get("nom") || client.nom || "").trim(),
+      prenom: String(formData?.get("prenom") || client.prenom || "").trim(),
+      telephone: String(formData?.get("telephone") || client.telephone || "").trim(),
+      email: String(formData?.get("email") || client.email || "").trim(),
+      adresse: String(formData?.get("adresse") || client.adresse || "").trim(),
+      code_postal: String(formData?.get("code_postal") || client.code_postal || "").trim(),
+      ville: String(formData?.get("ville") || client.ville || "").trim()
+    };
+
+    if (
+      !mandatClient.nom ||
+      !mandatClient.prenom ||
+      !mandatClient.adresse ||
+      !mandatClient.code_postal ||
+      !mandatClient.ville
+    ) {
+      alert(
+        "Merci de compléter votre nom, prénom, adresse, code postal et ville avant de télécharger le mandat."
+      );
       return;
     }
 
     const pdf = new jsPDF();
+
     pdf.setFontSize(16);
     pdf.text("MANDAT D’IMMATRICULATION", 20, 20);
 
     pdf.setFontSize(11);
-    pdf.text(`Nom : ${client.nom}`, 20, 42);
-    pdf.text(`Prénom : ${client.prenom}`, 20, 52);
-    pdf.text(`Adresse : ${client.adresse}`, 20, 62);
-    pdf.text(`${client.code_postal} ${client.ville}`, 20, 72);
-    pdf.text(`Téléphone : ${client.telephone}`, 20, 82);
-    pdf.text(`Email : ${client.email}`, 20, 92);
+    pdf.text(`Nom : ${mandatClient.nom}`, 20, 42);
+    pdf.text(`Prénom : ${mandatClient.prenom}`, 20, 52);
+    pdf.text(`Adresse : ${mandatClient.adresse}`, 20, 62);
+    pdf.text(`${mandatClient.code_postal} ${mandatClient.ville}`, 20, 72);
+    pdf.text(`Téléphone : ${mandatClient.telephone}`, 20, 82);
+    pdf.text(`Email : ${mandatClient.email}`, 20, 92);
     pdf.text(`Date : ${today}`, 20, 110);
 
     pdf.text(
@@ -124,7 +151,12 @@ const totalTTC =
     pdf.text("Signature :", 20, 215);
     pdf.line(20, 240, 120, 240);
 
-    pdf.save(`mandat-carte-grise-${client.nom || "client"}.pdf`);
+    const safeName = mandatClient.nom
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9_-]/g, "-");
+
+    pdf.save(`mandat-carte-grise-${safeName || "client"}.pdf`);
   };
 
   const downloadPDF = async () => {
@@ -179,6 +211,7 @@ const totalTTC =
       </div>
 
       <form
+        ref={formRef}
         action="https://formspree.io/f/xjgjrqqg"
         method="POST"
         encType="multipart/form-data"
@@ -202,21 +235,17 @@ const totalTTC =
   <option value="confortPlus">Version Confort Plus+ — 5 990 € TTC</option>
 </select>
 
-          <input name="nom" placeholder="Nom" style={input} onChange={handleChange} required />
-          <input name="prenom" placeholder="Prénom" style={input} onChange={handleChange} required />
-          <input name="telephone" placeholder="Téléphone" style={input} onChange={handleChange} required />
-          <input name="email" type="email" placeholder="Email" style={input} onChange={handleChange} required />
-          <input name="adresse" placeholder="Adresse" style={input} onChange={handleChange} required />
-          <input name="code_postal" placeholder="Code postal" style={input} onChange={handleChange} required />
+          <input name="nom" value={client.nom} placeholder="Nom" style={input} onChange={handleChange} required />
+          <input name="prenom" value={client.prenom} placeholder="Prénom" style={input} onChange={handleChange} required />
+          <input name="telephone" value={client.telephone} placeholder="Téléphone" style={input} onChange={handleChange} required />
+          <input name="email" value={client.email} type="email" placeholder="Email" style={input} onChange={handleChange} required />
+          <input name="adresse" value={client.adresse} placeholder="Adresse" style={input} onChange={handleChange} required />
+          <input name="code_postal" value={client.code_postal} placeholder="Code postal" style={input} onChange={handleChange} required />
         <select
   name="departement_livraison"
   style={input}
-  onChange={(e) =>
-    setClient({
-      ...client,
-      code_postal: e.target.value
-    })
-  }
+  value={departementLivraison}
+  onChange={(e) => setDepartementLivraison(e.target.value)}
   required
 >
   <option value="">Sélectionner votre département</option>
@@ -353,7 +382,7 @@ const totalTTC =
             
   Retrait sur place (pas de livraison)
 </label>
-          <input name="ville" placeholder="Ville" style={input} onChange={handleChange} required />
+          <input name="ville" value={client.ville} placeholder="Ville" style={input} onChange={handleChange} required />
         </div>
 
         <div style={section}>
@@ -380,10 +409,15 @@ const totalTTC =
 
               <p style={small}>Mandat signé :</p>
               <input type="file" name="mandat_carte_grise_signe" accept=".pdf,image/*" required={wantsCarteGrise} />
+               <p style={small}>Certificat de conformité européen (COC) :</p>
+               <input type="file" name="coc" accept=".pdf,image/*" />
 
-              <p style={notice}>
-                Le COC et le CNIT sont ajoutés par Neodrive au dossier. Vous n’avez pas besoin de les transmettre.
-              </p>
+               <p style={small}>CNIT / document d’homologation :</p>
+               <input type="file" name="cnit" accept=".pdf,image/*" />
+
+               <p style={notice}>
+                 Le COC et le CNIT peuvent être ajoutés ici au dossier. Ils restent facultatifs lors de l’envoi initial.
+               </p>
             </div>
           )}
 
