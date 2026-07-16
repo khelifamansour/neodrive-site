@@ -417,11 +417,29 @@ const totalTTC =
         <div style={section}>
           <h3>Documents obligatoires</h3>
 
-          <p style={small}>Carte d’identité :</p>
-          <input type="file" name="cni" accept=".pdf,image/*" required />
+          <div style={documentBox}>
+            <h4 style={{ marginTop: 0 }}>Pièces d’identité obligatoires</h4>
 
-          <p style={small}>Justificatif de domicile :</p>
-          <input type="file" name="justificatif" accept=".pdf,image/*" required />
+            <p style={small}>
+              Carte nationale d’identité du titulaire — recto et verso :
+            </p>
+            <input
+              type="file"
+              name="cni"
+              accept=".pdf,image/*"
+              required
+            />
+
+            <p style={small}>
+              Justificatif de domicile de moins de 6 mois :
+            </p>
+            <input
+              type="file"
+              name="justificatif_domicile"
+              accept=".pdf,image/*"
+              required
+            />
+          </div>
 
           {wantsCarteGrise && (
             <div style={carteGriseBox}>
@@ -1314,6 +1332,15 @@ const notice: React.CSSProperties = {
   background: "#f4f4f4",
   borderRadius: 6,
   fontSize: 12
+};
+
+const documentBox: React.CSSProperties = {
+  marginTop: 16,
+  marginBottom: 20,
+  padding: 16,
+  border: "1px solid #ddd",
+  borderRadius: 8,
+  background: "#fafafa"
 };
 
 const cgvStyle: React.CSSProperties = {
