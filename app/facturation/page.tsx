@@ -6,22 +6,56 @@ import Script from "next/script";
 const versions = {
   essentiel: {
     label: "VSP Version Essentiel",
-    prix: 3990
+    prix: 3990,
   },
   confort: {
     label: "VSP Version Confort",
-    prix: 4990
+    prix: 4990,
   },
   confortPlus: {
     label: "VSP Version Confort Plus+",
-    prix: 5990
-  }
+    prix: 5990,
+  },
 } as const;
 
 type VersionKey = keyof typeof versions;
 
+declare global {
+  interface Window {
+    html2canvas?: (
+      element: HTMLElement,
+      options?: {
+        scale?: number;
+        useCORS?: boolean;
+        backgroundColor?: string;
+      }
+    ) => Promise<HTMLCanvasElement>;
+
+    jspdf?: {
+      jsPDF: new (
+        orientation?: "p" | "portrait" | "l" | "landscape",
+        unit?: string,
+        format?: string
+      ) => {
+        addImage: (
+          imageData: string,
+          format: string,
+          x: number,
+          y: number,
+          width: number,
+          height: number
+        ) => void;
+        addPage: () => void;
+        save: (filename: string) => void;
+      };
+    };
+  }
+}
+
 export default function Facturation() {
-  const today = new Date().toLocaleDateString("fr-FR");
+  const [today] = useState(() =>
+    new Date().toLocaleDateString("fr-FR")
+  );
 
   const [invoiceNumber] = useState(() => {
     const date = new Date();
@@ -31,10 +65,11 @@ export default function Facturation() {
     const day = String(date.getDate()).padStart(2, "0");
     const uniqueNumber = String(Date.now()).slice(-6);
 
-    return FAC-${year}${month}${day}-${uniqueNumber};
+    return `FAC-${year}${month}${day}-${uniqueNumber}`;
   });
 
-  const [version, setVersion] = useState<VersionKey>("confort");
+  const [version, setVersion] =
+    useState<VersionKey>("confort");
 
   const [client, setClient] = useState({
     nom: "",
@@ -43,16 +78,22 @@ export default function Facturation() {
     email: "",
     adresse: "",
     code_postal: "",
-    ville: ""
+    ville: "",
   });
 
-  const [departementLivraison, setDepartementLivraison] = useState("");
+  const [departementLivraison, setDepartementLivraison] =
+    useState("");
+
   const [quantity, setQuantity] = useState(1);
 
   const [noDelivery, setNoDelivery] = useState(false);
-  const [manualTransport, setManualTransport] = useState("");
 
-  const [wantsCarteGrise, setWantsCarteGrise] = useState(true);
+  const [manualTransport, setManualTransport] =
+    useState("");
+
+  const [wantsCarteGrise, setWantsCarteGrise] =
+    useState(true);
+
   const [discount, setDiscount] = useState(0);
 
   const printRef = useRef<HTMLDivElement>(null);
@@ -60,7 +101,9 @@ export default function Facturation() {
   const prixVehicule = versions[version].prix;
   const fraisCarteGriseUnitaire = 150;
 
-  const getTransportPrice = (dept: string) => {
+  const getTransportPrice = (departement: string) => {
+    const dept = departement.trim();
+
     if (["31", "81", "82", "32", "09"].includes(dept)) {
       return 350;
     }
@@ -80,7 +123,7 @@ export default function Facturation() {
         "24",
         "19",
         "87",
-        "15"
+        "15",
       ].includes(dept)
     ) {
       return 490;
@@ -101,16 +144,24 @@ export default function Facturation() {
         "63",
         "16",
         "17",
-        "86"
+        "86",
       ].includes(dept)
     ) {
       return 690;
     }
 
     if (
-      ["44", "35", "56", "29", "22", "53", "49", "67", "68"].includes(
-        dept
-      )
+      [
+        "44",
+        "35",
+        "56",
+        "29",
+        "22",
+        "53",
+        "49",
+        "67",
+        "68",
+      ].includes(dept)
     ) {
       return 790;
     }
@@ -118,15 +169,31 @@ export default function Facturation() {
     return 790;
   };
 
-  const tarifTransportAutomatique = getTransportPrice(
-    departementLivraison ||
-      client.code_postal.replace(/\s/g, "").substring(0, 2)
+  const codePostalNormalise = client.code_postal.replace(
+    /\s/g,
+    ""
   );
+
+  const departementCalcule =
+    departementLivraison ||
+    codePostalNormalise.substring(0, 2);
+
+  const tarifTransportAutomatique = getTransportPrice(
+    departementCalcule
+  );
+
+  const transportPersonnalise =
+    manualTransport.trim() !== ""
+      ? Math.max(
+          0,
+          Number(manualTransport.replace(",", ".")) || 0
+        )
+      : null;
 
   const transport = noDelivery
     ? 0
-    : manualTransport !== ""
-      ? Math.max(0, Number(manualTransport) || 0)
+    : transportPersonnalise !== null
+      ? transportPersonnalise
       : tarifTransportAutomatique;
 
   const montantVehicules = prixVehicule * quantity;
@@ -140,24 +207,28 @@ export default function Facturation() {
   const sousTotalTTC =
     montantVehicules + transport + montantCarteGrise;
 
-  const totalTTC = Math.max(0, sousTotalTTC - remiseAppliquee);
+  const totalTTC = Math.max(
+    0,
+    sousTotalTTC - remiseAppliquee
+  );
+
   const totalHT = totalTTC / 1.2;
   const montantTVA = totalTTC - totalHT;
 
   const formatPrice = (amount: number) =>
     new Intl.NumberFormat("fr-FR", {
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     }).format(amount);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const { name, value } = e.target;
+    const { name, value } = event.target;
 
     setClient((previousClient) => ({
       ...previousClient,
-      [name]: value
+      [name]: value,
     }));
 
     if (name === "code_postal") {
@@ -172,15 +243,18 @@ export default function Facturation() {
   };
 
   const downloadPDF = async () => {
-    if (!printRef.current) return;
+    if (!printRef.current) {
+      return;
+    }
 
-    const html2canvas = (window as any).html2canvas;
-    const jsPDF = (window as any).jspdf?.jsPDF;
+    const html2canvas = window.html2canvas;
+    const JsPDF = window.jspdf?.jsPDF;
 
-    if (!html2canvas || !jsPDF) {
+    if (!html2canvas || !JsPDF) {
       alert(
         "Le générateur PDF est encore en cours de chargement. Merci de réessayer dans quelques secondes."
       );
+
       return;
     }
 
@@ -188,12 +262,12 @@ export default function Facturation() {
       const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,
-        backgroundColor: "#ffffff"
+        backgroundColor: "#ffffff",
       });
 
       const imgData = canvas.toDataURL("image/png");
 
-      const pdfDocument = new jsPDF("p", "mm", "a4");
+      const pdfDocument = new JsPDF("p", "mm", "a4");
 
       const pageWidth = 210;
       const pageHeight = 297;
@@ -233,9 +307,12 @@ export default function Facturation() {
         heightLeft -= pageHeight;
       }
 
-      pdfDocument.save(facture-${invoiceNumber}.pdf);
+      pdfDocument.save(`facture-${invoiceNumber}.pdf`);
     } catch (error) {
-      console.error("Erreur pendant la création du PDF :", error);
+      console.error(
+        "Erreur pendant la création du PDF :",
+        error
+      );
 
       alert(
         "Une erreur est survenue pendant la création de la facture PDF."
@@ -256,15 +333,15 @@ export default function Facturation() {
       />
 
       <h2 style={{ textAlign: "center" }}>
-        Facturation Neodrive
+        Facturation NeoDrive
       </h2>
 
       <div style={intro}>
         <strong>Création de la facture finale</strong>
 
         <p style={{ marginBottom: 0 }}>
-          Sélectionnez la version du véhicule, le transport, la
-          carte grise et les éventuelles remises.
+          Sélectionnez la version du véhicule, le transport,
+          la carte grise et les éventuelles remises.
         </p>
       </div>
 
@@ -276,8 +353,8 @@ export default function Facturation() {
         <select
           name="version"
           value={version}
-          onChange={(e) =>
-            setVersion(e.target.value as VersionKey)
+          onChange={(event) =>
+            setVersion(event.target.value as VersionKey)
           }
           style={input}
         >
@@ -301,9 +378,12 @@ export default function Facturation() {
           min="1"
           step="1"
           value={quantity}
-          onChange={(e) =>
+          onChange={(event) =>
             setQuantity(
-              Math.max(1, Number(e.target.value) || 1)
+              Math.max(
+                1,
+                Math.floor(Number(event.target.value) || 1)
+              )
             )
           }
           style={input}
@@ -340,6 +420,7 @@ export default function Facturation() {
         <input
           name="telephone"
           value={client.telephone}
+          type="tel"
           placeholder="Téléphone"
           style={input}
           onChange={handleChange}
@@ -374,6 +455,8 @@ export default function Facturation() {
         <input
           name="code_postal"
           value={client.code_postal}
+          inputMode="numeric"
+          maxLength={5}
           placeholder="Code postal"
           style={input}
           onChange={handleChange}
@@ -401,8 +484,8 @@ export default function Facturation() {
           name="departement_livraison"
           style={input}
           value={departementLivraison}
-          onChange={(e) =>
-            setDepartementLivraison(e.target.value)
+          onChange={(event) =>
+            setDepartementLivraison(event.target.value)
           }
           disabled={noDelivery}
         >
@@ -424,7 +507,9 @@ export default function Facturation() {
             <option value="11">Aude (11)</option>
             <option value="12">Aveyron (12)</option>
             <option value="46">Lot (46)</option>
-            <option value="47">Lot-et-Garonne (47)</option>
+            <option value="47">
+              Lot-et-Garonne (47)
+            </option>
             <option value="33">Gironde (33)</option>
             <option value="65">
               Hautes-Pyrénées (65)
@@ -462,7 +547,9 @@ export default function Facturation() {
               Bouches-du-Rhône (13)
             </option>
             <option value="69">Rhône (69)</option>
-            <option value="63">Puy-de-Dôme (63)</option>
+            <option value="63">
+              Puy-de-Dôme (63)
+            </option>
             <option value="16">Charente (16)</option>
             <option value="17">
               Charente-Maritime (17)
@@ -498,29 +585,31 @@ export default function Facturation() {
           min="0"
           step="0.01"
           value={manualTransport}
-          onChange={(e) =>
-            setManualTransport(e.target.value)
+          onChange={(event) =>
+            setManualTransport(event.target.value)
           }
           style={input}
           disabled={noDelivery}
-          placeholder={Laisser vide pour appliquer le tarif automatique : ${tarifTransportAutomatique} €}
+          placeholder={`Laisser vide pour appliquer le tarif automatique : ${tarifTransportAutomatique} €`}
         />
 
         <p style={helpText}>
-          Lorsqu’un montant est saisi ici, il remplace le tarif
-          automatique calculé selon le département.
+          Lorsqu’un montant est saisi ici, il remplace le
+          tarif automatique calculé selon le département.
         </p>
 
         <label style={checkboxLabel}>
           <input
             type="checkbox"
             checked={noDelivery}
-            onChange={(e) =>
-              setNoDelivery(e.target.checked)
+            onChange={(event) =>
+              setNoDelivery(event.target.checked)
             }
           />
 
-          Retrait sur place — aucun frais de livraison
+          <span>
+            Retrait sur place — aucun frais de livraison
+          </span>
         </label>
       </div>
 
@@ -540,7 +629,9 @@ export default function Facturation() {
             onChange={() => setWantsCarteGrise(true)}
           />
 
-          Avec carte grise — 150 € par véhicule
+          <span>
+            Avec carte grise — 150 € par véhicule
+          </span>
         </label>
 
         <label style={radioLabel}>
@@ -551,7 +642,10 @@ export default function Facturation() {
             onChange={() => setWantsCarteGrise(false)}
           />
 
-          Sans carte grise — démarches réalisées par le client
+          <span>
+            Sans carte grise — démarches réalisées par le
+            client
+          </span>
         </label>
       </div>
 
@@ -563,9 +657,13 @@ export default function Facturation() {
           min="0"
           step="0.01"
           value={discount || ""}
-          onChange={(e) =>
+          onChange={(event) =>
             setDiscount(
-              Math.max(0, Number(e.target.value) || 0)
+              Math.max(
+                0,
+                Number(event.target.value.replace(",", ".")) ||
+                  0
+              )
             )
           }
           style={input}
@@ -577,19 +675,25 @@ export default function Facturation() {
         <div style={invoiceHeader}>
           <div>
             <h2 style={{ marginBottom: 8 }}>NEODRIVE</h2>
+
             <p style={invoiceText}>MK HOLDING SAS</p>
+
             <p style={invoiceText}>
               SIREN : 908 645 393
             </p>
+
             <p style={invoiceText}>
               31 rue Jean Nougaro
             </p>
+
             <p style={invoiceText}>31600 Muret</p>
           </div>
 
           <div style={{ textAlign: "right" }}>
             <h1 style={{ marginBottom: 8 }}>FACTURE</h1>
+
             <p style={invoiceText}>Date : {today}</p>
+
             <p style={invoiceText}>
               N° : {invoiceNumber}
             </p>
@@ -629,9 +733,14 @@ export default function Facturation() {
         <table style={table}>
           <thead>
             <tr style={tableHeader}>
-              <th style={descriptionCell}>Désignation</th>
+              <th style={descriptionCell}>
+                Désignation
+              </th>
+
               <th style={quantityCell}>Quantité</th>
+
               <th style={priceCell}>Prix unitaire</th>
+
               <th style={priceCell}>Total TTC</th>
             </tr>
           </thead>
@@ -657,12 +766,12 @@ export default function Facturation() {
               <tr style={tableRow}>
                 <td style={descriptionCell}>
                   Livraison du véhicule
+
                   <div style={lineDescription}>
-                    {manualTransport !== ""
+                    {transportPersonnalise !== null
                       ? "Tarif de transport personnalisé"
                       : `Tarif calculé pour le département ${
-                          departementLivraison ||
-                          client.code_postal.substring(0, 2) ||
+                          departementCalcule ||
                           "non renseigné"
                         }`}
                   </div>
@@ -689,6 +798,7 @@ export default function Facturation() {
                 <td style={quantityCell}>1</td>
 
                 <td style={priceCell}>0,00 €</td>
+
                 <td style={priceCell}>0,00 €</td>
               </tr>
             )}
@@ -719,7 +829,9 @@ export default function Facturation() {
                 </td>
 
                 <td style={quantityCell}>—</td>
+
                 <td style={priceCell}>0,00 €</td>
+
                 <td style={priceCell}>0,00 €</td>
               </tr>
             )}
@@ -749,6 +861,7 @@ export default function Facturation() {
             <tbody>
               <tr>
                 <td style={totalsLabel}>Total HT</td>
+
                 <td style={totalsAmount}>
                   {formatPrice(totalHT)} €
                 </td>
@@ -756,6 +869,7 @@ export default function Facturation() {
 
               <tr>
                 <td style={totalsLabel}>TVA 20 %</td>
+
                 <td style={totalsAmount}>
                   {formatPrice(montantTVA)} €
                 </td>
@@ -763,6 +877,7 @@ export default function Facturation() {
 
               <tr style={totalRow}>
                 <td style={totalsLabel}>Total TTC</td>
+
                 <td style={totalsAmount}>
                   {formatPrice(totalTTC)} €
                 </td>
@@ -798,8 +913,8 @@ export default function Facturation() {
           </p>
 
           <p style={invoiceText}>
-            <strong>Référence du virement :</strong> nom et
-            prénom du client
+            <strong>Référence du virement :</strong>{" "}
+            nom et prénom du client
           </p>
         </div>
 
@@ -810,14 +925,14 @@ export default function Facturation() {
           </p>
 
           <p style={invoiceText}>
-            Merci d’indiquer le nom et le prénom du client dans
-            le motif du virement.
+            Merci d’indiquer le nom et le prénom du client
+            dans le motif du virement.
           </p>
 
           <p style={invoiceText}>
-            La livraison ou la remise du véhicule est effectuée
-            après réception du règlement, selon les modalités
-            convenues entre les parties.
+            La livraison ou la remise du véhicule est
+            effectuée après réception du règlement, selon les
+            modalités convenues entre les parties.
           </p>
 
           <p style={{ marginTop: 25 }}>
@@ -843,11 +958,11 @@ const container: React.CSSProperties = {
   maxWidth: 900,
   margin: "0 auto",
   padding: 20,
-  fontFamily: "Arial, sans-serif"
+  fontFamily: "Arial, sans-serif",
 };
 
 const section: React.CSSProperties = {
-  marginBottom: 25
+  marginBottom: 25,
 };
 
 const intro: React.CSSProperties = {
@@ -855,7 +970,7 @@ const intro: React.CSSProperties = {
   border: "1px solid #e5e5e5",
   borderRadius: 8,
   padding: 16,
-  marginBottom: 25
+  marginBottom: 25,
 };
 
 const input: React.CSSProperties = {
@@ -865,27 +980,27 @@ const input: React.CSSProperties = {
   marginTop: 6,
   border: "1px solid #ccc",
   borderRadius: 5,
-  background: "#fff"
+  background: "#fff",
 };
 
 const label: React.CSSProperties = {
   marginTop: 14,
   marginBottom: 2,
   fontWeight: "bold",
-  fontSize: 14
+  fontSize: 14,
 };
 
 const helpText: React.CSSProperties = {
   fontSize: 12,
   color: "#555",
-  lineHeight: 1.5
+  lineHeight: 1.5,
 };
 
 const checkboxLabel: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 8,
-  marginTop: 15
+  marginTop: 15,
 };
 
 const choiceBox: React.CSSProperties = {
@@ -894,109 +1009,110 @@ const choiceBox: React.CSSProperties = {
   padding: 16,
   border: "1px solid #ddd",
   borderRadius: 8,
-  background: "#fafafa"
+  background: "#fafafa",
 };
 
 const radioLabel: React.CSSProperties = {
   display: "flex",
   gap: 8,
   alignItems: "center",
-  marginTop: 12
+  marginTop: 12,
 };
 
 const pdf: React.CSSProperties = {
   background: "#fff",
   padding: 30,
   border: "1px solid #ddd",
-  marginTop: 30
+  marginTop: 30,
+  color: "#000",
 };
 
 const invoiceHeader: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "flex-start"
+  alignItems: "flex-start",
 };
 
 const invoiceText: React.CSSProperties = {
   marginTop: 5,
   marginBottom: 5,
   fontSize: 13,
-  lineHeight: 1.4
+  lineHeight: 1.4,
 };
 
 const customerBox: React.CSSProperties = {
   marginBottom: 25,
   padding: 15,
   background: "#f8f8f8",
-  borderRadius: 6
+  borderRadius: 6,
 };
 
 const table: React.CSSProperties = {
   width: "100%",
   borderCollapse: "collapse",
-  fontSize: 13
+  fontSize: 13,
 };
 
 const tableHeader: React.CSSProperties = {
   background: "#f1f1f1",
-  borderBottom: "2px solid #222"
+  borderBottom: "2px solid #222",
 };
 
 const tableRow: React.CSSProperties = {
-  borderBottom: "1px solid #ddd"
+  borderBottom: "1px solid #ddd",
 };
 
 const descriptionCell: React.CSSProperties = {
   padding: "12px 8px",
   textAlign: "left",
-  verticalAlign: "top"
+  verticalAlign: "top",
 };
 
 const quantityCell: React.CSSProperties = {
   padding: "12px 8px",
   textAlign: "center",
   verticalAlign: "top",
-  width: 80
+  width: 80,
 };
 
 const priceCell: React.CSSProperties = {
   padding: "12px 8px",
   textAlign: "right",
   verticalAlign: "top",
-  width: 130
+  width: 130,
 };
 
 const lineDescription: React.CSSProperties = {
   marginTop: 4,
   fontSize: 11,
-  color: "#555"
+  color: "#555",
 };
 
 const totalsContainer: React.CSSProperties = {
   display: "flex",
   justifyContent: "flex-end",
-  marginTop: 25
+  marginTop: 25,
 };
 
 const totalsTable: React.CSSProperties = {
   width: 320,
-  borderCollapse: "collapse"
+  borderCollapse: "collapse",
 };
 
 const totalsLabel: React.CSSProperties = {
   padding: "8px 5px",
-  fontWeight: "bold"
+  fontWeight: "bold",
 };
 
 const totalsAmount: React.CSSProperties = {
   padding: "8px 5px",
-  textAlign: "right"
+  textAlign: "right",
 };
 
 const totalRow: React.CSSProperties = {
   fontWeight: "bold",
   fontSize: 16,
-  borderTop: "2px solid #000"
+  borderTop: "2px solid #000",
 };
 
 const bankBox: React.CSSProperties = {
@@ -1004,7 +1120,7 @@ const bankBox: React.CSSProperties = {
   padding: 18,
   border: "1px solid #ddd",
   borderRadius: 6,
-  background: "#fafafa"
+  background: "#fafafa",
 };
 
 const btn: React.CSSProperties = {
@@ -1016,5 +1132,5 @@ const btn: React.CSSProperties = {
   border: "none",
   borderRadius: 6,
   cursor: "pointer",
-  fontWeight: "bold"
+  fontWeight: "bold",
 };
