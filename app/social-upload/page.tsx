@@ -36,7 +36,7 @@ export default function Page() {
   const [progress, setProgress] = useState<S[]>([]);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  const [publishing, setPublishing] = useState<string | null>(null);
   const total = useMemo(() => files.reduce((s, f) => s + f.size, 0), [files]);
 
   async function uploadOne(f: File, info: UploadInfo, n: number) {
@@ -63,18 +63,12 @@ export default function Page() {
     setLoading(true);
     setStatus("Optimisation des photos…");
     setProgress(files.map((f) => ({ name: f.name, size: f.size, state: "waiting" })));
-
     try {
       const fs = await Promise.all(files.map(optimiseImage));
       setProgress(fs.map((f) => ({ name: f.name, size: f.size, state: "waiting" })));
-      const r = await fetch("/api/social-media/upload-init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passcode, files: fs.map((f) => ({ name: f.name, type: f.type, size: f.size })) }),
-      });
+      const r = await fetch("/api/social-media/upload-init", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode, files: fs.map((f) => ({ name: f.name, type: f.type, size: f.size })) }) });
       const j = await r.json();
       if (!r.ok || !Array.isArray(j.uploads)) throw new Error(j.error || "Préparation impossible");
-
       let cursor = 0;
       const done: UploadInfo[] = [];
       async function worker() {
@@ -87,36 +81,29 @@ export default function Page() {
         }
       }
       await Promise.all([worker(), worker(), worker()]);
-
       if (done.length) {
-        const rr = await fetch("/api/social-media/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ passcode, batchContext: ctx, items: done }),
-        });
+        const rr = await fetch("/api/social-media/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode, batchContext: ctx, items: done }) });
         const jj = await rr.json();
         if (!rr.ok || !jj.ok) throw new Error(jj.error || "Enregistrement incomplet");
       }
-
       const failed = fs.length - done.length;
       setStatus(`✅ ${done.length} média(s) ajouté(s)${failed ? ` · ❌ ${failed} fichier(s) à réessayer séparément` : ""}.`);
       if (!failed) { setFiles([]); setCtx(""); }
-    } catch (e) {
-      setStatus(`❌ ${e instanceof Error ? e.message : "Erreur"}`);
-    } finally { setLoading(false); }
+    } catch (e) { setStatus(`❌ ${e instanceof Error ? e.message : "Erreur"}`); }
+    finally { setLoading(false); }
   }
 
-  async function publishNow() {
+  async function publishNow(platform: "instagram" | "facebook") {
     if (!passcode) { setStatus("❌ Entre d’abord le code d’accès."); return; }
-    setPublishing(true);
-    setStatus("Publication Instagram en cours…");
+    setPublishing(platform);
+    setStatus(`Publication ${platform === "instagram" ? "Instagram" : "Facebook"} en cours…`);
     try {
-      const r = await fetch("/api/instagram/publish-next", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode }) });
+      const r = await fetch(`/api/${platform}/publish-next`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode }) });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.error || "Publication impossible");
-      setStatus(j.published ? `✅ Publié sur Instagram — ${j.mediaId}` : `ℹ️ ${j.reason || "Aucun post à publier"}`);
+      setStatus(j.published ? `✅ Publié sur ${platform === "instagram" ? "Instagram" : "Facebook"} — ${j.mediaId || j.postId || "OK"}` : `ℹ️ ${j.reason || "Aucun post à publier"}`);
     } catch (e) { setStatus(`❌ ${e instanceof Error ? e.message : "Erreur"}`); }
-    finally { setPublishing(false); }
+    finally { setPublishing(null); }
   }
 
   return <main style={{ maxWidth: 760, margin: "0 auto", padding: "28px 18px 60px", fontFamily: "Arial,sans-serif" }}>
@@ -129,13 +116,14 @@ export default function Page() {
       <label>Note globale facultative<textarea value={ctx} onChange={(e) => setCtx(e.target.value)} rows={3} placeholder="Ex. livraisons, essais, intérieur et voitures en préparation cette semaine" style={input} /></label>
       <button disabled={loading || !files.length} style={button}>{loading ? "Envoi en cours…" : `Envoyer ${files.length || "les"} média(s)`}</button>
     </form>
-
     {progress.length > 0 && <div style={{ marginTop: 18, display: "grid", gap: 7 }}>{progress.map((p, i) => <div key={i} style={{ fontSize: 14 }}>{p.state === "done" ? "✅" : p.state === "uploading" ? "⏳" : p.state === "error" ? "❌" : "•"} {p.name} <span style={{ color: "#777" }}>({mb(p.size)})</span>{p.error && <span style={{ color: "#b00020" }}> — {p.error}</span>}</div>)}</div>}
-
     <hr style={{ margin: "32px 0" }} />
     <h2>Publication supplémentaire</h2>
-    <p>L’automatisation continue à publier seule. Utilise ce bouton seulement quand tu veux ajouter une publication immédiatement.</p>
-    <button onClick={publishNow} disabled={publishing} style={button}>{publishing ? "Publication en cours…" : "Publier maintenant sur Instagram"}</button>
+    <p>Instagram et Facebook continuent à publier automatiquement. Utilise ces boutons seulement pour ajouter une publication immédiate.</p>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+      <button onClick={() => publishNow("instagram")} disabled={!!publishing} style={button}>{publishing === "instagram" ? "Publication…" : "Publier maintenant sur Instagram"}</button>
+      <button onClick={() => publishNow("facebook")} disabled={!!publishing} style={button}>{publishing === "facebook" ? "Publication…" : "Publier maintenant sur Facebook"}</button>
+    </div>
     {status && <p style={{ fontWeight: 700, marginTop: 18 }}>{status}</p>}
   </main>;
 }
