@@ -3,14 +3,14 @@
   "crons": [
     { "path": "/api/instagram/auto-publish", "schedule": "30 7 * * *" },
     { "path": "/api/instagram/auto-publish", "schedule": "30 8 * * *" },
-    { "path": "/api/instagram/auto-publish", "schedule": "30 11 * * *" },
-    { "path": "/api/instagram/auto-publish", "schedule": "30 12 * * *" },
+    { "path": "/api/instagram/auto-publish?force=1", "schedule": "30 11 * * *" },
+    { "path": "/api/instagram/auto-publish?force=1", "schedule": "30 12 * * *" },
     { "path": "/api/instagram/auto-publish", "schedule": "30 16 * * *" },
     { "path": "/api/instagram/auto-publish", "schedule": "30 17 * * *" },
     { "path": "/api/facebook/auto-publish", "schedule": "35 7 * * *" },
     { "path": "/api/facebook/auto-publish", "schedule": "35 8 * * *" },
-    { "path": "/api/facebook/auto-publish", "schedule": "35 11 * * *" },
-    { "path": "/api/facebook/auto-publish", "schedule": "35 12 * * *" },
+    { "path": "/api/facebook/auto-publish?force=1", "schedule": "35 11 * * *" },
+    { "path": "/api/facebook/auto-publish?force=1", "schedule": "35 12 * * *" },
     { "path": "/api/facebook/auto-publish", "schedule": "35 16 * * *" },
     { "path": "/api/facebook/auto-publish", "schedule": "35 17 * * *" },
     { "path": "/api/seo/auto-publish", "schedule": "15 5 * * *" }
