@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
+    { "path": "/api/social-media/learn", "schedule": "20 3 * * *" },
     { "path": "/api/social-media/analyze", "schedule": "40 3 * * *" },
     { "path": "/api/video/create", "schedule": "55 3 * * *" },
     { "path": "/api/social-media/plan", "schedule": "10 4 * * *" },
