@@ -1,125 +1,16 @@
-export default function FAQ() {
-  return (
-    <main style={{
-      fontFamily: "system-ui, Arial",
-      background: "#fafafa",
-      minHeight: "100vh",
-      padding: "80px 20px"
-    }}>
-
-      <h1 style={{
-        textAlign: "center",
-        fontSize: "40px",
-        marginBottom: "40px"
-      }}>
-        Questions fréquentes
-      </h1>
-
-      <div style={{
-        maxWidth: "900px",
-        margin: "auto",
-        display: "grid",
-        gap: "25px"
-      }}>
-
-        <Faq
-          q="Pourquoi le prix est-il aussi bas ?"
-          a="Le prix est bas car nous vendons directement depuis l’usine, sans intermédiaires ni réseau de concessionnaires coûteux. Nous avons également fait le choix d’un design simple, fiable et sans options inutiles. Cela permet de réduire fortement les coûts tout en conservant un véhicule robuste et adapté à un usage quotidien."
-        />
-
-        <Faq
-          q="Est-ce que le véhicule est fiable ?"
-          a="Oui. Justement, sa simplicité est un avantage. Moins de complexité signifie moins de pannes. Le véhicule est conçu pour être robuste et utilisé quotidiennement sans surprises. Avec une utilisation normale, le taux de panne est faible."
-        />
-
-        <Faq
-          q="Les pièces détachées sont-elles disponibles ?"
-          a="Oui, toutes les pièces sont disponibles en France. Le service après-vente est une priorité pour nous. En cas de besoin, nous pouvons expédier rapidement les pièces et accompagner votre garage local dans la réparation."
-        />
-
-        <Faq
-          q="Que se passe-t-il en cas de panne ?"
-          a="Nous vous mettons en relation avec un garage proche de chez vous. Nous fournissons les pièces nécessaires et nous accompagnons le professionnel si besoin. Vous n’êtes jamais seul, nous restons disponibles pour vous assister."
-        />
-
-        <Faq
-          q="Quel est le prix de la livraison ?"
-          a="Le prix dépend de votre localisation. Nous livrons partout en France et nous pouvons vous donner un tarif précis rapidement. Dans certains cas, vous pouvez aussi venir récupérer le véhicule ou envoyer votre transporteur."
-        />
-
-        <Faq
-          q="Où êtes-vous basés ?"
-          a="Nous sommes basés à Toulouse. Vous pouvez venir voir le véhicule sur place, ou demander une présentation en visio WhatsApp. Nous livrons ensuite partout en France."
-        />
-
-        <Faq
-          q="Quel est le délai de livraison ?"
-          a="Le délai dépend du stock. Si le véhicule est disponible immédiatement, la livraison peut être rapide. Sinon, nous vous donnons un délai précis selon les arrivages."
-        />
-
-        <Faq
-          q="Peut-on payer en plusieurs fois ?"
-          a="Oui, mais nous ne faisons pas de financement interne. La majorité de nos clients passent par leur banque ou par Groupama. Il suffit de contacter votre agence locale pour monter un dossier de crédit."
-        />
-
-        <Faq
-          q="Pourquoi ne pas choisir le leasing ?"
-          a="Le leasing paraît attractif, mais sur 3 ans vous dépensez souvent 6 000 à 8 000 € sans rien posséder à la fin. Avec notre solution, vous êtes propriétaire du véhicule, sans frais cachés, et vous pouvez le revendre."
-        />
-
-        <Faq
-          q="Faut-il un permis ?"
-          a="Non, aucun permis classique n’est nécessaire. Si vous êtes né après 1988, il faut simplement le permis AM, accessible facilement en auto-école."
-        />
-
-        <Faq
-          q="Peut-on rouler sur autoroute ?"
-          a="Non. Comme tous les véhicules sans permis, la vitesse est limitée à 45 km/h. Il est donc destiné aux trajets urbains et périurbains."
-        />
-
-        <Faq
-          q="Le véhicule a-t-il la climatisation ?"
-          a="Non. Nous avons volontairement choisi de ne pas intégrer de climatisation. Elle consomme beaucoup d’énergie, réduit l’autonomie et augmente les risques de panne. Le véhicule dispose d’une ventilation et d’un toit ouvrant, ce qui est souvent plus efficace et plus fiable."
-        />
-
-        <Faq
-          q="Où est fabriqué le véhicule ?"
-          a="Le véhicule est conçu selon des standards compatibles avec les normes européennes (freinage, sécurité, vitrage). L’assemblage est optimisé pour réduire les coûts, mais chaque véhicule est vérifié pour garantir sa qualité."
-        />
-
-        <Faq
-          q="Puis-je voir le véhicule avant achat ?"
-          a="Oui, à Toulouse. Nous pouvons également vous faire une présentation complète en visio WhatsApp pour vous montrer tous les détails du véhicule."
-        />
-
-        <Faq
-          q="Comment être sûr de recevoir le véhicule ?"
-          a="Vous pouvez venir sur place, envoyer un transporteur ou opter pour une livraison avec paiement à réception. Tout est transparent et sécurisé."
-        />
-
-        <Faq
-          q="Que se passe-t-il après la garantie ?"
-          a="Même après la garantie, nous restons disponibles pour vous aider. Vous pouvez commander des pièces et bénéficier de notre support technique."
-        />
-
-      </div>
-
-    </main>
-  );
-}
-
-function Faq({ q, a }: { q: string; a: string }) {
-  return (
-    <div style={{
-      background: "#ffffff",
-      padding: "25px",
-      borderRadius: "14px",
-      boxShadow: "0 10px 25px rgba(0,0,0,0.05)"
-    }}>
-      <strong style={{ fontSize: "16px" }}>{q}</strong>
-      <p style={{ marginTop: "12px", color: "#555", lineHeight: "1.6" }}>
-        {a}
-      </p>
-    </div>
-  );
-}
+import GoogleReviews from "../_components/GoogleReviews";
+const items=[
+["Pourquoi le prix commence-t-il à 3 990 € ?","NeoDrive privilégie une distribution directe et une structure légère. Le prix dépend de la version, de l’équipement et de la disponibilité du véhicule."],
+["Comment se passe le SAV ?","Vous pouvez maintenant ouvrir un ticket sur NeoDrive Care avec votre VIN, un code erreur éventuel, des photos ou vidéos. Le dossier est centralisé et suivi jusqu’à résolution."],
+["Les pièces détachées sont-elles disponibles ?","Nous maintenons un catalogue de pièces et un stock dédié au SAV. Avant toute commande, nous recommandons de vérifier la compatibilité à partir du VIN."],
+["Comment se recharge la voiture ?","La NeoDrive se recharge sur une prise 220 V. Le temps réel dépend notamment de la batterie et de son niveau de charge."],
+["Quelle est l’autonomie ?","L’autonomie indicative annoncée pour le véhicule est de 50 à 70 km. Elle varie selon le relief, la température, la charge transportée, la vitesse et le style de conduite."],
+["Puis-je conduire une voiture sans permis dans ma situation ?","L’éligibilité dépend de l’âge, de la catégorie du véhicule et de votre situation administrative. En cas de suspension, retrait ou décision judiciaire, vérifiez précisément les restrictions applicables à votre dossier avant de conduire."],
+["Peut-on rouler sur autoroute ?","Non. Une voiture sans permis limitée à 45 km/h n’est pas destinée aux autoroutes et voies interdites à cette catégorie de véhicules."],
+["Comment se passe la carte grise ?","Après la vente, le COC permet d’identifier précisément le VIN. Le dossier NeoDrive centralise ensuite les documents nécessaires et le suivi de l’immatriculation."],
+["Livrez-vous partout en France ?","Oui, nous organisons des livraisons en France selon la destination, le planning et les possibilités de groupage. Le tarif est confirmé avant la commande."],
+["Puis-je voir le véhicule avant achat ?","Oui. Vous pouvez demander une présentation vidéo, consulter les photos réelles et organiser une visite selon les disponibilités."],
+["Comment fonctionne le financement ?","Une simulation peut être étudiée selon le montant, l’apport et la durée. Toute offre reste soumise à l’étude et à l’acceptation de l’organisme financier."],
+["Que se passe-t-il après la garantie ?","Le portail SAV, la documentation et les pièces détachées restent accessibles. Les conditions de prise en charge diffèrent simplement de celles applicables pendant la garantie."],
+];
+export default function FAQ(){return <main className="faq"><section className="hero"><span>QUESTIONS FRÉQUENTES</span><h1>Des réponses claires avant et après l’achat.</h1><p>Prix, recharge, livraison, carte grise, SAV ou pièces : nous avons regroupé les questions qui reviennent le plus souvent.</p><div className="actions"><a href="/produit">Voir la NeoDrive</a><a className="alt" href="/sav">Ouvrir un ticket SAV</a></div></section><section className="list">{items.map(([q,a],i)=><details key={q} open={i<3}><summary>{q}<span>+</span></summary><p>{a}</p></details>)}</section><section className="help"><div><span>UNE QUESTION PLUS PRÉCISE ?</span><h2>Parlez-nous directement de votre situation.</h2><p>Pour une question commerciale, contactez-nous. Pour un problème technique, utilisez NeoDrive Care afin que le véhicule et son historique soient correctement identifiés.</p></div><div className="buttons"><a href="/contact">Contacter NeoDrive</a><a href="/sav">Accéder au SAV</a><a href="/pieces">Voir les pièces</a></div></section><GoogleReviews/><style jsx>{`.faq{background:#fff;color:#111}.hero{max-width:980px;margin:auto;padding:80px 24px 55px;text-align:center}.hero>span,.help span{font-size:12px;font-weight:950;letter-spacing:1.8px;color:#ff5a1f}.hero h1{font-size:clamp(44px,6vw,70px);line-height:.98;letter-spacing:-3px;margin:15px 0}.hero p{font-size:19px;line-height:1.65;color:#616872;max-width:760px;margin:auto}.actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:28px}.actions a{padding:15px 20px;border-radius:14px;background:#111;color:#fff;text-decoration:none;font-weight:900}.actions .alt{background:#fff;color:#111;border:1px solid #ddd}.list{max-width:950px;margin:auto;padding:15px 24px 80px;display:grid;gap:11px}.list details{border:1px solid #e3e5e8;border-radius:18px;padding:0 20px;background:#fff}.list summary{list-style:none;cursor:pointer;padding:21px 0;font-size:18px;font-weight:900;display:flex;justify-content:space-between;gap:20px}.list summary::-webkit-details-marker{display:none}.list summary span{font-size:24px}.list p{color:#626971;line-height:1.7;margin:0;padding:0 0 22px}.help{background:#111;color:#fff;padding:80px max(24px,calc((100vw - 1132px)/2));display:grid;grid-template-columns:1.1fr .9fr;gap:50px;align-items:center}.help h2{font-size:clamp(34px,5vw,54px);letter-spacing:-2px;line-height:1.05;margin:10px 0}.help p{color:#ccc;line-height:1.65;font-size:17px}.buttons{display:grid;gap:10px}.buttons a{padding:16px 18px;border-radius:14px;background:#1e1e1e;color:#fff;text-decoration:none;font-weight:900}@media(max-width:800px){.help{grid-template-columns:1fr}.hero{padding-top:50px}.hero h1{letter-spacing:-2px}}`}</style></main>}
