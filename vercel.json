@@ -4,6 +4,7 @@
     { "path": "/api/instagram/auto-publish", "schedule": "30 7 * * *" },
     { "path": "/api/instagram/auto-publish", "schedule": "30 8 * * *" },
     { "path": "/api/instagram/auto-publish", "schedule": "30 16 * * *" },
-    { "path": "/api/instagram/auto-publish", "schedule": "30 17 * * *" }
+    { "path": "/api/instagram/auto-publish", "schedule": "30 17 * * *" },
+    { "path": "/api/seo/auto-publish", "schedule": "15 5 * * *" }
   ]
 }
