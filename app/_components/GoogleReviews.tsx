@@ -1,3 +1,4 @@
+"use client";
 export default function GoogleReviews(){
  const rating=process.env.NEXT_PUBLIC_GOOGLE_RATING||"4,8";
  const count=process.env.NEXT_PUBLIC_GOOGLE_REVIEW_COUNT||"9";
