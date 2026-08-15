@@ -3,135 +3,35 @@ import { MetadataRoute } from "next";
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://www.easydrive-auto.fr";
 
-  return [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/produit`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.95,
-    },
-    {
-      url: `${baseUrl}/guide-voiture-sans-permis`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.95,
-    },
-    {
-      url: `${baseUrl}/QuiSommesNous`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/a-propos`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.95,
-    },
-    {
-      url: `${baseUrl}/financement`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.95,
-    },
-    {
-      url: `${baseUrl}/voiture-sans-permis-electrique`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.95,
-    },
-    {
-      url: `${baseUrl}/citroen-ami-ou-neodrive`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.95,
-    },
+  const routes = [
+    ["", "daily", 1],
+    ["/produit", "weekly", 0.95],
+    ["/guide-voiture-sans-permis", "weekly", 0.95],
+    ["/QuiSommesNous", "monthly", 0.85],
+    ["/a-propos", "weekly", 0.95],
+    ["/financement", "weekly", 0.95],
+    ["/voiture-sans-permis-electrique", "weekly", 0.95],
+    ["/citroen-ami-ou-neodrive", "weekly", 0.95],
+    ["/voiture-sans-permis-occasion", "weekly", 0.95],
+    ["/quelle-voiture-sans-permis-choisir", "weekly", 0.95],
+    ["/prix-voiture-sans-permis", "weekly", 0.95],
+    ["/fiat-topolino-ou-neodrive", "weekly", 0.95],
+    ["/meilleure-voiture-sans-permis-electrique", "weekly", 0.95],
+    ["/assurance-voiture-sans-permis", "weekly", 0.9],
+    ["/batterie-lithium-ou-plomb-voiture-sans-permis", "monthly", 0.9],
+    ["/livraison", "monthly", 0.85],
+    ["/carte-grise", "monthly", 0.85],
+    ["/pieces", "weekly", 0.8],
+    ["/sav", "weekly", 0.8],
+    ["/faq", "weekly", 0.8],
+    ["/contact", "monthly", 0.85],
+    ["/reservation", "weekly", 0.9],
+  ] as const;
 
-    // Pages SEO ajoutées aujourd'hui
-    {
-      url: `${baseUrl}/voiture-sans-permis-occasion`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.95,
-    },
-    {
-      url: `${baseUrl}/quelle-voiture-sans-permis-choisir`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.95,
-    },
-    {
-      url: `${baseUrl}/prix-voiture-sans-permis`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.95,
-    },
-    {
-      url: `${baseUrl}/fiat-topolino-ou-neodrive`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.95,
-    },
-    {
-      url: `${baseUrl}/meilleure-voiture-sans-permis-electrique`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.95,
-    },
-    {
-      url: `${baseUrl}/assurance-voiture-sans-permis`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-
-    {
-      url: `${baseUrl}/livraison`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/carte-grise`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/pieces`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/sav`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/faq`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/contact`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/reservation`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-  ];
+  return routes.map(([route, changeFrequency, priority]) => ({
+    url: `${baseUrl}${route}`,
+    lastModified: new Date(),
+    changeFrequency,
+    priority,
+  }));
 }
