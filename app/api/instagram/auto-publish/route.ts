@@ -19,6 +19,14 @@ type MediaItem = {
   fallback?: string;
 };
 
+type QueueItem = {
+  id: string;
+  caption: string;
+  media_url: string | null;
+  content_type: string;
+  hook: string | null;
+};
+
 const MORNING_MEDIA: MediaItem[] = [
   { path: "/hero.png", type: "image", theme: "mobilité électrique simple et accessible" },
   { path: "/img1.png", type: "image", theme: "design compact et déplacements du quotidien" },
@@ -64,6 +72,37 @@ function selectFallback(dateKey: string, slot: "morning" | "evening") {
   return pool[hash(`${dateKey}-${slot}`) % pool.length];
 }
 
+function supabaseHeaders(key: string) {
+  return { Authorization: `Bearer ${key}`, apikey: key };
+}
+
+async function selectDueQueue(): Promise<QueueItem | null> {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) return null;
+  const url = new URL(`${SUPABASE_URL}/rest/v1/social_content_queue`);
+  url.searchParams.set("platform", "eq.instagram");
+  url.searchParams.set("status", "eq.scheduled");
+  url.searchParams.set("publish_at", `lte.${new Date().toISOString()}`);
+  url.searchParams.set("select", "id,caption,media_url,content_type,hook");
+  url.searchParams.set("order", "publish_at.asc");
+  url.searchParams.set("limit", "1");
+  const res = await fetch(url, { headers: supabaseHeaders(key), cache: "no-store" });
+  const rows = await res.json();
+  if (!res.ok || !Array.isArray(rows) || !rows[0]) return null;
+  return rows[0] as QueueItem;
+}
+
+async function updateQueue(id: string, status: "publishing" | "published" | "failed", extra: Record<string, unknown> = {}) {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/social_content_queue?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { ...supabaseHeaders(key), "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({ status, updated_at: new Date().toISOString(), ...extra }),
+    cache: "no-store",
+  });
+}
+
 async function selectSupabaseMedia(): Promise<MediaItem | null> {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key) return null;
@@ -72,7 +111,7 @@ async function selectSupabaseMedia(): Promise<MediaItem | null> {
   url.searchParams.set("select", "id,storage_path,public_url,media_type,title,context,times_used");
   url.searchParams.set("order", "times_used.asc,priority.desc,created_at.asc");
   url.searchParams.set("limit", "1");
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${key}`, apikey: key }, cache: "no-store" });
+  const res = await fetch(url, { headers: supabaseHeaders(key), cache: "no-store" });
   const rows = await res.json();
   if (!res.ok || !Array.isArray(rows) || !rows[0]) return null;
   const r = rows[0];
@@ -80,7 +119,7 @@ async function selectSupabaseMedia(): Promise<MediaItem | null> {
     id: r.id,
     path: r.storage_path,
     publicUrl: r.public_url,
-    type: r.media_type === "reel" ? "reel" : "image",
+    type: r.media_type === "video" ? "reel" : "image",
     theme: r.context || r.title || "activité réelle de NeoDrive",
     title: r.title,
     context: r.context,
@@ -94,7 +133,7 @@ async function markUsed(media: MediaItem) {
   if (!key) return;
   await fetch(`${SUPABASE_URL}/rest/v1/social_media_assets?id=eq.${encodeURIComponent(media.id)}`, {
     method: "PATCH",
-    headers: { Authorization: `Bearer ${key}`, apikey: key, "Content-Type": "application/json", Prefer: "return=minimal" },
+    headers: { ...supabaseHeaders(key), "Content-Type": "application/json", Prefer: "return=minimal" },
     body: JSON.stringify({ times_used: (media.timesUsed || 0) + 1, last_used_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
     cache: "no-store",
   });
@@ -107,7 +146,7 @@ function extractText(data: any): string | null {
 
 async function generateCaption(media: MediaItem, slot: "morning" | "evening") {
   const key = process.env.OPENAI_API_KEY;
-  const fallback = `Aujourd’hui chez NeoDrive : ${media.title || media.theme}. 🚗⚡\n\n#NeoDrive #VoitureSansPermis #VoitureElectrique #MobiliteElectrique`;
+  const fallback = `Aujourd’hui chez NeoDrive : ${media.title || media.theme}.\n\n#NeoDrive #VoitureSansPermis #VoitureElectrique #MobiliteElectrique`;
   if (!key) return fallback;
   const realContext = [media.title && `Titre donné par l'équipe : ${media.title}`, media.context && `Ce qui se passe réellement dans le média : ${media.context}`].filter(Boolean).join("\n");
   const prompt = `Tu écris comme le dirigeant ou un membre de l'équipe NeoDrive qui documente simplement son activité quotidienne sur Instagram. Le texte doit sembler humain, spontané, concret et crédible, jamais comme une publicité générée par IA. Évite absolument les formules comme « découvrez », « passez à », « révolutionnez », « mobilité de demain », « pensée pour vous », et les listes de caractéristiques sauf si elles sont naturellement utiles. Fais 2 à 5 phrases courtes, 180 à 450 caractères, 0 à 2 emojis, puis 3 à 5 hashtags maximum. Pas de markdown, pas de guillemets. Si un contexte réel est fourni, base le post principalement dessus. Créneau : ${slot === "morning" ? "matin" : "soir"}.\n${realContext || `Sujet : ${media.theme}`}\n${FACTS}`;
@@ -171,19 +210,9 @@ async function publishContainer(accountId: string, id: string, token: string) {
 }
 
 async function publishMedia(account: { id: string }, token: string, media: MediaItem, caption: string) {
-  try {
-    const containerId = await createContainer(account.id, token, media, caption);
-    await waitForContainer(containerId, token);
-    return { mediaId: await publishContainer(account.id, containerId, token), used: media };
-  } catch (error) {
-    if (media.type === "reel" && media.fallback) {
-      const fallback: MediaItem = { path: media.fallback, type: "image", theme: media.theme };
-      const containerId = await createContainer(account.id, token, fallback, caption);
-      await waitForContainer(containerId, token);
-      return { mediaId: await publishContainer(account.id, containerId, token), used: fallback, reelError: error instanceof Error ? error.message : "Reel failed" };
-    }
-    throw error;
-  }
+  const containerId = await createContainer(account.id, token, media, caption);
+  await waitForContainer(containerId, token);
+  return { mediaId: await publishContainer(account.id, containerId, token), used: media };
 }
 
 export async function GET(request: Request) {
@@ -198,14 +227,30 @@ export async function GET(request: Request) {
   const token = process.env.INSTAGRAM_ACCESS_TOKEN;
   if (!token) return NextResponse.json({ ok: false, error: "INSTAGRAM_ACCESS_TOKEN missing" }, { status: 503 });
 
+  const queued = await selectDueQueue();
   try {
+    const account = await getAccount(token);
+
+    if (queued && queued.media_url) {
+      await updateQueue(queued.id, "publishing");
+      const media: MediaItem = {
+        path: "",
+        publicUrl: queued.media_url,
+        type: queued.content_type === "reel" || queued.content_type === "video" ? "reel" : "image",
+        theme: queued.hook || "publication programmée NeoDrive",
+      };
+      const result = await publishMedia(account, token, media, queued.caption);
+      await updateQueue(queued.id, "published", { external_post_id: result.mediaId, error_message: null });
+      return NextResponse.json({ ok: true, published: true, source: "queue", queueId: queued.id, account: account.username ?? null, mediaId: result.mediaId, media: queued.media_url, mediaType: media.type });
+    }
+
     const media = (await selectSupabaseMedia()) || selectFallback(slot.dateKey, slot.slot);
     const caption = await generateCaption(media, slot.slot);
-    const account = await getAccount(token);
     const result = await publishMedia(account, token, media, caption);
     if (media.id) await markUsed(media);
-    return NextResponse.json({ ok: true, published: true, slot: slot.slot, date: slot.dateKey, account: account.username ?? null, mediaId: result.mediaId, media: result.used.publicUrl || result.used.path, mediaType: result.used.type, source: media.id ? "supabase" : "fallback", reelFallbackReason: result.reelError ?? null });
+    return NextResponse.json({ ok: true, published: true, source: media.id ? "supabase" : "fallback", account: account.username ?? null, mediaId: result.mediaId, media: result.used.publicUrl || result.used.path, mediaType: result.used.type });
   } catch (error) {
+    if (queued) await updateQueue(queued.id, "failed", { error_message: error instanceof Error ? error.message : "Unknown error" });
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
   }
 }
