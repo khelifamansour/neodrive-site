@@ -1,124 +1,40 @@
 export default function Contact() {
-  return (
-    <main style={{
-      fontFamily: "system-ui, Arial",
-      background: "#fafafa",
-      minHeight: "100vh",
-      padding: "80px 20px",
-      textAlign: "center"
-    }}>
-
-      {/* TITLE */}
-      <h1 style={{
-        fontSize: "42px",
-        fontWeight: 600,
-        marginBottom: "10px"
-      }}>
-        Contact
-      </h1>
-
-      <p style={{
-        color: "#666",
-        fontSize: "16px"
-      }}>
-        Réponse rapide – Disponible tous les jours
-      </p>
-
-      {/* CONTACT CARD */}
-      <div style={{
-        maxWidth: "420px",
-        margin: "40px auto",
-        background: "#ffffff",
-        padding: "30px",
-        borderRadius: "16px",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.08)"
-      }}>
-
-        {/* ICON */}
-        <div style={{
-          fontSize: "30px",
-          marginBottom: "10px"
-        }}>
-          📞
-        </div>
-
-        {/* PHONE */}
-        <div style={{
-          fontSize: "20px",
-          fontWeight: "600",
-          marginBottom: "20px"
-        }}>
-          07 76 15 61 69
-        </div>
-
-        {/* WHATSAPP BUTTON */}
-        <a href="https://wa.me/33628261446"
-          style={{
-            display: "inline-block",
-            padding: "14px 30px",
-            background: "#25D366",
-            color: "#fff",
-            borderRadius: "10px",
-            textDecoration: "none",
-            fontWeight: "600",
-            fontSize: "15px"
-          }}>
-          Contacter sur WhatsApp
-        </a>
-
-        {/* SMALL TEXT */}
-        <div style={{
-          marginTop: "15px",
-          fontSize: "13px",
-          color: "#888"
-        }}>
-          Réponse en quelques minutes
-        </div>
-
+  return <main className="contact">
+    <section className="hero">
+      <span>CONTACT NEODRIVE</span>
+      <h1>Une question avant d’acheter ? Parlons du véhicule.</h1>
+      <p>Prix, disponibilité, livraison, financement, batterie ou dimensions : envoyez-nous votre question et nous vous orientons vers la version adaptée à votre besoin.</p>
+      <div className="actions">
+        <a className="whatsapp" href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20des%20informations%20sur%20une%20NeoDrive" target="_blank" rel="noreferrer">Écrire sur WhatsApp</a>
+        <a className="secondary" href="/produit">Voir le véhicule</a>
       </div>
+    </section>
 
-      {/* TRUST SECTION */}
-      <div style={{
-        maxWidth: "600px",
-        margin: "auto",
-        marginTop: "40px",
-        textAlign: "left"
-      }}>
+    <section className="grid">
+      <article><div className="icon">🎥</div><h2>Recevoir une vidéo</h2><p>Demandez une présentation du véhicule pour mieux voir le format, l’habitacle et les équipements avant de vous déplacer.</p><a href="https://wa.me/33628261446?text=Bonjour%2C%20pouvez-vous%20m%27envoyer%20une%20vid%C3%A9o%20de%20pr%C3%A9sentation%20NeoDrive%20%3F">Demander une vidéo →</a></article>
+      <article><div className="icon">🚚</div><h2>Calculer la livraison</h2><p>Indiquez simplement votre département. Nous vous confirmons le mode de transport et le tarif correspondant.</p><a href="/livraison">Voir les zones de livraison →</a></article>
+      <article><div className="icon">💳</div><h2>Parler financement</h2><p>Nous pouvons vous expliquer les solutions proposées et les éléments à préparer selon votre situation.</p><a href="/financement">Voir le financement →</a></article>
+    </section>
 
-        <h2 style={{ fontSize: "22px" }}>
-          Pourquoi nous contacter ?
-        </h2>
+    <section className="help">
+      <div><span>AVANT DE NOUS ÉCRIRE</span><h2>Les informations qui nous permettent de vous répondre plus vite.</h2></div>
+      <div className="chips"><b>Votre département</b><b>Votre budget</b><b>La version souhaitée</b><b>Votre délai d’achat</b><b>Livraison ou enlèvement</b></div>
+    </section>
 
-        <ul style={{
-          marginTop: "20px",
-          lineHeight: "2",
-          color: "#333"
-        }}>
-          <li>✔ Véhicules disponibles immédiatement</li>
-          <li>✔ Livraison partout en France</li>
-          <li>✔ Envoi de vidéo avant déplacement</li>
-          <li>✔ Aucun frais caché</li>
-          <li>✔ Conseils personnalisés</li>
-        </ul>
+    <section className="links">
+      <a href="/produit"><strong>Véhicule</strong><span>Photos, caractéristiques et tarif →</span></a>
+      <a href="/faq"><strong>Questions fréquentes</strong><span>Réponses sur l’usage et le véhicule →</span></a>
+      <a href="/manuel-utilisateur-neodrive.pdf" target="_blank"><strong>Documentation</strong><span>Consulter le manuel utilisateur →</span></a>
+      <a href="/reservation"><strong>Réservation</strong><span>Préparer votre commande →</span></a>
+    </section>
 
-      </div>
+    <section className="final">
+      <div><span>UN ÉCHANGE SIMPLE</span><h2>Vous pouvez commencer par un message.</h2><p>Expliquez-nous votre besoin en quelques lignes. Nous vous répondrons avec les informations utiles plutôt qu’avec un discours commercial générique.</p></div>
+      <a href="https://wa.me/33628261446?text=Bonjour%2C%20voici%20mon%20besoin%20%3A%20" target="_blank" rel="noreferrer">Commencer la discussion</a>
+    </section>
 
-      {/* FINAL CTA */}
-      <div style={{ marginTop: "50px" }}>
-        <a href="https://wa.me/33628261446"
-          style={{
-            padding: "18px 40px",
-            background: "#25D366",
-            color: "#fff",
-            borderRadius: "12px",
-            textDecoration: "none",
-            fontWeight: "bold",
-            fontSize: "16px"
-          }}>
-          Parler maintenant
-        </a>
-      </div>
-
-    </main>
-  );
+    <style jsx>{`
+      .contact{background:#fff;color:#111}.hero{max-width:1050px;margin:auto;padding:85px 24px 60px;text-align:center}.hero>span,.help span,.final span{font-size:12px;font-weight:950;letter-spacing:1.8px;color:#ff5a1f}.hero h1{font-size:clamp(44px,7vw,78px);line-height:.98;letter-spacing:-3.5px;margin:16px 0 24px}.hero p{max-width:780px;margin:auto;color:#5c6470;font-size:20px;line-height:1.65}.actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:30px}.whatsapp,.secondary{padding:16px 23px;border-radius:14px;text-decoration:none;font-weight:950}.whatsapp{background:#25d366;color:#fff}.secondary{border:1px solid #d8dadd;color:#111;background:#fff}.grid{max-width:1180px;margin:auto;padding:20px 24px 80px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.grid article{background:#f7f7f7;border-radius:25px;padding:29px}.icon{font-size:28px}.grid h2{font-size:24px;margin:16px 0 10px}.grid p{color:#646970;line-height:1.6}.grid a{color:#111;font-weight:900;text-decoration:none}.help{background:#111;color:#fff;padding:78px max(24px,calc((100vw - 1132px)/2));display:grid;grid-template-columns:1fr 1fr;gap:55px;align-items:center}.help h2,.final h2{font-size:clamp(34px,5vw,53px);letter-spacing:-2px;line-height:1.05;margin:10px 0}.chips{display:flex;flex-wrap:wrap;gap:10px}.chips b{background:#202020;padding:14px 17px;border-radius:999px;color:#e8e8e8}.links{max-width:1180px;margin:auto;padding:80px 24px;display:grid;grid-template-columns:repeat(2,1fr);gap:13px}.links a{display:flex;flex-direction:column;gap:8px;border:1px solid #e5e7eb;border-radius:20px;padding:25px;text-decoration:none;color:#111}.links strong{font-size:21px}.links span{color:#666}.final{max-width:1132px;margin:10px auto 90px;padding:48px;border-radius:30px;background:linear-gradient(135deg,#ff7a00,#ff006e);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:45px}.final span{color:#ffffffaa}.final p{max-width:650px;line-height:1.6;color:#fffddd}.final a{background:#fff;color:#111;padding:16px 22px;border-radius:14px;font-weight:950;text-decoration:none;white-space:nowrap}@media(max-width:800px){.hero{padding-top:55px}.hero h1{letter-spacing:-2px}.grid,.help,.links,.final{grid-template-columns:1fr;display:grid}.grid{padding-bottom:55px}.help{padding:60px 22px}.links{padding:55px 20px}.final{margin:10px 15px 65px;padding:30px}.final a{white-space:normal;text-align:center}}
+    `}</style>
+  </main>
 }
