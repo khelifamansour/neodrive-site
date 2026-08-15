@@ -1,301 +1,36 @@
-"use client"
-
 export default function FinancementPage() {
-  return (
-    <main className="page">
-      <section className="hero">
-        <span className="badge">Financement NeoDrive</span>
-        <h1>Devenez propriétaire de votre voiture sans permis dès 69 €/mois</h1>
-        <p>
-          Avec NeoDrive, vous pouvez financer votre voiture sans permis
-          électrique neuve sur la durée et maîtriser votre budget chaque mois.
-        </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta">
-          Demander une simulation
-        </a>
-      </section>
+  return <main className="finance">
+    <section className="hero">
+      <div><span>FINANCEMENT NEODRIVE</span><h1>Répartir le coût de votre voiture sans permis.</h1><p>Selon votre dossier, votre apport et la durée choisie, une solution de financement peut permettre d’étaler l’achat de votre NeoDrive. Nous vous communiquons une simulation chiffrée avant tout engagement.</p><div className="actions"><a className="primary" href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20une%20simulation%20de%20financement%20NeoDrive">Demander une simulation</a><a className="secondary" href="/produit">Voir le véhicule</a></div></div>
+      <div className="panel"><span>POUR PRÉPARER UNE SIMULATION</span><b>3 informations suffisent pour commencer</b><ul><li>Le modèle ou budget visé</li><li>Votre apport éventuel</li><li>La durée souhaitée</li></ul></div>
+    </section>
 
-      <section className="section">
-        <h2>Le vrai coût d’une voiture ne se limite pas au prix d’achat</h2>
-        <p>
-          Beaucoup de clients comparent uniquement le prix affiché. Pourtant,
-          le plus important est le coût total sur plusieurs années : carburant,
-          entretien, assurance, réparations et valeur de revente.
-        </p>
+    <section className="cards">
+      <article><span>01</span><h2>Un prix de véhicule clair</h2><p>La gamme NeoDrive commence à 3 990 € TTC selon version, équipement et disponibilité.</p></article>
+      <article><span>02</span><h2>Une mensualité calculée</h2><p>La mensualité dépend du montant financé, de la durée, de l’apport et des conditions proposées par l’organisme financier.</p></article>
+      <article><span>03</span><h2>Pas de promesse avant accord</h2><p>Une simulation n’est pas une acceptation de crédit. La décision finale appartient au partenaire financier après étude du dossier.</p></article>
+    </section>
 
-        <div className="grid">
-          <div className="card">
-            <h3>Recharge économique</h3>
-            <p>
-              Une NeoDrive se recharge simplement sur une prise domestique.
-              Le coût d’utilisation quotidien est très faible comparé à un
-              véhicule thermique.
-            </p>
-          </div>
+    <section className="dark">
+      <div><span>ACHAT OU FINANCEMENT ?</span><h2>Comparer le coût total, pas seulement la mensualité.</h2><p>Une mensualité basse peut être liée à une durée plus longue ou à un apport plus important. Avant de choisir, regardez le montant total financé, la durée et le coût du crédit.</p></div>
+      <div className="points"><div><b>Apport</b><p>Plus l’apport est élevé, plus le montant à financer diminue.</p></div><div><b>Durée</b><p>Une durée plus longue peut réduire la mensualité mais modifier le coût total.</p></div><div><b>Dossier</b><p>L’acceptation et les conditions dépendent de l’organisme financier.</p></div><div><b>Budget global</b><p>Pensez aussi à l’assurance, la livraison et l’immatriculation.</p></div></div>
+    </section>
 
-          <div className="card">
-            <h3>Entretien réduit</h3>
-            <p>
-              Pas de vidange, pas d’embrayage, pas de courroie de distribution :
-              une voiture électrique simple coûte généralement moins cher à
-              entretenir.
-            </p>
-          </div>
+    <section className="section">
+      <div className="heading"><span>POURQUOI FINANCER ?</span><h2>Préserver une partie de votre trésorerie.</h2><p>Le financement peut être pertinent si vous préférez conserver de l’épargne disponible plutôt que régler l’intégralité du véhicule immédiatement. Ce choix dépend de votre situation et du coût total de la solution proposée.</p></div>
+      <div className="compare"><article><h3>Paiement comptant</h3><p>Pas de coût de crédit et véhicule payé immédiatement, mais sortie de trésorerie plus importante au départ.</p></article><article className="highlight"><h3>Financement</h3><p>Budget réparti dans le temps, sous réserve d’acceptation, avec un coût de crédit à intégrer dans la comparaison.</p></article></div>
+    </section>
 
-          <div className="card">
-            <h3>Assurance accessible</h3>
-            <p>
-              Une voiture sans permis électrique peut souvent bénéficier d’une
-              assurance moins coûteuse qu’une voiture classique.
-            </p>
-          </div>
-        </div>
-      </section>
+    <section className="section soft">
+      <div className="heading"><span>VOITURE ÉLECTRIQUE</span><h2>Regarder aussi les dépenses d’usage.</h2><p>Une voiture sans permis électrique se recharge sur secteur et possède une mécanique plus simple qu’un modèle thermique. Le coût réel dépend néanmoins de votre usage, du tarif de l’électricité, de l’assurance, de l’entretien et de la batterie.</p></div>
+    </section>
 
-      <section className="dark">
-        <h2>Pourquoi acheter plutôt que louer ?</h2>
-        <p>
-          Avec une location longue durée ou une LOA, vous payez chaque mois un
-          véhicule qui ne vous appartient pas forcément. Avec NeoDrive, vous
-          pouvez devenir propriétaire de votre voiture.
-        </p>
+    <section className="cta"><div><span>SIMULATION PERSONNALISÉE</span><h2>Envoyez-nous votre budget et votre apport.</h2><p>Nous vous indiquons les éléments nécessaires pour étudier une solution adaptée. Aucun engagement n’est pris tant que les conditions définitives ne vous ont pas été communiquées.</p></div><a href="https://wa.me/33628261446?text=Bonjour%2C%20mon%20budget%20est%20de%20%3A%20%0AMon%20apport%20est%20de%20%3A%20">Demander ma simulation</a></section>
 
-        <ul>
-          <li>Vous devenez propriétaire du véhicule.</li>
-          <li>Vous pouvez le conserver plusieurs années.</li>
-          <li>Vous pouvez le revendre plus tard.</li>
-          <li>Vous évitez de payer uniquement un loyer automobile.</li>
-        </ul>
-      </section>
+    <p className="legal">Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager. Toute offre de financement est soumise à l’étude et à l’acceptation de l’organisme prêteur.</p>
 
-      <section className="section">
-        <h2>Un coût maîtrisé sur la durée</h2>
-        <p>
-          Une NeoDrive est pensée pour réduire vos dépenses quotidiennes :
-          recharge électrique, entretien simple, pièces disponibles et véhicule
-          facile à réparer.
-        </p>
-
-        <div className="costBox">
-          <strong>Exemple de raisonnement :</strong>
-          <p>
-            Une mensualité peut sembler importante au départ, mais elle doit
-            être comparée aux économies réalisées sur le carburant, les
-            réparations d’un ancien véhicule, l’entretien et les déplacements
-            quotidiens.
-          </p>
-        </div>
-      </section>
-
-      <section className="section">
-        <h2>Une alternative à la voiture sans permis d’occasion</h2>
-        <p>
-          Beaucoup de personnes cherchent une voiture sans permis d’occasion
-          pour réduire leur budget. Mais une occasion peut parfois cacher des
-          frais : batterie fatiguée, réparations, pièces difficiles à trouver ou
-          absence de garantie.
-        </p>
-
-        <p>
-          Avec NeoDrive, vous choisissez une voiture sans permis électrique
-          neuve, bien équipée, avec un accompagnement avant et après l’achat.
-        </p>
-      </section>
-
-      <section className="ctaSection">
-        <h2>Demandez votre simulation gratuite</h2>
-        <p>
-          Envoyez-nous un message avec le modèle souhaité, votre apport éventuel
-          et la durée désirée. Nous vous orienterons vers une solution adaptée.
-        </p>
-
-        <a href="https://wa.me/33628261446" target="_blank" className="cta big">
-          Recevoir ma simulation
-        </a>
-      </section>
-
-      <style jsx>{`
-        .page {
-          font-family: Arial, sans-serif;
-          color: #111;
-          background: #fff;
-        }
-
-        .hero {
-          padding: 90px 10%;
-          background: linear-gradient(135deg, #050505, #242424);
-          color: white;
-        }
-
-        .badge {
-          display: inline-block;
-          background: #ff7a00;
-          color: white;
-          padding: 10px 18px;
-          border-radius: 999px;
-          font-weight: 900;
-          margin-bottom: 22px;
-        }
-
-        h1 {
-          max-width: 900px;
-          font-size: clamp(42px, 6vw, 72px);
-          line-height: 1;
-          margin: 0 0 24px;
-          letter-spacing: -2px;
-        }
-
-        .hero p {
-          max-width: 720px;
-          font-size: 22px;
-          line-height: 1.55;
-          color: #e5e5e5;
-          margin-bottom: 34px;
-        }
-
-        .cta {
-          display: inline-block;
-          background: linear-gradient(135deg, #ff7a00, #ff006e);
-          color: white;
-          text-decoration: none;
-          padding: 18px 28px;
-          border-radius: 16px;
-          font-weight: 950;
-          font-size: 18px;
-        }
-
-        .section {
-          padding: 75px 10%;
-        }
-
-        h2 {
-          font-size: clamp(34px, 5vw, 52px);
-          line-height: 1.08;
-          margin: 0 0 24px;
-          letter-spacing: -1.5px;
-        }
-
-        .section > p,
-        .dark > p,
-        .ctaSection > p {
-          max-width: 900px;
-          font-size: 20px;
-          line-height: 1.7;
-          color: #444;
-        }
-
-        .grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 24px;
-          margin-top: 40px;
-        }
-
-        .card {
-          background: #fafafa;
-          border: 1px solid #eee;
-          border-radius: 28px;
-          padding: 30px;
-          box-shadow: 0 18px 45px rgba(0,0,0,0.08);
-        }
-
-        .card h3 {
-          font-size: 25px;
-          margin: 0 0 14px;
-        }
-
-        .card p {
-          font-size: 17px;
-          line-height: 1.6;
-          color: #444;
-          margin: 0;
-        }
-
-        .dark {
-          padding: 75px 10%;
-          background: #050505;
-          color: white;
-        }
-
-        .dark p {
-          color: #ddd;
-        }
-
-        ul {
-          margin: 35px 0 0;
-          padding: 0;
-          list-style: none;
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 18px;
-        }
-
-        li {
-          background: rgba(255,255,255,0.1);
-          border: 1px solid rgba(255,255,255,0.14);
-          border-radius: 20px;
-          padding: 20px;
-          font-size: 18px;
-          font-weight: 800;
-        }
-
-        .costBox {
-          margin-top: 35px;
-          background: #fff3e8;
-          border: 1px solid #fed7aa;
-          border-radius: 28px;
-          padding: 32px;
-          max-width: 900px;
-        }
-
-        .costBox strong {
-          font-size: 22px;
-        }
-
-        .costBox p {
-          font-size: 18px;
-          line-height: 1.7;
-          margin-bottom: 0;
-          color: #333;
-        }
-
-        .ctaSection {
-          margin: 40px 10% 80px;
-          padding: 56px;
-          border-radius: 34px;
-          background: radial-gradient(circle at top left, #273449, #080808 60%);
-          color: white;
-          text-align: center;
-        }
-
-        .ctaSection p {
-          color: #ddd;
-          margin: 0 auto 34px;
-        }
-
-        .big {
-          font-size: 20px;
-          padding: 20px 36px;
-        }
-
-        @media (max-width: 900px) {
-          .hero,
-          .section,
-          .dark {
-            padding: 55px 24px;
-          }
-
-          .grid,
-          ul {
-            grid-template-columns: 1fr;
-          }
-
-          .ctaSection {
-            margin: 32px 24px 60px;
-            padding: 38px 26px;
-          }
-        }
-      `}</style>
-    </main>
-  );
+    <style jsx>{`
+      .finance{background:#fff;color:#111}.hero{max-width:1180px;margin:auto;padding:75px 24px 60px;display:grid;grid-template-columns:1.15fr .85fr;gap:55px;align-items:center}.hero span,.heading span,.dark span,.cta span,.panel span{font-size:12px;font-weight:950;letter-spacing:1.8px;color:#ff5a1f}.hero h1{font-size:clamp(45px,6vw,72px);line-height:.98;letter-spacing:-3px;margin:16px 0}.hero p,.heading p{font-size:19px;line-height:1.65;color:#5b6470}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.primary,.secondary{padding:15px 22px;border-radius:14px;text-decoration:none;font-weight:950}.primary{background:#111;color:#fff}.secondary{border:1px solid #d4d7db;color:#111}.panel{background:#f3f4f6;border-radius:27px;padding:33px}.panel b{display:block;font-size:28px;line-height:1.15;margin:13px 0 22px}.panel ul{padding-left:20px;color:#555;line-height:2}.cards{max-width:1180px;margin:auto;padding:15px 24px 75px;display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.cards article{background:#f8f8f8;border-radius:23px;padding:27px}.cards span{font-size:12px;color:#ff5a1f;font-weight:950}.cards h2{font-size:22px;margin:12px 0}.cards p{color:#646970;line-height:1.6}.dark{background:#111;color:#fff;padding:85px max(24px,calc((100vw - 1132px)/2));display:grid;grid-template-columns:1fr 1fr;gap:55px}.dark h2,.heading h2,.cta h2{font-size:clamp(34px,5vw,54px);line-height:1.05;letter-spacing:-2px;margin:10px 0 18px}.dark>div>p{color:#ccc;font-size:18px;line-height:1.65}.points{display:grid;grid-template-columns:1fr 1fr;gap:12px}.points div{background:#1d1d1d;border-radius:18px;padding:21px}.points b{font-size:18px}.points p{color:#c9c9c9;line-height:1.5}.section{max-width:1180px;margin:auto;padding:85px 24px}.heading{max-width:800px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:35px}.compare article{border:1px solid #e3e5e8;border-radius:24px;padding:30px}.compare h3{font-size:26px;margin-top:0}.compare p{color:#646970;line-height:1.6}.compare .highlight{background:#111;color:#fff;border-color:#111}.compare .highlight p{color:#ddd}.soft{max-width:none;background:#fff7ed;padding-left:max(24px,calc((100vw - 1132px)/2));padding-right:max(24px,calc((100vw - 1132px)/2))}.cta{max-width:1132px;margin:25px auto 30px;border-radius:30px;padding:48px;background:linear-gradient(135deg,#ff7a00,#ff006e);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:40px}.cta span{color:#ffffffaa}.cta p{max-width:650px;line-height:1.6;color:#fffddd}.cta a{background:#fff;color:#111;text-decoration:none;font-weight:950;padding:16px 23px;border-radius:14px;white-space:nowrap}.legal{max-width:900px;margin:0 auto 80px;padding:0 24px;text-align:center;font-size:12px;line-height:1.55;color:#777}@media(max-width:820px){.hero,.dark,.cta{display:grid;grid-template-columns:1fr}.hero{padding-top:50px}.cards,.points,.compare{grid-template-columns:1fr}.section{padding:60px 20px}.cta{margin:20px 15px 25px;padding:30px}.cta a{white-space:normal;text-align:center}.hero h1{letter-spacing:-2px}}
+    `}</style>
+  </main>
 }
