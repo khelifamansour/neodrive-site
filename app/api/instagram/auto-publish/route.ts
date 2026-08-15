@@ -4,12 +4,18 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const BASE_URL = "https://www.easydrive-auto.fr";
+const SUPABASE_URL = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type MediaItem = {
+  id?: string;
   path: string;
+  publicUrl?: string;
   type: "image" | "reel";
   theme: string;
+  title?: string | null;
+  context?: string | null;
+  timesUsed?: number;
   fallback?: string;
 };
 
@@ -19,46 +25,25 @@ const MORNING_MEDIA: MediaItem[] = [
   { path: "/img2.png", type: "image", theme: "voiture sans permis électrique et simplicité d'utilisation" },
   { path: "/img3.png", type: "image", theme: "confort et praticité pour les trajets de proximité" },
   { path: "/france4.jpg", type: "image", theme: "NeoDrive en France et mobilité de proximité" },
-  { path: "/neodrive-instagram-test.jpg", type: "image", theme: "présentation du véhicule NeoDrive" },
 ];
 
 const EVENING_MEDIA: MediaItem[] = [
-  { path: "/client1.mp4", type: "reel", theme: "expérience client et véhicule en situation réelle", fallback: "/neodrive-instagram-test.jpg" },
+  { path: "/client1.mp4", type: "reel", theme: "expérience client et véhicule en situation réelle", fallback: "/hero.png" },
   { path: "/essai-route.mp4", type: "reel", theme: "essai routier et mobilité au quotidien", fallback: "/hero.png" },
   { path: "/client2.mp4", type: "reel", theme: "présentation dynamique du véhicule", fallback: "/img1.png" },
   { path: "/interieur.mp4", type: "reel", theme: "intérieur, confort et équipements", fallback: "/img2.png" },
   { path: "/hero.png", type: "image", theme: "offre NeoDrive à partir de 3 990 €" },
-  { path: "/neodrive-instagram-test.jpg", type: "image", theme: "découverte du véhicule électrique sans permis" },
 ];
 
 const FACTS = `
-Faits autorisés sur NeoDrive :
-- voiture électrique sans permis
-- 100 % électrique
-- 2 places
-- vitesse maximale réglementaire : 45 km/h
-- recharge sur prise 220 V
-- gamme à partir de 3 990 €
-- marque NeoDrive
+Faits autorisés sur NeoDrive : voiture électrique sans permis, 100 % électrique, 2 places, vitesse maximale réglementaire 45 km/h, recharge sur prise 220 V, gamme à partir de 3 990 €.
 Ne jamais inventer autonomie, stock, délai, garantie, remise, financement, nombre de ventes ou caractéristiques non fournies.
 `;
 
 function parisParts(date = new Date()) {
-  const formatter = new Intl.DateTimeFormat("fr-FR", {
-    timeZone: "Europe/Paris",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  });
+  const formatter = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const parts = Object.fromEntries(formatter.formatToParts(date).map((p) => [p.type, p.value]));
-  return {
-    dateKey: `${parts.year}-${parts.month}-${parts.day}`,
-    hour: Number(parts.hour),
-    minute: Number(parts.minute),
-  };
+  return { dateKey: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour), minute: Number(parts.minute) };
 }
 
 function hash(value: string) {
@@ -74,42 +59,64 @@ function getSlot() {
   return null;
 }
 
-function selectMedia(dateKey: string, slot: "morning" | "evening") {
+function selectFallback(dateKey: string, slot: "morning" | "evening") {
   const pool = slot === "morning" ? MORNING_MEDIA : EVENING_MEDIA;
   return pool[hash(`${dateKey}-${slot}`) % pool.length];
 }
 
+async function selectSupabaseMedia(): Promise<MediaItem | null> {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) return null;
+  const url = new URL(`${SUPABASE_URL}/rest/v1/social_media_assets`);
+  url.searchParams.set("status", "eq.ready");
+  url.searchParams.set("select", "id,storage_path,public_url,media_type,title,context,times_used");
+  url.searchParams.set("order", "times_used.asc,priority.desc,created_at.asc");
+  url.searchParams.set("limit", "1");
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${key}`, apikey: key }, cache: "no-store" });
+  const rows = await res.json();
+  if (!res.ok || !Array.isArray(rows) || !rows[0]) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    path: r.storage_path,
+    publicUrl: r.public_url,
+    type: r.media_type === "reel" ? "reel" : "image",
+    theme: r.context || r.title || "activité réelle de NeoDrive",
+    title: r.title,
+    context: r.context,
+    timesUsed: Number(r.times_used || 0),
+  };
+}
+
+async function markUsed(media: MediaItem) {
+  if (!media.id) return;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/social_media_assets?id=eq.${encodeURIComponent(media.id)}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${key}`, apikey: key, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({ times_used: (media.timesUsed || 0) + 1, last_used_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
+    cache: "no-store",
+  });
+}
+
 function extractText(data: any): string | null {
-  for (const item of data?.output ?? []) {
-    for (const content of item?.content ?? []) {
-      if (content?.type === "output_text" && typeof content?.text === "string") return content.text.trim();
-    }
-  }
+  for (const item of data?.output ?? []) for (const content of item?.content ?? []) if (content?.type === "output_text" && typeof content?.text === "string") return content.text.trim();
   return null;
 }
 
-async function generateCaption(theme: string, slot: "morning" | "evening") {
+async function generateCaption(media: MediaItem, slot: "morning" | "evening") {
   const key = process.env.OPENAI_API_KEY;
-  const fallback = slot === "morning"
-    ? `NeoDrive ⚡ Une mobilité électrique simple pour les déplacements du quotidien.\n\n100 % électrique • 2 places • jusqu’à 45 km/h • recharge sur prise 220 V.\n\n#NeoDrive #VoitureSansPermis #VoitureElectrique #MobiliteElectrique #VSP`
-    : `Découvrez NeoDrive ⚡🚗 La voiture électrique sans permis pensée pour une mobilité simple et pratique.\n\nGamme à partir de 3 990 €.\n\n#NeoDrive #SansPermis #VoitureElectrique #Mobilite #Electrique`;
+  const fallback = `Aujourd’hui chez NeoDrive : ${media.title || media.theme}. 🚗⚡\n\n#NeoDrive #VoitureSansPermis #VoitureElectrique #MobiliteElectrique`;
   if (!key) return fallback;
-
-  const prompt = `Tu es le responsable social media de NeoDrive en France. Rédige UNE légende Instagram en français, naturelle, crédible et non répétitive, pour un contenu dont le thème est : ${theme}. Le créneau est ${slot === "morning" ? "matin : informer/rassurer" : "soir : produit/démonstration"}. 500 à 900 caractères maximum. Commence par une accroche courte. Utilise quelques emojis mais pas trop. Termine par 5 à 8 hashtags pertinents. Pas de markdown, pas de guillemets. ${FACTS}`;
-
+  const realContext = [media.title && `Titre donné par l'équipe : ${media.title}`, media.context && `Ce qui se passe réellement dans le média : ${media.context}`].filter(Boolean).join("\n");
+  const prompt = `Tu écris comme le dirigeant ou un membre de l'équipe NeoDrive qui documente simplement son activité quotidienne sur Instagram. Le texte doit sembler humain, spontané, concret et crédible, jamais comme une publicité générée par IA. Évite absolument les formules comme « découvrez », « passez à », « révolutionnez », « mobilité de demain », « pensée pour vous », et les listes de caractéristiques sauf si elles sont naturellement utiles. Fais 2 à 5 phrases courtes, 180 à 450 caractères, 0 à 2 emojis, puis 3 à 5 hashtags maximum. Pas de markdown, pas de guillemets. Si un contexte réel est fourni, base le post principalement dessus. Créneau : ${slot === "morning" ? "matin" : "soir"}.\n${realContext || `Sujet : ${media.theme}`}\n${FACTS}`;
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model: "gpt-5.6", input: prompt, store: false }),
-      cache: "no-store",
-    });
+    const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: "gpt-5.6", input: prompt, store: false }), cache: "no-store" });
     const data = await response.json();
     const text = response.ok ? extractText(data) : null;
     return text && text.length <= 2200 ? text : fallback;
-  } catch {
-    return fallback;
-  }
+  } catch { return fallback; }
 }
 
 async function getAccount(token: string) {
@@ -139,20 +146,10 @@ async function waitForContainer(id: string, token: string) {
 async function createContainer(accountId: string, token: string, media: MediaItem, caption: string) {
   const url = new URL(`https://graph.instagram.com/${accountId}/media`);
   const params: Record<string, string> = { caption, access_token: token };
-  const publicUrl = `${BASE_URL}${media.path}`;
-  if (media.type === "reel") {
-    params.media_type = "REELS";
-    params.video_url = publicUrl;
-    params.share_to_feed = "true";
-  } else {
-    params.image_url = publicUrl;
-  }
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(params),
-    cache: "no-store",
-  });
+  const publicUrl = media.publicUrl || `${BASE_URL}${media.path}`;
+  if (media.type === "reel") { params.media_type = "REELS"; params.video_url = publicUrl; params.share_to_feed = "true"; }
+  else params.image_url = publicUrl;
+  const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(params), cache: "no-store" });
   const data = await response.json();
   if (!response.ok || !data?.id) throw new Error(data?.error?.message ?? "Container creation failed");
   return data.id as string;
@@ -163,12 +160,7 @@ async function publishContainer(accountId: string, id: string, token: string) {
   let lastError = "Instagram publish failed";
   for (let attempt = 0; attempt < 5; attempt++) {
     const url = new URL(`https://graph.instagram.com/${accountId}/media_publish`);
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ creation_id: id, access_token: token }),
-      cache: "no-store",
-    });
+    const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ creation_id: id, access_token: token }), cache: "no-store" });
     const data = await response.json();
     if (response.ok && data?.id) return data.id as string;
     lastError = data?.error?.message ?? lastError;
@@ -203,16 +195,16 @@ export async function GET(request: Request) {
 
   const slot = getSlot();
   if (!slot) return NextResponse.json({ ok: true, skipped: true, reason: "Outside Paris publishing window" });
-
   const token = process.env.INSTAGRAM_ACCESS_TOKEN;
   if (!token) return NextResponse.json({ ok: false, error: "INSTAGRAM_ACCESS_TOKEN missing" }, { status: 503 });
 
   try {
-    const media = selectMedia(slot.dateKey, slot.slot);
-    const caption = await generateCaption(media.theme, slot.slot);
+    const media = (await selectSupabaseMedia()) || selectFallback(slot.dateKey, slot.slot);
+    const caption = await generateCaption(media, slot.slot);
     const account = await getAccount(token);
     const result = await publishMedia(account, token, media, caption);
-    return NextResponse.json({ ok: true, published: true, slot: slot.slot, date: slot.dateKey, account: account.username ?? null, mediaId: result.mediaId, media: result.used.path, mediaType: result.used.type, reelFallbackReason: result.reelError ?? null });
+    if (media.id) await markUsed(media);
+    return NextResponse.json({ ok: true, published: true, slot: slot.slot, date: slot.dateKey, account: account.username ?? null, mediaId: result.mediaId, media: result.used.publicUrl || result.used.path, mediaType: result.used.type, source: media.id ? "supabase" : "fallback", reelFallbackReason: result.reelError ?? null });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
   }
