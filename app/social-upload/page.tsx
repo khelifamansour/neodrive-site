@@ -11,6 +11,30 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 
 type UploadState = { name: string; state: "waiting" | "uploading" | "done" | "error"; error?: string };
 
+async function optimizeFile(file: File): Promise<File> {
+  if (!file.type.startsWith("image/") || file.size < 2 * 1024 * 1024) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxSide = 1920;
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+    if (!blob || blob.size >= file.size) return file;
+    const base = file.name.replace(/\.[^.]+$/, "") || "photo";
+    return new File([blob], `${base}.jpg`, { type: "image/jpeg", lastModified: file.lastModified });
+  } catch {
+    return file;
+  }
+}
+
 export default function SocialUploadPage() {
   const [passcode, setPasscode] = useState("");
   const [batchContext, setBatchContext] = useState("");
@@ -37,33 +61,35 @@ export default function SocialUploadPage() {
     e.preventDefault();
     if (!files.length) return;
     setLoading(true);
-    setStatus("Préparation des envois…");
+    setStatus("Optimisation des photos…");
     setProgress(files.map(f => ({ name: f.name, state: "waiting" })));
 
     try {
+      const uploadFiles = await Promise.all(files.map(optimizeFile));
+      const optimizedSize = uploadFiles.reduce((sum, f) => sum + f.size, 0);
+      setStatus(`Préparation des envois — ${(optimizedSize/1024/1024).toFixed(1)} Mo à transférer`);
+
       const initRes = await fetch("/api/social-media/upload-init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           passcode,
-          files: files.map(f => ({ name: f.name, type: f.type, size: f.size })),
+          files: uploadFiles.map(f => ({ name: f.name, type: f.type, size: f.size })),
         }),
       });
       const init = await initRes.json();
       if (!initRes.ok || !init?.ok) throw new Error(init?.error || "Impossible de préparer les uploads");
 
-      setStatus(`Envoi direct vers la bibliothèque : 0/${files.length}`);
+      setStatus(`Envoi direct vers la bibliothèque : 0/${uploadFiles.length}`);
       const uploaded: any[] = [];
-
-      // 3 uploads in parallel: fast enough on mobile without saturating the connection.
       let cursor = 0;
       async function worker() {
         while (true) {
           const i = cursor++;
-          if (i >= files.length) return;
-          await uploadOne(files[i], init.uploads[i], i);
+          if (i >= uploadFiles.length) return;
+          await uploadOne(uploadFiles[i], init.uploads[i], i);
           uploaded.push(init.uploads[i]);
-          setStatus(`Envoi direct vers la bibliothèque : ${uploaded.length}/${files.length}`);
+          setStatus(`Envoi direct vers la bibliothèque : ${uploaded.length}/${uploadFiles.length}`);
         }
       }
       await Promise.all([worker(), worker(), worker()]);
@@ -89,7 +115,7 @@ export default function SocialUploadPage() {
   return (
     <main style={{maxWidth:760,margin:"0 auto",padding:"28px 18px 60px",fontFamily:"Arial,sans-serif"}}>
       <h1 style={{fontSize:32,marginBottom:8}}>Bibliothèque sociale NeoDrive</h1>
-      <p style={{color:"#555",lineHeight:1.5}}>Sélectionne plusieurs vraies photos et vidéos. Elles partent directement vers Supabase, sans passer par Vercel et sans déclencher de build.</p>
+      <p style={{color:"#555",lineHeight:1.5}}>Sélectionne plusieurs vraies photos et vidéos. Les photos lourdes sont automatiquement optimisées avant envoi, puis tout part directement vers Supabase sans déclencher de build.</p>
 
       <form onSubmit={submit} style={{display:"grid",gap:16,marginTop:28}}>
         <label style={{display:"grid",gap:7,fontWeight:700}}>Code d’accès
@@ -101,8 +127,8 @@ export default function SocialUploadPage() {
         </label>
 
         {files.length > 0 && <div style={{background:"#f5f5f5",padding:14,borderRadius:12}}>
-          <strong>{files.length} fichier{files.length > 1 ? "s" : ""}</strong> — {(totalSize/1024/1024).toFixed(1)} Mo au total
-          <div style={{fontSize:13,color:"#666",marginTop:6}}>Tu peux sélectionner jusqu’à 50 fichiers par lot, 100 Mo maximum par fichier.</div>
+          <strong>{files.length} fichier{files.length > 1 ? "s" : ""}</strong> — {(totalSize/1024/1024).toFixed(1)} Mo avant optimisation
+          <div style={{fontSize:13,color:"#666",marginTop:6}}>Jusqu’à 50 fichiers par lot, 100 Mo maximum par fichier. Les vidéos restent en qualité originale.</div>
         </div>}
 
         <label style={{display:"grid",gap:7,fontWeight:700}}>Une note pour tout le lot <span style={{fontWeight:400,color:"#777"}}>(facultatif)</span>
@@ -116,7 +142,7 @@ export default function SocialUploadPage() {
         {progress.map((p,i)=><div key={`${p.name}-${i}`} style={{fontSize:14}}>{p.state==="done"?"✅":p.state==="uploading"?"⏳":p.state==="error"?"❌":"•"} {p.name}{p.error?` — ${p.error}`:""}</div>)}
       </div>}
       {status && <p style={{marginTop:18,fontWeight:700}}>{status}</p>}
-      <p style={{marginTop:30,color:"#777",fontSize:14,lineHeight:1.5}}>Priorité : authenticité et régularité. Tu n’as pas besoin d’écrire une description parfaite. Une note courte suffit, ou laisse-la vide : le moteur fera une légende courte et factuelle sans inventer ce qu’il ne sait pas.</p>
+      <p style={{marginTop:30,color:"#777",fontSize:14,lineHeight:1.5}}>Priorité : authenticité et régularité. Tu n’as pas besoin d’écrire une description parfaite. Une note courte suffit, ou laisse-la vide.</p>
     </main>
   );
 }
