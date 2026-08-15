@@ -13,7 +13,8 @@ type UploadInfo = { index: number; path?: string; token?: string; type?: string;
 function mb(n: number) { return `${(n / 1024 / 1024).toFixed(n > 10 * 1024 * 1024 ? 0 : 1)} Mo`; }
 
 async function optimiseImage(f: File) {
-  if (!f.type.startsWith("image/") || f.size < 2 * 1024 * 1024) return f;
+  if (!f.type.startsWith("image/")) return f;
+  if (f.type === "image/jpeg" && f.size < 2 * 1024 * 1024) return f;
   try {
     const b = await createImageBitmap(f);
     const s = Math.min(1, 1920 / Math.max(b.width, b.height));
@@ -22,10 +23,12 @@ async function optimiseImage(f: File) {
     c.height = Math.max(1, Math.round(b.height * s));
     const x = c.getContext("2d");
     if (!x) return f;
+    x.fillStyle = "#fff";
+    x.fillRect(0, 0, c.width, c.height);
     x.drawImage(b, 0, 0, c.width, c.height);
     b.close();
-    const z = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.82));
-    return z && z.size < f.size ? new File([z], `${f.name.replace(/\.[^.]+$/, "") || "photo"}.jpg`, { type: "image/jpeg" }) : f;
+    const z = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.86));
+    return z ? new File([z], `${f.name.replace(/\.[^.]+$/, "") || "photo"}.jpg`, { type: "image/jpeg" }) : f;
   } catch { return f; }
 }
 
@@ -61,7 +64,7 @@ export default function Page() {
     e.preventDefault();
     if (!files.length) return;
     setLoading(true);
-    setStatus("Optimisation des photos…");
+    setStatus("Optimisation et conversion des photos en JPEG…");
     setProgress(files.map((f) => ({ name: f.name, size: f.size, state: "waiting" })));
     try {
       const fs = await Promise.all(files.map(optimiseImage));
@@ -108,7 +111,7 @@ export default function Page() {
 
   return <main style={{ maxWidth: 760, margin: "0 auto", padding: "28px 18px 60px", fontFamily: "Arial,sans-serif" }}>
     <h1>Bibliothèque sociale NeoDrive</h1>
-    <p>Ajoute tes vraies photos et vidéos en lot. Un fichier en erreur ne bloque plus les autres. Les vidéos peuvent aller jusqu’à 500 Mo côté bibliothèque.</p>
+    <p>Ajoute tes vraies photos et vidéos en lot. Un fichier en erreur ne bloque plus les autres. Les vidéos peuvent aller jusqu’à 500 Mo côté bibliothèque. Les photos sont automatiquement converties en JPEG compatible Instagram.</p>
     <form onSubmit={submit} style={{ display: "grid", gap: 16, marginTop: 28 }}>
       <label>Code d’accès<input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} required style={input} /></label>
       <label>Photos et vidéos<input type="file" multiple accept="image/*,video/mp4,video/quicktime" onChange={(e) => setFiles(Array.from(e.target.files || []))} style={input} /></label>
