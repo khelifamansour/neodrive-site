@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function GET() {
   const token = process.env.INSTAGRAM_ACCESS_TOKEN;
 
@@ -36,6 +38,31 @@ export async function GET() {
 
     if (!createResponse.ok || !createData?.id) {
       return NextResponse.json({ ok: false, error: "Instagram media container creation failed", details: createData?.error?.message ?? "Instagram API error" }, { status: createResponse.status || 502 });
+    }
+
+    let statusCode = "IN_PROGRESS";
+    let statusDetails: unknown = null;
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const statusUrl = new URL(`https://graph.instagram.com/${createData.id}`);
+      statusUrl.searchParams.set("fields", "status_code,status");
+      statusUrl.searchParams.set("access_token", token);
+
+      const statusResponse = await fetch(statusUrl, { cache: "no-store" });
+      const statusData = await statusResponse.json();
+      statusCode = statusData?.status_code ?? statusCode;
+      statusDetails = statusData;
+
+      if (statusCode === "FINISHED") break;
+      if (statusCode === "ERROR" || statusCode === "EXPIRED") {
+        return NextResponse.json({ ok: false, error: "Instagram media processing failed", containerId: createData.id, details: statusData }, { status: 502 });
+      }
+
+      await sleep(2000);
+    }
+
+    if (statusCode !== "FINISHED") {
+      return NextResponse.json({ ok: false, error: "Instagram media is still processing", containerId: createData.id, details: statusDetails }, { status: 409 });
     }
 
     const publishUrl = new URL(`https://graph.instagram.com/${meData.id}/media_publish`);
