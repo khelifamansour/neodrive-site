@@ -1,23 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
-export const metadata = {
-  title: "Conseils voiture sans permis électrique | NeoDrive",
-  description: "Guides NeoDrive sur les prix, l'autonomie, la recharge, l'assurance et le choix d'une voiture sans permis électrique.",
-  alternates: { canonical: "https://www.easydrive-auto.fr/blog" },
-};
-
-const supabase = createClient("https://tzlsdjzcxdjaatcpwqwn.supabase.co","sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd",{auth:{persistSession:false,autoRefreshToken:false}});
-
-export default async function BlogPage(){
-  const {data}=await supabase.from("seo_articles").select("slug,title,meta_description,published_at,created_at").eq("status","published").order("published_at",{ascending:false}).limit(60);
-  return <main style={{maxWidth:1100,margin:"0 auto",padding:"70px 22px 100px",color:"#111"}}>
-    <span style={{fontSize:12,fontWeight:900,letterSpacing:2,color:"#ff5a1f"}}>GUIDES NEODRIVE</span>
-    <h1 style={{fontSize:"clamp(42px,7vw,72px)",letterSpacing:-3,margin:"12px 0 15px"}}>Comprendre la voiture sans permis.</h1>
-    <p style={{fontSize:20,color:"#666",lineHeight:1.6,maxWidth:760}}>Prix, autonomie, recharge, assurance et comparatifs : des réponses pratiques pour choisir votre véhicule sans permis.</p>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16,marginTop:45}}>
-      {(data||[]).map(a=><a key={a.slug} href={`/blog/${a.slug}`} style={{textDecoration:"none",color:"inherit",padding:25,border:"1px solid #e5e7eb",borderRadius:22,background:"#fff"}}><small style={{color:"#777"}}>{new Date(a.published_at||a.created_at||Date.now()).toLocaleDateString("fr-FR")}</small><h2 style={{fontSize:22,lineHeight:1.2,margin:"10px 0"}}>{a.title}</h2><p style={{color:"#666",lineHeight:1.55}}>{a.meta_description||"Lire le guide NeoDrive."}</p><b>Lire l’article →</b></a>)}
-    </div>
-    <section style={{marginTop:60,padding:35,borderRadius:24,background:"#f3f4f6"}}><h2>Vous cherchez directement un véhicule ?</h2><p style={{color:"#666"}}>Découvrez la NeoDrive SWITCH, ses caractéristiques et les offres actuellement proposées.</p><a href="/produit" style={{display:"inline-block",marginTop:10,padding:"14px 20px",borderRadius:12,background:"#111",color:"#fff",fontWeight:900,textDecoration:"none"}}>Voir la NeoDrive SWITCH</a></section>
-  </main>;
-}
+export const metadata:Metadata={title:"Guide voiture sans permis | NeoDrive",description:"Conseils pratiques sur la voiture sans permis électrique : prix, recharge, autonomie, assurance, livraison, SAV et comparatifs.",alternates:{canonical:"https://www.easydrive-auto.fr/blog"}};
+const U="https://tzlsdjzcxdjaatcpwqwn.supabase.co";const K=process.env.SUPABASE_SERVICE_ROLE_KEY!;
+async function articles(){const r=await fetch(`${U}/rest/v1/seo_articles?status=eq.published&select=slug,title,description,published_at,topic&order=published_at.desc&limit=60`,{headers:{apikey:K,Authorization:`Bearer ${K}`},next:{revalidate:1800}});return r.ok?await r.json():[];}
+export default async function Blog(){const rows=await articles();return <main className="blog"><section className="hero"><span>GUIDES NEODRIVE</span><h1>Mieux comprendre la voiture sans permis.</h1><p>Prix, recharge, achat neuf ou occasion, livraison, entretien et mobilité : des réponses concrètes avant de choisir votre véhicule.</p><div className="actions"><a href="/produit">Voir la NeoDrive</a><a className="ghost" href="/contact">Poser une question</a></div></section><section className="grid">{rows.map((a:any)=><article key={a.slug}><small>{a.topic||"Guide voiture sans permis"}</small><h2><a href={`/blog/${a.slug}`}>{a.title}</a></h2><p>{a.description}</p><a className="read" href={`/blog/${a.slug}`}>Lire le guide →</a></article>)}</section><section className="cta"><h2>Vous comparez encore les options ?</h2><p>Demandez les photos, vidéos et disponibilités NeoDrive. Gamme électrique à partir de 3 990 € TTC.</p><a href="https://wa.me/33628261446">Écrire sur WhatsApp</a></section><style jsx>{`.blog{background:#fff;color:#111}.hero{max-width:1180px;margin:auto;padding:80px 24px 55px}.hero span,article small{font-size:12px;font-weight:900;letter-spacing:1.7px;color:#ff5a1f}.hero h1{font-size:clamp(46px,7vw,80px);line-height:.96;letter-spacing:-4px;max-width:900px;margin:16px 0}.hero p{font-size:20px;line-height:1.6;color:#59616d;max-width:760px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.actions a,.cta a{background:#111;color:#fff;padding:15px 22px;border-radius:14px;text-decoration:none;font-weight:900}.actions .ghost{background:#f3f4f6;color:#111}.grid{max-width:1180px;margin:auto;padding:20px 24px 80px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.grid article{border:1px solid #e5e7eb;border-radius:24px;padding:27px;background:#fff}.grid h2{font-size:24px;line-height:1.12;margin:12px 0}.grid h2 a,.read{color:#111;text-decoration:none}.grid p{color:#626b76;line-height:1.6}.read{font-weight:900}.cta{max-width:1132px;margin:0 auto 80px;background:#111;color:#fff;border-radius:30px;padding:50px}.cta h2{font-size:clamp(32px,5vw,52px);margin:0 0 12px}.cta p{color:#d1d5db;font-size:18px;margin-bottom:28px}.cta a{background:#fff;color:#111}@media(max-width:900px){.grid{grid-template-columns:1fr}.hero h1{letter-spacing:-2px}.cta{margin:0 18px 60px;padding:32px 26px}}`}</style></main>}
