@@ -43,7 +43,7 @@ export async function GET() {
     let statusCode = "IN_PROGRESS";
     let statusDetails: unknown = null;
 
-    for (let attempt = 0; attempt < 10; attempt++) {
+    for (let attempt = 0; attempt < 15; attempt++) {
       const statusUrl = new URL(`https://graph.instagram.com/${createData.id}`);
       statusUrl.searchParams.set("fields", "status_code,status");
       statusUrl.searchParams.set("access_token", token);
@@ -65,21 +65,42 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Instagram media is still processing", containerId: createData.id, details: statusDetails }, { status: 409 });
     }
 
-    const publishUrl = new URL(`https://graph.instagram.com/${meData.id}/media_publish`);
-    const publishBody = new URLSearchParams({ creation_id: createData.id, access_token: token });
-    const publishResponse = await fetch(publishUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: publishBody,
-      cache: "no-store",
-    });
-    const publishData = await publishResponse.json();
+    await sleep(5000);
 
-    if (!publishResponse.ok || !publishData?.id) {
-      return NextResponse.json({ ok: false, error: "Instagram publish failed", containerId: createData.id, details: publishData?.error?.message ?? "Instagram API error" }, { status: publishResponse.status || 502 });
+    const publishUrl = new URL(`https://graph.instagram.com/${meData.id}/media_publish`);
+    let lastPublishData: any = null;
+    let lastStatus = 502;
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const publishBody = new URLSearchParams({ creation_id: createData.id, access_token: token });
+      const publishResponse = await fetch(publishUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: publishBody,
+        cache: "no-store",
+      });
+      const publishData = await publishResponse.json();
+      lastPublishData = publishData;
+      lastStatus = publishResponse.status || 502;
+
+      if (publishResponse.ok && publishData?.id) {
+        return NextResponse.json({ ok: true, published: true, account: meData.username ?? null, mediaId: publishData.id });
+      }
+
+      const message = publishData?.error?.message ?? "Instagram API error";
+      if (!message.includes("Media ID is not available")) {
+        return NextResponse.json({ ok: false, error: "Instagram publish failed", containerId: createData.id, details: message }, { status: lastStatus });
+      }
+
+      await sleep(5000);
     }
 
-    return NextResponse.json({ ok: true, published: true, account: meData.username ?? null, mediaId: publishData.id });
+    return NextResponse.json({
+      ok: false,
+      error: "Instagram publish failed after retries",
+      containerId: createData.id,
+      details: lastPublishData?.error?.message ?? "Media ID is not available",
+    }, { status: lastStatus });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
   }
