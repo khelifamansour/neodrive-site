@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/api/instagram/auto-publish", "schedule": "30 7 * * *" },
+    { "path": "/api/instagram/auto-publish", "schedule": "30 8 * * *" },
+    { "path": "/api/instagram/auto-publish", "schedule": "30 16 * * *" },
+    { "path": "/api/instagram/auto-publish", "schedule": "30 17 * * *" }
+  ]
+}
