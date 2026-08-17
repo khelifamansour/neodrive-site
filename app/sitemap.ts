@@ -19,6 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ["/meilleure-voiture-sans-permis-electrique", "weekly", 0.95], ["/assurance-voiture-sans-permis", "weekly", 0.9],
     ["/batterie-lithium-ou-plomb-voiture-sans-permis", "monthly", 0.9], ["/livraison", "monthly", 0.85],
     ["/carte-grise", "monthly", 0.85], ["/pieces", "weekly", 0.8], ["/sav", "weekly", 0.8],
+    ["/blog/sav-voiture-sans-permis", "monthly", 0.75],
     ["/faq", "weekly", 0.8], ["/contact", "monthly", 0.85], ["/reservation", "weekly", 0.9],
   ] as const;
 
