@@ -29,6 +29,7 @@ function mediaElement(a:any,i:number,time:number,duration:number){
 }
 
 export async function GET(req:Request){
+ const scheduledTest=new URL(req.url).searchParams.get("scheduled_test")==="1";
  const secret=process.env.CRON_SECRET;
  if(!secret||req.headers.get("authorization")!==`Bearer ${secret}`)return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
  const sk=process.env.SUPABASE_SERVICE_ROLE_KEY,ck=process.env.CREATOMATE_API_KEY;
@@ -91,7 +92,7 @@ export async function GET(req:Request){
   {type:"text",track:4,time:duration-1.9,duration:1.9,x:"50%",y:"90%",width:"90%",height:"7%",x_anchor:"50%",y_anchor:"50%",text:"easydrive-auto.fr",fill_color:"#ffffff",font_family:"Montserrat",font_weight:"700",font_size:"4.3 vmin",x_alignment:"50%",y_alignment:"50%",animations:[{time:0,duration:.25,type:"fade"}]}
  );
 
- const {data:job,error}=await (await import("@supabase/supabase-js")).createClient(SB,sk,{auth:{persistSession:false}}).from("video_generation_jobs").insert({status:"rendering",theme,hook,source_asset_ids:chosen.map(x=>x.id),render_provider:"creatomate"}).select().single();
+ const {data:job,error}=await (await import("@supabase/supabase-js")).createClient(SB,sk,{auth:{persistSession:false}}).from("video_generation_jobs").insert({status:"rendering",theme,hook,source_asset_ids:chosen.map(x=>x.id),render_provider:scheduledTest?"creatomate-scheduled-test":"creatomate"}).select().single();
  if(error)return NextResponse.json({ok:false,error:error.message},{status:500});
 
  const site=process.env.NEXT_PUBLIC_SITE_URL||"https://www.easydrive-auto.fr";
