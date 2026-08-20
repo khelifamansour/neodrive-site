@@ -11,6 +11,12 @@
     { "path": "/api/instagram/auto-publish?force=1", "schedule": "30 11 * * *" },
     { "path": "/api/facebook/auto-publish?force=1", "schedule": "35 11 * * *" },
     { "path": "/api/video/auto-publish", "schedule": "30 16 * * *" },
-    { "path": "/api/crm/auto-followup", "schedule": "0 7-18 * * *" }
+    { "path": "/api/crm/auto-followup", "schedule": "0 7-18 * * *" },
+    { "path": "/api/video/scheduled-test?action=create&slot=1", "schedule": "1 18 * * *" },
+    { "path": "/api/video/scheduled-test?action=publish&slot=1", "schedule": "3 18 * * *" },
+    { "path": "/api/video/scheduled-test?action=create&slot=2", "schedule": "6 18 * * *" },
+    { "path": "/api/video/scheduled-test?action=publish&slot=2", "schedule": "8 18 * * *" },
+    { "path": "/api/video/scheduled-test?action=create&slot=3", "schedule": "11 18 * * *" },
+    { "path": "/api/video/scheduled-test?action=publish&slot=3", "schedule": "13 18 * * *" }
   ]
 }
