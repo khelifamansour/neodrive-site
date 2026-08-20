@@ -18,8 +18,8 @@ export async function GET(request) {
     return NextResponse.redirect(new URL("/social-upload?tiktok=error&reason=oauth_state", request.url));
   }
 
-  const clientKey = process.env.TIKTOK_CLIENT_KEY;
-  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+  const clientKey = process.env.TIKTOK_CLIENT_KEY?.trim();
+  const clientSecret = process.env.TIKTOK_CLIENT_SECRET?.trim();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!clientKey || !clientSecret || !serviceKey) {
     return NextResponse.redirect(new URL("/social-upload?tiktok=error&reason=configuration", request.url));
