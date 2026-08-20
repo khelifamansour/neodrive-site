@@ -68,15 +68,31 @@ export async function POST(req: Request) {
     cache:"no-store",
   });
   const ij = await init.json().catch(()=>({}));
-  if (!init.ok || !ij?.data?.upload_url) return NextResponse.json({ ok:false, error:ij?.error?.message || ij?.error_description || "Initialisation de l’upload TikTok impossible" }, { status:500 });
+  const publishId = ij?.data?.publish_id;
+  if (!init.ok || !ij?.data?.upload_url || !publishId) return NextResponse.json({ ok:false, error:ij?.error?.message || ij?.error_description || "Initialisation de l’upload TikTok impossible" }, { status:500 });
 
+  const contentRange = `bytes 0-${size-1}/${size}`;
   const up = await fetch(ij.data.upload_url, {
     method:"PUT",
-    headers:{ "Content-Type":"video/mp4", "Content-Length":String(size), "Content-Range":`bytes 0-${size-1}/${size}` },
+    headers:{ "Content-Type":"video/mp4", "Content-Length":String(size), "Content-Range":contentRange },
     body:buf,
     cache:"no-store",
   });
-  if (!up.ok) return NextResponse.json({ ok:false, error:`Upload TikTok échoué (${up.status})` }, { status:500 });
+  const uploadComplete = [200,201,204].includes(up.status);
+  console.log("[tiktok-upload] binary upload result", { publishId, status:up.status, uploadComplete, contentType:"video/mp4", contentLength:size, contentRange, uploadedBytes:buf.length });
+  if (!uploadComplete) return NextResponse.json({ ok:false, error:`Upload TikTok échoué (${up.status})`, publishId, uploadStatus:up.status }, { status:500 });
 
-  return NextResponse.json({ ok:true, uploaded:true, note:"Vidéo envoyée comme brouillon TikTok. Ouvre la boîte de réception TikTok pour la modifier et la publier." });
+  const statusResponse = await fetch("https://open.tiktokapis.com/v2/post/publish/status/fetch/", {
+    method:"POST",
+    headers:{ Authorization:`Bearer ${conn.access_token}`, "Content-Type":"application/json; charset=UTF-8" },
+    body:JSON.stringify({ publish_id:publishId }),
+    cache:"no-store",
+  });
+  const statusPayload = await statusResponse.json().catch(()=>({}));
+  const tiktokStatus = statusPayload?.data?.status || "UNKNOWN";
+  const failReason = statusPayload?.data?.fail_reason || statusPayload?.error?.message || statusPayload?.error_description || null;
+  console.log("[tiktok-upload] publish status", { publishId, httpStatus:statusResponse.status, status:tiktokStatus, failReason });
+  if (!statusResponse.ok || tiktokStatus === "FAILED") return NextResponse.json({ ok:false, error:failReason || "TikTok a signalé un échec de publication", publishId, tiktokStatus, failReason, tiktokError:statusPayload?.error || null }, { status:500 });
+
+  return NextResponse.json({ ok:true, uploaded:true, publishId, tiktokStatus, upload:{ status:up.status, contentType:"video/mp4", contentLength:size, contentRange, uploadedBytes:buf.length } });
 }
