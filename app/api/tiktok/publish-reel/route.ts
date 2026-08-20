@@ -54,35 +54,21 @@ export async function POST(req: Request) {
   let conn;
   try { conn = await refreshIfNeeded(sb, stored); } catch(e) { return NextResponse.json({ ok:false, error:e instanceof Error?e.message:"TikTok non connecté" }, { status:401 }); }
 
-  const creator = await fetch("https://open.tiktokapis.com/v2/post/publish/creator_info/query/", {
-    method:"POST",
-    headers:{ Authorization:`Bearer ${conn.access_token}`, "Content-Type":"application/json; charset=UTF-8" },
-    body:"{}",
-    cache:"no-store",
-  });
-  const cj = await creator.json().catch(()=>({}));
-  if (!creator.ok) return NextResponse.json({ ok:false, error:cj?.error?.message || cj?.error_description || "Creator info TikTok impossible" }, { status:500 });
-  const opts = cj?.data?.privacy_level_options || [];
-  const privacy = opts.includes("SELF_ONLY") ? "SELF_ONLY" : opts[0];
-  if (!privacy) return NextResponse.json({ ok:false, error:"Aucun niveau de confidentialité autorisé par TikTok" }, { status:400 });
-
   const vr = await fetch(job.output_url, { cache:"no-store" });
   if (!vr.ok) return NextResponse.json({ ok:false, error:"Impossible de télécharger le Reel généré" }, { status:500 });
   const buf = Buffer.from(await vr.arrayBuffer());
   const size = buf.length;
-  const title = `${job.hook || "Découvrez NeoDrive"}\n\n#NeoDrive #VoitureSansPermis #MobiliteElectrique`;
 
-  const init = await fetch("https://open.tiktokapis.com/v2/post/publish/video/init/", {
+  const init = await fetch("https://open.tiktokapis.com/v2/post/publish/inbox/video/init/", {
     method:"POST",
     headers:{ Authorization:`Bearer ${conn.access_token}`, "Content-Type":"application/json; charset=UTF-8" },
     body:JSON.stringify({
-      post_info:{ title, privacy_level:privacy, disable_duet:false, disable_comment:false, disable_stitch:false, video_cover_timestamp_ms:1000, brand_organic_toggle:true, brand_content_toggle:false },
       source_info:{ source:"FILE_UPLOAD", video_size:size, chunk_size:size, total_chunk_count:1 }
     }),
     cache:"no-store",
   });
   const ij = await init.json().catch(()=>({}));
-  if (!init.ok || !ij?.data?.upload_url || !ij?.data?.publish_id) return NextResponse.json({ ok:false, error:ij?.error?.message || ij?.error_description || "Initialisation TikTok impossible", details:ij }, { status:500 });
+  if (!init.ok || !ij?.data?.upload_url) return NextResponse.json({ ok:false, error:ij?.error?.message || ij?.error_description || "Initialisation de l’upload TikTok impossible" }, { status:500 });
 
   const up = await fetch(ij.data.upload_url, {
     method:"PUT",
@@ -92,5 +78,5 @@ export async function POST(req: Request) {
   });
   if (!up.ok) return NextResponse.json({ ok:false, error:`Upload TikTok échoué (${up.status})` }, { status:500 });
 
-  return NextResponse.json({ ok:true, published:true, publishId:ij.data.publish_id, privacy, note:privacy==="SELF_ONLY"?"App non auditée : TikTok limite le test en privé.":null });
+  return NextResponse.json({ ok:true, uploaded:true, note:"Vidéo envoyée comme brouillon TikTok. Ouvre la boîte de réception TikTok pour la modifier et la publier." });
 }
