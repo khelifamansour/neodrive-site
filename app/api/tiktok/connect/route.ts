@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Code d’accès incorrect" }, { status: 401 });
   }
 
-  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  const clientKey = process.env.TIKTOK_CLIENT_KEY?.trim();
   if (!clientKey) {
     return NextResponse.json({ ok: false, error: "TIKTOK_CLIENT_KEY manque dans Vercel" }, { status: 503 });
   }
