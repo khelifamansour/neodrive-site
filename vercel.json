@@ -10,8 +10,7 @@
     { "path": "/api/facebook/auto-publish?force=1", "schedule": "35 7 * * *" },
     { "path": "/api/instagram/auto-publish?force=1", "schedule": "30 11 * * *" },
     { "path": "/api/facebook/auto-publish?force=1", "schedule": "35 11 * * *" },
-    { "path": "/api/instagram/auto-publish?force=1", "schedule": "30 16 * * *" },
-    { "path": "/api/facebook/auto-publish?force=1", "schedule": "35 16 * * *" },
+    { "path": "/api/video/auto-publish", "schedule": "30 16 * * *" },
     { "path": "/api/crm/auto-followup", "schedule": "0 7-18 * * *" }
   ]
 }
