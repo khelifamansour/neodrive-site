@@ -13,6 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes = [
     ["", "daily", 1], ["/produit", "weekly", 0.95], ["/blog", "daily", 0.9],
     ["/blog/livraison-voiture-sans-permis", "monthly", 0.8],
+    ["/blog/preparation-voiture-sans-permis", "monthly", 0.8],
     ["/guide-voiture-sans-permis", "weekly", 0.95], ["/QuiSommesNous", "monthly", 0.85],
     ["/a-propos", "weekly", 0.9], ["/financement", "weekly", 0.9],
     ["/voiture-sans-permis-electrique", "weekly", 0.95], ["/citroen-ami-ou-neodrive", "weekly", 0.95],
