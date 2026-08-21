@@ -23,7 +23,7 @@ export function commercialFacts() {
 export function firstMessage(lead: any): string {
   const first = String(lead.nom || "").trim().split(/\s+/)[0];
   const greeting = first ? `Bonjour ${first},` : "Bonjour,";
-  return `${greeting}\n\nMerci pour votre intérêt pour NeoDrive. Nous proposons des voitures sans permis électriques neuves à partir de 3 990 € TTC, avec livraison partout en France.\n\nSouhaitez-vous recevoir les photos, les tarifs et les informations de livraison ?\n\nSi vous ne souhaitez plus être contacté, répondez STOP.`;
+  return `${greeting}\n\nMerci pour votre intérêt pour NeoDrive, marque française de voitures sans permis électriques. Nos voiturettes neuves, robustes, avec carrosserie en acier, sont proposées à partir de 3 990 € TTC, avec livraison partout en France.\n\nDécouvrez notre site : https://www.easydrive-auto.fr\n\nSouhaitez-vous recevoir notre catalogue et une vidéo de présentation ?\n\nSi vous ne souhaitez plus être contacté, répondez STOP.`;
 }
 
 export async function generateCommercialReply(lead: any, incoming: string, history: any[] = []) {

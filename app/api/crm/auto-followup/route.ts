@@ -75,16 +75,16 @@ export async function GET(req:Request){
     if(lead.opted_out_at){results.push({id:lead.id,skipped:true,reason:"prospect opted out"});continue;}
     if(lead.telephone&&lead.whatsapp_opt_in&&whatsappConfigured()){
       const step=Number(lead.followup_step||0)+1;
-      if(step>3){results.push({id:lead.id,skipped:true,reason:"WhatsApp sequence complete"});continue;}
+      if(step>2){results.push({id:lead.id,skipped:true,reason:"WhatsApp sequence complete"});continue;}
       const withinWindow=Boolean(lead.last_inbound_at&&Date.now()-new Date(lead.last_inbound_at).getTime()<24*60*60*1000);
       const template=withinWindow?undefined:process.env.WHATSAPP_TEMPLATE_NAME;
       if(!withinWindow&&!template){results.push({id:lead.id,skipped:true,reason:"approved WhatsApp template missing"});continue;}
       try{
-        const prompt=step===1?"Premier message suite à la demande Leboncoin.":step===2?"Relance douce 24 heures après, demande si le prospect souhaite photos et tarif.":"Dernière relance courte 3 jours après ; indique que nous arrêterons sans réponse.";
-        const message=lead.ai_enabled?await generateCommercialReply(lead,prompt):firstMessage(lead);
+        const prompt="Une seule relance douce, courte et naturelle, 48 heures après le premier message. Demande si le prospect souhaite recevoir le catalogue et la vidéo NeoDrive. Indique que nous ne relancerons pas sans réponse.";
+        const message=step===1?firstMessage(lead):lead.ai_enabled?await generateCommercialReply(lead,prompt):firstMessage(lead);
         const providerId=await sendWhatsApp(lead.telephone,message,template);
         const db=crmDatabase();await db.from("crm_messages").insert({lead_id:lead.id,direction:"outbound",channel:"whatsapp",body:message,provider_message_id:providerId,status:"sent",ai_generated:Boolean(lead.ai_enabled)});
-        const next=step===1?addDays(1):step===2?addDays(3):null;
+        const next=step===1?addDays(2):null;
         await patchLead(key,lead.id,{followup_step:step,statut:lead.statut==="Nouveau"?"Contacté":lead.statut,phase:"Attente réponse",last_contact_at:new Date().toISOString(),derniere_relance:new Date().toISOString(),next_followup_at:next});
         results.push({id:lead.id,step,channel:"whatsapp",sent:true,next});continue;
       }catch(error){results.push({id:lead.id,step,channel:"whatsapp",error:error instanceof Error?error.message:"WhatsApp send failed"});continue;}
