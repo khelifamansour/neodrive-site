@@ -1,10 +1,40 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { execFile } from "node:child_process";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { promisify } from "node:util";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 const sleep = (ms:number) => new Promise(resolve => setTimeout(resolve, ms));
+const runFile = promisify(execFile);
+
+async function normalizeTikTokVideo(input:Buffer, jobId:string) {
+  const directory = await mkdtemp(path.join(tmpdir(), "neodrive-tiktok-"));
+  const inputPath = path.join(directory, "input.mp4");
+  const outputPath = path.join(directory, "output.mp4");
+  const bundledFfmpeg = path.join(process.cwd(), "node_modules", "@ffmpeg-installer", "linux-x64", "ffmpeg");
+  let ffmpegPath = bundledFfmpeg;
+  try { await access(bundledFfmpeg); } catch { ffmpegPath = "/usr/bin/ffmpeg"; }
+
+  try {
+    await writeFile(inputPath, input);
+    await runFile(ffmpegPath, [
+      "-y", "-hide_banner", "-loglevel", "error", "-i", inputPath,
+      "-vf", "scale=1080:1920:flags=lanczos,setsar=1",
+      "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+      "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-movflags", "+faststart", outputPath,
+    ], { timeout:180000, maxBuffer:1024*1024 });
+    const output = await readFile(outputPath);
+    console.info("[tiktok-upload] normalized video", { jobId, inputBytes:input.length, outputBytes:output.length, width:1080, height:1920 });
+    return output;
+  } finally {
+    await rm(directory, { recursive:true, force:true });
+  }
+}
 
 async function refreshIfNeeded(sb:any, row:any) {
   if (!row) throw new Error("TikTok non connecté");
@@ -57,7 +87,13 @@ export async function POST(req: Request) {
 
   const vr = await fetch(job.output_url, { cache:"no-store" });
   if (!vr.ok) return NextResponse.json({ ok:false, error:"Impossible de télécharger le Reel généré" }, { status:500 });
-  const buf = Buffer.from(await vr.arrayBuffer());
+  let buf:Buffer;
+  try {
+    buf = await normalizeTikTokVideo(Buffer.from(await vr.arrayBuffer()), String(job.id));
+  } catch(e) {
+    console.error("[tiktok-upload] video normalization failed", { jobId:job.id, error:e instanceof Error?e.message:String(e) });
+    return NextResponse.json({ ok:false, error:"Impossible de convertir la vidéo au format TikTok HD" }, { status:500 });
+  }
   const size = buf.length;
 
   const init = await fetch("https://open.tiktokapis.com/v2/post/publish/inbox/video/init/", {
