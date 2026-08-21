@@ -78,6 +78,8 @@ export default function CRMPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [whatsappReady, setWhatsappReady] = useState(false);
   const [aiReady, setAiReady] = useState(false);
+  const [templateReady, setTemplateReady] = useState(false);
+  const [webhookReady, setWebhookReady] = useState(false);
   const [draft, setDraft] = useState<{ lead: Lead; message: string; whatsappUrl: string } | null>(null);
   const [working, setWorking] = useState(false);
 
@@ -94,7 +96,7 @@ export default function CRMPage() {
     setLoading(true);
     try {
       const result = await api("list", {}, code);
-      setLeads((result.leads || []) as Lead[]); setWhatsappReady(Boolean(result.whatsappConfigured)); setAiReady(Boolean(result.aiConfigured));
+      setLeads((result.leads || []) as Lead[]); setWhatsappReady(Boolean(result.whatsappConfigured)); setAiReady(Boolean(result.aiConfigured)); setTemplateReady(Boolean(result.templateConfigured)); setWebhookReady(Boolean(result.webhookConfigured));
       setAuthenticated(true); sessionStorage.setItem("neodrive_crm_access", code);
     } catch (error) {
       setAuthenticated(false);
@@ -213,7 +215,7 @@ export default function CRMPage() {
         </div>
       </div>
 
-      <div style={{ ...styles.card, marginBottom: 16, background: "#f8fafc", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><div><strong>Agent commercial NeoDrive</strong><div style={styles.sub}>{aiReady ? "IA disponible : messages personnalisés et réponses clients." : "IA non configurée : messages commerciaux standards."}</div></div><div><strong style={{ color: whatsappReady ? "#16a34a" : "#b45309" }}>{whatsappReady ? "WhatsApp Business connecté" : "WhatsApp Business à connecter"}</strong><div style={styles.sub}>{whatsappReady ? "Envoi automatique sous réserve du consentement et des modèles approuvés." : "Les messages peuvent déjà être préparés et ouverts dans WhatsApp."}</div></div></div>
+      <div style={{ ...styles.card, marginBottom: 16, background: "#f8fafc", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><div><strong>Agent commercial NeoDrive</strong><div style={styles.sub}>{aiReady ? "IA active : présentation NeoDrive, réponses clients et une seule relance." : "IA non configurée : messages commerciaux standards."}</div></div><div><strong style={{ color: whatsappReady && templateReady ? "#16a34a" : "#b45309" }}>{whatsappReady && templateReady ? "Envoi WhatsApp automatique actif" : whatsappReady ? "WhatsApp connecté · modèle Meta à configurer" : "WhatsApp Business à connecter"}</strong><div style={styles.sub}>{whatsappReady && templateReady ? `Prospects consentants traités automatiquement. ${webhookReady ? "Réponses automatiques configurées." : "Webhook à configurer pour les réponses entrantes."}` : whatsappReady ? "Ajoute WHATSAPP_TEMPLATE_NAME dans Vercel après validation du modèle Meta." : "Les messages peuvent déjà être préparés et ouverts dans WhatsApp."}</div></div></div>
 
       <div style={styles.stats}>
         <Stat label="Leads" value={stats.total} />
