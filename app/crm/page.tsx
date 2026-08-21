@@ -1,13 +1,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  "https://tzlsdjzcxdjaatcpwqwn.supabase.co",
-  "sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd",
-  { auth: { persistSession: false, autoRefreshToken: false } }
-);
 
 type Lead = {
   id: number;
@@ -29,6 +22,9 @@ type Lead = {
   modele_interesse?: string | null;
   ville?: string | null;
   departement?: string | null;
+  whatsapp_opt_in?: boolean;
+  opted_out_at?: string | null;
+  ai_enabled?: boolean;
 };
 
 const STATUTS = ["Nouveau", "Contacté", "Chaud", "Réfléchit", "Livraison", "Client", "Perdu"];
@@ -78,23 +74,37 @@ export default function CRMPage() {
   const [message, setMessage] = useState("");
   const [newLeadOpen, setNewLeadOpen] = useState(false);
   const [newLead, setNewLead] = useState({ nom: "", telephone: "", email: "", ville: "", modele_interesse: "", commentaire: "" });
+  const [passcode, setPasscode] = useState("");
+  const [authenticated, setAuthenticated] = useState(false);
+  const [whatsappReady, setWhatsappReady] = useState(false);
+  const [aiReady, setAiReady] = useState(false);
+  const [draft, setDraft] = useState<{ lead: Lead; message: string; whatsappUrl: string } | null>(null);
+  const [working, setWorking] = useState(false);
 
-  async function loadLeads() {
+  async function api(action: string, payload: Record<string, unknown> = {}, code = passcode) {
+    const response = await fetch("/api/crm/manage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, passcode: code, ...payload }) });
+    const result = await response.json().catch(() => ({ ok: false, error: "Réponse serveur invalide" }));
+    if (!response.ok || !result.ok) throw new Error(result.error || "Opération impossible");
+    return result;
+  }
+
+  async function loadLeads(code = passcode) {
+    if (!code) { setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await supabase.from("leads").select("*").order("id", { ascending: false });
-    if (error) setMessage(`❌ ${error.message}`);
-    else setLeads((data || []) as Lead[]);
+    try {
+      const result = await api("list", {}, code);
+      setLeads((result.leads || []) as Lead[]); setWhatsappReady(Boolean(result.whatsappConfigured)); setAiReady(Boolean(result.aiConfigured));
+      setAuthenticated(true); sessionStorage.setItem("neodrive_crm_access", code);
+    } catch (error) { setAuthenticated(false); setMessage(`❌ ${error instanceof Error ? error.message : "Connexion impossible"}`); }
     setLoading(false);
   }
 
-  useEffect(() => { loadLeads(); }, []);
+  useEffect(() => { const saved = sessionStorage.getItem("neodrive_crm_access"); if (saved) { setPasscode(saved); loadLeads(saved); } else setLoading(false); }, []);
 
   async function patchLead(id: number, patch: Partial<Lead>) {
     setSaving(id);
-    const payload = { ...patch, updated_at: new Date().toISOString() };
-    const { error } = await supabase.from("leads").update(payload).eq("id", id);
-    if (error) setMessage(`❌ ${error.message}`);
-    else setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l));
+    try { await api("update", { id, patch }); setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l)); }
+    catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Mise à jour impossible"}`); }
     setSaving(null);
   }
 
@@ -108,14 +118,7 @@ export default function CRMPage() {
 
   async function createLead() {
     if (!newLead.nom && !newLead.telephone && !newLead.email) return;
-    const { error } = await supabase.from("leads").insert({
-      ...newLead,
-      statut: "Nouveau",
-      phase: "À contacter",
-      source: "manuel",
-      lead_score: 0,
-    });
-    if (error) return setMessage(`❌ ${error.message}`);
+    try { await api("create", { lead: newLead }); } catch (error) { return setMessage(`❌ ${error instanceof Error ? error.message : "Création impossible"}`); }
     setNewLead({ nom: "", telephone: "", email: "", ville: "", modele_interesse: "", commentaire: "" });
     setNewLeadOpen(false);
     setMessage("✅ Lead ajouté");
@@ -124,16 +127,35 @@ export default function CRMPage() {
 
   async function deleteSelected() {
     if (!selected.length || !confirm(`Supprimer ${selected.length} lead(s) ?`)) return;
-    const { error } = await supabase.from("leads").delete().in("id", selected);
-    if (error) setMessage(`❌ ${error.message}`);
-    else { setSelected([]); loadLeads(); }
+    try { await api("delete", { ids: selected }); setSelected([]); loadLeads(); }
+    catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Suppression impossible"}`); }
   }
 
   async function bulkStatus(status: string) {
     if (!selected.length) return;
-    const { error } = await supabase.from("leads").update({ statut: status, updated_at: new Date().toISOString() }).in("id", selected);
-    if (error) setMessage(`❌ ${error.message}`);
-    else setLeads(prev => prev.map(l => selected.includes(l.id) ? { ...l, statut: status } : l));
+    try { await api("bulk-status", { ids: selected, status }); setLeads(prev => prev.map(l => selected.includes(l.id) ? { ...l, statut: status } : l)); }
+    catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Mise à jour impossible"}`); }
+  }
+
+  async function importFile(file?: File) {
+    if (!file) return; setWorking(true);
+    try { const result = await api("import", { csv: await file.text() }); setMessage(`✅ ${result.imported} prospect(s) importé(s), ${result.duplicates} doublon(s), ${result.invalid} ligne(s) ignorée(s).`); await loadLeads(); }
+    catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Import impossible"}`); }
+    setWorking(false);
+  }
+
+  async function prepareReply(lead: Lead) {
+    setWorking(true);
+    try { const result = await api("draft", { id: lead.id }); setDraft({ lead, message: result.message, whatsappUrl: result.whatsappUrl }); }
+    catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Agent IA indisponible"}`); }
+    setWorking(false);
+  }
+
+  async function sendDraft() {
+    if (!draft) return; setWorking(true);
+    try { await api("send", { id: draft.lead.id, message: draft.message, aiGenerated: true }); setMessage("✅ Message WhatsApp envoyé"); setDraft(null); await loadLeads(); }
+    catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Envoi impossible"}`); }
+    setWorking(false);
   }
 
   const operators = useMemo(() => Array.from(new Set(leads.map(l => l.operateur).filter(Boolean) as string[])).sort(), [leads]);
@@ -168,20 +190,25 @@ export default function CRMPage() {
   function allVisibleSelected() { return filtered.length > 0 && filtered.every(l => selected.includes(l.id)); }
   function toggleAll() { setSelected(allVisibleSelected() ? selected.filter(id => !filtered.some(l => l.id === id)) : Array.from(new Set([...selected, ...filtered.map(l => l.id)]))); }
 
+  if (!authenticated) return <main style={{ ...styles.page, maxWidth: 520, paddingTop: 90 }}><div style={{ ...styles.card, padding: 28 }}><div style={styles.eyebrow}>NEODRIVE · ACCÈS PRIVÉ</div><h1 style={styles.h1}>CRM commercial IA</h1><p style={{ ...styles.muted, marginBottom: 20 }}>Connecte-toi avec le code d’administration utilisé sur la plateforme NeoDrive.</p><input type="password" style={styles.input} placeholder="Code d’accès" value={passcode} onChange={event => setPasscode(event.target.value)} onKeyDown={event => { if (event.key === "Enter") loadLeads(); }} /><button style={{ ...styles.primary, width: "100%", marginTop: 12 }} onClick={() => loadLeads()} disabled={loading}>{loading ? "Connexion…" : "Accéder au CRM"}</button>{message && <p style={{ color: "#dc2626" }}>{message}</p>}</div></main>;
+
   return (
     <main style={styles.page}>
       <div style={styles.header}>
         <div>
           <div style={styles.eyebrow}>NEODRIVE</div>
           <h1 style={styles.h1}>CRM commercial</h1>
-          <p style={styles.muted}>Leads, relances et conversion — une vue de travail rapide.</p>
+          <p style={styles.muted}>Import Leboncoin, agent commercial IA, WhatsApp et relances.</p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button style={styles.secondary} onClick={loadLeads}>↻ Actualiser</button>
           <button style={styles.secondary} onClick={exportCSV}>Exporter CSV</button>
+          <label style={{ ...styles.secondary, cursor: "pointer" }}>{working ? "Traitement…" : "Importer Leboncoin CSV"}<input type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={event => { importFile(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
           <button style={styles.primary} onClick={() => setNewLeadOpen(true)}>+ Nouveau lead</button>
         </div>
       </div>
+
+      <div style={{ ...styles.card, marginBottom: 16, background: "#f8fafc", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><div><strong>Agent commercial NeoDrive</strong><div style={styles.sub}>{aiReady ? "IA disponible : messages personnalisés et réponses clients." : "IA non configurée : messages commerciaux standards."}</div></div><div><strong style={{ color: whatsappReady ? "#16a34a" : "#b45309" }}>{whatsappReady ? "WhatsApp Business connecté" : "WhatsApp Business à connecter"}</strong><div style={styles.sub}>{whatsappReady ? "Envoi automatique sous réserve du consentement et des modèles approuvés." : "Les messages peuvent déjà être préparés et ouverts dans WhatsApp."}</div></div></div>
 
       <div style={styles.stats}>
         <Stat label="Leads" value={stats.total} />
@@ -225,7 +252,9 @@ export default function CRMPage() {
               <td style={styles.td}><input style={styles.smallInput} value={lead.operateur || ""} placeholder="Nom" onBlur={e => patchLead(lead.id,{operateur:e.target.value})} onChange={e => setLeads(prev=>prev.map(l=>l.id===lead.id?{...l,operateur:e.target.value}:l))} /></td>
               <td style={styles.td}><textarea style={styles.note} value={lead.commentaire || ""} placeholder="Note commerciale…" onBlur={e => patchLead(lead.id,{commentaire:e.target.value})} onChange={e => setLeads(prev=>prev.map(l=>l.id===lead.id?{...l,commentaire:e.target.value}:l))} /></td>
               <td style={styles.td}><div style={{display:"grid",gap:6}}>
+                {phone && <button style={{ ...styles.action, border: 0, cursor: "pointer" }} onClick={() => prepareReply(lead)}>Réponse IA</button>}
                 {phone && <a style={styles.action} href={`https://wa.me/${phone}`} target="_blank" onClick={() => markContacted(lead)}>WhatsApp</a>}
+                {phone && <label style={{ ...styles.sub, display: "flex", gap: 4, alignItems: "center" }}><input type="checkbox" checked={Boolean(lead.whatsapp_opt_in)} onChange={event => patchLead(lead.id, { whatsapp_opt_in: event.target.checked })} /> Consentement</label>}
                 {lead.telephone && <a style={styles.action} href={`tel:${lead.telephone}`} onClick={() => markContacted(lead)}>Appeler</a>}
                 {lead.email && <a style={styles.action} href={`mailto:${lead.email}`} onClick={() => markContacted(lead)}>Email</a>}
               </div></td>
@@ -239,6 +268,8 @@ export default function CRMPage() {
         {Object.entries(newLead).map(([k,v]) => <label key={k} style={styles.label}>{k.replace("_"," ")}<input style={styles.input} value={v} onChange={e => setNewLead({...newLead,[k]:e.target.value})} /></label>)}
         <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:18}}><button style={styles.secondary} onClick={()=>setNewLeadOpen(false)}>Annuler</button><button style={styles.primary} onClick={createLead}>Ajouter</button></div>
       </div></div>}
+
+      {draft && <div style={styles.overlay} onClick={() => setDraft(null)}><div style={styles.modal} onClick={event => event.stopPropagation()}><h2 style={{ marginTop: 0 }}>Agent commercial · {draft.lead.nom || "Prospect"}</h2><p style={styles.muted}>Vérifie le message avant envoi. L’agent ne promet pas de stock, délai ou tarif de livraison non confirmé.</p><textarea style={{ ...styles.input, height: 210, marginTop: 15, resize: "vertical" }} value={draft.message} onChange={event => setDraft({ ...draft, message: event.target.value, whatsappUrl: `https://wa.me/${normalizePhone(draft.lead.telephone)}?text=${encodeURIComponent(event.target.value)}` })} /><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 15, flexWrap: "wrap" }}><button style={styles.secondary} onClick={() => setDraft(null)}>Fermer</button><a style={{ ...styles.secondary, textDecoration: "none", color: "#111827" }} href={draft.whatsappUrl} target="_blank" onClick={() => markContacted(draft.lead)}>Ouvrir WhatsApp</a>{whatsappReady && <button style={{ ...styles.primary, background: "#16a34a" }} onClick={sendDraft} disabled={working}>{working ? "Envoi…" : "Envoyer automatiquement"}</button>}</div></div></div>}
     </main>
   );
 }

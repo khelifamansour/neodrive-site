@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { crmDatabase, firstMessage, generateCommercialReply, sendWhatsApp, whatsappConfigured } from "@/lib/crm-agent";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -10,6 +11,7 @@ type Lead = {
   id:number; nom:string|null; email:string|null; telephone:string|null; statut:string|null; phase:string|null;
   history:any; created_at:string|null; last_contact_at:string|null; next_followup_at:string|null; documentation_sent_at:string|null;
   modele_interesse:string|null; ville:string|null; annonce:string|null;
+  whatsapp_opt_in?:boolean; opted_out_at?:string|null; followup_step?:number; last_inbound_at?:string|null; ai_enabled?:boolean;
 };
 
 function dbHeaders(key:string){return {Authorization:`Bearer ${key}`,apikey:key};}
@@ -61,7 +63,7 @@ export async function GET(req:Request){
 
   const now=new Date().toISOString();
   const url=new URL(`${SUPABASE_URL}/rest/v1/leads`);
-  url.searchParams.set("select","id,nom,email,telephone,statut,phase,history,created_at,last_contact_at,next_followup_at,documentation_sent_at,modele_interesse,ville,annonce");
+  url.searchParams.set("select","id,nom,email,telephone,statut,phase,history,created_at,last_contact_at,next_followup_at,documentation_sent_at,modele_interesse,ville,annonce,whatsapp_opt_in,opted_out_at,followup_step,last_inbound_at,ai_enabled");
   url.searchParams.set("or",`next_followup_at.lte.${now},and(next_followup_at.is.null,statut.eq.Nouveau)`);
   url.searchParams.set("limit","25");
   const rr=await fetch(url,{headers:dbHeaders(key),cache:"no-store"}); const rows=await rr.json().catch(()=>[]);
@@ -70,6 +72,23 @@ export async function GET(req:Request){
   const results:any[]=[];
   for(const lead of rows as Lead[]){
     if(["Client","Perdu"].includes(String(lead.statut||""))) continue;
+    if(lead.opted_out_at){results.push({id:lead.id,skipped:true,reason:"prospect opted out"});continue;}
+    if(lead.telephone&&lead.whatsapp_opt_in&&whatsappConfigured()){
+      const step=Number(lead.followup_step||0)+1;
+      if(step>3){results.push({id:lead.id,skipped:true,reason:"WhatsApp sequence complete"});continue;}
+      const withinWindow=Boolean(lead.last_inbound_at&&Date.now()-new Date(lead.last_inbound_at).getTime()<24*60*60*1000);
+      const template=withinWindow?undefined:process.env.WHATSAPP_TEMPLATE_NAME;
+      if(!withinWindow&&!template){results.push({id:lead.id,skipped:true,reason:"approved WhatsApp template missing"});continue;}
+      try{
+        const prompt=step===1?"Premier message suite à la demande Leboncoin.":step===2?"Relance douce 24 heures après, demande si le prospect souhaite photos et tarif.":"Dernière relance courte 3 jours après ; indique que nous arrêterons sans réponse.";
+        const message=lead.ai_enabled?await generateCommercialReply(lead,prompt):firstMessage(lead);
+        const providerId=await sendWhatsApp(lead.telephone,message,template);
+        const db=crmDatabase();await db.from("crm_messages").insert({lead_id:lead.id,direction:"outbound",channel:"whatsapp",body:message,provider_message_id:providerId,status:"sent",ai_generated:Boolean(lead.ai_enabled)});
+        const next=step===1?addDays(1):step===2?addDays(3):null;
+        await patchLead(key,lead.id,{followup_step:step,statut:lead.statut==="Nouveau"?"Contacté":lead.statut,phase:"Attente réponse",last_contact_at:new Date().toISOString(),derniere_relance:new Date().toISOString(),next_followup_at:next});
+        results.push({id:lead.id,step,channel:"whatsapp",sent:true,next});continue;
+      }catch(error){results.push({id:lead.id,step,channel:"whatsapp",error:error instanceof Error?error.message:"WhatsApp send failed"});continue;}
+    }
     if(!lead.email){results.push({id:lead.id,skipped:true,reason:"no email"});continue;}
     const previous=lastStep(lead); if(previous>=4){results.push({id:lead.id,skipped:true,reason:"sequence complete"});continue;}
     const step=previous+1; const msg=content(step,lead);
@@ -81,5 +100,5 @@ export async function GET(req:Request){
       results.push({id:lead.id,step,sent:true,next:msg.next});
     }catch(e){results.push({id:lead.id,step,error:e instanceof Error?e.message:"unknown"});}
   }
-  return NextResponse.json({ok:true,processed:results.length,results,emailConfigured:Boolean(process.env.RESEND_API_KEY&&process.env.CRM_FROM_EMAIL)});
+  return NextResponse.json({ok:true,processed:results.length,results,emailConfigured:Boolean(process.env.RESEND_API_KEY&&process.env.CRM_FROM_EMAIL),whatsappConfigured:whatsappConfigured()});
 }
