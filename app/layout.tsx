@@ -44,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <a href="/sav">SAV</a>
             <a href="/pieces">Pièces détachées</a>
             <a href="/faq">FAQ</a>
+            <a href="/blog">Guides et conseils</a>
             <a href="/contact">Contact</a>
           </nav>
         </header>
