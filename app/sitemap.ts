@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { commercialPages } from "../lib/seo-commercial";
 
 const SITE = "https://www.easydrive-auto.fr";
 const supabase = createClient(
   "https://tzlsdjzcxdjaatcpwqwn.supabase.co",
-  "sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd",
+  process.env.SUPABASE_SERVICE_ROLE_KEY||"sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd",
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
@@ -42,5 +43,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...base, ...articles];
+  const offers:MetadataRoute.Sitemap=commercialPages.map(page=>({url:`${SITE}/offres/${page.slug}`,lastModified:new Date(),changeFrequency:"weekly",priority:0.9}));
+  return [...base,...offers,...articles];
 }
