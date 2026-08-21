@@ -17,6 +17,8 @@
 
   "dependencies": {
 
+    "@ffmpeg-installer/linux-x64": "4.1.0",
+
     "@supabase/supabase-js": "^2.105.4",
 
     "html2canvas": "^1.4.1",

@@ -3,6 +3,10 @@
 
 const nextConfig = {
 
+  outputFileTracingIncludes: {
+    "/api/tiktok/publish-reel": ["./node_modules/@ffmpeg-installer/linux-x64/ffmpeg"],
+  },
+
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -14,4 +18,3 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
-
