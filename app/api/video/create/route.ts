@@ -39,7 +39,7 @@ export async function GET(req:Request){
  // IMPORTANT: use only original uploaded videos here. Generated reels are deliberately excluded
  // so a new reel can never recycle an old generated reel.
  const [vr,ir,jr]=await Promise.all([
-  fetch(`${SB}/rest/v1/social_media_assets?status=eq.ready&media_type=eq.video&select=id,public_url,media_type,title,context,ai_summary,ai_tags,ai_quality_score,times_used,last_used_at&order=times_used.asc,last_used_at.asc.nullsfirst,ai_quality_score.desc.nullslast&limit=30`,{headers:H(sk),cache:"no-store"}),
+  fetch(`${SB}/rest/v1/social_media_assets?status=eq.ready&media_type=in.(video,reel)&select=id,public_url,media_type,title,context,ai_summary,ai_tags,ai_quality_score,times_used,last_used_at&order=times_used.asc,last_used_at.asc.nullsfirst,ai_quality_score.desc.nullslast&limit=30`,{headers:H(sk),cache:"no-store"}),
   fetch(`${SB}/rest/v1/social_media_assets?status=eq.ready&media_type=eq.image&select=id,public_url,media_type,title,context,ai_summary,ai_tags,ai_quality_score,times_used,last_used_at&order=times_used.asc,last_used_at.asc.nullsfirst,ai_quality_score.desc.nullslast&limit=30`,{headers:H(sk),cache:"no-store"}),
   fetch(`${SB}/rest/v1/video_generation_jobs?select=theme&order=created_at.desc&limit=1`,{headers:H(sk),cache:"no-store"})
  ]);
@@ -47,17 +47,17 @@ export async function GET(req:Request){
  const images=await ir.json().catch(()=>[]);
  const recent=await jr.json().catch(()=>[]);
  if(!Array.isArray(videos)||!Array.isArray(images))return NextResponse.json({ok:false,error:"Media library unavailable"},{status:500});
- if(videos.length<1&&images.length<3)return NextResponse.json({ok:true,skipped:true,reason:"Need more usable media"});
+ if(videos.length<1)return NextResponse.json({ok:true,skipped:true,reason:"Ajoute au moins une vraie vidéo : aucun Reel flou à base de photos ne sera créé."});
 
  const shuffledVideos=shuffle(videos);
  const shuffledImages=shuffle(images);
  const chosen:any[]=[];
- // Prefer a real-video reel. If we have 4+ real videos, use no photos at all.
- if(shuffledVideos.length>=4){
+ // Prefer a real-video reel. With 3+ real videos, use no photos at all.
+ if(shuffledVideos.length>=3){
   chosen.push(...shuffledVideos.slice(0,Math.min(7,shuffledVideos.length)));
  }else{
-  chosen.push(...shuffledVideos.slice(0,Math.min(3,shuffledVideos.length)));
-  for(const img of shuffledImages){if(chosen.length>=6)break;chosen.push(img);}
+  chosen.push(...shuffledVideos);
+  for(const img of shuffledImages){if(chosen.length>=5)break;chosen.push(img);}
  }
  if(chosen.length<3)return NextResponse.json({ok:true,skipped:true,reason:"Not enough usable assets"});
 
