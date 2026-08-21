@@ -84,6 +84,19 @@ export async function POST(req: Request) {
   const { data:stored } = await sb.from("tiktok_connection").select("*").eq("id",1).maybeSingle();
   let conn;
   try { conn = await refreshIfNeeded(sb, stored); } catch(e) { return NextResponse.json({ ok:false, error:e instanceof Error?e.message:"TikTok non connecté" }, { status:401 }); }
+  if (!String(conn.scope||"").split(",").includes("video.publish")) {
+    return NextResponse.json({ ok:false, reconnectRequired:true, error:"Reconnecte TikTok avec le bouton Connecter TikTok pour autoriser la publication directe (video.publish)." }, { status:403 });
+  }
+  const creatorResponse = await fetch("https://open.tiktokapis.com/v2/post/publish/creator_info/query/", {
+    method:"POST", headers:{ Authorization:`Bearer ${conn.access_token}`, "Content-Type":"application/json; charset=UTF-8" }, cache:"no-store",
+  });
+  const creator = await creatorResponse.json().catch(()=>({}));
+  if (!creatorResponse.ok || creator?.error?.code && creator.error.code!=="ok") {
+    return NextResponse.json({ ok:false, error:creator?.error?.message||"TikTok n’autorise pas encore la publication directe. Active Direct Post et video.publish dans TikTok for Developers." }, { status:403 });
+  }
+  const privacyOptions:string[] = Array.isArray(creator?.data?.privacy_level_options)?creator.data.privacy_level_options:[];
+  const privacyLevel = privacyOptions.includes("PUBLIC_TO_EVERYONE")?"PUBLIC_TO_EVERYONE":privacyOptions.includes("FOLLOWER_OF_CREATOR")?"FOLLOWER_OF_CREATOR":privacyOptions.includes("MUTUAL_FOLLOW_FRIENDS")?"MUTUAL_FOLLOW_FRIENDS":null;
+  if (!privacyLevel) return NextResponse.json({ ok:false, error:"TikTok limite cette application aux publications privées. Fais valider l’application Direct Post pour publier automatiquement en public." }, { status:403 });
 
   const vr = await fetch(job.output_url, { cache:"no-store" });
   if (!vr.ok) return NextResponse.json({ ok:false, error:"Impossible de télécharger le Reel généré" }, { status:500 });
@@ -96,10 +109,11 @@ export async function POST(req: Request) {
   }
   const size = buf.length;
 
-  const init = await fetch("https://open.tiktokapis.com/v2/post/publish/inbox/video/init/", {
+  const init = await fetch("https://open.tiktokapis.com/v2/post/publish/video/init/", {
     method:"POST",
     headers:{ Authorization:`Bearer ${conn.access_token}`, "Content-Type":"application/json; charset=UTF-8" },
     body:JSON.stringify({
+      post_info:{ title:`${job.hook||"Découvrez NeoDrive"} #NeoDrive #VoitureSansPermis #VoitureElectrique`, privacy_level:privacyLevel, disable_duet:false, disable_comment:false, disable_stitch:false, brand_content_toggle:false, brand_organic_toggle:true },
       source_info:{ source:"FILE_UPLOAD", video_size:size, chunk_size:size, total_chunk_count:1 }
     }),
     cache:"no-store",
@@ -131,10 +145,10 @@ export async function POST(req: Request) {
     failReason = sj?.data?.fail_reason || sj?.error?.message || null;
     console.log("[tiktok-upload] status", { publishId, attempt, httpStatus:sr.status, status, failReason });
     if (!sr.ok || status === "FAILED") return NextResponse.json({ ok:false, error:failReason || "TikTok a refusé la vidéo", publishId, tiktokStatus:status }, { status:500 });
-    if (["SEND_TO_USER_INBOX","PUBLISH_COMPLETE"].includes(status)) {
-      return NextResponse.json({ ok:true, uploaded:true, confirmed:true, publishId, tiktokStatus:status, note:"TikTok a confirmé la réception. Ouvre la boîte de réception TikTok pour terminer la publication." });
+    if (status === "PUBLISH_COMPLETE") {
+      return NextResponse.json({ ok:true, uploaded:true, confirmed:true, published:true, publishId, tiktokStatus:status, note:"La vidéo est publiée directement sur TikTok." });
     }
   }
 
-  return NextResponse.json({ ok:true, uploaded:true, confirmed:false, publishId, tiktokStatus:status, note:"TikTok traite encore la vidéo. Vérifie la boîte de réception dans quelques minutes." }, { status:202 });
+  return NextResponse.json({ ok:true, uploaded:true, confirmed:false, publishId, tiktokStatus:status, note:"TikTok traite la vidéo : elle sera publiée automatiquement, sans validation dans la boîte de réception." }, { status:202 });
 }
