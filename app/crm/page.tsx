@@ -198,7 +198,7 @@ export default function CRMPage() {
         <div>
           <div style={styles.eyebrow}>NEODRIVE</div>
           <h1 style={styles.h1}>CRM commercial</h1>
-          <p style={styles.muted}>Import Leboncoin, agent commercial IA, WhatsApp et relances.</p>
+          <p style={styles.muted}>Import Leboncoin, agent commercial IA, réponses WhatsApp et relances automatiques.</p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button style={styles.secondary} onClick={loadLeads}>↻ Actualiser</button>
