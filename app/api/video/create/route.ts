@@ -21,7 +21,7 @@ function mediaElement(a:any,i:number,time:number,duration:number){
  const base:any={track:1,time,duration,source:a.public_url,width:"100%",height:"100%",x:"50%",y:"50%",x_anchor:"50%",y_anchor:"50%",fit:"cover",clip:true};
  const animations:any[]=[];
  if(i>0)animations.push(transition(i));
- if(a.media_type==="video"){
+ if(a.media_type==="video"||a.media_type==="reel"){
   return {...base,type:"video",trim_start:i%3===0?0:i%3===1?.35:.7,trim_duration:duration,volume:"8%",animations};
  }
  animations.push({type:"scale",scope:"element",easing:"linear",start_scale:i%2?"110%":"115%",end_scale:"100%",fade:false});
@@ -39,7 +39,7 @@ export async function GET(req:Request){
  // IMPORTANT: use only original uploaded videos here. Generated reels are deliberately excluded
  // so a new reel can never recycle an old generated reel.
  const [vr,ir,jr]=await Promise.all([
-  fetch(`${SB}/rest/v1/social_media_assets?status=eq.ready&media_type=in.(video,reel)&select=id,public_url,media_type,title,context,ai_summary,ai_tags,ai_quality_score,times_used,last_used_at&order=times_used.asc,last_used_at.asc.nullsfirst,ai_quality_score.desc.nullslast&limit=30`,{headers:H(sk),cache:"no-store"}),
+  fetch(`${SB}/rest/v1/social_media_assets?status=eq.ready&media_type=in.(video,reel)&storage_path=not.like.generated%2F%25&select=id,public_url,media_type,title,context,ai_summary,ai_tags,ai_quality_score,times_used,last_used_at&order=times_used.asc,last_used_at.asc.nullsfirst,ai_quality_score.desc.nullslast&limit=30`,{headers:H(sk),cache:"no-store"}),
   fetch(`${SB}/rest/v1/social_media_assets?status=eq.ready&media_type=eq.image&select=id,public_url,media_type,title,context,ai_summary,ai_tags,ai_quality_score,times_used,last_used_at&order=times_used.asc,last_used_at.asc.nullsfirst,ai_quality_score.desc.nullslast&limit=30`,{headers:H(sk),cache:"no-store"}),
   fetch(`${SB}/rest/v1/video_generation_jobs?select=theme&order=created_at.desc&limit=1`,{headers:H(sk),cache:"no-store"})
  ]);
@@ -110,5 +110,5 @@ export async function GET(req:Request){
   }
  }
 
- return NextResponse.json({ok:true,jobId:job.id,renderId:render?.id||null,theme,hook,assets:chosen.length,videos:chosen.filter(x=>x.media_type==="video").length,photos:chosen.filter(x=>x.media_type==="image").length,duration,music:!!music,style:"real-video-reel-v3"});
+ return NextResponse.json({ok:true,jobId:job.id,renderId:render?.id||null,theme,hook,assets:chosen.length,videos:chosen.filter(x=>x.media_type==="video"||x.media_type==="reel").length,photos:chosen.filter(x=>x.media_type==="image").length,duration,music:!!music,style:"real-video-reel-v4"});
 }
