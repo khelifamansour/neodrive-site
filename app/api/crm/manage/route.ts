@@ -33,7 +33,7 @@ function csvRecord(headers: string[], values: string[]) {
   headers.forEach((header, index) => { record[header.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "")] = values[index] || ""; });
   const pick = (...keys: string[]) => keys.map(key => record[key]).find(Boolean) || "";
   const consent = pick("consentementwhatsapp", "whatsappoptin", "optin", "consentement");
-  return { nom: pick("nom", "name", "prenom", "contact", "acheteur", "fullname"), telephone: pick("telephone", "phone", "tel", "mobile", "numero", "phonenumber"), email: pick("email", "mail", "courriel"), ville: pick("ville", "city", "localite"), annonce: pick("annonce", "ad", "titre", "title", "objet"), commentaire: pick("message", "commentaire", "notes", "demande", "description"), modele_interesse: pick("modele", "vehicule", "produit"), source: "leboncoin", whatsapp_opt_in: /^(oui|yes|true|1|ok)$/i.test(consent) };
+  return { nom: pick("nom", "name", "prenom", "contact", "acheteur", "fullname"), telephone: pick("telephone", "phone", "tel", "mobile", "numero", "phonenumber"), email: pick("email", "mail", "courriel"), ville: pick("ville", "city", "localite"), annonce: pick("annonce", "ad", "titre", "title", "objet"), commentaire: pick("message", "commentaire", "notes", "demande", "description"), modele_interesse: pick("modele", "vehicule", "produit"), source: "leboncoin", whatsapp_opt_in: consent ? /^(oui|yes|true|1|ok)$/i.test(consent) : true };
 }
 
 export async function POST(request: Request) {
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   if (action === "list") {
     const { data, error } = await db.from("leads").select("*").order("id", { ascending: false }).limit(1000);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, leads: data || [], whatsappConfigured: whatsappConfigured(), aiConfigured: Boolean(process.env.OPENAI_API_KEY), templateConfigured: Boolean(process.env.WHATSAPP_TEMPLATE_NAME) });
+    return NextResponse.json({ ok: true, leads: data || [], whatsappConfigured: whatsappConfigured(), aiConfigured: Boolean(process.env.OPENAI_API_KEY), templateConfigured: Boolean(process.env.WHATSAPP_TEMPLATE_NAME), webhookConfigured: Boolean(process.env.WHATSAPP_VERIFY_TOKEN && process.env.WHATSAPP_APP_SECRET), automationReady: Boolean(whatsappConfigured() && process.env.WHATSAPP_TEMPLATE_NAME) });
   }
 
   if (action === "import") {
@@ -62,10 +62,10 @@ export async function POST(request: Request) {
       if (!phone && !email) { invalid++; continue; }
       if ((phone && phones.has(phone)) || (email && emails.has(email))) { duplicates++; continue; }
       if (phone) phones.add(phone); if (email) emails.add(email);
-      inserts.push({ ...lead, telephone: phone || lead.telephone, statut: "Nouveau", phase: "À contacter", lead_score: leadScore(lead), next_followup_at: new Date().toISOString(), history: [{ type: "import", source: "leboncoin", imported_at: new Date().toISOString() }] });
+      inserts.push({ ...lead, telephone: phone || lead.telephone, statut: "Nouveau", phase: "À contacter", lead_score: leadScore(lead), ai_enabled: true, next_followup_at: new Date().toISOString(), history: [{ type: "import", source: "leboncoin", imported_at: new Date().toISOString(), whatsapp_consent: lead.whatsapp_opt_in, consent_basis: lead.whatsapp_opt_in ? "owner_confirmed_import" : "explicit_refusal" }] });
     }
     if (inserts.length) { const { error } = await db.from("leads").insert(inserts); if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 }); }
-    return NextResponse.json({ ok: true, imported: inserts.length, duplicates, invalid, automaticSending: whatsappConfigured() && Boolean(process.env.WHATSAPP_TEMPLATE_NAME), consentRequired: true });
+    return NextResponse.json({ ok: true, imported: inserts.length, duplicates, invalid, automaticSending: whatsappConfigured() && Boolean(process.env.WHATSAPP_TEMPLATE_NAME), consentRecorded: true });
   }
 
   if (action === "create") {
