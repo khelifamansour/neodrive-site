@@ -96,10 +96,12 @@ export async function GET(req:Request){
  if(error)return NextResponse.json({ok:false,error:error.message},{status:500});
 
  const site=process.env.NEXT_PUBLIC_SITE_URL||"https://www.easydrive-auto.fr";
- const rr=await fetch("https://api.creatomate.com/v2/renders",{method:"POST",headers:{Authorization:`Bearer ${ck}`,"Content-Type":"application/json"},body:JSON.stringify({output_format:"mp4",width:1080,height:1920,frame_rate:30,duration,elements,webhook_url:`${site}/api/video/webhook`,metadata:job.id})});
+ // Explicitly override the project's reduced preview scale: TikTok rejects 270×480 renders.
+ const rr=await fetch("https://api.creatomate.com/v2/renders",{method:"POST",headers:{Authorization:`Bearer ${ck}`,"Content-Type":"application/json"},body:JSON.stringify({output_format:"mp4",width:1080,height:1920,render_scale:1,frame_rate:30,duration,elements,webhook_url:`${site}/api/video/webhook`,metadata:job.id})});
  const rj=await rr.json().catch(()=>null);
  if(!rr.ok){await fetch(`${SB}/rest/v1/video_generation_jobs?id=eq.${job.id}`,{method:"PATCH",headers:{...H(sk),Prefer:"return=minimal"},body:JSON.stringify({status:"failed",error_message:JSON.stringify(rj),updated_at:new Date().toISOString()})});return NextResponse.json({ok:false,error:rj},{status:500});}
  const render=Array.isArray(rj)?rj[0]:rj;
+ console.info("[video-create] Creatomate render accepted",{jobId:job.id,renderId:render?.id,width:render?.width,height:render?.height,renderScale:render?.render_scale});
  await fetch(`${SB}/rest/v1/video_generation_jobs?id=eq.${job.id}`,{method:"PATCH",headers:{...H(sk),Prefer:"return=minimal"},body:JSON.stringify({render_id:render?.id||null,updated_at:new Date().toISOString()})});
 
  // Mark original sources as used so the next generation naturally rotates to other clips.
