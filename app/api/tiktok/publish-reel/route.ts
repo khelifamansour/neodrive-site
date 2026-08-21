@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
+const sleep = (ms:number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function refreshIfNeeded(sb:any, row:any) {
   if (!row) throw new Error("TikTok non connecté");
@@ -68,7 +69,8 @@ export async function POST(req: Request) {
     cache:"no-store",
   });
   const ij = await init.json().catch(()=>({}));
-  if (!init.ok || !ij?.data?.upload_url) return NextResponse.json({ ok:false, error:ij?.error?.message || ij?.error_description || "Initialisation de l’upload TikTok impossible" }, { status:500 });
+  const publishId = ij?.data?.publish_id;
+  if (!init.ok || !ij?.data?.upload_url || !publishId) return NextResponse.json({ ok:false, error:ij?.error?.message || ij?.error_description || "Initialisation de l’upload TikTok impossible" }, { status:500 });
 
   const up = await fetch(ij.data.upload_url, {
     method:"PUT",
@@ -76,7 +78,27 @@ export async function POST(req: Request) {
     body:buf,
     cache:"no-store",
   });
-  if (!up.ok) return NextResponse.json({ ok:false, error:`Upload TikTok échoué (${up.status})` }, { status:500 });
+  if (![200,201,204].includes(up.status)) return NextResponse.json({ ok:false, error:`Upload TikTok échoué (${up.status})`, publishId }, { status:500 });
 
-  return NextResponse.json({ ok:true, uploaded:true, note:"Vidéo envoyée comme brouillon TikTok. Ouvre la boîte de réception TikTok pour la modifier et la publier." });
+  let status = "PROCESSING_UPLOAD";
+  let failReason:string|null = null;
+  for (let attempt=1; attempt<=10; attempt++) {
+    if (attempt>1) await sleep(2000);
+    const sr = await fetch("https://open.tiktokapis.com/v2/post/publish/status/fetch/", {
+      method:"POST",
+      headers:{ Authorization:`Bearer ${conn.access_token}`, "Content-Type":"application/json; charset=UTF-8" },
+      body:JSON.stringify({ publish_id:publishId }),
+      cache:"no-store",
+    });
+    const sj = await sr.json().catch(()=>({}));
+    status = sj?.data?.status || status;
+    failReason = sj?.data?.fail_reason || sj?.error?.message || null;
+    console.log("[tiktok-upload] status", { publishId, attempt, httpStatus:sr.status, status, failReason });
+    if (!sr.ok || status === "FAILED") return NextResponse.json({ ok:false, error:failReason || "TikTok a refusé la vidéo", publishId, tiktokStatus:status }, { status:500 });
+    if (["SEND_TO_USER_INBOX","PUBLISH_COMPLETE"].includes(status)) {
+      return NextResponse.json({ ok:true, uploaded:true, confirmed:true, publishId, tiktokStatus:status, note:"TikTok a confirmé la réception. Ouvre la boîte de réception TikTok pour terminer la publication." });
+    }
+  }
+
+  return NextResponse.json({ ok:true, uploaded:true, confirmed:false, publishId, tiktokStatus:status, note:"TikTok traite encore la vidéo. Vérifie la boîte de réception dans quelques minutes." }, { status:202 });
 }
