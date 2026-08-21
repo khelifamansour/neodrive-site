@@ -88,14 +88,19 @@ export default function CRMPage() {
     return result;
   }
 
-  async function loadLeads(code = passcode) {
-    if (!code) { setLoading(false); return; }
+  async function loadLeads(explicitCode?: string) {
+    const code = typeof explicitCode === "string" ? explicitCode : passcode;
+    if (!code.trim()) { setLoading(false); setMessage("❌ Entre le code d’accès Vercel."); return; }
     setLoading(true);
     try {
       const result = await api("list", {}, code);
       setLeads((result.leads || []) as Lead[]); setWhatsappReady(Boolean(result.whatsappConfigured)); setAiReady(Boolean(result.aiConfigured));
       setAuthenticated(true); sessionStorage.setItem("neodrive_crm_access", code);
-    } catch (error) { setAuthenticated(false); setMessage(`❌ ${error instanceof Error ? error.message : "Connexion impossible"}`); }
+    } catch (error) {
+      setAuthenticated(false);
+      sessionStorage.removeItem("neodrive_crm_access");
+      setMessage(`❌ ${error instanceof Error ? error.message : "Connexion impossible"}`);
+    }
     setLoading(false);
   }
 
@@ -201,7 +206,7 @@ export default function CRMPage() {
           <p style={styles.muted}>Import Leboncoin, agent commercial IA, réponses WhatsApp et relances automatiques.</p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button style={styles.secondary} onClick={loadLeads}>↻ Actualiser</button>
+          <button style={styles.secondary} onClick={() => loadLeads()}>↻ Actualiser</button>
           <button style={styles.secondary} onClick={exportCSV}>Exporter CSV</button>
           <label style={{ ...styles.secondary, cursor: "pointer" }}>{working ? "Traitement…" : "Importer Leboncoin CSV"}<input type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={event => { importFile(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
           <button style={styles.primary} onClick={() => setNewLeadOpen(true)}>+ Nouveau lead</button>
