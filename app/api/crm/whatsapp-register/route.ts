@@ -29,11 +29,7 @@ async function registerPhone(pin?: string) {
   });
 
   const result = await response.json().catch(() => ({}));
-  console.log("[WA-REGISTER] Meta response", {
-    status: response.status,
-    ok: response.ok,
-    result,
-  });
+  console.log("[WA-REGISTER] Meta response", { status: response.status, ok: response.ok, result });
 
   return NextResponse.json(
     { ok: response.ok, status: response.status, result },
@@ -44,13 +40,10 @@ async function registerPhone(pin?: string) {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   if (url.searchParams.get("confirm") !== "yes") {
-    return NextResponse.json({
-      ok: false,
-      error: "Confirmation required",
-      usage: "/api/crm/whatsapp-register?confirm=yes",
-    }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Confirmation required" }, { status: 400 });
   }
-  return registerPhone();
+  const pin = url.searchParams.get("pin")?.trim();
+  return registerPhone(pin || undefined);
 }
 
 export async function POST(request: Request) {
@@ -58,7 +51,6 @@ export async function POST(request: Request) {
   if (url.searchParams.get("confirm") !== "yes") {
     return NextResponse.json({ ok: false, error: "Confirmation required" }, { status: 400 });
   }
-
   const payload = await request.json().catch(() => ({}));
   const pin = typeof payload?.pin === "string" ? payload.pin.trim() : undefined;
   return registerPhone(pin);
