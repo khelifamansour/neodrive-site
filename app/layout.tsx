@@ -4,7 +4,6 @@ import React, { useState } from "react";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-
   const closeMenu = () => setOpen(false);
 
   return (
@@ -21,21 +20,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </a>
 
             <div className="actions">
-              <a
-                href="https://wa.me/33628261446"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="whatsapp"
-              >
-                WhatsApp
-              </a>
-
-              <button
-                className="menuBtn"
-                onClick={() => setOpen(!open)}
-                aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
-                aria-expanded={open}
-              >
+              <a href="https://wa.me/33628261446" target="_blank" rel="noopener noreferrer" className="whatsapp">WhatsApp</a>
+              <button className="menuBtn" onClick={() => setOpen(!open)} aria-label={open ? "Fermer le menu" : "Ouvrir le menu"} aria-expanded={open}>
                 {open ? "✕" : "☰"}
               </button>
             </div>
@@ -59,8 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
 
         <style jsx global>{`
-          html,
-          body {
+          html, body {
             margin: 0;
             padding: 0;
             width: 100%;
@@ -70,15 +55,100 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
           }
 
-          * {
-            box-sizing: border-box;
+          * { box-sizing: border-box; }
+          img, video, iframe, svg { max-width: 100%; }
+
+          /* Homepage trust cards: override the simple numeric strip */
+          .trustBar {
+            overflow: visible !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            gap: 16px !important;
           }
 
-          img,
-          video,
-          iframe,
-          svg {
-            max-width: 100%;
+          .trustBar > div {
+            position: relative;
+            border: 1px solid #ececec !important;
+            border-right: 1px solid #ececec !important;
+            border-radius: 22px;
+            background: rgba(255,255,255,.98);
+            box-shadow: 0 18px 45px rgba(0,0,0,.08);
+            padding: 24px 20px 24px 78px !important;
+            text-align: left !important;
+            min-height: 108px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+          }
+
+          .trustBar > div::before {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            border-radius: 15px;
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            background: linear-gradient(135deg,#fff3e8,#ffe8f1);
+          }
+
+          .trustBar > div:nth-child(1)::before { content: "🏅"; }
+          .trustBar > div:nth-child(2)::before { content: "📍"; }
+          .trustBar > div:nth-child(3)::before { content: "🚚"; }
+
+          .trustBar > div:nth-child(1)::after,
+          .trustBar > div:nth-child(2)::after,
+          .trustBar > div:nth-child(3)::after {
+            margin-top: 5px;
+            color: #777;
+            font-size: 12px;
+            line-height: 1.35;
+          }
+
+          .trustBar > div:nth-child(1)::after { content: "Une expérience dédiée à la voiture sans permis."; }
+          .trustBar > div:nth-child(2)::after { content: "Une marque proche de ses clients et basée dans la région toulousaine."; }
+          .trustBar > div:nth-child(3)::after { content: "Votre NeoDrive peut être livrée directement près de chez vous."; }
+
+          .trustBar strong {
+            font-size: 20px !important;
+            line-height: 1.1;
+          }
+
+          .trustBar span {
+            font-size: 13px !important;
+            line-height: 1.35;
+            margin-top: 4px !important;
+          }
+
+          @media (max-width: 900px) {
+            .trustBar {
+              grid-template-columns: 1fr !important;
+              gap: 10px !important;
+              margin-top: 14px !important;
+              margin-bottom: 42px !important;
+            }
+
+            .trustBar > div {
+              min-height: 84px;
+              padding: 16px 16px 16px 68px !important;
+              border-radius: 18px;
+              box-shadow: 0 10px 28px rgba(0,0,0,.06);
+            }
+
+            .trustBar > div::before {
+              left: 15px;
+              width: 40px;
+              height: 40px;
+              font-size: 20px;
+              border-radius: 13px;
+            }
+
+            .trustBar strong { font-size: 18px !important; }
+            .trustBar span { font-size: 12px !important; }
+            .trustBar > div::after { font-size: 11px !important; }
           }
         `}</style>
 
@@ -94,183 +164,35 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             padding: 10px 14px;
             box-shadow: 0 8px 28px rgba(0, 0, 0, 0.05);
           }
-
-          .top {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-          }
-
-          .brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: 0;
-            color: #111;
-            text-decoration: none;
-          }
-
-          .icon {
-            width: 38px;
-            height: 38px;
-            flex: 0 0 38px;
-            border-radius: 13px;
-            background: linear-gradient(135deg, #ff7a00, #ff006e);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 950;
-            font-size: 23px;
-          }
-
-          .brandText {
-            min-width: 0;
-          }
-
-          .brand strong {
-            display: block;
-            font-size: 24px;
-            line-height: 1;
-            font-weight: 950;
-            letter-spacing: -1px;
-          }
-
-          .brand small {
-            display: block;
-            margin-top: 3px;
-            font-size: 11px;
-            color: #666;
-            font-weight: 700;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 160px;
-          }
-
-          .actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-          }
-
-          .whatsapp {
-            background: #25d366;
-            color: white;
-            text-decoration: none;
-            padding: 10px 13px;
-            border-radius: 14px;
-            font-size: 14px;
-            font-weight: 900;
-            white-space: nowrap;
-          }
-
-          .menuBtn {
-            width: 42px;
-            height: 42px;
-            border: none;
-            border-radius: 14px;
-            background: #111;
-            color: white;
-            font-size: 22px;
-            font-weight: 900;
-            cursor: pointer;
-          }
-
-          .menu {
-            display: none;
-            width: 100%;
-            margin-top: 12px;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            gap: 8px;
-          }
-
-          .menu.open {
-            display: grid;
-          }
-
-          .menu a {
-            min-width: 0;
-            text-decoration: none;
-            color: #111;
-            background: #f5f5f5;
-            padding: 12px 9px;
-            border-radius: 14px;
-            font-size: 14px;
-            font-weight: 850;
-            text-align: center;
-            overflow-wrap: anywhere;
-          }
-
-          .menu a:nth-child(3) {
-            background: #111;
-            color: white;
-          }
+          .top { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+          .brand { display: flex; align-items: center; gap: 10px; min-width: 0; color: #111; text-decoration: none; }
+          .icon { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 13px; background: linear-gradient(135deg, #ff7a00, #ff006e); color: white; display: flex; align-items: center; justify-content: center; font-weight: 950; font-size: 23px; }
+          .brandText { min-width: 0; }
+          .brand strong { display: block; font-size: 24px; line-height: 1; font-weight: 950; letter-spacing: -1px; }
+          .brand small { display: block; margin-top: 3px; font-size: 11px; color: #666; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+          .actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+          .whatsapp { background: #25d366; color: white; text-decoration: none; padding: 10px 13px; border-radius: 14px; font-size: 14px; font-weight: 900; white-space: nowrap; }
+          .menuBtn { width: 42px; height: 42px; border: none; border-radius: 14px; background: #111; color: white; font-size: 22px; font-weight: 900; cursor: pointer; }
+          .menu { display: none; width: 100%; margin-top: 12px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+          .menu.open { display: grid; }
+          .menu a { min-width: 0; text-decoration: none; color: #111; background: #f5f5f5; padding: 12px 9px; border-radius: 14px; font-size: 14px; font-weight: 850; text-align: center; overflow-wrap: anywhere; }
+          .menu a:nth-child(3) { background: #111; color: white; }
 
           @media (max-width: 390px) {
-            .brand small {
-              max-width: 120px;
-            }
-
-            .whatsapp {
-              padding: 9px 10px;
-              font-size: 13px;
-            }
+            .brand small { max-width: 120px; }
+            .whatsapp { padding: 9px 10px; font-size: 13px; }
           }
 
           @media (min-width: 900px) {
-            .header {
-              padding: 14px 32px;
-            }
-
-            .top {
-              max-width: 1180px;
-              margin: 0 auto;
-            }
-
-            .icon {
-              width: 44px;
-              height: 44px;
-              flex-basis: 44px;
-            }
-
-            .brand strong {
-              font-size: 30px;
-            }
-
-            .brand small {
-              font-size: 13px;
-              max-width: none;
-            }
-
-            .menuBtn {
-              display: none;
-            }
-
-            .menu,
-            .menu.open {
-              max-width: 1220px;
-              margin: 14px auto 0;
-              display: flex;
-              justify-content: center;
-              flex-wrap: wrap;
-              gap: 8px;
-            }
-
-            .menu a {
-              width: auto;
-              padding: 10px 14px;
-              border-radius: 999px;
-              font-size: 14px;
-            }
-
-            .whatsapp {
-              padding: 12px 22px;
-              font-size: 16px;
-            }
+            .header { padding: 14px 32px; }
+            .top { max-width: 1180px; margin: 0 auto; }
+            .icon { width: 44px; height: 44px; flex-basis: 44px; }
+            .brand strong { font-size: 30px; }
+            .brand small { font-size: 13px; max-width: none; }
+            .menuBtn { display: none; }
+            .menu, .menu.open { max-width: 1220px; margin: 14px auto 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+            .menu a { width: auto; padding: 10px 14px; border-radius: 999px; font-size: 14px; }
+            .whatsapp { padding: 12px 22px; font-size: 16px; }
           }
         `}</style>
       </body>
