@@ -158,6 +158,19 @@ export default function CRMPage() {
     setWorking(false);
   }
 
+  async function sendPresentation(lead: Lead) {
+    if (!lead.whatsapp_opt_in) { setMessage("❌ Consentement WhatsApp requis pour ce prospect."); return; }
+    setWorking(true);
+    try {
+      await api("send", { id: lead.id, message: "Présentation NeoDrive", aiGenerated: false });
+      setMessage(`✅ Présentation WhatsApp envoyée à ${lead.nom || "ce prospect"}`);
+      await loadLeads();
+    } catch (error) {
+      setMessage(`❌ ${error instanceof Error ? error.message : "Envoi impossible"}`);
+    }
+    setWorking(false);
+  }
+
   async function sendDraft() {
     if (!draft) return; setWorking(true);
     try { await api("send", { id: draft.lead.id, message: draft.message, aiGenerated: true }); setMessage("✅ Message WhatsApp envoyé"); setDraft(null); await loadLeads(); }
@@ -259,7 +272,7 @@ export default function CRMPage() {
               <td style={styles.td}><input style={styles.smallInput} value={lead.operateur || ""} placeholder="Nom" onBlur={e => patchLead(lead.id,{operateur:e.target.value})} onChange={e => setLeads(prev=>prev.map(l=>l.id===lead.id?{...l,operateur:e.target.value}:l))} /></td>
               <td style={styles.td}><textarea style={styles.note} value={lead.commentaire || ""} placeholder="Note commerciale…" onBlur={e => patchLead(lead.id,{commentaire:e.target.value})} onChange={e => setLeads(prev=>prev.map(l=>l.id===lead.id?{...l,commentaire:e.target.value}:l))} /></td>
               <td style={styles.td}><div style={{display:"grid",gap:6}}>
-                {phone && <button style={{ ...styles.action, border: 0, cursor: "pointer" }} onClick={() => prepareReply(lead)}>Réponse IA</button>}
+                {phone && lead.statut === "Nouveau" ? <button style={{ ...styles.action, border: 0, cursor: "pointer", background: "#dcfce7", color: "#166534" }} onClick={() => sendPresentation(lead)} disabled={working || !whatsappReady || !templateReady}>Envoyer présentation</button> : phone && <button style={{ ...styles.action, border: 0, cursor: "pointer" }} onClick={() => prepareReply(lead)}>Réponse IA</button>}
                 {phone && <a style={styles.action} href={`https://wa.me/${phone}`} target="_blank" onClick={() => markContacted(lead)}>WhatsApp</a>}
                 {phone && <label style={{ ...styles.sub, display: "flex", gap: 4, alignItems: "center" }}><input type="checkbox" checked={Boolean(lead.whatsapp_opt_in)} onChange={event => patchLead(lead.id, { whatsapp_opt_in: event.target.checked })} /> Consentement</label>}
                 {lead.telephone && <a style={styles.action} href={`tel:${lead.telephone}`} onClick={() => markContacted(lead)}>Appeler</a>}
@@ -276,7 +289,7 @@ export default function CRMPage() {
         <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:18}}><button style={styles.secondary} onClick={()=>setNewLeadOpen(false)}>Annuler</button><button style={styles.primary} onClick={createLead}>Ajouter</button></div>
       </div></div>}
 
-      {draft && <div style={styles.overlay} onClick={() => setDraft(null)}><div style={styles.modal} onClick={event => event.stopPropagation()}><h2 style={{ marginTop: 0 }}>Agent commercial · {draft.lead.nom || "Prospect"}</h2><p style={styles.muted}>Vérifie le message avant envoi. L’agent ne promet pas de stock, délai ou tarif de livraison non confirmé.</p><textarea style={{ ...styles.input, height: 210, marginTop: 15, resize: "vertical" }} value={draft.message} onChange={event => setDraft({ ...draft, message: event.target.value, whatsappUrl: `https://wa.me/${normalizePhone(draft.lead.telephone)}?text=${encodeURIComponent(event.target.value)}` })} /><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 15, flexWrap: "wrap" }}><button style={styles.secondary} onClick={() => setDraft(null)}>Fermer</button><a style={{ ...styles.secondary, textDecoration: "none", color: "#111827" }} href={draft.whatsappUrl} target="_blank" onClick={() => markContacted(draft.lead)}>Ouvrir WhatsApp</a>{whatsappReady && <button style={{ ...styles.primary, background: "#16a34a" }} onClick={sendDraft} disabled={working}>{working ? "Envoi…" : "Envoyer automatiquement"}</button>}</div></div></div>}
+      {draft && <div style={styles.overlay} onClick={() => setDraft(null)}><div style={styles.modal} onClick={event => event.stopPropagation()}><h2 style={{ marginTop: 0 }}>Agent commercial · {draft.lead.nom || "Prospect"}</h2><p style={styles.muted}>Réponse IA après échange client. Vérifie le message avant envoi.</p><textarea style={{ ...styles.input, height: 210, marginTop: 15, resize: "vertical" }} value={draft.message} onChange={event => setDraft({ ...draft, message: event.target.value, whatsappUrl: `https://wa.me/${normalizePhone(draft.lead.telephone)}?text=${encodeURIComponent(event.target.value)}` })} /><div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 15, flexWrap: "wrap" }}><button style={styles.secondary} onClick={() => setDraft(null)}>Fermer</button><a style={{ ...styles.secondary, textDecoration: "none", color: "#111827" }} href={draft.whatsappUrl} target="_blank" onClick={() => markContacted(draft.lead)}>Ouvrir WhatsApp</a>{whatsappReady && <button style={{ ...styles.primary, background: "#16a34a" }} onClick={sendDraft} disabled={working}>{working ? "Envoi…" : "Envoyer automatiquement"}</button>}</div></div></div>}
     </main>
   );
 }
