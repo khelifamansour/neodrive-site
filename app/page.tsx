@@ -9,131 +9,109 @@ export default function Home() {
       <section className="hero">
         <div className="heroOverlay" />
         <div className="heroContent">
-          <div className="badge">🇫🇷 Marque toulousaine</div>
-          <h1>La liberté de rouler, sans permis.</h1>
+          <span className="badge">🇫🇷 Marque toulousaine</span>
+          <h1>La liberté de rouler, simplement.</h1>
           <p className="price">Dès 3 990 €</p>
-          <p className="subtitle">Une voiture électrique neuve, économique et bien équipée.</p>
-          <div className="heroIcons">
-            <div>⚡ 100% électrique</div>
-            <div>💶 Prix accessible</div>
-            <div>🚗 Sans permis</div>
-            <div>🛠️ SAV France</div>
+          <p className="subtitle">Une voiture électrique sans permis, neuve, rassurante et accessible.</p>
+          <div className="heroProof">
+            <span>✓ 100% électrique</span>
+            <span>✓ Livraison France</span>
+            <span>✓ SAV & accompagnement</span>
           </div>
           <div className="heroActions">
-            <a href="/videos" className="secondaryBtn">▶ Voir les vraies vidéos</a>
-            <a href="https://wa.me/33628261446" target="_blank" rel="noreferrer" className="primaryBtn">WhatsApp</a>
+            <a href="https://wa.me/33628261446" target="_blank" rel="noreferrer" className="primaryBtn">Parler avec nous</a>
+            <a href="/videos" className="secondaryBtn">▶ Voir les vidéos</a>
           </div>
         </div>
       </section>
 
-      <section className="trustStrip">
-        <div><strong>6 ans</strong><span>d'expérience VSP</span></div>
+      <section className="trustBar">
+        <div><strong>6 ans</strong><span>d’expérience VSP</span></div>
         <div><strong>Toulouse</strong><span>marque française</span></div>
         <div><strong>France</strong><span>livraison possible</span></div>
-        <div><strong>SAV</strong><span>pièces disponibles</span></div>
       </section>
 
-      <section className="realVideoSection">
-        <div className="realVideoText">
-          <span className="miniBadge">Voir avant d'acheter</span>
-          <h2>Pas seulement des photos : voyez la voiture en vrai.</h2>
-          <p>
-            Cette vidéo a été tournée chez notre partenaire. Elle vous permet de voir le véhicule,
-            ses proportions et sa présentation dans un environnement réel avant de vous déplacer.
-          </p>
-          <div className="proofPoints">
-            <span>✓ Véhicule réel</span>
-            <span>✓ Présentation chez un partenaire</span>
-            <span>✓ Vidéos clients disponibles</span>
-          </div>
-          <a href="/videos" className="textLink">Voir toutes les vidéos →</a>
-        </div>
-        <div className="realVideoCard">
-          <video controls preload="metadata" playsInline>
-            <source src="/presentation1.mp4" type="video/mp4" />
-          </video>
-        </div>
-      </section>
-
-      <section id="versions" className="section">
+      <section id="versions" className="modelsSection">
         <div className="sectionHeader">
-          <span className="miniBadge">Nos modèles</span>
-          <h2>3 versions. 1 même voiture.</h2>
-          <p>Choisissez la version adaptée à votre budget, votre usage et votre délai de livraison.</p>
+          <span className="miniBadge">Choisissez votre NeoDrive</span>
+          <h2>Un prix clair. Une voiture neuve. Un accompagnement sérieux.</h2>
+          <p>Trois versions selon votre budget, votre délai et votre besoin d’autonomie.</p>
         </div>
 
         <div className="versions">
           <article className="card simple">
             <span className="tag green">ESSENTIEL</span>
-            <h3>Version Essentiel</h3>
+            <h3>Essentiel</h3>
             <p className="cardPrice">3 990 € TTC</p>
-            <p className="cardText">La solution la plus accessible pour rouler en voiture électrique sans permis.</p>
-            <div className="quickInfo">
-              <div><strong>⏳ Délai</strong><span>6 à 8 mois environ</span></div>
-              <div><strong>🛡️ Garantie</strong><span>Structure et châssis 2 ans</span><span>Pièces 3 mois</span></div>
-            </div>
+            <p className="cardText">Pour accéder à une voiture électrique neuve au prix le plus bas.</p>
+            <div className="infoBox"><strong>⏳ Délai</strong><span>6 à 8 mois environ</span></div>
             <ul>
               <li>Voiture neuve</li>
               <li>100% électrique</li>
               <li>Grand coffre</li>
               <li>Batterie incluse</li>
             </ul>
-            <a className="chooseBtn lightBtn" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">Demander cette version</a>
+            <a className="chooseBtn darkBtn" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">Demander l’Essentiel</a>
           </article>
 
           <article className="card featured">
             <span className="tag orange">LA PLUS CHOISIE</span>
-            <h3>Version Confort</h3>
+            <h3>Confort</h3>
             <p className="cardPrice">4 990 € TTC</p>
-            <p className="cardText">Le meilleur équilibre : livraison rapide, équipements utiles et accompagnement renforcé.</p>
-            <div className="quickInfo darkInfo">
-              <div><strong>🚚 Livraison express</strong><span>2 à 8 semaines environ</span></div>
-              <div>
-                <strong>🛡️ Garantie & assistance</strong>
-                <span>Structure et châssis 2 ans</span>
-                <span>Pièces 6 mois</span>
-                <span>Assistance technique gratuite 2 ans</span>
-                <span>Remises pièces détachées jusqu’à 2 ans</span>
-                <span>Réparation à domicile possible</span>
-              </div>
+            <p className="cardText">Le meilleur équilibre entre prix, équipement, délai et tranquillité.</p>
+            <div className="infoBox darkInfo"><strong>🚚 Livraison</strong><span>2 à 8 semaines environ</span></div>
+            <div className="warranty">
+              <strong>🛡️ Accompagnement jusqu’à 2 ans</strong>
+              <span>Prise en charge à 100% pendant les 6 premiers mois.</span>
+              <span>Puis jusqu’à 70% pris en charge par NeoDrive pendant la période restante, avec participation client minimale de 30%.</span>
+              <small>Voir conditions.</small>
             </div>
             <ul>
-              <li>Alarme antivol</li>
               <li>Caméra de recul</li>
               <li>Chauffage & ventilation</li>
               <li>Bluetooth / USB</li>
-              <li>Aide démarrage & stationnement en côte</li>
-              <li>Alarme clé laissée sur contact</li>
+              <li>Alarme antivol</li>
             </ul>
             <a className="chooseBtn orangeBtn" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">Demander la Confort</a>
           </article>
 
           <article className="card premium">
             <span className="tag purple">CONFORT PLUS+</span>
-            <h3>Version Confort Plus+</h3>
+            <h3>Confort Plus+</h3>
             <p className="cardPrice">5 990 € TTC</p>
-            <p className="cardText">La version la plus complète avec plus d’autonomie et charge rapide.</p>
-            <div className="quickInfo">
-              <div><strong>🚚 Livraison</strong><span>Selon disponibilité</span></div>
-              <div><span>Structure et châssis 2 ans</span><span>Pièces 2 ans</span><span>Assistance technique gratuite 2 ans</span></div>
-            </div>
+            <p className="cardText">Pour ceux qui veulent plus d’autonomie et une expérience plus complète.</p>
+            <div className="infoBox"><strong>⚡ Plus+</strong><span>Lithium, charge rapide et autonomie renforcée</span></div>
             <ul>
               <li>Pack Confort inclus</li>
               <li>Charge rapide</li>
               <li>Plus d’autonomie</li>
+              <li>Accompagnement renforcé</li>
             </ul>
-            <a className="chooseBtn lightBtn" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">Demander la Plus+</a>
+            <a className="chooseBtn darkBtn" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">Demander la Plus+</a>
           </article>
         </div>
       </section>
 
-      <section className="clientProof">
-        <div className="sectionHeader">
-          <span className="miniBadge">Clients NeoDrive</span>
-          <h2>Des livraisons réelles, partout en France.</h2>
-          <p>Plutôt que de vous demander de nous croire sur parole, regardez nos véhicules livrés chez de vrais clients.</p>
+      <section className="emotionSection">
+        <div className="emotionText">
+          <span className="miniBadge">Voir avant d’acheter</span>
+          <h2>Une vraie voiture. De vraies livraisons. De vrais clients.</h2>
+          <p>Nous préférons vous montrer le véhicule tel qu’il est réellement : présentation, intérieur, essai routier et livraisons partout en France.</p>
+          <a href="/videos" className="textLink">Découvrir toutes les vidéos →</a>
         </div>
-        <div className="clientVideos">
+        <div className="videoFrame">
+          <video controls preload="metadata" playsInline>
+            <source src="/presentation1.mp4" type="video/mp4" />
+          </video>
+        </div>
+      </section>
+
+      <section className="clientMoments">
+        <div className="sectionHeader compact">
+          <span className="miniBadge">La confiance en images</span>
+          <h2>Livrée chez vous, partout en France.</h2>
+        </div>
+        <div className="clientGrid">
           <article>
             <video controls preload="metadata" playsInline><source src="/client1.mp4" type="video/mp4" /></video>
             <div><strong>Livraison client</strong><span>Région de Strasbourg</span></div>
@@ -147,205 +125,50 @@ export default function Home() {
 
       <GoogleReviews />
 
-      <section id="presentation" className="presentation">
-        <div className="presentationCard">
-          <span className="miniBadge">Notre engagement</span>
-          <h2>NeoDrive, 6 ans d’expérience</h2>
-          <p>Après 6 années dans le domaine de la voiture sans permis, nous avons pris le pari de proposer une voiture neuve, bien équipée et accessible.</p>
-          <p>NeoDrive est une marque toulousaine, proche de ses clients, avec un accompagnement sérieux avant et après l’achat.</p>
-          <div className="stats">
-            <div><span>🏅</span><strong>6 ans</strong><small>d’expérience</small></div>
-            <div><span>📍</span><strong>Toulouse</strong><small>marque locale</small></div>
-            <div><span>🛡️</span><strong>Neuf</strong><small>et garanti</small></div>
-            <div><span>🤝</span><strong>SAV</strong><small>proche client</small></div>
-          </div>
-        </div>
-      </section>
-
-      <section id="avantages" className="darkSection">
-        <div className="sectionHeader white">
-          <span className="miniBadge darkMini">Pourquoi nous choisir</span>
-          <h2>Une voiture simple, pratique et bien accompagnée.</h2>
-        </div>
-        <div className="advantages">
-          <div><span>🎥</span><h3>Photos & vidéos</h3><p>Voyez le véhicule avant de vous déplacer.</p></div>
-          <div><span>🚚</span><h3>Livraison France</h3><p>Livraison possible à domicile ou en point relais.</p></div>
-          <div><span>🧾</span><h3>Documents fournis</h3><p>Facture et documents pour l’immatriculation.</p></div>
-          <div><span>🛠️</span><h3>SAV & pièces</h3><p>Assistance et pièces disponibles en France.</p></div>
-        </div>
-      </section>
-
-      <section id="contact" className="contact">
-        <h2>Vous voulez voir le véhicule avant de décider ?</h2>
-        <p>Demandez-nous les disponibilités, photos, vidéos ou une présentation à distance.</p>
-        <div className="buttons"><a className="whatsappBig" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">💬 WhatsApp</a></div>
-      </section>
-
-      <section className="seoLinks">
-        <h2>Guides et conseils NeoDrive</h2>
-        <div className="seoGrid">
-          <a href="/a-propos">À propos de NeoDrive</a>
-          <a href="/financement">Financement voiture sans permis</a>
-          <a href="/voiture-sans-permis-electrique">Voiture sans permis électrique</a>
-          <a href="/citroen-ami-ou-neodrive">Citroën Ami ou NeoDrive ?</a>
-          <a href="/voiture-sans-permis-occasion">Voiture sans permis d'occasion</a>
-          <a href="/quelle-voiture-sans-permis-choisir">Quelle voiture sans permis choisir ?</a>
-          <a href="/prix-voiture-sans-permis">Prix d'une voiture sans permis</a>
-          <a href="/fiat-topolino-ou-neodrive">Fiat Topolino ou NeoDrive ?</a>
-          <a href="/meilleure-voiture-sans-permis-electrique">Meilleure voiture sans permis électrique</a>
-          <a href="/assurance-voiture-sans-permis">Assurance voiture sans permis</a>
-          <a href="/guide-voiture-sans-permis">Guide complet voiture sans permis</a>
-          <a href="/livraison">Livraison partout en France</a>
-          <a href="/carte-grise">Carte grise voiture sans permis</a>
-          <a href="/pieces">Pièces détachées</a>
-          <a href="/sav">Service après-vente</a>
-          <a href="/faq">Questions fréquentes</a>
+      <section className="finalCta">
+        <span>NeoDrive</span>
+        <h2>Votre prochaine voiture peut être simple, accessible et rassurante.</h2>
+        <p>Posez-nous vos questions, demandez les disponibilités ou une vidéo personnalisée du véhicule.</p>
+        <div className="ctaActions">
+          <a href="https://wa.me/33628261446" target="_blank" rel="noreferrer" className="primaryBtn">💬 WhatsApp</a>
+          <a href="/videos" className="secondaryDark">Voir les vidéos</a>
         </div>
       </section>
 
       <footer className="footer">
         <strong>NeoDrive</strong>
-        <a href="/guide-voiture-sans-permis">Guide voiture sans permis</a>
-        <a href="/videos">Vidéos</a>
-        <span>Marque toulousaine – 31 rue Jean Nougaro, 31600 Muret</span>
+        <span>31 rue Jean Nougaro, 31600 Muret</span>
         <span>SIREN 908 645 393</span>
       </footer>
 
       <style jsx global>{`
-        html, body { margin: 0; padding: 0; width: 100%; max-width: 100%; overflow-x: clip; background: #fff; }
-        * { box-sizing: border-box; }
+        html, body { margin:0; padding:0; width:100%; max-width:100%; overflow-x:hidden; background:#fff; }
+        * { box-sizing:border-box; }
       `}</style>
 
       <style jsx>{`
-        .page { width: 100%; max-width: 100%; overflow-x: clip; font-family: Arial, sans-serif; color: #111; background: white; }
-        .hero { position: relative; min-height: 680px; background-image: url("/hero.png"); background-size: cover; background-position: center; display: flex; align-items: center; padding: 70px 10%; color: white; }
-        .heroOverlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.76), rgba(0,0,0,.18)); }
-        .heroContent { position: relative; z-index: 2; max-width: 720px; }
-        .badge, .miniBadge { display: inline-block; background: white; color: #111; padding: 11px 18px; border-radius: 999px; font-weight: 950; font-size: 14px; margin-bottom: 18px; }
-        .miniBadge { background: #fff3e8; color: #f97316; }
-        .darkMini { background: rgba(255,255,255,.12); color: white; }
-        h1 { font-size: clamp(46px, 7vw, 82px); line-height: .95; margin: 0; font-weight: 950; letter-spacing: -3px; }
-        .price { color: #ff8a00; font-size: clamp(44px, 6vw, 66px); font-weight: 950; margin: 24px 0 18px; }
-        .subtitle { font-size: 23px; line-height: 1.45; max-width: 560px; color: #f4f4f4; }
-        .heroIcons { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-top: 30px; }
-        .heroIcons div { min-width:0; background: rgba(255,255,255,.16); backdrop-filter: blur(8px); padding: 16px 10px; border-radius: 18px; text-align:center; font-weight:950; font-size:14px; }
-        .heroActions { display:flex; flex-wrap:wrap; gap:12px; margin-top:22px; }
-        .heroActions a { text-decoration:none; border-radius:15px; padding:15px 18px; font-weight:950; }
-        .secondaryBtn { background:white; color:#111; }
-        .primaryBtn { background:#25d366; color:white; }
-
-        .trustStrip { width:min(1120px, calc(100% - 48px)); margin:-32px auto 70px; position:relative; z-index:4; background:white; border:1px solid #eee; box-shadow:0 22px 55px rgba(0,0,0,.12); border-radius:26px; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); overflow:hidden; }
-        .trustStrip div { min-width:0; padding:24px 18px; text-align:center; border-right:1px solid #eee; }
-        .trustStrip div:last-child { border-right:0; }
-        .trustStrip strong { display:block; font-size:22px; }
-        .trustStrip span { display:block; color:#666; font-size:14px; margin-top:5px; }
-
-        .realVideoSection { width:min(1180px, calc(100% - 48px)); margin:0 auto 80px; display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); gap:44px; align-items:center; }
-        .realVideoText h2, .sectionHeader h2, .presentation h2, .darkSection h2 { font-size:clamp(36px,5vw,52px); line-height:1.05; margin:0; font-weight:950; letter-spacing:-2px; }
-        .realVideoText p { color:#555; font-size:18px; line-height:1.65; }
-        .proofPoints { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0; }
-        .proofPoints span { background:#f5f5f5; border-radius:999px; padding:9px 12px; font-weight:850; font-size:13px; }
-        .textLink { color:#111; font-weight:950; text-decoration:none; }
-        .realVideoCard { min-width:0; border-radius:30px; overflow:hidden; background:#000; box-shadow:0 26px 65px rgba(0,0,0,.18); }
-        .realVideoCard video, .clientVideos video { display:block; width:100%; max-width:100%; aspect-ratio:16/9; object-fit:contain; background:#000; }
-
-        .section, .presentation, .darkSection, .clientProof { padding:75px 10%; }
-        .sectionHeader { text-align:center; max-width:800px; margin:0 auto 44px; }
-        .sectionHeader p { color:#555; font-size:19px; line-height:1.5; margin:18px auto 0; }
-        .white h2 { color:white; }
-        .versions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:28px; align-items:stretch; }
-        .card { min-width:0; border-radius:34px; padding:34px; background:white; box-shadow:0 20px 55px rgba(0,0,0,.10); border:1px solid #eee; display:flex; flex-direction:column; }
-        .simple { background:linear-gradient(180deg,#fff,#fbfffc); }
-        .featured { background:linear-gradient(180deg,#060606,#222); color:white; transform:translateY(-18px); box-shadow:0 30px 75px rgba(0,0,0,.30); }
-        .premium { background:linear-gradient(180deg,#fff,#fbf7ff); border:1px solid #eadcff; }
-        .tag { width:fit-content; border-radius:999px; padding:9px 16px; font-size:13px; font-weight:950; margin-bottom:22px; }
-        .green { color:#16a34a; background:#dcfce7; } .orange { color:white; background:#f97316; } .purple { color:#7c3aed; background:#ede9fe; }
-        .card h3 { font-size:29px; margin:0 0 10px; line-height:1.12; }
-        .cardPrice { font-size:38px; font-weight:950; margin:0 0 20px; }
-        .cardText { font-size:18px; line-height:1.55; margin:0 0 22px; color:inherit; }
-        .quickInfo { display:grid; gap:12px; margin-bottom:24px; }
-        .quickInfo div { background:#f4f4f5; border-radius:18px; padding:15px 16px; display:flex; flex-direction:column; gap:4px; }
-        .quickInfo strong { font-size:16px; font-weight:950; }
-        .quickInfo span { color:#444; font-weight:800; line-height:1.35; }
-        .darkInfo div { background:rgba(255,255,255,.12); } .darkInfo span { color:#f4f4f4; }
-        ul { list-style:none; padding:0; margin:0 0 28px; }
-        li { position:relative; padding-left:32px; font-size:17px; line-height:1.5; font-weight:850; margin-bottom:11px; }
-        li::before { content:"✓"; position:absolute; left:0; top:0; color:#f97316; font-weight:950; }
-        .chooseBtn { margin-top:auto; display:block; text-align:center; text-decoration:none; padding:17px 20px; border-radius:17px; font-weight:950; font-size:17px; }
-        .lightBtn { background:#111; color:white; } .orangeBtn { background:linear-gradient(135deg,#ff7a00,#ff006e); color:white; }
-
-        .clientProof { background:#fafafa; }
-        .clientVideos { max-width:1120px; margin:0 auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
-        .clientVideos article { min-width:0; background:white; border:1px solid #e8e8e8; border-radius:26px; overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,.07); }
-        .clientVideos article div { padding:18px 20px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-        .clientVideos strong { font-size:18px; } .clientVideos span { color:#666; }
-
-        .presentation { text-align:center; }
-        .presentationCard { max-width:980px; margin:0 auto; background:#fafafa; border:1px solid #eee; border-radius:38px; padding:56px; }
-        .presentation p { font-size:19px; line-height:1.7; color:#333; max-width:850px; margin:22px auto 0; }
-        .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; margin-top:42px; }
-        .stats div { min-width:0; background:white; border:1px solid #eee; border-radius:24px; padding:22px 14px; display:flex; flex-direction:column; align-items:center; gap:6px; }
-        .stats span { font-size:32px; } .stats strong { font-size:20px; } .stats small { color:#555; font-size:15px; }
-
-        .darkSection { background:#050505; color:white; }
-        .advantages { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; margin-top:42px; }
-        .advantages div { min-width:0; background:linear-gradient(180deg,#242424,#141414); border:1px solid #333; border-radius:26px; padding:28px 20px; text-align:center; }
-        .advantages span { font-size:36px; } .advantages h3 { margin:14px 0 8px; font-size:22px; } .advantages p { color:#ddd; margin:0; font-size:16px; line-height:1.45; }
-
-        .contact { margin:48px 10%; border-radius:34px; padding:56px; background:radial-gradient(circle at top left,#273449,#080808 60%); color:white; text-align:center; }
-        .contact h2 { font-size:clamp(36px,5vw,54px); line-height:1.05; margin:0; letter-spacing:-2px; }
-        .contact p { color:#ddd; font-size:20px; line-height:1.5; max-width:700px; margin:20px auto 34px; }
-        .buttons { display:flex; justify-content:center; }
-        .buttons a { text-decoration:none; color:white; padding:20px 46px; border-radius:17px; font-weight:950; font-size:20px; }
-        .whatsappBig { background:#25d366; }
-
-        .seoLinks { padding:60px 10%; background:#fafafa; text-align:center; }
-        .seoLinks h2 { font-size:38px; margin-bottom:28px; }
-        .seoGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px; }
-        .seoGrid a { min-width:0; background:white; border:1px solid #eee; border-radius:18px; padding:22px; color:#111; text-decoration:none; font-weight:900; box-shadow:0 12px 35px rgba(0,0,0,.08); }
-        .footer { display:flex; justify-content:space-between; gap:15px; padding:24px 10%; font-size:14px; color:#555; flex-wrap:wrap; border-top:1px solid #eee; }
-        .footer a { color:#111; font-weight:800; text-decoration:none; }
-
-        @media (max-width:900px) {
-          .hero { min-height:650px; padding:48px 24px; align-items:flex-end; }
-          .heroOverlay { background:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.86)); }
-          h1 { font-size:48px; letter-spacing:-2px; } .price { font-size:45px; } .subtitle { font-size:18px; max-width:360px; }
-          .heroIcons { grid-template-columns:repeat(2,minmax(0,1fr)); }
-          .trustStrip { width:calc(100% - 32px); grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:-24px; margin-bottom:54px; }
-          .trustStrip div { border-bottom:1px solid #eee; }
-          .realVideoSection { width:calc(100% - 36px); grid-template-columns:1fr; gap:24px; margin-bottom:58px; }
-          .section, .presentation, .darkSection, .clientProof { padding:55px 24px; }
-          .versions, .advantages, .clientVideos { grid-template-columns:1fr; }
-          .featured { transform:none; }
-          .card { padding:28px; border-radius:30px; }
-          .presentationCard { padding:38px 24px; border-radius:30px; }
-          .stats { grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
-          .contact { margin-left:24px; margin-right:24px; padding:36px 26px; border-radius:28px; }
-          .buttons a { width:100%; text-align:center; }
-          .seoLinks { padding:50px 24px; }
-          .seoGrid { grid-template-columns:1fr; }
-          .footer { padding:24px; flex-direction:column; }
+        .page{width:100%;overflow:hidden;background:#fff;color:#101010;font-family:Arial,sans-serif}
+        .hero{position:relative;min-height:700px;background:url('/hero.png') center/cover no-repeat;display:flex;align-items:center;padding:80px 8%;color:#fff}
+        .heroOverlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.46) 45%,rgba(0,0,0,.12) 100%)}
+        .heroContent{position:relative;z-index:1;max-width:760px}
+        .badge,.miniBadge{display:inline-block;border-radius:999px;font-weight:900}.badge{background:rgba(255,255,255,.95);color:#111;padding:10px 16px;font-size:14px}.miniBadge{background:#fff3e8;color:#f97316;padding:9px 14px;font-size:12px;letter-spacing:.5px}
+        h1{font-size:clamp(50px,7vw,88px);line-height:.94;letter-spacing:-4px;margin:20px 0 0;font-weight:950}
+        .price{font-size:clamp(44px,6vw,70px);font-weight:950;color:#ff8a00;margin:22px 0 8px}.subtitle{font-size:22px;line-height:1.5;max-width:580px;color:#f2f2f2;margin:0}
+        .heroProof{display:flex;flex-wrap:wrap;gap:10px;margin-top:25px}.heroProof span{padding:10px 13px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.10);backdrop-filter:blur(8px);border-radius:999px;font-size:14px;font-weight:800}
+        .heroActions,.ctaActions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}.heroActions a,.ctaActions a{text-decoration:none;padding:15px 20px;border-radius:15px;font-weight:950}.primaryBtn{background:#25d366;color:white}.secondaryBtn{background:white;color:#111}.secondaryDark{background:#1d1d1d;color:white}
+        .trustBar{width:min(1040px,calc(100% - 48px));margin:-34px auto 80px;position:relative;z-index:3;display:grid;grid-template-columns:repeat(3,1fr);background:white;border-radius:24px;box-shadow:0 20px 55px rgba(0,0,0,.12);overflow:hidden}.trustBar div{padding:25px 20px;text-align:center;border-right:1px solid #eee}.trustBar div:last-child{border-right:none}.trustBar strong{display:block;font-size:23px}.trustBar span{display:block;color:#6a6a6a;font-size:14px;margin-top:4px}
+        .modelsSection,.clientMoments{padding:20px 7% 90px}.sectionHeader{max-width:760px;margin:0 auto 42px;text-align:center}.sectionHeader h2,.emotionText h2,.finalCta h2{font-size:clamp(36px,5vw,56px);line-height:1.04;letter-spacing:-2px;margin:14px 0 0;font-weight:950}.sectionHeader p,.emotionText p,.finalCta p{font-size:18px;line-height:1.65;color:#666}.versions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;max-width:1180px;margin:0 auto}.card{min-width:0;border-radius:30px;padding:32px;background:#fff;border:1px solid #e9e9e9;box-shadow:0 18px 50px rgba(0,0,0,.07);display:flex;flex-direction:column}.featured{background:linear-gradient(180deg,#111,#1d1d1d);color:#fff;transform:translateY(-14px);box-shadow:0 30px 70px rgba(0,0,0,.22)}.premium{background:linear-gradient(180deg,#fff,#fbf7ff)}
+        .tag{width:max-content;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:950}.green{background:#dcfce7;color:#16803c}.orange{background:#f97316;color:#fff}.purple{background:#ede9fe;color:#6d28d9}.card h3{font-size:29px;margin:18px 0 6px}.cardPrice{font-size:38px;font-weight:950;margin:0 0 12px}.cardText{font-size:17px;line-height:1.55;color:inherit;opacity:.88;margin:0 0 18px}.infoBox,.warranty{padding:15px 16px;border-radius:17px;background:#f4f4f5;display:flex;flex-direction:column;gap:5px;margin-bottom:16px}.darkInfo,.warranty{background:rgba(255,255,255,.1)}.infoBox span,.warranty span{font-size:14px;line-height:1.45;color:#555}.darkInfo span,.warranty span{color:#e7e7e7}.warranty strong{font-size:16px}.warranty small{color:#bbb;margin-top:2px}.card ul{list-style:none;padding:0;margin:4px 0 26px}.card li{position:relative;padding-left:26px;margin:10px 0;font-size:16px;line-height:1.4}.card li:before{content:'✓';position:absolute;left:0;color:#f97316;font-weight:950}.chooseBtn{margin-top:auto;text-decoration:none;text-align:center;padding:15px 16px;border-radius:15px;font-weight:950}.darkBtn{background:#111;color:white}.orangeBtn{background:linear-gradient(135deg,#ff7a00,#ff006e);color:white}
+        .emotionSection{width:min(1180px,calc(100% - 48px));margin:0 auto 100px;display:grid;grid-template-columns:.9fr 1.1fr;gap:42px;align-items:center;background:#0c0c0c;color:#fff;border-radius:34px;padding:44px}.emotionText p{color:#d1d1d1}.textLink{display:inline-block;margin-top:8px;color:#fff;text-decoration:none;font-weight:950}.videoFrame{border-radius:24px;overflow:hidden;background:#000}.videoFrame video,.clientGrid video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#000}
+        .compact{margin-bottom:28px}.clientGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;max-width:1080px;margin:0 auto}.clientGrid article{overflow:hidden;border-radius:24px;background:#fff;border:1px solid #eee;box-shadow:0 14px 36px rgba(0,0,0,.07)}.clientGrid article div{padding:17px 20px;display:flex;justify-content:space-between;gap:10px}.clientGrid span{color:#777}
+        .finalCta{margin:10px 7% 70px;padding:58px;border-radius:34px;background:radial-gradient(circle at top left,#2d3b52,#090909 65%);color:white;text-align:center}.finalCta>span{font-weight:950;color:#ff8a00;letter-spacing:1px}.finalCta p{color:#d7d7d7;max-width:680px;margin:18px auto 0}.ctaActions{justify-content:center}.footer{padding:24px 7%;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;border-top:1px solid #eee;color:#666;font-size:14px}
+        @media(max-width:900px){
+          .hero{min-height:650px;padding:48px 22px;align-items:flex-end;background-position:58% center}.heroOverlay{background:linear-gradient(180deg,rgba(0,0,0,.16) 0%,rgba(0,0,0,.4) 45%,rgba(0,0,0,.88) 100%)}h1{font-size:48px;letter-spacing:-2.4px}.price{font-size:44px}.subtitle{font-size:18px}.heroProof{gap:7px}.heroProof span{font-size:12px;padding:8px 10px}.heroActions a{flex:1;text-align:center;min-width:145px}
+          .trustBar{width:calc(100% - 28px);margin:-22px auto 54px;border-radius:20px}.trustBar div{padding:18px 8px}.trustBar strong{font-size:18px}.trustBar span{font-size:11px}
+          .modelsSection,.clientMoments{padding:10px 16px 62px}.sectionHeader{margin-bottom:28px}.sectionHeader h2,.emotionText h2,.finalCta h2{font-size:34px;letter-spacing:-1.4px}.sectionHeader p,.emotionText p,.finalCta p{font-size:16px}.versions{grid-template-columns:1fr;gap:16px}.card{padding:24px;border-radius:24px;box-shadow:0 10px 28px rgba(0,0,0,.06)}.featured{transform:none;order:-1}.card h3{font-size:25px}.cardPrice{font-size:34px}.cardText{font-size:16px}.card ul{margin-bottom:20px}.card li{font-size:15px}.warranty span{font-size:13px}
+          .emotionSection{width:calc(100% - 28px);margin-bottom:62px;grid-template-columns:1fr;padding:24px;border-radius:26px;gap:24px}.emotionText{text-align:left}.videoFrame{border-radius:18px}.clientGrid{grid-template-columns:1fr;gap:16px}.clientGrid article div{padding:14px 16px;font-size:14px}.finalCta{margin:0 14px 42px;padding:36px 22px;border-radius:26px}.ctaActions{flex-direction:column}.ctaActions a{width:100%}.footer{padding:22px 18px;flex-direction:column}
         }
-
-        @media (max-width:480px) {
-          .hero { min-height:620px; padding:38px 18px; }
-          h1 { font-size:41px; line-height:1; letter-spacing:-1.6px; }
-          .price { font-size:41px; }
-          .heroActions { display:grid; grid-template-columns:1fr; }
-          .heroActions a { text-align:center; }
-          .trustStrip { width:calc(100% - 24px); border-radius:20px; }
-          .trustStrip div { padding:18px 10px; }
-          .trustStrip strong { font-size:18px; } .trustStrip span { font-size:12px; }
-          .realVideoSection { width:calc(100% - 24px); }
-          .realVideoText h2, .sectionHeader h2, .presentation h2, .darkSection h2 { font-size:32px; line-height:1.08; }
-          .section, .presentation, .darkSection, .clientProof { padding:48px 18px; }
-          .sectionHeader p { font-size:17px; }
-          .card h3 { font-size:25px; } .cardPrice { font-size:32px; } .cardText, li { font-size:16px; }
-          .contact { margin-left:18px; margin-right:18px; padding:32px 24px; }
-          .contact h2 { font-size:32px; }
-          .seoLinks { padding:44px 18px; }
-          .seoLinks h2 { font-size:30px; }
-        }
+        @media(max-width:480px){.hero{min-height:610px;padding:34px 16px}.badge{font-size:12px;padding:8px 12px}h1{font-size:41px}.price{font-size:40px;margin-top:16px}.subtitle{font-size:17px}.heroProof span:nth-child(3){display:none}.heroActions{margin-top:20px}.trustBar{grid-template-columns:repeat(3,1fr)}.trustBar span{display:none}.trustBar strong{font-size:16px}.modelsSection,.clientMoments{padding-left:12px;padding-right:12px}.sectionHeader h2,.emotionText h2,.finalCta h2{font-size:30px}.card{padding:21px}.featured .warranty span:nth-of-type(2){font-size:12.5px}.emotionSection{width:calc(100% - 20px)}.clientGrid article div{flex-direction:column;gap:4px}}
       `}</style>
     </main>
   );
