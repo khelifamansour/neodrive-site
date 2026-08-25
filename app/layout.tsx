@@ -5,13 +5,14 @@ import React, { useState } from "react";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
 
+  const closeMenu = () => setOpen(false);
+
   return (
     <html lang="fr">
-  <body>
-  
+      <body>
         <header className="header">
           <div className="top">
-            <a href="/" className="brand">
+            <a href="/" className="brand" onClick={closeMenu}>
               <span className="icon">N</span>
               <span className="brandText">
                 <strong>NeoDrive</strong>
@@ -29,23 +30,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 WhatsApp
               </a>
 
-              <button className="menuBtn" onClick={() => setOpen(!open)}>
-                ☰
+              <button
+                className="menuBtn"
+                onClick={() => setOpen(!open)}
+                aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
+                aria-expanded={open}
+              >
+                {open ? "✕" : "☰"}
               </button>
             </div>
           </div>
 
-          <nav className={open ? "menu open" : "menu"}>
-            <a href="/">Accueil</a>
-            <a href="/produit">Véhicules</a>
-            <a href="/livraison">Livraison</a>
-            <a href="/carte-grise">Carte grise</a>
-            <a href="/QuiSommesNous">Qui sommes-nous</a>
-            <a href="/sav">SAV</a>
-            <a href="/pieces">Pièces détachées</a>
-            <a href="/faq">FAQ</a>
-            <a href="/blog">Guides et conseils</a>
-            <a href="/contact">Contact</a>
+          <nav className={open ? "menu open" : "menu"} aria-label="Navigation principale">
+            <a href="/" onClick={closeMenu}>Accueil</a>
+            <a href="/produit" onClick={closeMenu}>Véhicules</a>
+            <a href="/videos" onClick={closeMenu}>Vidéos</a>
+            <a href="/livraison" onClick={closeMenu}>Livraison</a>
+            <a href="/carte-grise" onClick={closeMenu}>Carte grise</a>
+            <a href="/QuiSommesNous" onClick={closeMenu}>Qui sommes-nous</a>
+            <a href="/sav" onClick={closeMenu}>SAV</a>
+            <a href="/pieces" onClick={closeMenu}>Pièces détachées</a>
+            <a href="/faq" onClick={closeMenu}>FAQ</a>
+            <a href="/blog" onClick={closeMenu}>Guides et conseils</a>
+            <a href="/contact" onClick={closeMenu}>Contact</a>
           </nav>
         </header>
 
@@ -57,13 +64,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             margin: 0;
             padding: 0;
             width: 100%;
-            overflow-x: hidden;
+            max-width: 100%;
+            overflow-x: clip;
             background: #fff;
-            font-family: system-ui, Arial, sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
           }
 
           * {
             box-sizing: border-box;
+          }
+
+          img,
+          video,
+          iframe,
+          svg {
+            max-width: 100%;
           }
         `}</style>
 
@@ -81,6 +96,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }
 
           .top {
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -131,7 +147,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 170px;
+            max-width: 160px;
           }
 
           .actions {
@@ -166,9 +182,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           .menu {
             display: none;
+            width: 100%;
             margin-top: 12px;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 8px;
           }
 
           .menu.open {
@@ -176,14 +193,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }
 
           .menu a {
+            min-width: 0;
             text-decoration: none;
             color: #111;
             background: #f5f5f5;
-            padding: 12px 14px;
+            padding: 12px 9px;
             border-radius: 14px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 850;
             text-align: center;
+            overflow-wrap: anywhere;
+          }
+
+          .menu a:nth-child(3) {
+            background: #111;
+            color: white;
+          }
+
+          @media (max-width: 390px) {
+            .brand small {
+              max-width: 120px;
+            }
+
+            .whatsapp {
+              padding: 9px 10px;
+              font-size: 13px;
+            }
           }
 
           @media (min-width: 900px) {
@@ -217,18 +252,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             .menu,
             .menu.open {
-              max-width: 1180px;
+              max-width: 1220px;
               margin: 14px auto 0;
               display: flex;
               justify-content: center;
               flex-wrap: wrap;
-              gap: 10px;
+              gap: 8px;
             }
 
             .menu a {
               width: auto;
-              padding: 10px 16px;
+              padding: 10px 14px;
               border-radius: 999px;
+              font-size: 14px;
             }
 
             .whatsapp {
