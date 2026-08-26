@@ -1,81 +1,60 @@
 "use client";
 import React,{useState}from"react";
 
-const versions={
-  essentiel:{label:"NeoDrive Essentielle",prix:3990},
-  confort:{label:"NeoDrive Confort",prix:4990},
-  confortPlus:{label:"NeoDrive Confort Plus",prix:5990}
-};
+const versions={essentiel:{label:"NeoDrive Essentielle",prix:3990},confort:{label:"NeoDrive Confort",prix:4990},confortPlus:{label:"NeoDrive Confort Plus",prix:5990}};
 const docs=["Bulletin de salaire du mois dernier","Bulletin de salaire M-2","Bulletin de salaire M-3","Dernier avis d’imposition","Contrat de travail","Pièce d’identité recto-verso","Justificatif de domicile","RIB"];
-const transport=(d:string)=>["31","81","82","32","09"].includes(d)?350:["11","12","46","47","33","65","66","34","30","40","24","19","87","15"].includes(d)?490:["75","77","78","91","92","93","94","95","13","69","63","16","17","86"].includes(d)?690:790;
 const eur=(n:number)=>n.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2});
 
 export default function Financement(){
-  const[version,setVersion]=useState<keyof typeof versions>("confort");
-  const[cp,setCp]=useState("");
-  const[apport,setApport]=useState(0);
-  const[delivery,setDelivery]=useState(true);
-  const[cg,setCg]=useState(true);
-  const[duree,setDuree]=useState(48);
-  const[assurance,setAssurance]=useState(false);
-
-  const tauxDebiteur=6.27;
-  const taeg=6.45;
-  const fraisDossier=0;
-  const livraison=delivery?transport(cp.slice(0,2)):0;
-  const total=versions[version].prix+livraison+(cg?150:0);
-  const finance=Math.max(0,total-apport);
-  const r=tauxDebiteur/100/12;
-  const mensualite=finance===0?0:(finance*r*Math.pow(1+r,duree))/(Math.pow(1+r,duree)-1);
-  const totalDu=mensualite*duree+fraisDossier;
-  const coutCredit=Math.max(0,totalDu-finance);
-  const assuranceMois=finance*0.00084;
-  const coutAssurance=assuranceMois*duree;
-  const mensualiteAvecAssurance=mensualite+(assurance?assuranceMois:0);
-  const totalAvecAssurance=totalDu+(assurance?coutAssurance:0);
-  const eligible=finance>=3000&&finance<=75000;
-
-  return <main className="fin">
-    <section className="hero"><span>FINANCEMENT NEODRIVE</span><h1>Votre voiture.<br/>Votre financement.<br/><em>Un seul dossier.</em></h1><p>Préparez votre demande de financement directement chez NeoDrive. Pour l’étude des demandes, nous travaillons avec un partenaire Groupama.</p><div className="steps"><b>1. Calculez votre projet</b><b>2. Simulez vos mensualités</b><b>3. Déposez votre dossier</b></div></section>
-
-    <section className="wrap">
-      <div className="notice"><strong>Documents à préparer avant de commencer</strong><p><b>Vos 3 derniers bulletins de salaire</b>, votre dernier avis d’imposition, votre contrat de travail, une pièce d’identité, un justificatif de domicile et un RIB.</p></div>
-
-      <div className="grid">
-        <section className="card"><span className="eye">01 — VOTRE PROJET</span><h2>Calculez le montant à financer</h2>
-          <label>Modèle<select value={version} onChange={e=>setVersion(e.target.value as keyof typeof versions)}>{Object.entries(versions).map(([k,v])=><option key={k} value={k}>{v.label} — {v.prix.toLocaleString("fr-FR")} €</option>)}</select></label>
-          <label>Code postal<input value={cp} onChange={e=>setCp(e.target.value.replace(/\D/g,"").slice(0,5))} placeholder="31600"/></label>
-          <div className="checks"><label><input type="checkbox" checked={delivery} onChange={e=>setDelivery(e.target.checked)}/> Livraison NeoDrive</label><label><input type="checkbox" checked={cg} onChange={e=>setCg(e.target.checked)}/> Mise en route / carte grise (150 €)</label></div>
-          <label>Votre apport (€)<input type="number" min="0" value={apport||""} onChange={e=>setApport(Number(e.target.value)||0)} placeholder="Ex. 1 000"/></label>
-          <div className="summary"><div><span>Véhicule</span><b>{versions[version].prix.toLocaleString("fr-FR")} €</b></div><div><span>Livraison</span><b>{livraison.toLocaleString("fr-FR")} €</b></div><div><span>Total du projet</span><b>{total.toLocaleString("fr-FR")} €</b></div><div><span>Apport</span><b>- {apport.toLocaleString("fr-FR")} €</b></div><div className="big"><span>Montant à financer</span><b>{finance.toLocaleString("fr-FR")} €</b></div></div>
-          {!eligible&&<p className="warning">Le simulateur Groupama Auto visible actuellement accepte un montant compris entre 3 000 € et 75 000 €. Ajustez l’apport ou le projet pour entrer dans cette plage.</p>}
-        </section>
-
-        <section className="card simulator"><span className="eye">02 — SIMULATEUR GROUPAMA</span><h2>Votre mensualité</h2>
-          <div className="groupamaHead"><div><b>Auto</b><span>Voiture neuve ou récente (- de 2 ans)</span></div><div><span>Montant</span><strong>{eur(finance)} €</strong></div></div>
-
-          <label className="duration">Sur une durée de <b>{duree} mois</b><input className="range" type="range" min="12" max="84" step="1" value={duree} onChange={e=>setDuree(Number(e.target.value))}/><div className="ticks"><span>12 mois</span><span>84 mois</span></div></label>
-          <div className="presets">{[12,24,36,48,60,72,84].map(m=><button type="button" key={m} className={duree===m?"active":""} onClick={()=>setDuree(m)}>{m}</button>)}</div>
-
-          <div className="monthly"><span>Mensualité estimée</span><strong>{eligible?`${eur(mensualiteAvecAssurance)} € / mois`:"—"}</strong>{assurance&&<small>dont {eur(assuranceMois)} € / mois d’assurance facultative</small>}</div>
-
-          <div className="recap"><h3>Récapitulatif <small>(hors assurance facultative)</small></h3><div><span>Montant souhaité</span><b>{eur(finance)} €</b></div><div className="emphasis"><span>Mensualités</span><b>{eligible?`${eur(mensualite)} €`:"—"}</b></div><div><span>Frais de dossier</span><b>0,00 €</b></div><div><span>TAEG fixe indicatif</span><b>{taeg.toFixed(2).replace(".",",")} %</b></div><div><span>Taux débiteur annuel fixe indicatif</span><b>{tauxDebiteur.toFixed(2).replace(".",",")} %</b></div><div className="total"><span>Montant total dû</span><b>{eligible?`${eur(totalDu)} €`:"—"}</b></div></div>
-
-          <label className="insurance"><input type="checkbox" checked={assurance} onChange={e=>setAssurance(e.target.checked)}/><span><b>Ajouter l’assurance facultative à la simulation</b><small>Exemple calculé sur la base visible chez Groupama : environ 0,084 % du montant financé par mois.</small></span></label>
-          {assurance&&<div className="insuranceBox"><h3>Exemple d’assurance de prêt personnel</h3><div><span>Mensualité avec assurance</span><b>{eur(mensualiteAvecAssurance)} €</b></div><div><span>Coût de l’assurance par mois</span><b>{eur(assuranceMois)} €</b></div><div><span>Coût total de l’assurance</span><b>{eur(coutAssurance)} €</b></div><div className="total"><span>Montant total dû avec assurance</span><b>{eur(totalAvecAssurance)} €</b></div></div>}
-
-          <p className="sourceNote">Paramètres reproduits à partir du simulateur Groupama communiqué : exemple 5 000 € à 48 mois, TAEG fixe 6,45 %, taux débiteur fixe 6,27 %, frais de dossier 0 €. Le barème réel peut varier selon le montant, la durée, la date et le dossier. Groupama indique également un taux préférentiel possible pour l’achat de véhicules électriques.</p>
-        </section>
-      </div>
-
-      <section className="form"><span className="eye">03 — DOSSIER DE FINANCEMENT</span><h2>Vos informations et vos justificatifs</h2><p>Remplissez vos coordonnées puis ajoutez les documents ci-dessous. NeoDrive recevra le dossier afin de pouvoir le transmettre au partenaire financier pour étude.</p>
-        <div className="fields"><input placeholder="Nom"/><input placeholder="Prénom"/><input type="email" placeholder="E-mail"/><input type="tel" placeholder="Téléphone"/><input placeholder="Adresse"/><input placeholder="Code postal / Ville"/><select defaultValue=""><option value="" disabled>Situation professionnelle</option><option>CDI</option><option>CDD</option><option>Intérimaire</option><option>Indépendant</option><option>Retraité</option><option>Autre</option></select><input type="number" placeholder="Revenu net mensuel (€)"/></div>
-        <h3>Ajouter les documents</h3><div className="uploads">{docs.map((d,i)=><label key={d}><span><b>{i+1}</b>{d}</span><input type="file" accept=".pdf,.jpg,.jpeg,.png"/></label>)}</div>
-        <label className="consent"><input type="checkbox"/> J’autorise NeoDrive à traiter les informations et documents transmis pour constituer ma demande de financement et à les transmettre au partenaire financier concerné pour étude.</label><button type="button" disabled>Envoyer mon dossier de financement</button><p className="security">🔒 L’envoi sera activé après raccordement au stockage sécurisé NeoDrive. Aucun document n’est envoyé pour l’instant.</p>
-      </section>
-      <p className="legal">Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager. Simulation non contractuelle ne valant pas accord de crédit. Toute offre est soumise à l’étude et à l’acceptation de l’organisme prêteur.</p>
+ const[version,setVersion]=useState<keyof typeof versions>("confort");
+ const[cp,setCp]=useState("");
+ const[apport,setApport]=useState(0);
+ const[cg,setCg]=useState(true);
+ const[delivery,setDelivery]=useState("790");
+ const[customDelivery,setCustomDelivery]=useState(790);
+ const[duree,setDuree]=useState(48);
+ const[assurance,setAssurance]=useState(false);
+ const livraison=delivery==="custom"?Math.max(0,customDelivery):Number(delivery);
+ const total=versions[version].prix+livraison+(cg?150:0);
+ const finance=Math.max(0,total-apport);
+ const tauxDebiteur=6.27,taeg=6.45,r=tauxDebiteur/100/12;
+ const mensualite=finance===0?0:(finance*r*Math.pow(1+r,duree))/(Math.pow(1+r,duree)-1);
+ const totalDu=mensualite*duree;
+ const assuranceMois=finance*0.00084;
+ const coutAssurance=assuranceMois*duree;
+ const mensualiteFinale=mensualite+(assurance?assuranceMois:0);
+ const eligible=finance>=3000&&finance<=75000;
+ return <main className="fin">
+  <section className="hero"><span>FINANCEMENT NEODRIVE</span><h1>Votre voiture.<br/>Votre financement.<br/><em>Un seul dossier.</em></h1><p>Calculez le coût complet de votre NeoDrive, choisissez votre apport et simulez vos mensualités. Pour l’étude des demandes de financement, nous travaillons avec un partenaire Groupama.</p><div className="steps"><b>1. Votre projet</b><b>2. Simulation</b><b>3. Dossier</b></div></section>
+  <section className="wrap">
+   <div className="notice"><strong>Documents à préparer</strong><p><b>Les 3 derniers bulletins de salaire</b>, le dernier avis d’imposition, le contrat de travail, une pièce d’identité, un justificatif de domicile et un RIB.</p></div>
+   <div className="columns">
+    <section className="card"><span className="eye">01 — VOTRE PROJET</span><h2>Montant à financer</h2>
+     <label>Modèle<select value={version} onChange={e=>setVersion(e.target.value as keyof typeof versions)}>{Object.entries(versions).map(([k,v])=><option value={k} key={k}>{v.label} — {v.prix.toLocaleString("fr-FR")} €</option>)}</select></label>
+     <label>Livraison<select value={delivery} onChange={e=>setDelivery(e.target.value)}><option value="0">Retrait sur place — 0 €</option><option value="350">Livraison — 350 €</option><option value="490">Livraison — 490 €</option><option value="690">Livraison — 690 €</option><option value="790">Livraison — 790 €</option><option value="custom">Livraison personnalisée</option></select></label>
+     {delivery==="custom"&&<label className="custom">Prix personnalisé de livraison (€)<input type="number" min="0" value={customDelivery||""} onChange={e=>setCustomDelivery(Number(e.target.value)||0)} placeholder="Ex. 790"/><small>Saisissez ici le tarif réel communiqué au client.</small></label>}
+     <label>Code postal du client<input value={cp} onChange={e=>setCp(e.target.value.replace(/\D/g,"").slice(0,5))} placeholder="31600"/></label>
+     <label className="check"><input type="checkbox" checked={cg} onChange={e=>setCg(e.target.checked)}/> Mise en route / carte grise — 150 €</label>
+     <label>Apport du client (€)<input type="number" min="0" value={apport||""} onChange={e=>setApport(Number(e.target.value)||0)} placeholder="Ex. 1 000"/></label>
+     <div className="summary"><div><span>Véhicule</span><b>{versions[version].prix.toLocaleString("fr-FR")} €</b></div><div><span>Livraison</span><b>{livraison.toLocaleString("fr-FR")} €</b></div><div><span>Carte grise / mise en route</span><b>{cg?"150 €":"0 €"}</b></div><div><span>Total du projet</span><b>{total.toLocaleString("fr-FR")} €</b></div><div><span>Apport</span><b>- {apport.toLocaleString("fr-FR")} €</b></div><div className="big"><span>Montant à financer</span><b>{finance.toLocaleString("fr-FR")} €</b></div></div>
     </section>
 
-    <style jsx>{`.fin{background:#f6f7f5;color:#121914}.hero{padding:70px max(22px,calc((100vw - 1120px)/2));background:linear-gradient(135deg,#0d1811,#173d23);color:#fff}.hero>span,.eye{font-size:12px;font-weight:950;letter-spacing:1.7px;color:#82db72}.hero h1{font-size:clamp(46px,7vw,76px);line-height:.96;letter-spacing:-3px;margin:14px 0}.hero h1 em{font-style:normal;color:#9ee57d}.hero p{max-width:720px;font-size:18px;line-height:1.65;color:#d4dfd6}.steps{display:flex;gap:9px;flex-wrap:wrap;margin-top:25px}.steps b{background:#fff1;border:1px solid #ffffff22;padding:11px 14px;border-radius:999px}.wrap{max-width:1160px;margin:auto;padding:42px 20px 70px}.notice{background:#e9f5e5;border:1px solid #cce8c5;border-radius:22px;padding:24px;margin-bottom:20px}.notice strong{font-size:23px}.notice p{color:#4e5c51;line-height:1.55;margin-bottom:0}.grid{display:grid;grid-template-columns:.95fr 1.05fr;gap:18px}.card,.form{background:#fff;border:1px solid #e5e8e4;border-radius:26px;padding:30px;box-shadow:0 15px 45px #18351f0d}.eye{color:#27783b}.card h2,.form h2{font-size:32px;letter-spacing:-1.3px;margin:8px 0 24px}.card label{display:grid;gap:7px;font-weight:800;margin:14px 0}input,select{width:100%;padding:14px;border:1px solid #dfe3df;border-radius:13px;background:#fafbfa;font:inherit}.checks{display:grid;grid-template-columns:1fr 1fr;gap:8px}.checks label,.consent{display:flex!important;align-items:flex-start;gap:9px;background:#f4f6f3;padding:13px;border-radius:13px;font-size:13px}.checks input,.consent input,.insurance input{width:auto;margin-top:2px}.summary{margin-top:20px;background:#111a14;color:#fff;border-radius:19px;padding:19px}.summary div{display:flex;justify-content:space-between;gap:15px;padding:8px 0}.summary span{color:#b9c5bc}.summary .big{border-top:1px solid #ffffff24;margin-top:8px;padding-top:15px}.summary .big b{font-size:25px;color:#9ee57d}.warning{background:#fff4db;color:#7a5b13;padding:13px;border-radius:13px;font-size:12px;line-height:1.5}.groupamaHead{display:grid;grid-template-columns:1fr 1fr;background:#f7f5f1;border-radius:18px;padding:18px;margin-bottom:17px}.groupamaHead>div:last-child{border-left:1px solid #d6d3ce;padding-left:20px}.groupamaHead b,.groupamaHead strong{display:block;font-size:25px}.groupamaHead span{display:block;color:#59645e;font-size:13px;margin-top:4px}.duration{font-size:15px}.range{padding:0;accent-color:#ff8200}.ticks{display:flex;justify-content:space-between;color:#788079;font-size:12px}.presets{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.presets button{border:1px solid #dfe3df;background:#fff;border-radius:10px;padding:8px 2px;font-weight:800}.presets button.active{background:#08755f;color:#fff;border-color:#08755f}.monthly{background:#08755f;color:#fff;border-radius:20px;padding:22px;margin:18px 0}.monthly span{display:block;color:#cce8df}.monthly strong{display:block;font-size:34px;margin-top:5px}.monthly small{display:block;margin-top:6px;color:#d8eee8}.recap,.insuranceBox{margin-top:18px}.recap h3,.insuranceBox h3{color:#ff7a00;font-size:18px}.recap h3 small{font-weight:500;color:#68726b}.recap div,.insuranceBox div{display:flex;justify-content:space-between;gap:15px;padding:10px 0;border-bottom:1px solid #ddd}.recap .emphasis{font-size:19px}.recap .total,.insuranceBox .total{color:#08755f;font-size:19px;font-weight:900}.insurance{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:10px!important;background:#f7f5f1;border-radius:15px;padding:14px;margin-top:18px!important}.insurance span,.insurance small{display:block}.insurance small{font-weight:500;color:#6c756f;line-height:1.45;margin-top:4px}.sourceNote{font-size:11px;color:#77817a;line-height:1.5;margin-top:18px}.form{margin-top:18px}.form>p{color:#667068;line-height:1.6;max-width:800px}.fields,.uploads{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form h3{font-size:24px;margin:30px 0 12px}.uploads label{border:1px solid #e1e5e0;border-radius:16px;padding:14px;background:#fafbfa}.uploads span{display:flex;align-items:center;gap:9px;font-weight:800;margin-bottom:10px}.uploads span b{width:26px;height:26px;display:grid;place-items:center;background:#173d23;color:#fff;border-radius:50%;font-size:12px}.uploads input{font-size:12px;padding:8px;background:#fff}.consent{margin:22px 0}.form button{width:100%;border:0;border-radius:15px;padding:17px;background:#173d23;color:#fff;font-size:17px;font-weight:950}.form button:disabled{opacity:.55}.security{text-align:center;font-size:12px!important}.legal{text-align:center;font-size:12px;color:#747d76;max-width:850px;margin:35px auto 0;line-height:1.55}@media(max-width:800px){.hero{padding-top:45px}.hero h1{letter-spacing:-2px}.grid,.fields,.uploads{grid-template-columns:1fr}.card,.form{padding:22px}.checks{grid-template-columns:1fr}.card h2,.form h2{font-size:28px}.monthly strong{font-size:29px}.presets{grid-template-columns:repeat(4,1fr)}.groupamaHead b,.groupamaHead strong{font-size:21px}}`}</style>
-  </main>
+    <section className="card"><span className="eye">02 — SIMULATION GROUPAMA</span><h2>Votre mensualité</h2>
+     <div className="loan"><div><span>Crédit</span><b>Auto</b></div><div><span>Montant</span><b>{eur(finance)} €</b></div><div><span>Durée</span><b>{duree} mois</b></div><div><span>Code postal</span><b>{cp||"—"}</b></div></div>
+     <label>Durée : <b>{duree} mois</b><input className="range" type="range" min="12" max="84" value={duree} onChange={e=>setDuree(Number(e.target.value))}/><div className="ticks"><span>12 mois</span><span>84 mois</span></div></label>
+     <div className="presets">{[12,24,36,48,60,72,84].map(x=><button type="button" key={x} className={x===duree?"active":""} onClick={()=>setDuree(x)}>{x}</button>)}</div>
+     <div className="monthly"><span>Mensualité estimée</span><strong>{eligible?`${eur(mensualiteFinale)} € / mois`:"—"}</strong></div>
+     <div className="recap"><h3>Récapitulatif <small>(hors assurance facultative)</small></h3><div><span>Montant souhaité</span><b>{eur(finance)} €</b></div><div><span>Mensualités</span><b>{eligible?`${eur(mensualite)} €`:"—"}</b></div><div><span>Frais de dossier</span><b>0,00 €</b></div><div><span>TAEG fixe indicatif</span><b>6,45 %</b></div><div><span>Taux débiteur annuel fixe indicatif</span><b>6,27 %</b></div><div className="green"><span>Montant total dû</span><b>{eligible?`${eur(totalDu)} €`:"—"}</b></div></div>
+     <label className="check insurance"><input type="checkbox" checked={assurance} onChange={e=>setAssurance(e.target.checked)}/> Ajouter une estimation d’assurance facultative</label>
+     {assurance&&<div className="recap"><h3>Assurance facultative — exemple</h3><div><span>Coût par mois</span><b>{eur(assuranceMois)} €</b></div><div><span>Coût total</span><b>{eur(coutAssurance)} €</b></div><div className="green"><span>Total dû avec assurance</span><b>{eur(totalDu+coutAssurance)} €</b></div></div>}
+     {!eligible&&<p className="warn">Le simulateur Auto Groupama communiqué prévoit actuellement un montant de 3 000 € à 75 000 €.</p>}
+     <p className="source">Simulation non contractuelle. Paramètres reproduits d’après le simulateur Groupama communiqué : TAEG 6,45 %, taux débiteur fixe 6,27 %, frais de dossier 0 €. Les conditions réelles peuvent varier selon la date, le montant, la durée et l’acceptation du dossier.</p>
+    </section>
+   </div>
+
+   <section className="form"><span className="eye">03 — DOSSIER DE FINANCEMENT</span><h2>Déposer les informations et justificatifs</h2><div className="fields"><input placeholder="Nom"/><input placeholder="Prénom"/><input type="email" placeholder="E-mail"/><input type="tel" placeholder="Téléphone"/><input placeholder="Adresse"/><input placeholder="Code postal / Ville"/><select defaultValue=""><option value="" disabled>Situation professionnelle</option><option>CDI</option><option>CDD</option><option>Intérimaire</option><option>Indépendant</option><option>Retraité</option><option>Autre</option></select><input type="number" placeholder="Revenu net mensuel (€)"/></div><h3>Justificatifs</h3><div className="uploads">{docs.map((d,i)=><label key={d}><span><b>{i+1}</b>{d}</span><input type="file" accept=".pdf,.jpg,.jpeg,.png"/></label>)}</div><label className="check consent"><input type="checkbox"/> J’autorise NeoDrive à traiter ces informations et à transmettre le dossier au partenaire financier concerné pour étude.</label><button disabled type="button">Envoyer mon dossier de financement</button><p className="source">🔒 L’envoi sera activé après raccordement au stockage sécurisé NeoDrive.</p></section>
+   <p className="legal">Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager.</p>
+  </section>
+  <style jsx>{`.fin{background:#f6f7f5;color:#132018}.hero{padding:65px max(20px,calc((100vw - 1120px)/2));background:linear-gradient(135deg,#0d1811,#173d23);color:#fff}.hero>span,.eye{font-size:12px;font-weight:950;letter-spacing:1.5px;color:#7bd36c}.hero h1{font-size:clamp(44px,7vw,74px);line-height:.96;letter-spacing:-3px;margin:13px 0}.hero h1 em{font-style:normal;color:#9ee57d}.hero p{max-width:720px;line-height:1.6;color:#d8e2da;font-size:18px}.steps{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}.steps b{padding:10px 13px;border:1px solid #ffffff25;border-radius:999px}.wrap{max-width:1160px;margin:auto;padding:38px 18px 70px}.notice{background:#e9f5e5;padding:22px;border-radius:20px;margin-bottom:18px}.notice strong{font-size:22px}.notice p{margin-bottom:0;line-height:1.5;color:#536057}.columns{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card,.form{background:#fff;border:1px solid #e4e8e3;border-radius:25px;padding:28px;box-shadow:0 15px 40px #1b3b210d}.eye{color:#25733a}.card h2,.form h2{font-size:31px;margin:7px 0 22px;letter-spacing:-1.2px}.card>label{display:grid;gap:7px;margin:13px 0;font-weight:800}input,select{width:100%;padding:14px;border:1px solid #dce2dc;border-radius:12px;background:#fafbfa;font:inherit}.custom{padding:13px;background:#fff7e9;border-radius:14px}.custom small{font-weight:500;color:#786a55}.check{display:flex!important;align-items:flex-start;gap:9px;background:#f4f6f3;padding:12px;border-radius:12px;font-size:13px}.check input{width:auto;margin-top:2px}.summary{background:#111b14;color:#fff;padding:18px;border-radius:18px;margin-top:18px}.summary div,.recap div{display:flex;justify-content:space-between;gap:14px;padding:8px 0}.summary span{color:#b9c4bb}.summary .big{border-top:1px solid #ffffff25;margin-top:7px;padding-top:14px}.summary .big b{font-size:24px;color:#9ee57d}.loan{display:grid;grid-template-columns:1fr 1fr;background:#f6f4ef;border-radius:16px;padding:16px}.loan div:nth-child(even){border-left:1px solid #d7d4ce;padding-left:17px}.loan span,.loan b{display:block}.loan b{font-size:21px;margin-top:3px}.range{padding:0;accent-color:#ff8000}.ticks{display:flex;justify-content:space-between;color:#777;font-size:12px}.presets{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.presets button{padding:8px 2px;border:1px solid #dce1dc;border-radius:9px;background:#fff;font-weight:800}.presets .active{background:#08755f;color:#fff}.monthly{background:#08755f;color:#fff;border-radius:18px;padding:20px;margin:18px 0}.monthly span,.monthly strong{display:block}.monthly strong{font-size:32px;margin-top:4px}.recap h3{color:#ff7900}.recap h3 small{font-weight:500;color:#68726b}.recap div{border-bottom:1px solid #ddd}.recap .green{color:#08755f;font-size:18px;font-weight:900}.insurance{margin-top:16px!important}.warn{background:#fff2d5;padding:12px;border-radius:12px;color:#775817;font-size:12px}.source{font-size:11px;color:#768078;line-height:1.5}.form{margin-top:18px}.fields,.uploads{display:grid;grid-template-columns:1fr 1fr;gap:9px}.form h3{margin-top:26px}.uploads label{border:1px solid #e0e5df;border-radius:14px;padding:12px;background:#fafbfa}.uploads span{display:flex;gap:8px;align-items:center;font-weight:800;margin-bottom:8px}.uploads span b{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#173d23;color:#fff;font-size:11px}.uploads input{font-size:12px;padding:7px}.consent{margin:20px 0}.form button{width:100%;border:0;border-radius:14px;padding:16px;background:#173d23;color:#fff;font-weight:900;font-size:16px;opacity:.55}.legal{text-align:center;font-size:12px;color:#6f7971;margin-top:30px}@media(max-width:820px){.columns,.fields,.uploads{grid-template-columns:1fr}.hero{padding-top:45px}.hero h1{letter-spacing:-2px}.card,.form{padding:21px}.card h2,.form h2{font-size:27px}.presets{grid-template-columns:repeat(4,1fr)}.monthly strong{font-size:28px}}`}</style>
+ </main>
 }
