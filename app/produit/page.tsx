@@ -13,12 +13,16 @@ type Photo = {
 };
 
 const photos: Photo[] = [
-  { path: "/real/exterieur-avant.webp", label: "Extérieur", alt: "Vue avant réelle de la NeoDrive SWITCH" },
-  { path: "/real/exterieur-ville.webp", label: "En situation", alt: "NeoDrive SWITCH photographiée en situation réelle" },
-  { path: "/real/exterieur-arriere.webp", label: "Extérieur", alt: "Vue arrière réelle de la NeoDrive SWITCH" },
-  { path: "/real/interieur-tableau-de-bord.webp", label: "Intérieur", alt: "Habitacle réel de la NeoDrive SWITCH" },
-  { path: "/real/devant-atelier.webp", label: "Préparation", alt: "NeoDrive SWITCH devant notre atelier" },
+  { path: "/photos/front-close.webp", label: "Extérieur", alt: "Vue trois-quarts avant réelle de la NeoDrive SWITCH" },
+  { path: "/photos/front-intermarche-angle.webp", label: "Extérieur", alt: "NeoDrive SWITCH photographiée de trois-quarts avant" },
+  { path: "/photos/front-intermarche.webp", label: "Face avant", alt: "Vue de face réelle de la NeoDrive SWITCH" },
+  { path: "/photos/front-landscape.webp", label: "En situation", alt: "NeoDrive SWITCH stationnée en extérieur" },
+  { path: "/photos/rear-burgerking.webp", label: "Vue arrière", alt: "Vue arrière réelle de la NeoDrive SWITCH" },
+  { path: "/photos/interior-wide.webp", label: "Intérieur", alt: "Habitacle deux places réel de la NeoDrive SWITCH" },
+  { path: "/photos/interior-driver.webp", label: "Poste de conduite", alt: "Poste de conduite et sièges de la NeoDrive SWITCH" },
+  { path: "/photos/dashboard-detail.webp", label: "Commandes", alt: "Détail réel des commandes de la NeoDrive SWITCH" },
   { path: "/real/stock-couleurs.webp", label: "Stock réel", alt: "Plusieurs NeoDrive SWITCH de notre stock" },
+  { path: "/real/devant-atelier.webp", label: "Préparation", alt: "NeoDrive SWITCH devant notre atelier" },
   { path: "/real/livraison-transporteur.webp", label: "Livraison", alt: "NeoDrive SWITCH pendant une livraison réelle" },
 ];
 
@@ -159,9 +163,9 @@ export default function Produit() {
       <section className={styles.interior}>
         <div className={styles.interiorPhoto}>
           <img
-            src={source("/real/interieur-tableau-de-bord.webp")}
+            src={source("/photos/interior-wide.webp")}
             alt="Intérieur réel de la NeoDrive SWITCH"
-            onError={fallback("/real/interieur-tableau-de-bord.webp")}
+            onError={fallback("/photos/interior-wide.webp")}
             loading="lazy"
           />
         </div>
