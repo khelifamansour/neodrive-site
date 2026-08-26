@@ -8,9 +8,7 @@ const photos=[
  [BASE+"/real/interieur-tableau-de-bord.webp","Intérieur","Habitacle réel et tableau de bord NeoDrive SWITCH"],
  [BASE+"/real/devant-atelier.webp","Préparation","NeoDrive SWITCH devant notre atelier"],
  [BASE+"/real/stock-couleurs.webp","Stock réel","Plusieurs NeoDrive SWITCH disponibles"],
- [BASE+"/real/livraison-transporteur.webp","Livraison","Transport et livraison des voitures NeoDrive"],
- [BASE+"/gallery/showroom.svg","Présentation","NeoDrive SWITCH présentée en concession"],
- [BASE+"/gallery/interieur.svg","Habitacle","Vue intérieure de la NeoDrive SWITCH"]
+ [BASE+"/real/livraison-transporteur.webp","Livraison","Transport et livraison des voitures NeoDrive"]
 ];
 const specs=[["Moteur","3 kW électrique"],["Vitesse","45 km/h"],["Autonomie indicative","50 à 70 km"],["Recharge","220 V · env. 6 h"],["Places","2"],["Dimensions","2,50 × 1,30 × 1,65 m"]];
 export default function Produit(){const[index,setIndex]=useState(0);const[zoom,setZoom]=useState(false);const move=(d:number)=>setIndex((index+d+photos.length)%photos.length);return <main className={styles.page}>
