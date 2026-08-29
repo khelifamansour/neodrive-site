@@ -17,6 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ["/blog/voiture-sans-permis-14-ans", "monthly", 0.8],
     ["/blog/assurance-voiture-sans-permis-ce-quil-faut-verifier", "monthly", 0.8],
     ["/blog/carte-grise-voiture-sans-permis-electrique", "monthly", 0.8],
+    ["/blog/voiture-sans-permis-neuve-ou-occasion", "monthly", 0.8],
     ["/guide-voiture-sans-permis", "weekly", 0.95], ["/QuiSommesNous", "monthly", 0.85],
     ["/a-propos", "weekly", 0.9], ["/financement", "weekly", 0.9],
     ["/voiture-sans-permis-electrique", "weekly", 0.95], ["/citroen-ami-ou-neodrive", "weekly", 0.95],
