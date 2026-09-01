@@ -15,6 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ["/blog/livraison-voiture-sans-permis", "monthly", 0.8],
     ["/blog/5-questions-avant-acheter-voiture-sans-permis-electrique", "monthly", 0.8],
     ["/blog/voiture-sans-permis-14-ans", "monthly", 0.8],
+    ["/blog/permis-am-voiturette-electrique", "monthly", 0.8],
     ["/blog/assurance-voiture-sans-permis-ce-quil-faut-verifier", "monthly", 0.8],
     ["/blog/carte-grise-voiture-sans-permis-electrique", "monthly", 0.8],
     ["/blog/voiture-sans-permis-neuve-ou-occasion", "monthly", 0.8],
