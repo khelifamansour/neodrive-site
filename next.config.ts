@@ -7,7 +7,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  serverExternalPackages: ["@ffmpeg-installer/linux-x64"],
+  outputFileTracingIncludes: {
+    "/api/video/local-create": ["./node_modules/@ffmpeg-installer/linux-x64/ffmpeg"],
+  },
 };
 
 export default nextConfig;

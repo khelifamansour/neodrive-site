@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import ffmpegInstaller from "@ffmpeg-installer/linux-x64";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { chmod, readFile, unlink, writeFile } from "node:fs/promises";
@@ -38,14 +37,13 @@ async function createLocalReel(secret: string) {
   const now = new Date();
   const theme = "vidéos réelles récentes";
   const hook = "NeoDrive en situation réelle";
-  const jobInsert = {
+  const { data: job, error: jobError } = await sb.from("video_generation_jobs").insert({
     status: "rendering",
     theme,
     hook,
     source_asset_ids: selected.map((v: any) => v.id),
     render_provider: "local-ffmpeg",
-  };
-  const { data: job, error: jobError } = await sb.from("video_generation_jobs").insert(jobInsert).select().single();
+  }).select().single();
   if (jobError) return NextResponse.json({ ok: false, error: jobError.message }, { status: 500 });
 
   const tempFiles: string[] = [];
@@ -60,7 +58,7 @@ async function createLocalReel(secret: string) {
       tempFiles.push(p);
     }
 
-    const ffmpegPath = (ffmpegInstaller as any).path;
+    const ffmpegPath = path.join(process.cwd(), "node_modules", "@ffmpeg-installer", "linux-x64", "ffmpeg");
     await chmod(ffmpegPath, 0o755).catch(() => {});
     const args: string[] = ["-y"];
     for (const p of tempFiles) args.push("-i", p);
