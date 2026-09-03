@@ -1,5 +1,6 @@
 import { MetadataRoute } from "next";
 
+// Keep public commercial, local, article and video pages crawlable; keep internal tools out of search.
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
