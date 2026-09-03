@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
   const title = String(form.get("title") ?? "").trim().slice(0, 160);
   const context = String(form.get("context") ?? "").trim().slice(0, 1200);
-  const mediaType = file.type.startsWith("video/") ? "reel" : "image";
+  const mediaType = file.type.startsWith("video/") ? "video" : "image";
   const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${safeName(file.name)}`;
 
   const bytes = await file.arrayBuffer();
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify({ storage_path: path, public_url: publicUrl, media_type: mediaType, title: title || null, context: context || null, status: "ready", priority: 50 }),
+    body: JSON.stringify({ storage_path: path, public_url: publicUrl, media_type: mediaType, title: title || null, context: context || null, status: "ready", priority: 100 }),
   });
   const rows = await dbRes.json().catch(() => null);
   if (!dbRes.ok) return NextResponse.json({ ok: false, error: `Enregistrement média échoué`, details: rows }, { status: 500 });
