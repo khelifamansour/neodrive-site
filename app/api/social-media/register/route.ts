@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const path = String(item.path || "");
     const type = String(item.type || "");
     const name = String(item.name || "").slice(0, 160);
-    const mediaType = type.startsWith("video/") ? "reel" : "image";
+    const mediaType = type.startsWith("video/") ? "video" : "image";
     const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path.split("/").map(encodeURIComponent).join("/")}`;
     return {
       storage_path: path,
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       title: name || null,
       context: batchContext || null,
       status: "ready",
-      priority: mediaType === "reel" ? 60 : 50,
+      priority: 100,
     };
   });
 
