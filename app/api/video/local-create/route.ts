@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import ffmpegInstaller from "@ffmpeg-installer/linux-x64";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { readFile, unlink, writeFile } from "node:fs/promises";
+import { chmod, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 
@@ -61,6 +61,7 @@ async function createLocalReel(secret: string) {
     }
 
     const ffmpegPath = (ffmpegInstaller as any).path;
+    await chmod(ffmpegPath, 0o755).catch(() => {});
     const args: string[] = ["-y"];
     for (const p of tempFiles) args.push("-i", p);
 
@@ -123,8 +124,6 @@ async function createLocalReel(secret: string) {
     return NextResponse.json({ ok: true, jobId: job.id, theme, hook, video: outputUrl, assets: selected.length, provider: "local-ffmpeg" });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    // Fallback robuste : si FFmpeg ne peut pas rendre sur Vercel, on publie la vidéo réelle la plus récente
-    // plutôt que de bloquer tout le système à cause de crédits d'un prestataire externe.
     const fallback = selected[0];
     await sb.from("video_generation_jobs").update({
       status: "succeeded",
