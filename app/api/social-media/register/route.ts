@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       title: name || null,
       context: batchContext || null,
       status: "ready",
-      priority: 100,
+      priority: mediaType === "video" ? 95 : 92,
     };
   });
 
