@@ -4,7 +4,7 @@
     { "path": "/api/social-media/learn", "schedule": "20 3 * * *" },
     { "path": "/api/social-media/analyze", "schedule": "40 3 * * *" },
     { "path": "/api/social-media/plan", "schedule": "10 4 * * *" },
-    { "path": "/api/seo/auto-publish", "schedule": "15 5 * * 2" },
+    { "path": "/api/seo/auto-publish", "schedule": "15 5 * * 2,4,6" },
     { "path": "/api/instagram/auto-publish?force=1", "schedule": "30 7 * * *" },
     { "path": "/api/facebook/auto-publish?force=1", "schedule": "35 7 * * *" },
     { "path": "/api/instagram/auto-publish?force=1", "schedule": "30 11 * * *" },
