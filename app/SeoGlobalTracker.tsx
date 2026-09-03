@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 function send(slug: string, event: "view" | "product" | "whatsapp") {
   fetch("/api/seo/track", {
@@ -12,27 +13,48 @@ function send(slug: string, event: "view" | "product" | "whatsapp") {
   }).catch(() => {});
 }
 
-export default function SeoGlobalTracker() {
-  useEffect(() => {
-    const path = window.location.pathname;
-    if (!path.startsWith("/blog/") || path === "/blog/") return;
-    const slug = decodeURIComponent(path.slice("/blog/".length)).replace(/^\/+|\/+$/g, "");
-    if (!slug || !/^[a-zA-Z0-9_-]+$/.test(slug)) return;
+function metricKey(path: string) {
+  const clean = decodeURIComponent(path || "/").split(/[?#]/)[0].replace(/\/+$/, "") || "/";
+  if (clean.startsWith("/api/") || clean.startsWith("/seo-dashboard") || clean.startsWith("/social-upload")) return "";
+  if (clean.startsWith("/blog/") && clean !== "/blog") {
+    return clean.slice("/blog/".length).replace(/^\/+|\/+$/g, "").replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 170);
+  }
+  if (clean.startsWith("/videos/") && clean !== "/videos") {
+    const id = clean.slice("/videos/".length).replace(/^\/+|\/+$/g, "").replace(/[^a-zA-Z0-9_-]/g, "-");
+    return id ? `video_${id}`.slice(0, 180) : "";
+  }
+  const normalized = clean === "/" ? "home" : clean.replace(/^\/+/, "").replace(/\//g, "_").replace(/[^a-zA-Z0-9_-]/g, "-");
+  return `page_${normalized}`.slice(0, 180);
+}
 
-    const timer = window.setTimeout(() => send(slug, "view"), 700);
+export default function SeoGlobalTracker() {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const key = metricKey(pathname || "/");
+    if (!key || !/^[a-zA-Z0-9_-]+$/.test(key)) return;
+
+    const timer = window.setTimeout(() => send(key, "view"), 700);
     const click = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       const anchor = target?.closest?.("a") as HTMLAnchorElement | null;
       if (!anchor) return;
       const href = anchor.getAttribute("href") || "";
-      if (/wa\.me\//i.test(href)) send(slug, "whatsapp");
-      else if (href.startsWith("/produit") || href.startsWith("/offres/") || href.includes("easydrive-auto.fr/produit") || href.includes("easydrive-auto.fr/offres/")) send(slug, "product");
+      if (/wa\.me\//i.test(href)) send(key, "whatsapp");
+      else if (
+        href.startsWith("/produit") ||
+        href.startsWith("/offres/") ||
+        href.startsWith("/reservation") ||
+        href.includes("easydrive-auto.fr/produit") ||
+        href.includes("easydrive-auto.fr/offres/")
+      ) send(key, "product");
     };
     document.addEventListener("click", click, true);
     return () => {
       window.clearTimeout(timer);
       document.removeEventListener("click", click, true);
     };
-  }, []);
+  }, [pathname]);
+
   return null;
 }
