@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, type SyntheticEvent } from "react";
+import { useState } from "react";
 import styles from "./produit.module.css";
 
 const BASE = "/neodrive-switch";
-const RAW = "https://raw.githubusercontent.com/khelifamansour/neodrive-site/main/public/neodrive-switch";
 
 type Photo = { path: string; label: string; alt: string };
 
@@ -27,14 +26,6 @@ const specs = [
 
 function source(path: string) {
   return `${BASE}${path}`;
-}
-
-function fallback(path: string) {
-  return (event: SyntheticEvent<HTMLImageElement>) => {
-    const image = event.currentTarget;
-    const rawSource = `${RAW}${path}`;
-    if (image.src !== rawSource) image.src = rawSource;
-  };
 }
 
 export default function Produit() {
@@ -65,7 +56,7 @@ export default function Produit() {
         </div>
 
         <div className={styles.heroPhoto}>
-          <img src={source(photos[0].path)} alt={photos[0].alt} onError={fallback(photos[0].path)} fetchPriority="high" />
+          <img src={source(photos[0].path)} alt={photos[0].alt} fetchPriority="high" />
           <div className={styles.heroBadge}>PHOTO RÉELLE · VÉHICULE NEODRIVE</div>
           <div className={styles.heroFacts}><b>2 places</b><b>45 km/h</b><b>Recharge 220 V</b></div>
         </div>
@@ -87,7 +78,7 @@ export default function Produit() {
 
         <div className={styles.viewer}>
           <div className={styles.stage}>
-            <img key={current.path} src={source(current.path)} alt={current.alt} onError={fallback(current.path)} onClick={() => setZoom(true)} decoding="async" />
+            <img key={current.path} src={source(current.path)} alt={current.alt} onClick={() => setZoom(true)} decoding="async" />
             <div className={styles.caption}><span>{current.label}</span><b>{current.alt}</b></div>
             <button aria-label="Photo précédente" className={styles.prev} onClick={() => move(-1)}>‹</button>
             <button aria-label="Photo suivante" className={styles.next} onClick={() => move(1)}>›</button>
@@ -97,7 +88,7 @@ export default function Produit() {
           <div className={styles.thumbs} aria-label="Miniatures des photos réelles">
             {photos.map((photo, photoIndex) => (
               <button key={photo.path} type="button" className={photoIndex === index ? styles.active : ""} onClick={() => setIndex(photoIndex)} aria-label={`Afficher : ${photo.alt}`}>
-                <img src={source(photo.path)} alt="" onError={fallback(photo.path)} loading="lazy" />
+                <img src={source(photo.path)} alt="" loading="lazy" />
                 <span>{photo.label}</span>
               </button>
             ))}
@@ -113,7 +104,7 @@ export default function Produit() {
 
       <section className={styles.interior}>
         <div className={styles.interiorPhoto}>
-          <img src={source("/real/interieur-tableau-de-bord.webp")} alt="Intérieur réel de la NeoDrive SWITCH" onError={fallback("/real/interieur-tableau-de-bord.webp")} loading="lazy" />
+          <img src={source("/real/interieur-tableau-de-bord.webp")} alt="Intérieur réel de la NeoDrive SWITCH" loading="lazy" />
         </div>
         <div>
           <span className={styles.eyebrow}>À L’INTÉRIEUR</span>
@@ -154,7 +145,7 @@ export default function Produit() {
       </section>
 
       <section className={styles.delivery}>
-        <img src={source("/real/livraison-transporteur.webp")} alt="Livraison réelle d’une voiture NeoDrive" onError={fallback("/real/livraison-transporteur.webp")} loading="lazy" />
+        <img src={source("/real/livraison-transporteur.webp")} alt="Livraison réelle d’une voiture NeoDrive" loading="lazy" />
         <div>
           <span className={styles.eyebrow}>DE NOTRE STOCK JUSQU’À CHEZ VOUS</span>
           <h2>Une livraison organisée par NeoDrive.</h2>
@@ -163,7 +154,7 @@ export default function Produit() {
         </div>
       </section>
 
-      {zoom && <div className={styles.overlay} onClick={() => setZoom(false)}><img src={source(current.path)} alt={current.alt} onError={fallback(current.path)} /><button aria-label="Fermer">×</button></div>}
+      {zoom && <div className={styles.overlay} onClick={() => setZoom(false)}><img src={source(current.path)} alt={current.alt} /><button aria-label="Fermer">×</button></div>}
     </main>
   );
 }
