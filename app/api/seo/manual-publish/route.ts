@@ -10,6 +10,7 @@ export async function POST(req: Request) {
 
   const selectedTopic = String(topic || "").trim().slice(0,240);
   const endpoint = new URL("/api/seo/auto-publish", req.url);
+  endpoint.searchParams.set("source", "manual");
   if (selectedTopic) endpoint.searchParams.set("topic", selectedTopic);
 
   const response = await fetch(endpoint, { headers:{ Authorization:`Bearer ${secret}` }, cache:"no-store" });
