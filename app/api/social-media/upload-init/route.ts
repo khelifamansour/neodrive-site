@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 
 const SUPABASE_URL = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 const BUCKET = "social-media";
-const MAX_FILE_SIZE = 500 * 1024 * 1024;
+// The connected Supabase project is currently on the Free plan, whose upload cap is 50 MB.
+// Keep a small safety margin. After a plan upgrade this can be overridden in Vercel.
+const MAX_FILE_SIZE = Math.max(1, Number(process.env.SOCIAL_UPLOAD_MAX_MB || 49)) * 1024 * 1024;
 
 function safeName(name: string) {
   const dot = name.lastIndexOf(".");
@@ -31,7 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
   }
 
-  const files = Array.isArray(body.files) ? body.files.slice(0, 50) : [];
+  const files = Array.isArray(body.files) ? body.files.slice(0, 80) : [];
   const allowed = new Set(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime"]);
   if (!files.length) return NextResponse.json({ ok: false, error: "Aucun fichier" }, { status: 400 });
 
@@ -48,8 +50,19 @@ export async function POST(req: Request) {
       uploads.push({ index, name, type, size, error: `Format non supporté: ${type || name}` });
       continue;
     }
-    if (!size || size > MAX_FILE_SIZE) {
-      uploads.push({ index, name, type, size, error: `${name}: 500 Mo max` });
+    if (!size) {
+      uploads.push({ index, name, type, size, error: `${name}: fichier vide` });
+      continue;
+    }
+    if (size > MAX_FILE_SIZE) {
+      const maxMb = Math.floor(MAX_FILE_SIZE / 1024 / 1024);
+      uploads.push({
+        index,
+        name,
+        type,
+        size,
+        error: `${name}: ${maxMb} Mo max actuellement. Le projet Supabase est en offre Free (limite 50 Mo par fichier). Compresse cette vidéo ou passe Supabase en Pro.`,
+      });
       continue;
     }
 
@@ -64,5 +77,5 @@ export async function POST(req: Request) {
   }
 
   const ready = uploads.filter((x) => !x.error).length;
-  return NextResponse.json({ ok: ready > 0, uploads, ready, rejected: uploads.length - ready });
+  return NextResponse.json({ ok: ready > 0, uploads, ready, rejected: uploads.length - ready, maxFileMb: Math.floor(MAX_FILE_SIZE / 1024 / 1024) });
 }

@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body || body.passcode !== uploadSecret) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
 
-  const items = Array.isArray(body.items) ? body.items.slice(0, 50) : [];
+  const items = Array.isArray(body.items) ? body.items.slice(0, 80) : [];
   if (!items.length) return NextResponse.json({ ok: false, error: "Aucun média à enregistrer" }, { status: 400 });
 
   const batchContext = String(body.batchContext || "").trim().slice(0, 1000);
@@ -30,17 +30,20 @@ export async function POST(req: Request) {
       title: name || null,
       context: batchContext || null,
       status: "ready",
-      priority: mediaType === "video" ? 95 : 92,
+      priority: 100,
+      updated_at: new Date().toISOString(),
     };
   });
 
-  const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/social_media_assets`, {
+  // Idempotent registration: if the browser retries after a network interruption,
+  // the same storage_path is updated rather than rejected as a duplicate.
+  const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/social_media_assets?on_conflict=storage_path`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${serviceKey}`,
       apikey: serviceKey,
       "Content-Type": "application/json",
-      Prefer: "return=representation",
+      Prefer: "resolution=merge-duplicates,return=representation",
     },
     body: JSON.stringify(rows),
   });
