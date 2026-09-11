@@ -5,6 +5,9 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
+const CAMPAIGN_DAYS = 90;
+const MEDIA_LOOKBACK_DAYS = 120;
+
 type Asset = { id:string; storage_path:string; public_url:string; media_type:string; context:string|null; title:string|null; times_used:number; created_at:string };
 
 function isRealUpload(a:Asset){
@@ -18,7 +21,7 @@ function captionFor(a:Asset){
   const second=isVideo(a)
     ? "Une vraie vidéo issue de notre activité, pour voir la voiture telle qu’elle est au quotidien."
     : "Une vraie photo issue de notre activité, sans visuel générique.";
-  return `${lead}\n\n${second}\n\nDécouvre NeoDrive sur easydrive-auto.fr\n\n#NeoDrive #VoitureSansPermis #VSP #MobiliteElectrique`;
+  return `${lead}\n\n${second}\n\nDécouvrez NeoDrive sur easydrive-auto.fr\n\n#NeoDrive #VoitureSansPermis #VSP #MobiliteElectrique`;
 }
 
 export async function GET(req:Request){
@@ -28,11 +31,12 @@ export async function GET(req:Request){
   if(!sk) return NextResponse.json({ok:false,error:"Supabase missing"},{status:503});
   const sb=createClient(SB,sk,{auth:{persistSession:false,autoRefreshToken:false}});
 
-  const since=new Date(Date.now()-30*24*60*60*1000).toISOString();
+  const since=new Date(Date.now()-MEDIA_LOOKBACK_DAYS*24*60*60*1000).toISOString();
   const {data,error}=await sb.from("social_media_assets")
     .select("id,storage_path,public_url,media_type,context,title,times_used,created_at")
     .eq("status","ready")
     .gte("created_at",since)
+    .order("times_used",{ascending:true})
     .order("created_at",{ascending:false})
     .limit(300);
   if(error) return NextResponse.json({ok:false,error:error.message},{status:500});
@@ -40,7 +44,7 @@ export async function GET(req:Request){
   const assets=(data||[]).filter((x:any)=>isRealUpload(x as Asset)) as Asset[];
   if(!assets.length) return NextResponse.json({ok:true,skipped:true,reason:"Aucun média réel récent dans la bibliothèque"});
 
-  // Throw away the stale planner backlog. Published history is preserved.
+  // Rebuild a rolling 90-day campaign. Published history is preserved.
   await sb.from("social_content_queue").delete().eq("status","scheduled").in("platform",["instagram","facebook"]);
 
   const videos=assets.filter(isVideo);
@@ -58,7 +62,7 @@ export async function GET(req:Request){
 
   const rows:any[]=[];
   const now=new Date();
-  for(let d=0;d<5;d++){
+  for(let d=0;d<CAMPAIGN_DAYS;d++){
     for(const slot of [{h:7,m:30,prefer:"video" as const},{h:16,m:30,prefer:"image" as const}]){
       const a=take(slot.prefer);if(!a)continue;
       const when=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+d,slot.h,slot.m,0));
@@ -85,5 +89,5 @@ export async function GET(req:Request){
   if(!rows.length) return NextResponse.json({ok:true,skipped:true,reason:"Pas assez de médias compatibles"});
   const {error:insertError}=await sb.from("social_content_queue").insert(rows);
   if(insertError) return NextResponse.json({ok:false,error:insertError.message},{status:500});
-  return NextResponse.json({ok:true,scheduled:rows.length,uniqueMedia:used.size,videos:videos.length,images:images.length,mode:"real-uploads-only"});
+  return NextResponse.json({ok:true,scheduled:rows.length,uniqueMedia:used.size,campaignDays:CAMPAIGN_DAYS,postsPerDayPerPlatform:2,videos:videos.length,images:images.length,mode:"real-uploads-only"});
 }
