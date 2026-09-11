@@ -33,8 +33,8 @@ async function recentTexts(k:string) {
   u.searchParams.set("platform","eq.instagram");
   u.searchParams.set("status","eq.published");
   u.searchParams.set("select","hook,caption");
-  u.searchParams.set("order","created_at.desc");
-  u.searchParams.set("limit","24");
+  u.searchParams.set("order","updated_at.desc");
+  u.searchParams.set("limit","30");
   const r = await fetch(u,{headers:H(k),cache:"no-store"});
   const j = await r.json().catch(()=>[]);
   if (!r.ok || !Array.isArray(j)) return [] as string[];
@@ -71,6 +71,16 @@ async function asset(k:string) {
   return leastUsed(preferImage ? images : videos) || leastUsed(preferImage ? videos : images) || leastUsed(list);
 }
 
+async function assetByUrl(k:string,url:string) {
+  const u = new URL(`${SB}/rest/v1/social_media_assets`);
+  u.searchParams.set("public_url",`eq.${url}`);
+  u.searchParams.set("select","id,storage_path,public_url,media_type,title,context,times_used,last_used_at,created_at");
+  u.searchParams.set("limit","1");
+  const r = await fetch(u,{headers:H(k),cache:"no-store"});
+  const j = await r.json().catch(()=>[]);
+  return r.ok && Array.isArray(j) && j[0] ? j[0] as A : null;
+}
+
 async function patch(k:string,id:string,data:any) {
   await fetch(`${SB}/rest/v1/social_content_queue?id=eq.${encodeURIComponent(id)}`,{
     method:"PATCH",headers:{...H(k),"Content-Type":"application/json",Prefer:"return=minimal"},
@@ -88,12 +98,8 @@ async function mark(k:string,id:string) {
 }
 
 async function markUrl(k:string,url:string) {
-  const u = new URL(`${SB}/rest/v1/social_media_assets`);
-  u.searchParams.set("public_url",`eq.${url}`);
-  u.searchParams.set("select","id");u.searchParams.set("limit","1");
-  const r = await fetch(u,{headers:H(k),cache:"no-store"});
-  const j = await r.json().catch(()=>[]);
-  if(r.ok&&j?.[0]?.id) await mark(k,j[0].id);
+  const a = await assetByUrl(k,url);
+  if(a?.id) await mark(k,a.id);
 }
 
 async function rememberFresh(k:string,a:A,theme:SocialTheme,msg:string,externalId:string) {
@@ -170,26 +176,33 @@ export async function GET(req:Request) {
 
   const fresh=new URL(req.url).searchParams.get("fresh")==="1";
   let q=fresh?null:await queue(k),a:A|null=null,msg="",url="",typ="",theme:SocialTheme|null=null;
+  const recent = await recentTexts(k);
 
   if(q){
-    msg=q.caption;url=q.media_url;typ=q.content_type;
-    await patch(k,q.id,{status:"publishing",last_attempt_at:new Date().toISOString()});
-  } else if(fresh){
+    url=q.media_url;typ=q.content_type;
+    a=await assetByUrl(k,q.media_url);
+    if(a){
+      theme=pickSocialTheme(a,recent,`instagram-queued-${q.id}-${Date.now()}`);
+      msg=buildSocialCaption(theme,a,`instagram-${q.id}-${Date.now()}`);
+      await patch(k,q.id,{status:"publishing",hook:theme.hook,caption:msg,last_attempt_at:new Date().toISOString()});
+    }else{
+      msg=q.caption;
+      await patch(k,q.id,{status:"publishing",last_attempt_at:new Date().toISOString()});
+    }
+  } else {
     a=await asset(k);
     if(!a) return NextResponse.json({ok:true,skipped:true,reason:"Aucun média réel récent compatible"});
-    theme=pickSocialTheme(a,await recentTexts(k),`instagram-${a.id}`);
-    msg=buildSocialCaption(theme,a,"instagram");
+    theme=pickSocialTheme(a,recent,`instagram-fresh-${a.id}-${Date.now()}`);
+    msg=buildSocialCaption(theme,a,`instagram-fresh-${Date.now()}`);
     url=a.public_url;typ=a.media_type;
-  } else {
-    return NextResponse.json({ok:true,skipped:true,reason:"Aucune publication réelle planifiée à cette heure"});
   }
 
   try{
     const ac=await acct(t);
     const id=await publish(ac.id,t,url,msg,video(typ,url));
-    if(q){await patch(k,q.id,{status:"published",external_post_id:id,error_message:null});await markUrl(k,url);}
-    if(a){await mark(k,a.id);if(theme)await rememberFresh(k,a,theme,msg,id);}
-    return NextResponse.json({ok:true,published:true,source:fresh?"fresh-upload":"planned-real-upload",mediaId:id,media:url,type:typ,theme:theme?.hook||q?.hook||null});
+    if(q){await patch(k,q.id,{status:"published",external_post_id:id,error_message:null});if(a)await mark(k,a.id);else await markUrl(k,url);}
+    else if(a){await mark(k,a.id);if(theme)await rememberFresh(k,a,theme,msg,id);}
+    return NextResponse.json({ok:true,published:true,source:q?"planned-real-upload":"fresh-upload",mediaId:id,media:url,type:typ,theme:theme?.hook||q?.hook||null,caption:msg});
   } catch(e){
     if(q){
       const n=Number(q.retry_count||0)+1,max=Number(q.max_retries||3);
