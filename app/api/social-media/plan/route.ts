@@ -6,6 +6,7 @@ export const maxDuration = 60;
 
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 const CAMPAIGN_DAYS = 90;
+const CAMPAIGN_END = new Date("2026-12-10T23:59:59Z");
 const MEDIA_LOOKBACK_DAYS = 120;
 
 type Asset = { id:string; storage_path:string; public_url:string; media_type:string; context:string|null; title:string|null; times_used:number; created_at:string };
@@ -29,8 +30,10 @@ export async function GET(req:Request){
   if(!secret||req.headers.get("authorization")!==`Bearer ${secret}`) return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
   const sk=process.env.SUPABASE_SERVICE_ROLE_KEY;
   if(!sk) return NextResponse.json({ok:false,error:"Supabase missing"},{status:503});
-  const sb=createClient(SB,sk,{auth:{persistSession:false,autoRefreshToken:false}});
+  const now=new Date();
+  if(now>CAMPAIGN_END) return NextResponse.json({ok:true,skipped:true,reason:"Campagne intensive de 3 mois terminée",campaignEnd:CAMPAIGN_END.toISOString()});
 
+  const sb=createClient(SB,sk,{auth:{persistSession:false,autoRefreshToken:false}});
   const since=new Date(Date.now()-MEDIA_LOOKBACK_DAYS*24*60*60*1000).toISOString();
   const {data,error}=await sb.from("social_media_assets")
     .select("id,storage_path,public_url,media_type,context,title,times_used,created_at")
@@ -44,7 +47,7 @@ export async function GET(req:Request){
   const assets=(data||[]).filter((x:any)=>isRealUpload(x as Asset)) as Asset[];
   if(!assets.length) return NextResponse.json({ok:true,skipped:true,reason:"Aucun média réel récent dans la bibliothèque"});
 
-  // Rebuild a rolling 90-day campaign. Published history is preserved.
+  // Rebuild the remaining campaign through 10 December. Published history is preserved.
   await sb.from("social_content_queue").delete().eq("status","scheduled").in("platform",["instagram","facebook"]);
 
   const videos=assets.filter(isVideo);
@@ -61,11 +64,11 @@ export async function GET(req:Request){
   }
 
   const rows:any[]=[];
-  const now=new Date();
   for(let d=0;d<CAMPAIGN_DAYS;d++){
     for(const slot of [{h:7,m:30,prefer:"video" as const},{h:16,m:30,prefer:"image" as const}]){
-      const a=take(slot.prefer);if(!a)continue;
       const when=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+d,slot.h,slot.m,0));
+      if(when>CAMPAIGN_END) continue;
+      const a=take(slot.prefer);if(!a)continue;
       const caption=captionFor(a);
       for(const platform of ["instagram","facebook"]){
         rows.push({
@@ -86,8 +89,8 @@ export async function GET(req:Request){
       }
     }
   }
-  if(!rows.length) return NextResponse.json({ok:true,skipped:true,reason:"Pas assez de médias compatibles"});
+  if(!rows.length) return NextResponse.json({ok:true,skipped:true,reason:"Pas assez de médias compatibles ou campagne terminée"});
   const {error:insertError}=await sb.from("social_content_queue").insert(rows);
   if(insertError) return NextResponse.json({ok:false,error:insertError.message},{status:500});
-  return NextResponse.json({ok:true,scheduled:rows.length,uniqueMedia:used.size,campaignDays:CAMPAIGN_DAYS,postsPerDayPerPlatform:2,videos:videos.length,images:images.length,mode:"real-uploads-only"});
+  return NextResponse.json({ok:true,scheduled:rows.length,uniqueMedia:used.size,campaignEnd:CAMPAIGN_END.toISOString(),postsPerDayPerPlatform:2,videos:videos.length,images:images.length,mode:"real-uploads-only"});
 }
