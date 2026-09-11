@@ -22,7 +22,7 @@ async function getQueue(k:string){
 
 async function recentTexts(k:string){
   const u=new URL(`${SB}/rest/v1/social_content_queue`);
-  u.searchParams.set("platform","eq.facebook");u.searchParams.set("status","eq.published");u.searchParams.set("select","hook,caption");u.searchParams.set("order","created_at.desc");u.searchParams.set("limit","24");
+  u.searchParams.set("platform","eq.facebook");u.searchParams.set("status","eq.published");u.searchParams.set("select","hook,caption");u.searchParams.set("order","updated_at.desc");u.searchParams.set("limit","30");
   const r=await fetch(u,{headers:H(k),cache:"no-store"});const j=await r.json().catch(()=>[]);
   if(!r.ok||!Array.isArray(j))return [] as string[];
   return j.map((x:any)=>`${x.hook||""}\n${x.caption||""}`);
@@ -50,6 +50,13 @@ async function getAsset(k:string){
   return leastUsed(preferImage?images:videos)||leastUsed(preferImage?videos:images)||leastUsed(list);
 }
 
+async function assetByUrl(k:string,url:string){
+  const u=new URL(`${SB}/rest/v1/social_media_assets`);u.searchParams.set("public_url",`eq.${url}`);
+  u.searchParams.set("select","id,storage_path,public_url,media_type,title,context,times_used,last_used_at,created_at");u.searchParams.set("limit","1");
+  const r=await fetch(u,{headers:H(k),cache:"no-store"});const j=await r.json().catch(()=>[]);
+  return r.ok&&Array.isArray(j)&&j[0]?j[0] as Asset:null;
+}
+
 async function patch(k:string,id:string,data:any){
   await fetch(`${SB}/rest/v1/social_content_queue?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{...H(k),"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({...data,updated_at:new Date().toISOString()}),cache:"no-store"});
 }
@@ -59,10 +66,7 @@ async function mark(k:string,id:string){
   await fetch(`${SB}/rest/v1/social_media_assets?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{...H(k),"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({times_used:Number(x?.times_used||0)+1,last_used_at:new Date().toISOString(),updated_at:new Date().toISOString()}),cache:"no-store"});
 }
 
-async function markUrl(k:string,url:string){
-  const u=new URL(`${SB}/rest/v1/social_media_assets`);u.searchParams.set("public_url",`eq.${url}`);u.searchParams.set("select","id");u.searchParams.set("limit","1");
-  const r=await fetch(u,{headers:H(k),cache:"no-store"});const j=await r.json().catch(()=>[]);if(r.ok&&j?.[0]?.id)await mark(k,j[0].id);
-}
+async function markUrl(k:string,url:string){const a=await assetByUrl(k,url);if(a?.id)await mark(k,a.id);}
 
 async function rememberFresh(k:string,a:Asset,theme:SocialTheme,msg:string,externalId:string){
   await fetch(`${SB}/rest/v1/social_content_queue`,{method:"POST",headers:{...H(k),"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({platform:"facebook",content_type:isVideoAsset(a)?"reel":"post",hook:theme.hook,caption:msg,hashtags:[],media_brief:`fresh-real-upload:${a.id}`,media_url:a.public_url,cta:"easydrive-auto.fr",publish_at:new Date().toISOString(),status:"published",requires_human_review:false,external_post_id:externalId,retry_count:0,max_retries:3}),cache:"no-store"}).catch(()=>{});
@@ -84,14 +88,22 @@ export async function GET(req:Request){
   const k=process.env.SUPABASE_SERVICE_ROLE_KEY,t=process.env.FACEBOOK_PAGE_ACCESS_TOKEN,p=process.env.FACEBOOK_PAGE_ID;if(!k||!t||!p)return NextResponse.json({ok:false,error:"Configuration missing"},{status:503});
   const fresh=new URL(req.url).searchParams.get("fresh")==="1";
   let q=fresh?null:await getQueue(k);let a:Asset|null=null;let msg="",url="",typ="",theme:SocialTheme|null=null;
-  if(q){msg=q.caption;url=q.media_url;typ=q.content_type;await patch(k,q.id,{status:"publishing",last_attempt_at:new Date().toISOString()});}
-  else if(fresh){a=await getAsset(k);if(!a)return NextResponse.json({ok:true,skipped:true,reason:"Aucun média réel récent"});theme=pickSocialTheme(a,await recentTexts(k),`facebook-${a.id}`);msg=buildSocialCaption(theme,a,"facebook");url=a.public_url;typ=a.media_type;}
-  else return NextResponse.json({ok:true,skipped:true,reason:"Aucune publication réelle planifiée à cette heure"});
+  const recent=await recentTexts(k);
+
+  if(q){
+    url=q.media_url;typ=q.content_type;a=await assetByUrl(k,q.media_url);
+    if(a){theme=pickSocialTheme(a,recent,`facebook-queued-${q.id}-${Date.now()}`);msg=buildSocialCaption(theme,a,`facebook-${q.id}-${Date.now()}`);await patch(k,q.id,{status:"publishing",hook:theme.hook,caption:msg,last_attempt_at:new Date().toISOString()});}
+    else{msg=q.caption;await patch(k,q.id,{status:"publishing",last_attempt_at:new Date().toISOString()});}
+  }else{
+    a=await getAsset(k);if(!a)return NextResponse.json({ok:true,skipped:true,reason:"Aucun média réel récent"});
+    theme=pickSocialTheme(a,recent,`facebook-fresh-${a.id}-${Date.now()}`);msg=buildSocialCaption(theme,a,`facebook-fresh-${Date.now()}`);url=a.public_url;typ=a.media_type;
+  }
+
   try{
     const pt=await pageToken(t,p);const id=await publish(p,pt,url,msg,video(typ,url));
-    if(q){await patch(k,q.id,{status:"published",external_post_id:id,error_message:null});await markUrl(k,url);}
-    if(a){await mark(k,a.id);if(theme)await rememberFresh(k,a,theme,msg,id);}
-    return NextResponse.json({ok:true,published:true,source:fresh?"fresh-upload":"planned-real-upload",postId:id,media:url,type:typ,theme:theme?.hook||q?.hook||null});
+    if(q){await patch(k,q.id,{status:"published",external_post_id:id,error_message:null});if(a)await mark(k,a.id);else await markUrl(k,url);}
+    else if(a){await mark(k,a.id);if(theme)await rememberFresh(k,a,theme,msg,id);}
+    return NextResponse.json({ok:true,published:true,source:q?"planned-real-upload":"fresh-upload",postId:id,media:url,type:typ,theme:theme?.hook||q?.hook||null,caption:msg});
   }catch(e){
     if(q){const n=Number(q.retry_count||0)+1,max=Number(q.max_retries||3);await patch(k,q.id,{status:n>=max?"failed":"scheduled",retry_count:n,last_attempt_at:new Date().toISOString(),...(n>=max?{}:{publish_at:new Date(Date.now()+60*60*1000).toISOString()}),error_message:e instanceof Error?e.message:"Unknown"});}
     return NextResponse.json({ok:false,error:e instanceof Error?e.message:"Unknown"},{status:500});
