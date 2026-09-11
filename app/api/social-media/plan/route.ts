@@ -66,7 +66,7 @@ export async function GET(req:Request){
       for(const platform of ["instagram","facebook"]){
         rows.push({
           platform,
-          content_type:isVideo(a)?"reel":"photo",
+          content_type:isVideo(a)?"reel":"post",
           hook:safeContext(a.context)||"NeoDrive en situation réelle",
           caption,
           hashtags:[],
