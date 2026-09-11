@@ -21,6 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ["/blog/assurance-voiture-sans-permis-ce-quil-faut-verifier", "monthly", 0.8],
     ["/blog/carte-grise-voiture-sans-permis-electrique", "monthly", 0.8],
     ["/blog/voiture-sans-permis-neuve-ou-occasion", "monthly", 0.8],
+    ["/blog/voiture-sans-permis-occasion-quoi-verifier", "monthly", 0.8],
     ["/blog/meilleur-rapport-qualite-prix-voiturette-electrique", "monthly", 0.8],
     ["/blog/voiture-sans-permis-neuve-3990-euros", "monthly", 0.8],
     ["/blog/cout-recharge-voiture-sans-permis-electrique", "monthly", 0.8],
