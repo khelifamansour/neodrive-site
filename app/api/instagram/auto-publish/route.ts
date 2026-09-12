@@ -9,11 +9,12 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Q = { id:string; caption:string; media_url:string; content_type:string; hook:string|null; retry_count:number|null; max_retries:number|null };
 type A = { id:string; storage_path:string; public_url:string; media_type:string; title:string|null; context:string|null; times_used:number|null; last_used_at:string|null; created_at:string };
+type Kind = "image" | "video";
 
 const H = (k:string) => ({ Authorization:`Bearer ${k}`, apikey:k });
 const video = (t:string,u:string) => /video|reel/i.test(t||"") || /\.(mp4|mov|m4v)(\?|$)/i.test(u||"");
-const real = (a:A) => /^\d{4}-\d{2}-\d{2}\//.test(a.storage_path||"") && !/^generated\//.test(a.storage_path||"");
-const compatible = (a:A) => video(a.media_type,a.public_url) || /\.(jpe?g|png)(\?|$)/i.test(a.public_url);
+const eligible = (a:A) => !/^generated\//.test(a.storage_path||"") && !!a.public_url && (video(a.media_type,a.public_url) || /\.(jpe?g|png)(\?|$)/i.test(a.public_url));
+const kindOf = (a:A):Kind => isVideoAsset(a) ? "video" : "image";
 
 async function queue(k:string) {
   const u = new URL(`${SB}/rest/v1/social_content_queue`);
@@ -41,34 +42,49 @@ async function recentTexts(k:string) {
   return j.map((x:any)=>`${x.hook||""}\n${x.caption||""}`);
 }
 
-function leastUsed(list:A[]) {
-  return [...list].sort((a,b)=>{
-    const useDiff = Number(a.times_used||0) - Number(b.times_used||0);
-    if (useDiff) return useDiff;
-    const aLast = a.last_used_at ? new Date(a.last_used_at).getTime() : 0;
-    const bLast = b.last_used_at ? new Date(b.last_used_at).getTime() : 0;
-    if (aLast !== bLast) return aLast - bLast;
-    return Math.random() - 0.5;
-  })[0] || null;
+async function lastPublishedKind(k:string):Promise<Kind|null> {
+  const u = new URL(`${SB}/rest/v1/social_content_queue`);
+  u.searchParams.set("platform","eq.instagram");
+  u.searchParams.set("status","eq.published");
+  u.searchParams.set("select","content_type,media_url");
+  u.searchParams.set("order","updated_at.desc");
+  u.searchParams.set("limit","1");
+  const r = await fetch(u,{headers:H(k),cache:"no-store"});
+  const j = await r.json().catch(()=>[]);
+  if(!r.ok || !Array.isArray(j) || !j[0]) return null;
+  return video(j[0].content_type||"",j[0].media_url||"") ? "video" : "image";
 }
 
-async function asset(k:string) {
-  const since = new Date(Date.now()-120*24*60*60*1000).toISOString();
+function randomFrom(list:A[]) {
+  if(!list.length) return null;
+  return list[Math.floor(Math.random()*list.length)] || null;
+}
+
+function pickFromPool(list:A[], preferred:Kind|null) {
+  const images = list.filter(a=>kindOf(a)==="image");
+  const videos = list.filter(a=>kindOf(a)==="video");
+  const target = preferred === "image" ? images : preferred === "video" ? videos : (Math.random()<0.5 ? images : videos);
+  const fallback = preferred === "image" ? videos : preferred === "video" ? images : (target===images ? videos : images);
+  const pool = target.length ? target : fallback.length ? fallback : list;
+
+  // Avoid immediate repeats, but do not permanently punish older media that has been used many times.
+  const cutoff = Date.now()-36*60*60*1000;
+  const cooled = pool.filter(a=>!a.last_used_at || new Date(a.last_used_at).getTime()<cutoff);
+  return randomFrom(cooled.length ? cooled : pool);
+}
+
+async function asset(k:string, preferred:Kind|null=null) {
   const u = new URL(`${SB}/rest/v1/social_media_assets`);
   u.searchParams.set("status","eq.ready");
-  u.searchParams.set("created_at",`gte.${since}`);
   u.searchParams.set("select","id,storage_path,public_url,media_type,title,context,times_used,last_used_at,created_at");
-  u.searchParams.set("order","created_at.desc");
-  u.searchParams.set("limit","240");
+  u.searchParams.set("order","created_at.asc");
+  u.searchParams.set("limit","1000");
   const r = await fetch(u,{headers:H(k),cache:"no-store"});
   const j = await r.json();
   if(!r.ok || !Array.isArray(j)) return null;
-  const list = (j as A[]).filter(a=>real(a)&&compatible(a));
+  const list = (j as A[]).filter(eligible);
   if(!list.length) return null;
-  const images = list.filter(a=>!isVideoAsset(a));
-  const videos = list.filter(a=>isVideoAsset(a));
-  const preferImage = Math.random() < 0.55;
-  return leastUsed(preferImage ? images : videos) || leastUsed(preferImage ? videos : images) || leastUsed(list);
+  return pickFromPool(list,preferred);
 }
 
 async function assetByUrl(k:string,url:string) {
@@ -97,11 +113,6 @@ async function mark(k:string,id:string) {
   });
 }
 
-async function markUrl(k:string,url:string) {
-  const a = await assetByUrl(k,url);
-  if(a?.id) await mark(k,a.id);
-}
-
 async function rememberFresh(k:string,a:A,theme:SocialTheme,msg:string,externalId:string) {
   await fetch(`${SB}/rest/v1/social_content_queue`,{
     method:"POST",
@@ -112,7 +123,7 @@ async function rememberFresh(k:string,a:A,theme:SocialTheme,msg:string,externalI
       hook:theme.hook,
       caption:msg,
       hashtags:[],
-      media_brief:`fresh-real-upload:${a.id}`,
+      media_brief:`fresh-library:${a.id}`,
       media_url:a.public_url,
       cta:"easydrive-auto.fr",
       publish_at:new Date().toISOString(),
@@ -175,34 +186,40 @@ export async function GET(req:Request) {
   if(!k||!t) return NextResponse.json({ok:false,error:"Configuration missing"},{status:503});
 
   const fresh=new URL(req.url).searchParams.get("fresh")==="1";
-  let q=fresh?null:await queue(k),a:A|null=null,msg="",url="",typ="",theme:SocialTheme|null=null;
-  const recent = await recentTexts(k);
+  const q=fresh?null:await queue(k);
+  const recent=await recentTexts(k);
+  const previousKind=await lastPublishedKind(k);
+  const preferred:Kind|null=previousKind==="video"?"image":previousKind==="image"?"video":null;
+  const a=await asset(k,preferred);
+  if(!a) return NextResponse.json({ok:true,skipped:true,reason:"Aucun média réel compatible dans la bibliothèque"});
+
+  const theme=pickSocialTheme(a,recent,`instagram-${q?.id||"fresh"}-${a.id}-${Date.now()}`);
+  const msg=buildSocialCaption(theme,a,`instagram-${q?.id||"fresh"}-${Date.now()}`);
+  const url=a.public_url;
+  const typ=a.media_type;
 
   if(q){
-    url=q.media_url;typ=q.content_type;
-    a=await assetByUrl(k,q.media_url);
-    if(a){
-      theme=pickSocialTheme(a,recent,`instagram-queued-${q.id}-${Date.now()}`);
-      msg=buildSocialCaption(theme,a,`instagram-${q.id}-${Date.now()}`);
-      await patch(k,q.id,{status:"publishing",hook:theme.hook,caption:msg,last_attempt_at:new Date().toISOString()});
-    }else{
-      msg=q.caption;
-      await patch(k,q.id,{status:"publishing",last_attempt_at:new Date().toISOString()});
-    }
-  } else {
-    a=await asset(k);
-    if(!a) return NextResponse.json({ok:true,skipped:true,reason:"Aucun média réel récent compatible"});
-    theme=pickSocialTheme(a,recent,`instagram-fresh-${a.id}-${Date.now()}`);
-    msg=buildSocialCaption(theme,a,`instagram-fresh-${Date.now()}`);
-    url=a.public_url;typ=a.media_type;
+    await patch(k,q.id,{
+      status:"publishing",
+      hook:theme.hook,
+      caption:msg,
+      media_url:url,
+      content_type:isVideoAsset(a)?"reel":"post",
+      last_attempt_at:new Date().toISOString()
+    });
   }
 
   try{
     const ac=await acct(t);
     const id=await publish(ac.id,t,url,msg,video(typ,url));
-    if(q){await patch(k,q.id,{status:"published",external_post_id:id,error_message:null});if(a)await mark(k,a.id);else await markUrl(k,url);}
-    else if(a){await mark(k,a.id);if(theme)await rememberFresh(k,a,theme,msg,id);}
-    return NextResponse.json({ok:true,published:true,source:q?"planned-real-upload":"fresh-upload",mediaId:id,media:url,type:typ,theme:theme?.hook||q?.hook||null,caption:msg});
+    if(q){
+      await patch(k,q.id,{status:"published",external_post_id:id,error_message:null});
+      await mark(k,a.id);
+    } else {
+      await mark(k,a.id);
+      await rememberFresh(k,a,theme,msg,id);
+    }
+    return NextResponse.json({ok:true,published:true,source:q?"planned-slot-mixed-library":"fresh-mixed-library",mediaId:id,media:url,type:kindOf(a),theme:theme.hook,caption:msg});
   } catch(e){
     if(q){
       const n=Number(q.retry_count||0)+1,max=Number(q.max_retries||3);
