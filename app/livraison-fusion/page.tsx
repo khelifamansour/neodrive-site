@@ -18,7 +18,11 @@ const MODELS: Model[] = [
   { id: "lithium", name: "NeoDrive Lithium", price: 5990 },
 ];
 
-const PREPARATION_PRICE = 150;
+// Les 150 € auparavant affichés comme « préparation / mise en route » sont
+// désormais présentés de manière plus lisible : 100 € intégrés au service
+// livraison + préparation, et 50 € pour le dossier administratif / carte grise.
+const PREPARATION_LOGISTICS_PRICE = 100;
+const ADMINISTRATION_REGISTRATION_PRICE = 50;
 const ORIGIN = { lat: 43.4607, lon: 1.3256, label: "Muret (31)" };
 const ZONE_1 = new Set(["31", "81", "82", "32", "09"]);
 const ZONE_2 = new Set(["11", "12", "46", "47", "33", "65", "66", "34", "30", "40", "24", "19", "87", "15"]);
@@ -145,7 +149,14 @@ export default function LivraisonFusionPage() {
     }
   }
 
-  const total = simulation ? selectedModel.price + PREPARATION_PRICE + simulation.deliveryPrice : null;
+  const deliveryAndPreparation = simulation
+    ? simulation.deliveryPrice + PREPARATION_LOGISTICS_PRICE
+    : null;
+
+  const total = simulation
+    ? selectedModel.price + simulation.deliveryPrice + PREPARATION_LOGISTICS_PRICE + ADMINISTRATION_REGISTRATION_PRICE
+    : null;
+
   const shortTrip = simulation ? simulation.distanceOneWay < 120 : false;
 
   return (
@@ -198,7 +209,7 @@ export default function LivraisonFusionPage() {
             </article>
           ))}
         </div>
-        <p className="fine">Hors frais de carte grise éventuels. Le tarif est confirmé avant validation de la commande.</p>
+        <p className="fine">Les forfaits ci-dessus correspondent au transport à domicile. Le simulateur présente ensuite le budget global avec préparation et dossier administratif.</p>
       </section>
 
       <section id="simulateur" className="simSection">
@@ -232,15 +243,27 @@ export default function LivraisonFusionPage() {
                 <p>{selectedModel.name} livrée à {simulation.city} ({simulation.department})</p>
               </div>
               <div className="resultPrice">
-                <span>Forfait livraison</span>
-                <strong>{money(simulation.deliveryPrice)}</strong>
+                <span>Livraison + préparation</span>
+                <strong>{money(deliveryAndPreparation ?? 0)}</strong>
+                <small>Transport, préparation et remise du véhicule</small>
               </div>
             </div>
 
             <div className="priceBreakdown">
-              <article><span>Véhicule</span><strong>{money(selectedModel.price)}</strong></article>
-              <article><span>Préparation / mise en route</span><strong>{money(PREPARATION_PRICE)}</strong></article>
-              <article><span>Livraison à domicile</span><strong>{money(simulation.deliveryPrice)}</strong></article>
+              <article>
+                <span>Véhicule</span>
+                <strong>{money(selectedModel.price)}</strong>
+              </article>
+              <article>
+                <span>Livraison, préparation & remise</span>
+                <strong>{money(deliveryAndPreparation ?? 0)}</strong>
+                <small>Transport, chargement, déchargement, préparation du véhicule, contrôles avant remise et prise en main.</small>
+              </article>
+              <article>
+                <span>Dossier administratif & carte grise</span>
+                <strong>{money(ADMINISTRATION_REGISTRATION_PRICE)}</strong>
+                <small>Constitution et traitement du dossier administratif et d’immatriculation.</small>
+              </article>
             </div>
 
             <div className="missionLine">
@@ -253,8 +276,8 @@ export default function LivraisonFusionPage() {
               <b>{shortTrip ? "Pourquoi un forfait minimum, même à proximité ?" : "Un forfait pour une mission complète"}</b>
               <p>
                 {shortTrip
-                  ? "Même pour une courte distance, une livraison nécessite un créneau dédié, un conducteur, un véhicule tracteur et une remorque, ainsi que la préparation, le chargement, le déchargement, la remise, l’inspection et la prise en main. Le tarif ne correspond donc pas à un simple prix au kilomètre."
-                  : "Votre forfait couvre une mission organisée de bout en bout : préparation, transport, rendez-vous, remise du véhicule, inspection, prise en main et retour du conducteur et du matériel."}
+                  ? "Même pour une courte distance, une livraison nécessite un créneau dédié, un conducteur, un véhicule tracteur et une remorque, ainsi que la préparation du véhicule, les contrôles, le chargement, le déchargement, la remise, l’inspection et la prise en main. Le tarif ne correspond donc pas à un simple prix au kilomètre."
+                  : "Votre forfait couvre une mission organisée de bout en bout : préparation et contrôles du véhicule, chargement, transport, rendez-vous, déchargement, remise, inspection, prise en main et retour du conducteur et du matériel."}
               </p>
             </div>
           </div>
@@ -268,9 +291,9 @@ export default function LivraisonFusionPage() {
           <p>La livraison est pensée pour que vous receviez votre véhicule dans de bonnes conditions et que vous sachiez l’utiliser avant le départ de notre intervenant.</p>
         </div>
         <div className="benefits">
-          <article><span>01</span><h3>Préparation & chargement</h3><p>Vérification, préparation au départ, chargement et arrimage.</p></article>
-          <article><span>02</span><h3>Transport jusqu’à votre porte</h3><p>Votre véhicule est acheminé à l’adresse convenue avec vous.</p></article>
-          <article><span>03</span><h3>Inspection avec vous</h3><p>Vous pouvez regarder le véhicule et vérifier sa remise sur place.</p></article>
+          <article><span>01</span><h3>Préparation & contrôles</h3><p>Vérification du véhicule, préparation au départ et contrôles avant remise.</p></article>
+          <article><span>02</span><h3>Chargement & transport</h3><p>Chargement, arrimage puis acheminement jusqu’à l’adresse convenue.</p></article>
+          <article><span>03</span><h3>Déchargement & inspection</h3><p>Le véhicule est déchargé et vous pouvez vérifier sa remise avec nous.</p></article>
           <article><span>04</span><h3>Prise en main</h3><p>Recharge, commandes, autonomie et bonnes pratiques vous sont expliquées.</p></article>
         </div>
       </section>
@@ -306,7 +329,8 @@ export default function LivraisonFusionPage() {
         <div className="heading"><span className="eyebrow">QUESTIONS FRÉQUENTES</span><h2>Les réponses simples.</h2></div>
         <div className="faqList">
           <details><summary>Puis-je venir directement à l’entrepôt ?</summary><p>Non. Nos entrepôts sont des sites logistiques avec circulation de véhicules, remorques et opérations de manutention ; ils ne sont pas conçus pour recevoir le public. Une remise sur un point adapté peut être proposée selon la région.</p></details>
-          <details><summary>Pourquoi le tarif ne dépend-il pas uniquement des kilomètres ?</summary><p>Parce que chaque livraison mobilise une personne, du matériel de transport et un créneau dédié, avec préparation, chargement, transport, déchargement, inspection et prise en main.</p></details>
+          <details><summary>Pourquoi le tarif ne dépend-il pas uniquement des kilomètres ?</summary><p>Parce que chaque livraison mobilise une personne, du matériel de transport et un créneau dédié, avec préparation, contrôles, chargement, transport, déchargement, inspection et prise en main.</p></details>
+          <details><summary>Que comprend le dossier administratif & carte grise ?</summary><p>Le forfait de 50 € couvre la constitution et le traitement du dossier administratif et d’immatriculation associé à votre véhicule.</p></details>
           <details><summary>Puis-je voir le véhicule avant l’achat ?</summary><p>Oui. Selon les disponibilités, nous pouvons organiser une présentation en visio, envoyer des photos et vidéos, ou proposer une démonstration locale sur rendez-vous.</p></details>
           <details><summary>Quand est-ce que je paie ?</summary><p>Selon les modalités prévues sur votre commande, le paiement peut être finalisé au moment de la remise du véhicule.</p></details>
         </div>
@@ -318,7 +342,7 @@ export default function LivraisonFusionPage() {
       </section>
 
       <style jsx>{`
-        .fusionPage{background:#fff;color:#0b0b0c}.eyebrow{font-size:12px;font-weight:950;letter-spacing:1.7px;color:#f4512a}.hero{max-width:1200px;margin:auto;padding:64px 24px 54px;display:grid;grid-template-columns:.95fr 1.05fr;gap:54px;align-items:center}.hero h1{font-size:clamp(46px,5.6vw,72px);line-height:.98;letter-spacing:-3.3px;margin:16px 0 22px}.lead,.heading p,.simIntro p{font-size:18px;line-height:1.7;color:#686d75}.heroChecks{display:grid;gap:9px;margin-top:24px;color:#3d4249;font-weight:750;font-size:14px}.heroActions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.heroActions a{padding:16px 21px;border-radius:13px;text-decoration:none;font-weight:900}.primary{background:#0b0b0c;color:#fff}.secondary{border:1px solid #dedfe3;color:#111}.heroVisual{position:relative;border-radius:30px;overflow:hidden;box-shadow:0 25px 65px #0000001b}.heroVisual img{display:block;width:100%;height:470px;object-fit:cover}.photoBadge{position:absolute;left:18px;right:18px;bottom:18px;background:#fffffff0;backdrop-filter:blur(12px);padding:15px 17px;border-radius:17px;display:flex;flex-direction:column;gap:4px}.photoBadge span{color:#666b73;font-size:13px}.simpleSteps{max-width:1152px;margin:auto;padding:0 24px 54px;display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #eceef1}.simpleSteps article{display:flex;gap:15px;padding:18px 22px;border-right:1px solid #eceef1}.simpleSteps article:last-child{border-right:0}.simpleSteps b{color:#f4512a;font-size:13px}.simpleSteps span{display:grid;gap:4px;color:#71767e;font-size:13px}.simpleSteps strong{font-size:16px;color:#111}.section{max-width:1180px;margin:auto;padding:78px 24px}.heading{max-width:760px}.heading h2,.simIntro h2,.cta h2{font-size:clamp(36px,4.5vw,56px);line-height:1.04;letter-spacing:-2.4px;margin:12px 0 17px}.zones{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:36px}.zones article{border:1px solid #e5e7eb;border-radius:24px;padding:26px}.zoneTop{display:flex;justify-content:space-between;align-items:center;gap:18px}.zoneTop span{font-weight:900;color:#50565e}.zoneTop strong{font-size:31px;letter-spacing:-1px}.zones p{color:#6b7078;line-height:1.62}.fine,.pickupFine{font-size:13px;line-height:1.55;color:#777d84;margin-top:18px}.simSection{background:#0d0d0f;color:#fff;padding:82px max(24px,calc((100vw - 1132px)/2))}.simIntro{max-width:760px}.simIntro p{color:#b6bac2}.calculator{margin-top:34px;background:#fff;color:#111;border-radius:25px;padding:24px;display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end}.calculator label{display:grid;gap:8px;font-weight:850;font-size:14px}.calculator select,.calculator input{height:52px;border:1px solid #d9dce1;border-radius:13px;padding:0 15px;font-size:16px;background:#fff;color:#111}.calculator button{height:52px;border:0;border-radius:13px;background:#ff4b24;color:#fff;font-weight:950;padding:0 22px;font-size:15px}.calculator button:disabled{opacity:.6}.error{grid-column:1/-1;color:#b42318;margin:0}.result{margin-top:18px;background:#fff;color:#111;border-radius:25px;padding:28px}.resultTop{display:flex;justify-content:space-between;gap:30px;align-items:start}.resultTop h3{font-size:clamp(38px,5vw,58px);letter-spacing:-2.5px;margin:7px 0 5px}.resultTop p{color:#6b7078}.resultPrice{background:#111;color:#fff;padding:18px 22px;border-radius:18px;min-width:220px}.resultPrice span{display:block;color:#bfc3ca;font-size:13px}.resultPrice strong{display:block;font-size:34px;margin-top:5px}.priceBreakdown,.missionLine{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:18px}.priceBreakdown article,.missionLine article{border:1px solid #e5e7eb;border-radius:17px;padding:17px}.priceBreakdown span,.missionLine span{display:block;color:#737881;font-size:13px}.priceBreakdown strong,.missionLine strong{display:block;font-size:21px;margin-top:6px}.contextNote{margin-top:18px;background:#f3f4f6;border-radius:18px;padding:21px}.contextNote.short{background:#fff3ee;border:1px solid #ffd7c9}.contextNote b{font-size:18px}.contextNote p{color:#626870;line-height:1.65;margin-bottom:0}.benefits{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:34px}.benefits article{background:#f5f6f7;border-radius:23px;padding:25px}.benefits span{font-size:12px;color:#f4512a;font-weight:950}.benefits h3{font-size:21px;margin:17px 0 9px}.benefits p{color:#6a7078;line-height:1.55;margin:0}.discreetPickup{padding-top:20px}.discreetPickup details{border:1px solid #e2e4e8;border-radius:24px;overflow:hidden}.discreetPickup summary{cursor:pointer;padding:24px 27px;font-size:20px;font-weight:900;list-style:none}.discreetPickup summary::-webkit-details-marker{display:none}.discreetPickup summary:after{content:"+";float:right;font-size:24px}.discreetPickup details[open] summary:after{content:"−"}.pickupContent{padding:0 27px 27px}.pickupIntro{color:#676d75;line-height:1.65;max-width:850px}.pickupGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px;margin-top:18px}.pickupGrid article{background:#f5f6f7;border-radius:20px;padding:23px}.pickupGrid article.local{background:#fff3ee}.pickupGrid span{font-size:12px;color:#737881;font-weight:900}.pickupGrid h3{font-size:22px;margin:9px 0}.pickupGrid strong{font-size:34px}.pickupGrid p{color:#696f77;line-height:1.58}.faq{padding-top:54px}.faqList{display:grid;gap:10px;margin-top:30px}.faqList details{border:1px solid #e4e6ea;border-radius:17px;padding:0 20px}.faqList summary{cursor:pointer;padding:19px 0;font-weight:900}.faqList p{color:#666c74;line-height:1.62;margin-top:0;padding-bottom:18px}.cta{max-width:1132px;margin:20px auto 88px;background:linear-gradient(135deg,#ff6a2b,#ff3152);color:#fff;border-radius:31px;padding:48px;display:flex;justify-content:space-between;align-items:center;gap:36px}.cta span{font-size:12px;font-weight:950;letter-spacing:1.6px;color:#ffffffc2}.cta h2{margin-bottom:10px}.cta p{line-height:1.6}.ctaButtons{display:flex;gap:10px;flex-wrap:wrap}.ctaButtons a{background:#fff;color:#111;text-decoration:none;font-weight:950;padding:15px 19px;border-radius:13px}.ctaButtons a:last-child{background:#111;color:#fff}
+        .fusionPage{background:#fff;color:#0b0b0c}.eyebrow{font-size:12px;font-weight:950;letter-spacing:1.7px;color:#f4512a}.hero{max-width:1200px;margin:auto;padding:64px 24px 54px;display:grid;grid-template-columns:.95fr 1.05fr;gap:54px;align-items:center}.hero h1{font-size:clamp(46px,5.6vw,72px);line-height:.98;letter-spacing:-3.3px;margin:16px 0 22px}.lead,.heading p,.simIntro p{font-size:18px;line-height:1.7;color:#686d75}.heroChecks{display:grid;gap:9px;margin-top:24px;color:#3d4249;font-weight:750;font-size:14px}.heroActions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.heroActions a{padding:16px 21px;border-radius:13px;text-decoration:none;font-weight:900}.primary{background:#0b0b0c;color:#fff}.secondary{border:1px solid #dedfe3;color:#111}.heroVisual{position:relative;border-radius:30px;overflow:hidden;box-shadow:0 25px 65px #0000001b}.heroVisual img{display:block;width:100%;height:470px;object-fit:cover}.photoBadge{position:absolute;left:18px;right:18px;bottom:18px;background:#fffffff0;backdrop-filter:blur(12px);padding:15px 17px;border-radius:17px;display:flex;flex-direction:column;gap:4px}.photoBadge span{color:#666b73;font-size:13px}.simpleSteps{max-width:1152px;margin:auto;padding:0 24px 54px;display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #eceef1}.simpleSteps article{display:flex;gap:15px;padding:18px 22px;border-right:1px solid #eceef1}.simpleSteps article:last-child{border-right:0}.simpleSteps b{color:#f4512a;font-size:13px}.simpleSteps span{display:grid;gap:4px;color:#71767e;font-size:13px}.simpleSteps strong{font-size:16px;color:#111}.section{max-width:1180px;margin:auto;padding:78px 24px}.heading{max-width:760px}.heading h2,.simIntro h2,.cta h2{font-size:clamp(36px,4.5vw,56px);line-height:1.04;letter-spacing:-2.4px;margin:12px 0 17px}.zones{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:36px}.zones article{border:1px solid #e5e7eb;border-radius:24px;padding:26px}.zoneTop{display:flex;justify-content:space-between;align-items:center;gap:18px}.zoneTop span{font-weight:900;color:#50565e}.zoneTop strong{font-size:31px;letter-spacing:-1px}.zones p{color:#6b7078;line-height:1.62}.fine,.pickupFine{font-size:13px;line-height:1.55;color:#777d84;margin-top:18px}.simSection{background:#0d0d0f;color:#fff;padding:82px max(24px,calc((100vw - 1132px)/2))}.simIntro{max-width:760px}.simIntro p{color:#b6bac2}.calculator{margin-top:34px;background:#fff;color:#111;border-radius:25px;padding:24px;display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end}.calculator label{display:grid;gap:8px;font-weight:850;font-size:14px}.calculator select,.calculator input{height:52px;border:1px solid #d9dce1;border-radius:13px;padding:0 15px;font-size:16px;background:#fff;color:#111}.calculator button{height:52px;border:0;border-radius:13px;background:#ff4b24;color:#fff;font-weight:950;padding:0 22px;font-size:15px}.calculator button:disabled{opacity:.6}.error{grid-column:1/-1;color:#b42318;margin:0}.result{margin-top:18px;background:#fff;color:#111;border-radius:25px;padding:28px}.resultTop{display:flex;justify-content:space-between;gap:30px;align-items:start}.resultTop h3{font-size:clamp(38px,5vw,58px);letter-spacing:-2.5px;margin:7px 0 5px}.resultTop p{color:#6b7078}.resultPrice{background:#111;color:#fff;padding:18px 22px;border-radius:18px;min-width:240px}.resultPrice span{display:block;color:#bfc3ca;font-size:13px}.resultPrice strong{display:block;font-size:34px;margin-top:5px}.resultPrice small{display:block;color:#bfc3ca;line-height:1.4;margin-top:5px}.priceBreakdown,.missionLine{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:18px}.priceBreakdown article,.missionLine article{border:1px solid #e5e7eb;border-radius:17px;padding:17px}.priceBreakdown span,.missionLine span{display:block;color:#737881;font-size:13px}.priceBreakdown strong,.missionLine strong{display:block;font-size:21px;margin-top:6px}.priceBreakdown small{display:block;color:#7b8088;font-size:12px;line-height:1.5;margin-top:8px}.contextNote{margin-top:18px;background:#f3f4f6;border-radius:18px;padding:21px}.contextNote.short{background:#fff3ee;border:1px solid #ffd7c9}.contextNote b{font-size:18px}.contextNote p{color:#626870;line-height:1.65;margin-bottom:0}.benefits{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:34px}.benefits article{background:#f5f6f7;border-radius:23px;padding:25px}.benefits span{font-size:12px;color:#f4512a;font-weight:950}.benefits h3{font-size:21px;margin:17px 0 9px}.benefits p{color:#6a7078;line-height:1.55;margin:0}.discreetPickup{padding-top:20px}.discreetPickup details{border:1px solid #e2e4e8;border-radius:24px;overflow:hidden}.discreetPickup summary{cursor:pointer;padding:24px 27px;font-size:20px;font-weight:900;list-style:none}.discreetPickup summary::-webkit-details-marker{display:none}.discreetPickup summary:after{content:"+";float:right;font-size:24px}.discreetPickup details[open] summary:after{content:"−"}.pickupContent{padding:0 27px 27px}.pickupIntro{color:#676d75;line-height:1.65;max-width:850px}.pickupGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px;margin-top:18px}.pickupGrid article{background:#f5f6f7;border-radius:20px;padding:23px}.pickupGrid article.local{background:#fff3ee}.pickupGrid span{font-size:12px;color:#737881;font-weight:900}.pickupGrid h3{font-size:22px;margin:9px 0}.pickupGrid strong{font-size:34px}.pickupGrid p{color:#696f77;line-height:1.58}.faq{padding-top:54px}.faqList{display:grid;gap:10px;margin-top:30px}.faqList details{border:1px solid #e4e6ea;border-radius:17px;padding:0 20px}.faqList summary{cursor:pointer;padding:19px 0;font-weight:900}.faqList p{color:#666c74;line-height:1.62;margin-top:0;padding-bottom:18px}.cta{max-width:1132px;margin:20px auto 88px;background:linear-gradient(135deg,#ff6a2b,#ff3152);color:#fff;border-radius:31px;padding:48px;display:flex;justify-content:space-between;align-items:center;gap:36px}.cta span{font-size:12px;font-weight:950;letter-spacing:1.6px;color:#ffffffc2}.cta h2{margin-bottom:10px}.cta p{line-height:1.6}.ctaButtons{display:flex;gap:10px;flex-wrap:wrap}.ctaButtons a{background:#fff;color:#111;text-decoration:none;font-weight:950;padding:15px 19px;border-radius:13px}.ctaButtons a:last-child{background:#111;color:#fff}
         @media(max-width:850px){.hero{grid-template-columns:1fr;padding-top:43px;gap:30px}.hero h1{letter-spacing:-2.4px}.heroVisual img{height:335px}.simpleSteps,.zones,.benefits,.pickupGrid,.priceBreakdown,.missionLine{grid-template-columns:1fr}.simpleSteps{padding:0 20px 42px}.simpleSteps article{border-right:0;border-bottom:1px solid #eceef1;padding:17px 2px}.simpleSteps article:last-child{border-bottom:0}.section{padding:60px 20px}.calculator{grid-template-columns:1fr;padding:19px}.result{padding:20px}.resultTop{display:grid}.resultPrice{min-width:0}.simSection{padding:62px 20px}.cta{margin:15px 15px 65px;padding:30px;display:grid}.ctaButtons{display:grid}.ctaButtons a{text-align:center}}
       `}</style>
     </main>
