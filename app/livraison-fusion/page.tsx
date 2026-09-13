@@ -18,11 +18,7 @@ const MODELS: Model[] = [
   { id: "lithium", name: "NeoDrive Lithium", price: 5990 },
 ];
 
-// Les 150 € auparavant affichés comme « préparation / mise en route » sont
-// désormais présentés de manière plus lisible : 100 € intégrés au service
-// livraison + préparation, et 50 € pour le dossier administratif / carte grise.
-const PREPARATION_LOGISTICS_PRICE = 100;
-const ADMINISTRATION_REGISTRATION_PRICE = 50;
+const REGISTRATION_PACKAGE_PRICE = 150;
 const ORIGIN = { lat: 43.4607, lon: 1.3256, label: "Muret (31)" };
 const ZONE_1 = new Set(["31", "81", "82", "32", "09"]);
 const ZONE_2 = new Set(["11", "12", "46", "47", "33", "65", "66", "34", "30", "40", "24", "19", "87", "15"]);
@@ -149,12 +145,8 @@ export default function LivraisonFusionPage() {
     }
   }
 
-  const deliveryAndPreparation = simulation
-    ? simulation.deliveryPrice + PREPARATION_LOGISTICS_PRICE
-    : null;
-
   const total = simulation
-    ? selectedModel.price + simulation.deliveryPrice + PREPARATION_LOGISTICS_PRICE + ADMINISTRATION_REGISTRATION_PRICE
+    ? selectedModel.price + simulation.deliveryPrice + REGISTRATION_PACKAGE_PRICE
     : null;
 
   const shortTrip = simulation ? simulation.distanceOneWay < 120 : false;
@@ -209,7 +201,7 @@ export default function LivraisonFusionPage() {
             </article>
           ))}
         </div>
-        <p className="fine">Les forfaits ci-dessus correspondent au transport à domicile. Le simulateur présente ensuite le budget global avec préparation et dossier administratif.</p>
+        <p className="fine">Les forfaits de livraison incluent la préparation du véhicule, les contrôles avant départ, le chargement, le transport, le déchargement, la remise des clés et la prise en main. Carte grise et dossier d’immatriculation : 150 €.</p>
       </section>
 
       <section id="simulateur" className="simSection">
@@ -244,8 +236,8 @@ export default function LivraisonFusionPage() {
               </div>
               <div className="resultPrice">
                 <span>Livraison + préparation</span>
-                <strong>{money(deliveryAndPreparation ?? 0)}</strong>
-                <small>Transport, préparation et remise du véhicule</small>
+                <strong>{money(simulation.deliveryPrice)}</strong>
+                <small>Préparation du véhicule, transport et remise des clés</small>
               </div>
             </div>
 
@@ -256,13 +248,13 @@ export default function LivraisonFusionPage() {
               </article>
               <article>
                 <span>Livraison, préparation & remise</span>
-                <strong>{money(deliveryAndPreparation ?? 0)}</strong>
-                <small>Transport, chargement, déchargement, préparation du véhicule, contrôles avant remise et prise en main.</small>
+                <strong>{money(simulation.deliveryPrice)}</strong>
+                <small>Préparation du véhicule, contrôle des serrages et points de contrôle, chargement, arrimage, transport, déchargement, remise des clés, inspection et prise en main.</small>
               </article>
               <article>
-                <span>Dossier administratif & carte grise</span>
-                <strong>{money(ADMINISTRATION_REGISTRATION_PRICE)}</strong>
-                <small>Constitution et traitement du dossier administratif et d’immatriculation.</small>
+                <span>Carte grise & dossier d’immatriculation</span>
+                <strong>{money(REGISTRATION_PACKAGE_PRICE)}</strong>
+                <small>Préparation et traitement du dossier carte grise, certificat provisoire d’immatriculation (CPI), formalités et taxe d’immatriculation incluse dans le forfait.</small>
               </article>
             </div>
 
@@ -276,8 +268,8 @@ export default function LivraisonFusionPage() {
               <b>{shortTrip ? "Pourquoi un forfait minimum, même à proximité ?" : "Un forfait pour une mission complète"}</b>
               <p>
                 {shortTrip
-                  ? "Même pour une courte distance, une livraison nécessite un créneau dédié, un conducteur, un véhicule tracteur et une remorque, ainsi que la préparation du véhicule, les contrôles, le chargement, le déchargement, la remise, l’inspection et la prise en main. Le tarif ne correspond donc pas à un simple prix au kilomètre."
-                  : "Votre forfait couvre une mission organisée de bout en bout : préparation et contrôles du véhicule, chargement, transport, rendez-vous, déchargement, remise, inspection, prise en main et retour du conducteur et du matériel."}
+                  ? "Même pour une courte distance, une livraison nécessite un créneau dédié, un conducteur, un véhicule tracteur et une remorque, ainsi que la préparation du véhicule, les contrôles, le chargement, le déchargement, la remise des clés, l’inspection et la prise en main. Le tarif ne correspond donc pas à un simple prix au kilomètre."
+                  : "Votre forfait couvre une mission organisée de bout en bout : préparation et contrôles du véhicule, chargement, transport, rendez-vous, déchargement, remise des clés, inspection, prise en main et retour du conducteur et du matériel."}
               </p>
             </div>
           </div>
@@ -291,9 +283,9 @@ export default function LivraisonFusionPage() {
           <p>La livraison est pensée pour que vous receviez votre véhicule dans de bonnes conditions et que vous sachiez l’utiliser avant le départ de notre intervenant.</p>
         </div>
         <div className="benefits">
-          <article><span>01</span><h3>Préparation & contrôles</h3><p>Vérification du véhicule, préparation au départ et contrôles avant remise.</p></article>
+          <article><span>01</span><h3>Préparation & contrôles</h3><p>Préparation du véhicule, contrôle des serrages et vérifications avant départ.</p></article>
           <article><span>02</span><h3>Chargement & transport</h3><p>Chargement, arrimage puis acheminement jusqu’à l’adresse convenue.</p></article>
-          <article><span>03</span><h3>Déchargement & inspection</h3><p>Le véhicule est déchargé et vous pouvez vérifier sa remise avec nous.</p></article>
+          <article><span>03</span><h3>Déchargement & remise des clés</h3><p>Le véhicule est déchargé, inspecté avec vous puis les clés vous sont remises.</p></article>
           <article><span>04</span><h3>Prise en main</h3><p>Recharge, commandes, autonomie et bonnes pratiques vous sont expliquées.</p></article>
         </div>
       </section>
@@ -329,8 +321,8 @@ export default function LivraisonFusionPage() {
         <div className="heading"><span className="eyebrow">QUESTIONS FRÉQUENTES</span><h2>Les réponses simples.</h2></div>
         <div className="faqList">
           <details><summary>Puis-je venir directement à l’entrepôt ?</summary><p>Non. Nos entrepôts sont des sites logistiques avec circulation de véhicules, remorques et opérations de manutention ; ils ne sont pas conçus pour recevoir le public. Une remise sur un point adapté peut être proposée selon la région.</p></details>
-          <details><summary>Pourquoi le tarif ne dépend-il pas uniquement des kilomètres ?</summary><p>Parce que chaque livraison mobilise une personne, du matériel de transport et un créneau dédié, avec préparation, contrôles, chargement, transport, déchargement, inspection et prise en main.</p></details>
-          <details><summary>Que comprend le dossier administratif & carte grise ?</summary><p>Le forfait de 50 € couvre la constitution et le traitement du dossier administratif et d’immatriculation associé à votre véhicule.</p></details>
+          <details><summary>Pourquoi le tarif ne dépend-il pas uniquement des kilomètres ?</summary><p>Parce que chaque livraison mobilise une personne, du matériel de transport et un créneau dédié, avec préparation du véhicule, contrôles, chargement, transport, déchargement, remise des clés, inspection et prise en main.</p></details>
+          <details><summary>Que comprennent les 150 € de carte grise ?</summary><p>Le forfait couvre la préparation et le traitement du dossier d’immatriculation, l’établissement du certificat provisoire d’immatriculation (CPI), les formalités carte grise et la taxe d’immatriculation incluse dans le forfait.</p></details>
           <details><summary>Puis-je voir le véhicule avant l’achat ?</summary><p>Oui. Selon les disponibilités, nous pouvons organiser une présentation en visio, envoyer des photos et vidéos, ou proposer une démonstration locale sur rendez-vous.</p></details>
           <details><summary>Quand est-ce que je paie ?</summary><p>Selon les modalités prévues sur votre commande, le paiement peut être finalisé au moment de la remise du véhicule.</p></details>
         </div>
