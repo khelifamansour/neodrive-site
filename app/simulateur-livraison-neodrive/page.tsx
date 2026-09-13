@@ -12,22 +12,10 @@ type Simulation = {
   city: string;
   department: string;
   distanceOneWay: number;
-  drivingHoursOneWay: number;
   deliveryPrice: number;
   totalVehiclePrice: number;
   roundTripDistance: number;
   totalMissionHours: number;
-  nights: number;
-  meals: number;
-  costs: {
-    fuel: number;
-    driver: number;
-    tolls: number;
-    maintenance: number;
-    meals: number;
-    hotel: number;
-    insurance: number;
-  };
 };
 
 const MODELS: Model[] = [
@@ -42,18 +30,7 @@ const ZONE_3 = new Set(["75", "92", "93", "94", "95", "77", "78", "91", "13", "6
 
 const ORIGIN = { lat: 43.4607, lon: 1.3256, label: "Muret (31)" };
 const PREPARATION_PRICE = 150;
-
-const ASSUMPTIONS = {
-  fuelPrice: 2,
-  consumption: 10.5,
-  driverHourlyCost: 22,
-  maintenancePerKm: 0.1,
-  tollPerKm: 0.06,
-  mealPrice: 20,
-  hotelPrice: 75,
-  insurancePerMission: 25,
-  preparationAndHandoverHours: 2.5,
-};
+const PREPARATION_AND_HANDOVER_HOURS = 2.5;
 
 function money(value: number) {
   return `${Math.round(value).toLocaleString("fr-FR")} €`;
@@ -106,6 +83,7 @@ async function getRouteForPostalCode(postalCode: string) {
       `https://router.project-osrm.org/route/v1/driving/${ORIGIN.lon},${ORIGIN.lat};${lon},${lat}?overview=false&steps=false`,
       { cache: "no-store" }
     );
+
     if (routeResponse.ok) {
       const routeData = await routeResponse.json();
       const route = routeData?.routes?.[0];
@@ -115,7 +93,7 @@ async function getRouteForPostalCode(postalCode: string) {
       }
     }
   } catch {
-    // Fallback ci-dessous si le service d'itineraire est indisponible.
+    // Une estimation de secours est utilisée ci-dessous si l'itinéraire est indisponible.
   }
 
   if (!distanceKm || !durationHours) {
@@ -156,51 +134,24 @@ export default function SimulateurLivraisonNeoDrive() {
     }
 
     setLoading(true);
+
     try {
       const route = await getRouteForPostalCode(cleanPostalCode);
       const department = departmentFromPostalCode(cleanPostalCode);
       const deliveryPrice = deliveryPriceFor(department);
       const roundTripDistance = route.distanceKm * 2;
       const roundTripDrivingHours = route.durationHours * 2;
-
       const pauseHours = Math.floor(roundTripDrivingHours / 4.5) * 0.5;
-      const totalMissionHours =
-        roundTripDrivingHours +
-        pauseHours +
-        ASSUMPTIONS.preparationAndHandoverHours;
-
-      const nights = totalMissionHours > 22 ? 2 : totalMissionHours > 12 ? 1 : 0;
-      const meals = totalMissionHours < 6 ? 0 : totalMissionHours < 13 ? 1 : totalMissionHours < 22 ? 2 : 3;
-
-      const fuel =
-        (roundTripDistance * ASSUMPTIONS.consumption * ASSUMPTIONS.fuelPrice) / 100;
-      const driver = totalMissionHours * ASSUMPTIONS.driverHourlyCost;
-      const tolls = route.distanceKm < 120 ? 0 : roundTripDistance * ASSUMPTIONS.tollPerKm;
-      const maintenance = roundTripDistance * ASSUMPTIONS.maintenancePerKm;
-      const mealCost = meals * ASSUMPTIONS.mealPrice;
-      const hotel = nights * ASSUMPTIONS.hotelPrice;
-      const insurance = ASSUMPTIONS.insurancePerMission;
+      const totalMissionHours = roundTripDrivingHours + pauseHours + PREPARATION_AND_HANDOVER_HOURS;
 
       setSimulation({
         city: route.city,
         department: route.department,
         distanceOneWay: route.distanceKm,
-        drivingHoursOneWay: route.durationHours,
         deliveryPrice,
         totalVehiclePrice: selectedModel.price + PREPARATION_PRICE + deliveryPrice,
         roundTripDistance,
         totalMissionHours,
-        nights,
-        meals,
-        costs: {
-          fuel,
-          driver,
-          tolls,
-          maintenance,
-          meals: mealCost,
-          hotel,
-          insurance,
-        },
       });
     } catch (caughtError) {
       setSimulation(null);
@@ -210,24 +161,30 @@ export default function SimulateurLivraisonNeoDrive() {
     }
   }
 
-  const operationalCost = simulation
-    ? Object.values(simulation.costs).reduce((sum, value) => sum + value, 0)
-    : 0;
+  const isMinimumFare = simulation ? simulation.distanceOneWay < 120 : false;
+  const missionDurationLabel = simulation
+    ? simulation.totalMissionHours <= 8
+      ? "Demi-journée à journée mobilisée"
+      : simulation.totalMissionHours <= 16
+        ? "Environ 1 journée de mission"
+        : "Mission longue distance"
+    : "";
 
   return (
     <main className="simulatorPage">
       <section className="hero">
         <div className="heroCopy">
           <span className="eyebrow">SIMULATEUR DE LIVRAISON NEODRIVE</span>
-          <h1>Comprenez le coût réel d’une livraison individualisée.</h1>
+          <h1>Estimez votre NeoDrive livrée directement à votre domicile.</h1>
           <p className="lead">
-            Chez NeoDrive, votre véhicule n’est pas simplement expédié. Une personne de l’entreprise
-            le prend en charge, l’achemine jusqu’à votre domicile, organise le paiement prévu à la
-            remise, vous laisse l’inspecter et vous explique son fonctionnement avant de repartir.
+            Chez NeoDrive, la livraison est un service individualisé. Une personne prend en charge
+            votre véhicule, l’achemine jusqu’à votre domicile, organise sa remise, vous permet de
+            l’inspecter et vous accompagne dans sa prise en main avant de repartir.
           </p>
           <div className="heroBadges">
             <span>Livraison à domicile</span>
-            <span>Remise personnalisée</span>
+            <span>Transport individualisé</span>
+            <span>Remise accompagnée</span>
             <span>Paiement à la livraison selon commande</span>
           </div>
         </div>
@@ -245,6 +202,7 @@ export default function SimulateurLivraisonNeoDrive() {
               ))}
             </select>
           </div>
+
           <div className="field">
             <label htmlFor="postalCode">2. Votre code postal</label>
             <input
@@ -256,9 +214,11 @@ export default function SimulateurLivraisonNeoDrive() {
               placeholder="Ex. 67000"
             />
           </div>
+
           <button type="submit" disabled={loading}>
             {loading ? "Calcul en cours…" : "Calculer ma livraison"}
           </button>
+
           {error ? <p className="error">{error}</p> : null}
         </form>
       </section>
@@ -276,6 +236,7 @@ export default function SimulateurLivraisonNeoDrive() {
               </div>
               <div className="serviceTag">Livraison individualisée</div>
             </div>
+
             <div className="summaryGrid">
               <article>
                 <span>Véhicule</span>
@@ -285,29 +246,12 @@ export default function SimulateurLivraisonNeoDrive() {
                 <span>Préparation / mise en route</span>
                 <strong>{money(PREPARATION_PRICE)}</strong>
               </article>
-              <article>
-                <span>Livraison à domicile</span>
+              <article className="deliveryCard">
+                <span>Forfait livraison à domicile</span>
                 <strong>{money(simulation.deliveryPrice)}</strong>
               </article>
             </div>
             <p className="smallNote">Hors frais de carte grise éventuels.</p>
-          </section>
-
-          <section className="section explanation">
-            <div className="sectionHeading">
-              <span className="eyebrow">CE QUE COMPREND LA LIVRAISON</span>
-              <h2>Ce n’est pas un dépôt de colis.</h2>
-              <p>
-                Une livraison NeoDrive mobilise une personne, un véhicule tracteur et une remorque
-                pour une mission aller-retour complète.
-              </p>
-            </div>
-            <div className="benefits">
-              <article><b>01</b><h3>Préparation & chargement</h3><p>Vérification du véhicule, préparation au départ, chargement et arrimage.</p></article>
-              <article><b>02</b><h3>Transport jusqu’à votre porte</h3><p>Le véhicule est acheminé directement à l’adresse convenue avec vous.</p></article>
-              <article><b>03</b><h3>Inspection & paiement</h3><p>Vous pouvez inspecter le véhicule et finaliser le paiement selon les modalités de votre commande.</p></article>
-              <article><b>04</b><h3>Prise en main</h3><p>Recharge, commandes, autonomie, frein de stationnement et bonnes pratiques vous sont expliqués.</p></article>
-            </div>
           </section>
 
           <section className="mission section">
@@ -315,62 +259,123 @@ export default function SimulateurLivraisonNeoDrive() {
               <div>
                 <span className="eyebrow">VOTRE MISSION DE LIVRAISON</span>
                 <h2>{Math.round(simulation.roundTripDistance).toLocaleString("fr-FR")} km aller-retour</h2>
-                <p>Départ de {ORIGIN.label} · destination estimée : {simulation.city}</p>
-              </div>
-              <div className="operationalCost">
-                <span>Coûts directs estimés de la mission</span>
-                <strong>≈ {money(operationalCost)}</strong>
-              </div>
-            </div>
-
-            {operationalCost < simulation.deliveryPrice ? (
-              <div className="minimumFareNote">
-                <b>Forfait minimum de livraison</b>
                 <p>
-                  Pour les destinations proches, le tarif de livraison correspond à notre forfait minimum de service.
-                  Il ne dépend pas uniquement du nombre de kilomètres parcourus : chaque livraison immobilise un membre
-                  de l’équipe, un véhicule tracteur et une remorque, et comprend la préparation, le chargement et
-                  l’arrimage, le déplacement, le déchargement, la remise du véhicule, son inspection avec le client et
-                  les explications nécessaires à sa prise en main. Le calcul ci-dessous illustre les coûts directs de la
-                  mission ; il ne représente pas à lui seul le prix complet du service de livraison individualisée.
+                  Départ de {ORIGIN.label} · destination estimée : {simulation.city}
                 </p>
               </div>
-            ) : null}
+              <div className="deliveryPriceBox">
+                <span>Votre forfait livraison</span>
+                <strong>{money(simulation.deliveryPrice)}</strong>
+                <small>Tarif forfaitaire selon votre zone de livraison</small>
+              </div>
+            </div>
 
             <div className="metrics">
-              <article><span>Distance aller</span><strong>{Math.round(simulation.distanceOneWay).toLocaleString("fr-FR")} km</strong></article>
-              <article><span>Temps total mobilisé</span><strong>≈ {Math.round(simulation.totalMissionHours)} h</strong></article>
-              <article><span>Repas estimés</span><strong>{simulation.meals}</strong></article>
-              <article><span>Hébergement estimé</span><strong>{simulation.nights ? `${simulation.nights} nuit${simulation.nights > 1 ? "s" : ""}` : "Aucun"}</strong></article>
+              <article>
+                <span>Distance jusqu’à vous</span>
+                <strong>{Math.round(simulation.distanceOneWay).toLocaleString("fr-FR")} km</strong>
+              </article>
+              <article>
+                <span>Mission complète</span>
+                <strong>{Math.round(simulation.roundTripDistance).toLocaleString("fr-FR")} km</strong>
+              </article>
+              <article>
+                <span>Temps total mobilisé</span>
+                <strong>≈ {Math.max(3, Math.round(simulation.totalMissionHours))} h</strong>
+              </article>
+              <article>
+                <span>Organisation</span>
+                <strong>{missionDurationLabel}</strong>
+              </article>
             </div>
 
-            <div className="breakdown">
-              {[
-                ["Carburant", simulation.costs.fuel, `${ASSUMPTIONS.consumption} L/100 km · base carburant ${money(ASSUMPTIONS.fuelPrice)}/L`],
-                ["Temps du conducteur", simulation.costs.driver, `Conduite, pauses, préparation, chargement, remise et retour`],
-                ["Péages estimés", simulation.costs.tolls, "Estimation selon la distance autoroutière de la mission"],
-                ["Maintenance & matériel de transport", simulation.costs.maintenance, "Entretien du véhicule tracteur, remorque et pneumatiques"],
-                ["Repas en déplacement", simulation.costs.meals, `${simulation.meals} repas estimé${simulation.meals > 1 ? "s" : ""}`],
-                ["Hébergement", simulation.costs.hotel, simulation.nights ? `${simulation.nights} nuit${simulation.nights > 1 ? "s" : ""} estimée${simulation.nights > 1 ? "s" : ""}` : "Aucun hôtel retenu pour cette distance"],
-                ["Assurance transport", simulation.costs.insurance, "Quote-part indicative de la couverture de transport"],
-              ].map(([label, amount, detail]) => (
-                <div className="costRow" key={String(label)}>
-                  <div><b>{label}</b><span>{detail}</span></div>
-                  <strong>{money(Number(amount))}</strong>
-                </div>
-              ))}
-            </div>
+            {isMinimumFare ? (
+              <div className="minimumFareNote">
+                <b>Pourquoi un forfait minimum, même à proximité ?</b>
+                <p>
+                  Le prix d’une livraison individualisée ne correspond pas à un simple tarif au kilomètre.
+                  Même pour une courte distance, NeoDrive doit réserver un créneau dédié et mobiliser une personne,
+                  un véhicule tracteur et une remorque. Le service comprend également la préparation du véhicule,
+                  son chargement et son arrimage, le déplacement, le déchargement, la remise au client, l’inspection,
+                  les explications de prise en main puis le retour de l’équipe. C’est pourquoi un forfait minimum de
+                  livraison s’applique aux destinations proches.
+                </p>
+              </div>
+            ) : (
+              <div className="distanceNote">
+                <b>Un tarif forfaitaire pour une mission complète</b>
+                <p>
+                  Le tarif affiché couvre l’organisation d’une livraison individualisée aller-retour et ne correspond
+                  pas à une simple facturation des kilomètres. Plus la destination est éloignée, plus la mission mobilise
+                  de temps, de moyens de transport et d’organisation pour remettre votre véhicule directement à domicile.
+                </p>
+              </div>
+            )}
+          </section>
 
-            <div className="notice">
-              <b>Pourquoi afficher ce calcul ?</b>
+          <section className="section explanation">
+            <div className="sectionHeading">
+              <span className="eyebrow">CE QUE COMPREND VOTRE LIVRAISON</span>
+              <h2>Une remise accompagnée, pas un simple dépôt.</h2>
               <p>
-                Le prix d’une livraison ne correspond pas uniquement au carburant ou aux kilomètres.
-                Il inclut surtout le temps d’une personne mobilisée, l’immobilisation du véhicule tracteur et de la
-                remorque, le chargement, le déchargement, le trajet retour, les péages, la maintenance du matériel de
-                transport, l’assurance et, lorsque la distance l’exige, les frais de déplacement. Pour les trajets courts,
-                un forfait minimum de livraison s’applique afin de couvrir l’organisation et la mobilisation nécessaires
-                à une remise individualisée à domicile. Le tarif NeoDrive affiché reste le tarif de livraison applicable ;
-                le détail ci-dessus sert à illustrer les moyens réellement mobilisés.
+                Votre forfait couvre l’ensemble de la mission nécessaire pour vous remettre votre NeoDrive dans de bonnes
+                conditions, directement à l’adresse convenue.
+              </p>
+            </div>
+
+            <div className="benefits">
+              <article>
+                <b>01</b>
+                <h3>Préparation du véhicule</h3>
+                <p>Contrôles avant départ et préparation de votre NeoDrive pour sa remise.</p>
+              </article>
+              <article>
+                <b>02</b>
+                <h3>Chargement & arrimage</h3>
+                <p>Chargement sur le matériel de transport et sécurisation avant le trajet.</p>
+              </article>
+              <article>
+                <b>03</b>
+                <h3>Transport à domicile</h3>
+                <p>Acheminement individualisé jusqu’à l’adresse convenue avec vous.</p>
+              </article>
+              <article>
+                <b>04</b>
+                <h3>Déchargement & inspection</h3>
+                <p>Le véhicule est déchargé et vous pouvez l’inspecter lors de sa remise.</p>
+              </article>
+              <article>
+                <b>05</b>
+                <h3>Paiement à la livraison</h3>
+                <p>Selon les modalités de votre commande, le règlement est finalisé lors de la remise du véhicule.</p>
+              </article>
+              <article>
+                <b>06</b>
+                <h3>Prise en main</h3>
+                <p>Commandes, recharge, autonomie, frein de stationnement et bonnes pratiques vous sont expliqués.</p>
+              </article>
+              <article>
+                <b>07</b>
+                <h3>Temps dédié au client</h3>
+                <p>Notre intervenant reste le temps nécessaire pour répondre aux principales questions avant de repartir.</p>
+              </article>
+              <article>
+                <b>08</b>
+                <h3>Mission aller-retour</h3>
+                <p>La livraison comprend aussi le retour de la personne et du matériel de transport après votre remise.</p>
+              </article>
+            </div>
+          </section>
+
+          <section className="section reassurance">
+            <div className="reassuranceBox">
+              <span className="eyebrow">POURQUOI UN FORFAIT ?</span>
+              <h2>Vous payez un service de livraison complet, pas uniquement des kilomètres.</h2>
+              <p>
+                Les tarifs NeoDrive sont organisés par zones afin de rester simples et prévisibles. Le montant affiché
+                correspond au service complet de livraison individualisée : réservation du créneau, mobilisation de
+                l’équipe et du matériel, préparation, transport, remise et accompagnement du client. Il ne s’agit pas
+                d’une refacturation au centime des dépenses internes de NeoDrive.
               </p>
             </div>
           </section>
@@ -379,32 +384,17 @@ export default function SimulateurLivraisonNeoDrive() {
         <section className="emptyState section">
           <div>
             <span className="eyebrow">ESSAYEZ LE SIMULATEUR</span>
-            <h2>Entrez votre code postal pour obtenir votre estimation.</h2>
-            <p>La distance routière est calculée depuis Muret à partir de la commune correspondant au code postal.</p>
+            <h2>Entrez votre code postal pour connaître votre tarif de livraison.</h2>
+            <p>
+              Le simulateur estime la distance routière depuis Muret et affiche le forfait de livraison correspondant
+              à votre zone.
+            </p>
           </div>
         </section>
       )}
 
-      <section className="method section">
-        <span className="eyebrow">BASE DE CALCUL DU PROTOTYPE</span>
-        <h2>Des hypothèses visibles et ajustables avant mise en ligne définitive.</h2>
-        <div className="methodGrid">
-          <span>Carburant : 2 €/L</span>
-          <span>Consommation : 10,5 L/100 km</span>
-          <span>Conducteur : 22 €/h coût complet</span>
-          <span>Maintenance : 0,10 €/km</span>
-          <span>Péages : estimation 0,06 €/km</span>
-          <span>Repas : 20 €</span>
-          <span>Hôtel : 75 €/nuit</span>
-          <span>Assurance transport : 25 €/mission</span>
-        </div>
-        <p className="smallNote">
-          Prototype de travail : ces hypothèses doivent être remplacées par les coûts réels NeoDrive avant publication commerciale définitive.
-        </p>
-      </section>
-
       <style jsx>{`
-        .simulatorPage{background:#fff;color:#101114;min-height:100vh}.hero{background:linear-gradient(145deg,#0d0e11,#181a20);color:#fff;padding:78px 24px 96px}.heroCopy{max-width:1120px;margin:auto}.eyebrow{font-size:12px;font-weight:950;letter-spacing:1.7px;color:#ff5a32}.hero h1{max-width:900px;font-size:clamp(44px,6vw,74px);line-height:.98;letter-spacing:-3.5px;margin:16px 0 24px}.lead{max-width:850px;color:#c4c8cf;font-size:19px;line-height:1.72}.heroBadges{display:flex;flex-wrap:wrap;gap:9px;margin-top:30px}.heroBadges span,.serviceTag{border:1px solid #ffffff24;background:#ffffff0d;border-radius:999px;padding:10px 14px;font-size:13px;font-weight:800}.calculatorWrap{max-width:1120px;margin:-38px auto 0;padding:0 24px;position:relative}.calculator{background:#fff;border:1px solid #e6e8ec;border-radius:24px;padding:22px;box-shadow:0 22px 60px #00000018;display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end}.field{display:grid;gap:7px}.field label{font-size:13px;font-weight:900}.field select,.field input{height:52px;border:1px solid #d8dbe1;border-radius:13px;padding:0 14px;font-size:16px;background:#fff;color:#111;outline:none}.field select:focus,.field input:focus{border-color:#111;box-shadow:0 0 0 3px #1111110d}.calculator button{height:52px;border:0;border-radius:13px;background:#111;color:#fff;font-weight:950;padding:0 22px;font-size:15px;cursor:pointer}.calculator button:disabled{opacity:.6;cursor:wait}.error{grid-column:1/-1;margin:0;color:#b42318;font-weight:750;font-size:13px}.section{max-width:1120px;margin:auto;padding:72px 24px}.summary{padding-top:56px}.summaryHeader,.missionTop{display:flex;justify-content:space-between;align-items:flex-start;gap:28px}.summaryHeader h2,.missionTop h2,.sectionHeading h2,.emptyState h2,.method h2{font-size:clamp(34px,4.2vw,54px);line-height:1.04;letter-spacing:-2.2px;margin:10px 0 10px}.summaryHeader p,.missionTop p,.sectionHeading p,.emptyState p,.method>p{color:#686e77;line-height:1.65}.serviceTag{border-color:#dfe2e7;background:#f5f6f8;color:#333}.summaryGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:28px}.summaryGrid article,.metrics article{border:1px solid #e4e6ea;border-radius:18px;padding:20px}.summaryGrid span,.metrics span,.operationalCost span{display:block;color:#747983;font-size:12px;font-weight:800;margin-bottom:6px}.summaryGrid strong{font-size:26px;letter-spacing:-1px}.smallNote{font-size:12px!important;color:#858a92!important;margin-top:12px!important}.explanation{border-top:1px solid #eceef1}.sectionHeading{max-width:760px}.benefits{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:34px}.benefits article{background:#f6f7f9;border-radius:21px;padding:24px}.benefits b{font-size:12px;color:#ff5a32}.benefits h3{font-size:18px;margin:18px 0 9px}.benefits p{font-size:14px;color:#666d76;line-height:1.6;margin:0}.mission{border-top:1px solid #eceef1}.operationalCost{text-align:right;background:#111;color:#fff;border-radius:20px;padding:20px 24px;min-width:240px}.operationalCost span{color:#bfc3c9}.operationalCost strong{font-size:28px;letter-spacing:-1px}.minimumFareNote{margin-top:18px;border:1px solid #ffd8cc;background:#fff6f2;border-radius:18px;padding:20px}.minimumFareNote b{display:block;font-size:16px;color:#c63d1d}.minimumFareNote p{color:#5f6268;line-height:1.65;font-size:14px;margin:7px 0 0}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:28px 0}.metrics strong{font-size:20px}.breakdown{border:1px solid #e4e6ea;border-radius:22px;padding:4px 22px}.costRow{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;padding:17px 0;border-bottom:1px solid #eceef1}.costRow:last-child{border-bottom:0}.costRow div{display:grid;gap:4px}.costRow span{font-size:13px;color:#747983;line-height:1.45}.costRow strong{font-size:17px}.notice{margin-top:18px;background:#f6f7f9;border-radius:18px;padding:20px}.notice p{color:#616770;line-height:1.65;font-size:14px;margin:7px 0 0}.emptyState{padding-top:64px}.emptyState>div{background:#f6f7f9;border-radius:26px;padding:38px}.method{border-top:1px solid #eceef1}.methodGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:28px}.methodGrid span{background:#f6f7f9;border-radius:14px;padding:15px;font-size:13px;font-weight:800;color:#3d4249}@media(max-width:900px){.calculator{grid-template-columns:1fr 1fr}.calculator button{grid-column:1/-1}.benefits,.methodGrid{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:1fr 1fr}}@media(max-width:640px){.hero{padding:54px 20px 78px}.hero h1{letter-spacing:-2.4px}.lead{font-size:17px}.calculatorWrap{padding:0 14px}.calculator{grid-template-columns:1fr;padding:16px}.calculator button{grid-column:auto}.section{padding:55px 18px}.summaryHeader,.missionTop{display:grid}.summaryGrid,.benefits,.metrics,.methodGrid{grid-template-columns:1fr}.operationalCost{text-align:left;min-width:0}.costRow{grid-template-columns:1fr}.costRow strong{text-align:left}.emptyState>div{padding:25px}}
+        .simulatorPage{background:#fff;color:#101114;min-height:100vh}.hero{background:linear-gradient(145deg,#0d0e11,#181a20);color:#fff;padding:78px 24px 96px}.heroCopy{max-width:1120px;margin:auto}.eyebrow{font-size:12px;font-weight:950;letter-spacing:1.7px;color:#ff5a32}.hero h1{max-width:930px;font-size:clamp(42px,6vw,72px);line-height:.99;letter-spacing:-3.2px;margin:16px 0 24px}.lead{max-width:860px;color:#c4c8cf;font-size:19px;line-height:1.72}.heroBadges{display:flex;flex-wrap:wrap;gap:9px;margin-top:30px}.heroBadges span,.serviceTag{border:1px solid #ffffff24;background:#ffffff0d;border-radius:999px;padding:10px 14px;font-size:13px;font-weight:800}.calculatorWrap{max-width:1120px;margin:-38px auto 0;padding:0 24px;position:relative}.calculator{background:#fff;border:1px solid #e6e8ec;border-radius:24px;padding:22px;box-shadow:0 22px 60px #00000018;display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end}.field{display:grid;gap:7px}.field label{font-size:13px;font-weight:900}.field select,.field input{height:52px;border:1px solid #d8dbe1;border-radius:13px;padding:0 14px;font-size:16px;background:#fff;color:#111;outline:none}.field select:focus,.field input:focus{border-color:#111;box-shadow:0 0 0 3px #1111110d}.calculator button{height:52px;border:0;border-radius:13px;background:#111;color:#fff;font-weight:950;padding:0 22px;font-size:15px;cursor:pointer}.calculator button:disabled{opacity:.6;cursor:wait}.error{grid-column:1/-1;margin:0;color:#b42318;font-weight:750;font-size:13px}.section{max-width:1120px;margin:auto;padding:72px 24px}.summary{padding-top:56px}.summaryHeader,.missionTop{display:flex;justify-content:space-between;align-items:flex-start;gap:28px}.summaryHeader h2,.missionTop h2,.sectionHeading h2,.reassuranceBox h2,.emptyState h2{font-size:clamp(34px,4.2vw,54px);line-height:1.04;letter-spacing:-2.2px;margin:10px 0 10px}.summaryHeader p,.missionTop p,.sectionHeading p,.reassuranceBox p,.emptyState p{color:#686e77;line-height:1.65}.serviceTag{border-color:#dfe2e7;background:#f5f6f8;color:#333}.summaryGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:28px}.summaryGrid article,.metrics article{border:1px solid #e4e6ea;border-radius:18px;padding:20px}.summaryGrid span,.metrics span,.deliveryPriceBox span{display:block;color:#747983;font-size:12px;font-weight:800;margin-bottom:6px}.summaryGrid strong{font-size:26px;letter-spacing:-1px}.deliveryCard{background:#f7f7f8}.smallNote{font-size:12px!important;color:#858a92!important;margin-top:12px!important}.mission{border-top:1px solid #eceef1}.deliveryPriceBox{text-align:right;background:#111;color:#fff;border-radius:20px;padding:20px 24px;min-width:250px}.deliveryPriceBox span{color:#bfc3c9}.deliveryPriceBox strong{display:block;font-size:32px;letter-spacing:-1px}.deliveryPriceBox small{display:block;color:#bfc3c9;font-size:11px;margin-top:5px;line-height:1.4}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:28px 0}.metrics strong{font-size:20px;line-height:1.25}.minimumFareNote,.distanceNote{border-radius:20px;padding:22px}.minimumFareNote{border:1px solid #ffd8cc;background:#fff6f2}.distanceNote{border:1px solid #e1e4e8;background:#f7f8f9}.minimumFareNote b,.distanceNote b{display:block;font-size:17px}.minimumFareNote b{color:#c63d1d}.minimumFareNote p,.distanceNote p{color:#5f6268;line-height:1.7;font-size:14px;margin:8px 0 0}.explanation{border-top:1px solid #eceef1}.sectionHeading{max-width:790px}.benefits{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:34px}.benefits article{background:#f6f7f9;border-radius:21px;padding:24px}.benefits b{font-size:12px;color:#ff5a32}.benefits h3{font-size:18px;margin:18px 0 9px}.benefits p{font-size:14px;color:#666d76;line-height:1.6;margin:0}.reassurance{border-top:1px solid #eceef1}.reassuranceBox{background:#111;color:#fff;border-radius:28px;padding:38px}.reassuranceBox p{color:#c8cbd0;max-width:850px}.emptyState{padding-top:64px}.emptyState>div{background:#f6f7f9;border-radius:26px;padding:38px}@media(max-width:900px){.calculator{grid-template-columns:1fr 1fr}.calculator button{grid-column:1/-1}.benefits{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:1fr 1fr}}@media(max-width:640px){.hero{padding:54px 20px 78px}.hero h1{letter-spacing:-2.4px}.lead{font-size:17px}.calculatorWrap{padding:0 14px}.calculator{grid-template-columns:1fr;padding:16px}.calculator button{grid-column:auto}.section{padding:55px 18px}.summaryHeader,.missionTop{display:grid}.summaryGrid,.benefits,.metrics{grid-template-columns:1fr}.deliveryPriceBox{text-align:left;min-width:0}.reassuranceBox{padding:26px}.emptyState>div{padding:25px}}
       `}</style>
     </main>
   );
