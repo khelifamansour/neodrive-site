@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Simulateur de livraison NeoDrive",
-  description: "Prototype du simulateur de livraison individualisée NeoDrive.",
+  description: "Simulateur NeoDrive pour comprendre le coût d'une livraison individualisée à domicile.",
   robots: {
     index: false,
     follow: false,
