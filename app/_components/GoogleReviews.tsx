@@ -1,5 +1,8 @@
 "use client";
 
+// Temporary switch: set to true to show the Google reviews section again.
+const GOOGLE_REVIEWS_ENABLED = false;
+
 export default function GoogleReviews(){
   const rating=process.env.NEXT_PUBLIC_GOOGLE_RATING||"4,8";
   const count=process.env.NEXT_PUBLIC_GOOGLE_REVIEW_COUNT||"9";
@@ -14,6 +17,8 @@ export default function GoogleReviews(){
     { label:"Avis sur l’accompagnement", sub:"Lire les retours clients", href:url },
     { label:"Avis sur la NeoDrive", sub:"Voir les expériences publiées", href:url },
   ];
+
+  if (!GOOGLE_REVIEWS_ENABLED) return null;
 
   return (
     <section className="reviewsWrap">
