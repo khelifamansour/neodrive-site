@@ -145,7 +145,7 @@ export default function AccueilBisClient() {
         </div>
 
         <div className={styles.whyGrid}>
-          <article className={styles.photoTile}><img src="/neodrive-switch/real/devant-atelier.webp" alt="NeoDrive réelle"/><span>Véhicule réel</span></article>
+          <article className={styles.photoTile}><img src="/neodrive-switch/photos/front-close.webp" alt="NeoDrive réelle"/><span>Véhicule réel</span></article>
           <article><Icon name="wheel"/><strong>Sans permis<br/>dès 14 ans</strong><p>Accessible avec le permis AM selon réglementation.</p></article>
           <article className={styles.photoTile}><img src="/neodrive-switch/photos/front-intermarche-angle.webp" alt="NeoDrive en ville"/><span>En ville</span></article>
           <article><Icon name="speed"/><strong>45 km/h</strong><p>Le format idéal pour les trajets locaux.</p></article>
@@ -225,7 +225,7 @@ export default function AccueilBisClient() {
         <div className={styles.dailyCards}>
           <article><img src="/neodrive-switch/photos/front-intermarche.webp" alt="NeoDrive pour les courses"/><div><Icon name="bag" size={19}/><span><strong>Courses</strong><small>Pratique et compacte</small></span></div></article>
           <article><img src="/neodrive-switch/photos/front-burgerking-a.webp" alt="NeoDrive pour le travail"/><div><Icon name="briefcase" size={19}/><span><strong>Travail</strong><small>Simple au quotidien</small></span></div></article>
-          <article><img src="/neodrive-switch/real/exterieur-avant.webp" alt="NeoDrive pour les déplacements locaux"/><div><Icon name="pin" size={19}/><span><strong>Déplacements locaux</strong><small>Proximité en toute liberté</small></span></div></article>
+          <article><img src="/neodrive-switch/photos/front-landscape.webp" alt="NeoDrive pour les déplacements locaux"/><div><Icon name="pin" size={19}/><span><strong>Déplacements locaux</strong><small>Proximité en toute liberté</small></span></div></article>
           <article><img src="/neodrive-switch/photos/rear-burgerking.webp" alt="NeoDrive pour les loisirs"/><div><Icon name="trees" size={19}/><span><strong>Loisirs</strong><small>Profitez de vos week-ends</small></span></div></article>
           <aside><span>“</span><strong>Compacte,<br/><em>rassurante</em> et<br/>facile à adopter.</strong></aside>
         </div>
