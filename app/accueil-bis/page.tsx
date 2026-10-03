@@ -7,6 +7,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// Deployment marker: accueil-bis complete route\nexport default function AccueilBisPage() {
+export default function AccueilBisPage() {
   return <AccueilBisClient />;
 }
