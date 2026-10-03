@@ -5,9 +5,15 @@ export const dynamic = "force-dynamic";
 
 const SUPABASE_URL = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 const BUCKET = "social-media";
-// The connected Supabase project is currently on the Free plan, whose upload cap is 50 MB.
-// Keep a small safety margin. After a plan upgrade this can be overridden in Vercel.
-const MAX_FILE_SIZE = Math.max(1, Number(process.env.SOCIAL_UPLOAD_MAX_MB || 49)) * 1024 * 1024;
+// Match the social-media bucket's 500 MiB limit on the paid project.
+const configuredMaxMb = Number(process.env.SOCIAL_UPLOAD_MAX_MB || 500);
+const MAX_FILE_MB = Number.isFinite(configuredMaxMb) && configuredMaxMb > 0
+  ? Math.min(configuredMaxMb, 500) : 500;
+const MAX_FILE_SIZE = MAX_FILE_MB * 1024 * 1024;
+
+export async function GET() {
+  return NextResponse.json({ maxFileMb: MAX_FILE_MB });
+}
 
 function safeName(name: string) {
   const dot = name.lastIndexOf(".");
@@ -50,8 +56,8 @@ export async function POST(req: Request) {
       uploads.push({ index, name, type, size, error: `Format non supporté: ${type || name}` });
       continue;
     }
-    if (!size) {
-      uploads.push({ index, name, type, size, error: `${name}: fichier vide` });
+    if (!Number.isSafeInteger(size) || size <= 0) {
+      uploads.push({ index, name, type, size, error: `${name}: taille de fichier invalide` });
       continue;
     }
     if (size > MAX_FILE_SIZE) {
@@ -61,7 +67,7 @@ export async function POST(req: Request) {
         name,
         type,
         size,
-        error: `${name}: ${maxMb} Mo max actuellement. Le projet Supabase est en offre Free (limite 50 Mo par fichier). Compresse cette vidéo ou passe Supabase en Pro.`,
+        error: `${name}: ${maxMb} Mo maximum par fichier. Compresse ou découpe cette vidéo.`,
       });
       continue;
     }

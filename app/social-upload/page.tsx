@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const U = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
@@ -40,6 +40,15 @@ async function optimiseImage(f: File) {
 
 export default function Page() {
   const [passcode, setPasscode] = useState("");
+  const [maxFileMb, setMaxFileMb] = useState(500);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/social-media/upload-init", { signal: controller.signal })
+      .then((r) => r.ok ? r.json() : null)
+      .then((j) => { if (Number.isFinite(j?.maxFileMb) && j.maxFileMb > 0) setMaxFileMb(j.maxFileMb); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
   const [ctx, setCtx] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [progress, setProgress] = useState<S[]>([]);
@@ -244,7 +253,7 @@ export default function Page() {
     <h1>Bibliothèque sociale NeoDrive</h1>
     <p>Ajoute tes vraies photos et vidéos. Elles deviennent la source prioritaire des publications Facebook et Instagram.</p>
     <div style={{ padding: 13, borderRadius: 10, background: "#fff7df", border: "1px solid #f0d484", fontSize: 14, lineHeight: 1.45 }}>
-      <strong>Important :</strong> les fichiers sont maintenant envoyés avec le mécanisme d’upload signé officiel de Supabase, un par un. Sur l’offre actuelle, les vidéos de plus de 49 Mo restent refusées.
+      <strong>Photos et vidéos :</strong> jusqu’à {maxFileMb} Mo par fichier. Les fichiers sont envoyés un par un ; garde cette page ouverte pendant l’envoi.
     </div>
 
     <form onSubmit={submit} style={{ display: "grid", gap: 16, marginTop: 22 }}>

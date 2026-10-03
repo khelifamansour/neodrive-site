@@ -28,12 +28,11 @@ function pathFromPageKey(key: string) {
 }
 
 function nextSeoRunIso(now = new Date()) {
-  const days = new Set([1, 3, 5]);
   for (let add = 0; add <= 7; add++) {
     const d = new Date(now);
     d.setUTCDate(now.getUTCDate() + add);
     d.setUTCHours(5, 15, 0, 0);
-    if (days.has(d.getUTCDay()) && d.getTime() > now.getTime()) return d.toISOString();
+    if (d.getTime() > now.getTime()) return d.toISOString();
   }
   return null;
 }
@@ -145,7 +144,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     generated_at: new Date().toISOString(),
-    cron: { schedule: "15 5 * * 1,3,5", description: "Lundi, mercredi et vendredi à 05:15 UTC (07:15 en France actuellement)", next_run_at: nextSeoRunIso(), social_description: "Instagram 07:30, 11:30 et 16:30 UTC; Facebook 5 minutes après chaque créneau" },
+    cron: { schedule: "15 5 * * *", description: "Tous les jours à 05:15 UTC (07:15 en France en été, 06:15 en hiver)", next_run_at: nextSeoRunIso(), social_description: "Instagram 07:30, 11:30 et 16:30 UTC; Facebook 5 minutes après chaque créneau" },
     summary: { total_articles: articles.length, total_local_pages: seoCities.length, published_last_7d: last7, last_published_at: articles[0]?.published_at || null, successful_runs: successfulRuns.length, failed_runs: failedRuns.length, article_views_30d: articleViews30, page_views_30d: pageViews30, video_views_30d: videoViews30, total_views_30d: articleViews30 + pageViews30 + videoViews30, google_views_30d: totalGoogle30, seo_cta_clicks_30d: totalCta30, total_videos: videoRows.length, original_videos: videoRows.filter((v: any) => !v.generated).length, generated_videos: videoRows.filter((v: any) => v.generated).length, social_published_last_7d: socialLast7, social_failed: failedSocial.length, social_scheduled: scheduledSocial.length, article_google_30d: articleGoogle30, article_cta_30d: articleClicks30 },
     articles: articles.slice(0, 180), pages: pageRows.slice(0, 180), videos: videoRows.slice(0, 100), social: { by_platform: socialByPlatform, recent: (queue || []).slice(0, 100) }, video_jobs: videoJobs || [], runs: runs || [], search_console: { connected: false, note: "Le tableau mesure déjà les visites, provenance Google et clics. Pour impressions, requêtes, CTR et position moyenne, connecter Google Search Console reste nécessaire." },
   });
