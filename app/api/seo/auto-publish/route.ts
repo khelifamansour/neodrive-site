@@ -37,6 +37,13 @@ export async function GET(req: Request) {
   const requestedTopic = requestUrl.searchParams.get("topic")?.trim().slice(0, 240) || "";
   const triggerSource = requestUrl.searchParams.get("source") === "manual" ? "manual" : "auto";
   const startedMs = Date.now();
+  if (triggerSource === "auto") {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: published, error: dailyError } = await sb.from("seo_articles").select("id,slug").eq("status", "published").eq("publish_source", "auto").gte("published_at", `${today}T00:00:00Z`).limit(1);
+    if (dailyError) return NextResponse.json({ ok: false, error: dailyError.message }, { status: 500 });
+    if (published?.length) return NextResponse.json({ ok: true, skipped: true, reason: "Article quotidien déjà publié", article: published[0] });
+  }
+
 
   const { data: run } = await sb.from("seo_publish_runs").insert({ trigger_source: triggerSource, status: "running", topic: requestedTopic || null }).select("id").single();
   const fail = async (error: unknown, status = 500) => {
@@ -70,7 +77,7 @@ export async function GET(req: Request) {
     const existingTitles = (recentArticles || []).map((item: any) => item.title).join(" | ");
     const prompt = `Rédige un article SEO français très détaillé de 1800 à 2600 mots pour un acheteur réel de voiture sans permis. Sujet: ${topic}. Angle: ${chosen?.angle || "guide d'achat concret"}. Public: ${chosen?.target_audience || "acheteurs en France"}. Mot-clé principal: ${chosen?.primary_keyword || topic}. Mots-clés secondaires: ${(chosen?.secondary_keywords || []).join(", ")}. Articles récents à ne pas dupliquer: ${existingTitles || "aucun"}.
 
-Positionnement NeoDrive à intégrer quand pertinent: VSP électrique 2 places; gamme à partir de 3 990 € TTC; recharge sur prise 220 V; livraison en France; organisation centralisée à Toulouse; distribution directe sans réseau de concessions/showrooms; approvisionnement direct fabricant; modèle économique visant à réduire les intermédiaires et les coûts fixes; paiement du véhicule à la livraison selon les modalités commerciales en vigueur; un agent livre le véhicule, présente son fonctionnement et répond aux questions; châssis acier; philosophie de conception simple visant la maintenabilité et l'absence de complexité inutile. Présenter le prix bas comme la conséquence du modèle de distribution et de la simplicité, jamais comme une baisse de qualité non démontrée.
+Positionnement NeoDrive à intégrer quand pertinent: VSP électrique 2 places; Essentielle à partir de 3 990 € TTC sur commande avec délai confirmé par devis; Confort 4 990 € TTC; immatriculation et mise en route 150 €, livraison en supplément selon adresse; ne jamais présenter la version Essentielle comme disponible immédiatement; recharge sur prise 220 V; livraison en France; organisation centralisée à Toulouse; distribution directe sans réseau de concessions/showrooms; approvisionnement direct fabricant; modèle économique visant à réduire les intermédiaires et les coûts fixes; paiement du véhicule à la livraison selon les modalités commerciales en vigueur; un agent livre le véhicule, présente son fonctionnement et répond aux questions; châssis acier; philosophie de conception simple visant la maintenabilité et l'absence de complexité inutile. Présenter le prix bas comme la conséquence du modèle de distribution et de la simplicité, jamais comme une baisse de qualité non démontrée.
 
 Réparabilité/acier: expliquer que l'acier est bien connu des professionnels et peut, selon le dommage, être redressé ou soudé. Ne jamais affirmer qu'un châssis acier rend automatiquement NeoDrive plus sûre qu'une Citroën Ami ou qu'un véhicule aluminium/plastique/composite. La sécurité dépend de la conception globale, de l'homologation et des essais. Si des tests internes NeoDrive sont évoqués, les qualifier explicitement de tests internes et ne pas les présenter comme un crash-test indépendant ou une certification comparative.
 

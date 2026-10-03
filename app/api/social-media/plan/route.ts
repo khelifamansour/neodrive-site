@@ -6,8 +6,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
-const CAMPAIGN_DAYS = 90;
-const CAMPAIGN_END = new Date("2026-12-10T23:59:59Z");
+const CAMPAIGN_DAYS = 14;
 const MEDIA_LOOKBACK_DAYS = 120;
 
 type Asset = {
@@ -34,10 +33,6 @@ export async function GET(req: Request) {
   if (!sk) return NextResponse.json({ ok: false, error: "Supabase missing" }, { status: 503 });
 
   const now = new Date();
-  if (now > CAMPAIGN_END) {
-    return NextResponse.json({ ok: true, skipped: true, reason: "Campagne intensive de 3 mois terminée", campaignEnd: CAMPAIGN_END.toISOString() });
-  }
-
   const sb = createClient(SB, sk, { auth: { persistSession: false, autoRefreshToken: false } });
   const since = new Date(Date.now() - MEDIA_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await sb
@@ -101,7 +96,7 @@ export async function GET(req: Request) {
     for (let s = 0; s < slots.length; s++) {
       const slot = slots[s];
       const when = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d, slot.h, slot.m, 0));
-      if (when > CAMPAIGN_END) continue;
+      if (when <= now) continue;
 
       const a = take(slot.prefer);
       if (!a) continue;
@@ -130,7 +125,7 @@ export async function GET(req: Request) {
     }
   }
 
-  if (!rows.length) return NextResponse.json({ ok: true, skipped: true, reason: "Pas assez de médias compatibles ou campagne terminée" });
+  if (!rows.length) return NextResponse.json({ ok: true, skipped: true, reason: "Pas assez de médias compatibles" });
 
   const { error: insertError } = await sb.from("social_content_queue").insert(rows);
   if (insertError) return NextResponse.json({ ok: false, error: insertError.message }, { status: 500 });
@@ -139,7 +134,7 @@ export async function GET(req: Request) {
     ok: true,
     scheduled: rows.length,
     uniqueMedia: used.size,
-    campaignEnd: CAMPAIGN_END.toISOString(),
+    planningDays: CAMPAIGN_DAYS,
     postsPerDayPerPlatform: 2,
     themeCount: SOCIAL_THEMES.length,
     videos: videos.length,

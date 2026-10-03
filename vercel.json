@@ -1,16 +1,65 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-    { "path": "/api/social-media/learn", "schedule": "20 3 * * *" },
-    { "path": "/api/social-media/analyze", "schedule": "40 3 * * *" },
-    { "path": "/api/social-media/plan", "schedule": "10 4 * * *" },
-    { "path": "/api/seo/auto-publish", "schedule": "15 5 * * *" },
-    { "path": "/api/instagram/auto-publish?force=1", "schedule": "30 7 * * *" },
-    { "path": "/api/facebook/auto-publish?force=1", "schedule": "35 7 * * *" },
-    { "path": "/api/instagram/auto-publish?force=1", "schedule": "30 11 * * *" },
-    { "path": "/api/facebook/auto-publish?force=1", "schedule": "35 11 * * *" },
-    { "path": "/api/instagram/auto-publish?force=1", "schedule": "30 16 * * *" },
-    { "path": "/api/facebook/auto-publish?force=1", "schedule": "35 16 * * *" },
-    { "path": "/api/crm/auto-followup", "schedule": "0 7-18 * * *" }
+    {
+      "path": "/api/social-media/learn",
+      "schedule": "20 3 * * *"
+    },
+    {
+      "path": "/api/social-media/analyze",
+      "schedule": "40 3 * * *"
+    },
+    {
+      "path": "/api/social-media/create-visual",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/social-media/plan",
+      "schedule": "10 4 * * *"
+    },
+    {
+      "path": "/api/seo/auto-publish",
+      "schedule": "15 5 * * *"
+    },
+    {
+      "path": "/api/social-media/create-visual",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/instagram/auto-publish?force=1",
+      "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/facebook/auto-publish?force=1",
+      "schedule": "35 7 * * *"
+    },
+    {
+      "path": "/api/instagram/auto-publish?poster=1",
+      "schedule": "30 11 * * *"
+    },
+    {
+      "path": "/api/facebook/auto-publish?poster=1",
+      "schedule": "35 11 * * *"
+    },
+    {
+      "path": "/api/instagram/auto-publish?force=1",
+      "schedule": "30 16 * * *"
+    },
+    {
+      "path": "/api/facebook/auto-publish?force=1",
+      "schedule": "35 16 * * *"
+    },
+    {
+      "path": "/api/crm/auto-followup",
+      "schedule": "0 7-18 * * *"
+    },
+    {
+      "path": "/api/instagram/auto-publish?poster=1",
+      "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/facebook/auto-publish?poster=1",
+      "schedule": "35 14 * * *"
+    }
   ]
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { dailyPosterForPublishing } from "@/lib/marketing-posters";
 import { buildSocialCaption, isVideoAsset, pickSocialTheme, type SocialTheme } from "@/lib/social-copy";
 
 export const dynamic="force-dynamic";
@@ -70,7 +71,8 @@ async function mark(k:string,id:string){
 }
 
 async function rememberFresh(k:string,a:Asset,theme:SocialTheme,msg:string,externalId:string){
-  await fetch(`${SB}/rest/v1/social_content_queue`,{method:"POST",headers:{...H(k),"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({platform:"facebook",content_type:isVideoAsset(a)?"reel":"post",hook:theme.hook,caption:msg,hashtags:[],media_brief:`fresh-library:${a.id}`,media_url:a.public_url,cta:"easydrive-auto.fr",publish_at:new Date().toISOString(),status:"published",requires_human_review:false,external_post_id:externalId,retry_count:0,max_retries:3}),cache:"no-store"}).catch(()=>{});
+  const saved=await fetch(`${SB}/rest/v1/social_content_queue`,{method:"POST",headers:{...H(k),"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({platform:"facebook",content_type:isVideoAsset(a)?"reel":"post",hook:theme.hook,caption:msg,hashtags:[],media_brief:`fresh-library:${a.id}`,media_url:a.public_url,cta:"easydrive-auto.fr",publish_at:new Date().toISOString(),status:"published",requires_human_review:false,external_post_id:externalId,retry_count:0,max_retries:3}),cache:"no-store"});
+  if(!saved.ok)throw new Error("Publication réussie mais enregistrement impossible : vérifier le canal avant de réessayer");
 }
 
 async function pageToken(t:string,p:string){
@@ -88,16 +90,22 @@ export async function GET(req:Request){
   const s=process.env.CRON_SECRET;if(!s||req.headers.get("authorization")!==`Bearer ${s}`)return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
   const k=process.env.SUPABASE_SERVICE_ROLE_KEY,t=process.env.FACEBOOK_PAGE_ACCESS_TOKEN,p=process.env.FACEBOOK_PAGE_ID;if(!k||!t||!p)return NextResponse.json({ok:false,error:"Configuration missing"},{status:503});
 
-  const fresh=new URL(req.url).searchParams.get("fresh")==="1";
+  const posterMode=new URL(req.url).searchParams.get("poster")==="1";
+  let poster:Awaited<ReturnType<typeof dailyPosterForPublishing>>=null;
+  if(posterMode){
+    try{poster=await dailyPosterForPublishing(k,"facebook");}catch(e){return NextResponse.json({ok:false,error:e instanceof Error?e.message:"Poster lookup failed"},{status:500});}
+    if(!poster)return NextResponse.json({ok:true,skipped:true,reason:"Affiche absente ou déjà publiée sur ce canal"});
+  }
+  const fresh=posterMode||new URL(req.url).searchParams.get("fresh")==="1";
   const q=fresh?null:await getQueue(k);
   const recent=await recentTexts(k);
   const previousKind=await lastPublishedKind(k);
   const preferred:Kind|null=previousKind==="video"?"image":previousKind==="image"?"video":null;
-  const a=await getAsset(k,preferred);
+  const a=poster?.asset||await getAsset(k,preferred);
   if(!a)return NextResponse.json({ok:true,skipped:true,reason:"Aucun média réel compatible dans la bibliothèque"});
 
-  const theme=pickSocialTheme(a,recent,`facebook-${q?.id||"fresh"}-${a.id}-${Date.now()}`);
-  const msg=buildSocialCaption(theme,a,`facebook-${q?.id||"fresh"}-${Date.now()}`);
+  const theme=poster?.theme||pickSocialTheme(a,recent,`facebook-${q?.id||"fresh"}-${a.id}-${Date.now()}`);
+  const msg=poster?.caption||buildSocialCaption(theme,a,`facebook-${q?.id||"fresh"}-${Date.now()}`);
   const url=a.public_url;
   const typ=a.media_type;
 
@@ -109,7 +117,7 @@ export async function GET(req:Request){
     const pt=await pageToken(t,p);const id=await publish(p,pt,url,msg,video(typ,url));
     if(q){await patch(k,q.id,{status:"published",external_post_id:id,error_message:null});await mark(k,a.id);}
     else{await mark(k,a.id);await rememberFresh(k,a,theme,msg,id);}
-    return NextResponse.json({ok:true,published:true,source:q?"planned-slot-mixed-library":"fresh-mixed-library",postId:id,media:url,type:kindOf(a),theme:theme.hook,caption:msg});
+    return NextResponse.json({ok:true,published:true,source:posterMode?"daily-poster":q?"planned-slot-mixed-library":"fresh-mixed-library",postId:id,media:url,type:kindOf(a),theme:theme.hook,caption:msg});
   }catch(e){
     if(q){const n=Number(q.retry_count||0)+1,max=Number(q.max_retries||3);await patch(k,q.id,{status:n>=max?"failed":"scheduled",retry_count:n,last_attempt_at:new Date().toISOString(),...(n>=max?{}:{publish_at:new Date(Date.now()+60*60*1000).toISOString()}),error_message:e instanceof Error?e.message:"Unknown"});}
     return NextResponse.json({ok:false,error:e instanceof Error?e.message:"Unknown"},{status:500});
