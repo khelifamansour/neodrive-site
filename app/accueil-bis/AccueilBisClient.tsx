@@ -1,298 +1,383 @@
 "use client";
 
+import { useState } from "react";
+import styles from "./AccueilBis.module.css";
+
 const whatsapp =
   "https://wa.me/33628261446?text=Bonjour%20NeoDrive%2C%20je%20souhaite%20des%20informations%20sur%20vos%20voitures%20sans%20permis%20%C3%A9lectriques.";
+
+type IconName =
+  | "bolt" | "speed" | "plug" | "truck" | "shield" | "camera"
+  | "bluetooth" | "heat" | "fan" | "lock" | "seat" | "arrow"
+  | "menu" | "close" | "play" | "check" | "message";
+
+function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
+  const common = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.9,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  const paths: Record<IconName, React.ReactNode> = {
+    bolt: <><path d="M13 2 4.5 13H11l-1 9L19.5 11H13l0-9Z"/></>,
+    speed: <><path d="M4 17a8 8 0 1 1 16 0"/><path d="m12 13 4-4"/><path d="M6.5 14H5M19 14h-1.5M8 9.5 7 8.5M16 9.5l1-1"/></>,
+    plug: <><path d="M8 3v5M16 3v5M7 8h10v3a5 5 0 0 1-10 0V8Z"/><path d="M12 16v5"/></>,
+    truck: <><path d="M3 6h11v10H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></>,
+    shield: <><path d="M12 3 5 6v5c0 4.8 2.8 8 7 10 4.2-2 7-5.2 7-10V6l-7-3Z"/><path d="m9.2 12 1.9 1.9 3.8-4"/></>,
+    camera: <><path d="M4 8h4l1.5-2h5L16 8h4v10H4z"/><circle cx="12" cy="13" r="3.2"/></>,
+    bluetooth: <><path d="m12 3 4 4-4 4V3Zm0 8 4 4-4 4v-8ZM7 7l9 8M7 17l5-5"/></>,
+    heat: <><path d="M7 4c-2 2 2 3 0 6s-2 4 0 6M12 4c-2 2 2 3 0 6s-2 4 0 6M17 4c-2 2 2 3 0 6s-2 4 0 6"/></>,
+    fan: <><circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-7 4-7 2 0 3 2 2 4-1 2-4 3-6 3ZM14 12c4 0 7 1 7 4 0 2-2 3-4 2-2-1-3-4-3-6ZM12 14c0 4-1 7-4 7-2 0-3-2-2-4 1-2 4-3 6-3ZM10 12c-4 0-7-1-7-4 0-2 2-3 4-2 2 1 3 4 3 6Z"/></>,
+    lock: <><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></>,
+    seat: <><path d="M7 5v7c0 2 1 3 3 3h7"/><path d="M10 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM8 15l-1 5M17 15l2 5"/><path d="M11 8h5l2 5H9"/></>,
+    arrow: <><path d="M5 12h14M14 7l5 5-5 5"/></>,
+    menu: <><path d="M4 7h16M4 12h16M4 17h16"/></>,
+    close: <><path d="m6 6 12 12M18 6 6 18"/></>,
+    play: <><path d="m9 7 8 5-8 5V7Z"/></>,
+    check: <><path d="m5 12 4 4L19 6"/></>,
+    message: <><path d="M21 15a4 4 0 0 1-4 4H8l-5 2 1.6-4A7.6 7.6 0 0 1 3 12c0-4 3.8-7 9-7s9 3 9 7c0 1.1-.3 2.1-.8 3Z"/></>,
+  };
+
+  return <svg {...common}>{paths[name]}</svg>;
+}
 
 const versions = [
   {
     name: "Essentielle",
     price: "3 990 €",
-    note: "Sur commande",
-    text: "L’essentiel pour rouler en électrique avec une voiture neuve et simple.",
-    items: ["100% électrique", "Voiture neuve", "Batterie incluse", "Grand coffre"],
+    tag: "Sur commande",
+    image: "/neodrive-switch/real/exterieur-avant.webp",
+    text: "L’essentiel d’une microcar électrique neuve, simple et accessible.",
+    features: ["100% électrique", "Format compact", "Équipement essentiel"],
   },
   {
     name: "Confort",
     price: "4 990 €",
-    note: "Selon stock",
-    text: "Notre version la plus complète pour le quotidien, avec les équipements les plus demandés.",
-    items: ["Chauffage & ventilation", "Caméra de recul", "Bluetooth / USB", "Alarme antivol"],
+    tag: "La plus choisie",
+    image: "/neodrive-switch/photos/front-intermarche-angle.webp",
+    text: "L’équilibre idéal entre confort, équipements utiles et disponibilité.",
+    features: ["Chauffage & ventilation", "Caméra de recul", "Bluetooth / USB", "Alarme"],
     featured: true,
   },
   {
     name: "Confort Plus+",
     price: "5 990 €",
-    note: "Autonomie renforcée",
-    text: "Pour ceux qui souhaitent davantage d’autonomie et un équipement complet.",
-    items: ["Pack Confort inclus", "Autonomie renforcée", "Charge adaptée", "Accompagnement NeoDrive"],
+    tag: "Plus d’autonomie",
+    image: "/neodrive-switch/photos/front-burgerking-a.webp",
+    text: "Le pack Confort avec une réserve d’autonomie supérieure.",
+    features: ["Pack Confort inclus", "Autonomie renforcée", "Accompagnement NeoDrive"],
+  },
+];
+
+const lifestyle = [
+  {
+    label: "Courses",
+    text: "Compacte et facile à garer.",
+    image: "/neodrive-switch/photos/front-intermarche.webp",
+  },
+  {
+    label: "Travail",
+    text: "Une solution simple pour vos trajets.",
+    image: "/neodrive-switch/photos/front-burgerking-b.webp",
+  },
+  {
+    label: "Déplacements locaux",
+    text: "Pensée pour le quotidien.",
+    image: "/neodrive-switch/photos/front-landscape.webp",
+  },
+  {
+    label: "Loisirs",
+    text: "Profiter de chaque trajet.",
+    image: "/neodrive-switch/real/exterieur-arriere.webp",
   },
 ];
 
 export default function AccueilBisClient() {
+  const [open, setOpen] = useState(false);
+
   return (
-    <main className="bis">
-      <section className="hero">
-        <div className="heroOverlay" />
-        <div className="heroContent">
-          <span className="badge">🇫🇷 NeoDrive · Muret / Toulouse</span>
-          <h1>La liberté de rouler, simplement.</h1>
-          <p className="heroLead">
-            Une voiture sans permis électrique <strong>neuve, pratique et accessible</strong>,
-            pensée pour les déplacements du quotidien.
+    <main className={styles.page}>
+      <style>{".header,.seoFooter{display:none!important} html{scroll-behavior:smooth} body{background:#fff!important}"}</style>
+
+      <nav className={styles.nav}>
+        <a href="/accueil-bis" className={styles.logo} aria-label="NeoDrive">
+          <span className={styles.logoNeo}>Neo</span><span className={styles.logoDrive}>Drive</span>
+          <small>MICROCARS ÉLECTRIQUES</small>
+        </a>
+
+        <div className={styles.desktopLinks}>
+          <a href="#modeles">Nos modèles</a>
+          <a href="#pourquoi">Pourquoi NeoDrive</a>
+          <a href="#equipements">Équipements</a>
+          <a href="#quotidien">Au quotidien</a>
+          <a href="#videos">Vidéos</a>
+        </div>
+
+        <div className={styles.navActions}>
+          <a href={whatsapp} target="_blank" rel="noreferrer" className={styles.whatsappTop}>
+            <Icon name="message" size={18}/> <span>WhatsApp</span>
+          </a>
+          <button className={styles.menuButton} onClick={() => setOpen(!open)} aria-label="Menu">
+            <Icon name={open ? "close" : "menu"} />
+          </button>
+        </div>
+
+        {open && (
+          <div className={styles.mobileMenu}>
+            <a href="#modeles" onClick={() => setOpen(false)}>Nos modèles</a>
+            <a href="#pourquoi" onClick={() => setOpen(false)}>Pourquoi NeoDrive</a>
+            <a href="#equipements" onClick={() => setOpen(false)}>Équipements</a>
+            <a href="#quotidien" onClick={() => setOpen(false)}>Au quotidien</a>
+            <a href="#videos" onClick={() => setOpen(false)}>Vidéos</a>
+          </div>
+        )}
+      </nav>
+
+      <section className={styles.hero}>
+        <div className={styles.heroCopy}>
+          <span className={styles.kicker}>LIBERTÉ · SIMPLICITÉ · AU QUOTIDIEN</span>
+          <h1>La voiture sans permis électrique qui donne <em>envie de rouler.</em></h1>
+          <p>
+            Une vraie microcar électrique, moderne et facile à vivre.
+            Pour les trajets du quotidien, les courses, le travail et les moments de liberté.
           </p>
-          <div className="priceLine">
-            <span>Dès</span>
+          <div className={styles.heroPrice}>
+            <span>À partir de</span>
             <strong>3 990 €</strong>
             <small>TTC</small>
           </div>
-          <div className="heroActions">
-            <a href={whatsapp} target="_blank" rel="noreferrer" className="primaryBtn">
-              Parler avec NeoDrive
+          <div className={styles.heroButtons}>
+            <a href="#modeles" className={styles.primary}>
+              Découvrir les versions <Icon name="arrow" size={18}/>
             </a>
-            <a href="#videos" className="secondaryBtn">▶ Voir la voiture en vidéo</a>
+            <a href={whatsapp} target="_blank" rel="noreferrer" className={styles.whatsappHero}>
+              <Icon name="message" size={19}/> Parler sur WhatsApp
+            </a>
           </div>
-          <div className="heroProof">
-            <span>✓ 100% électrique</span>
-            <span>✓ Livraison en France</span>
-            <span>✓ Paiement à la livraison</span>
+          <p className={styles.heroNote}>Photos et vidéos réelles disponibles sur demande.</p>
+        </div>
+
+        <div className={styles.heroVisual}>
+          <div className={styles.heroImageMain}>
+            <img src="/neodrive-switch/real/exterieur-avant.webp" alt="NeoDrive grise, véhicule électrique sans permis" />
+            <span className={styles.realBadge}><i/> PHOTO RÉELLE</span>
+          </div>
+          <div className={styles.heroMiniOne}>
+            <img src="/neodrive-switch/real/exterieur-arriere.webp" alt="NeoDrive vue arrière" />
+          </div>
+          <div className={styles.heroMiniTwo}>
+            <img src="/neodrive-switch/real/interieur-tableau-de-bord.webp" alt="Habitacle NeoDrive" />
           </div>
         </div>
       </section>
 
-      <section className="trustBar">
-        <div><strong>45 km/h</strong><span>Voiture sans permis L6e</span></div>
-        <div><strong>Carrosserie acier</strong><span>Conception simple et robuste</span></div>
-        <div><strong>France</strong><span>Livraison jusqu’à votre adresse</span></div>
+      <section className={styles.reassurance} aria-label="Points forts">
+        <div><span className={styles.iconCircle}><Icon name="bolt"/></span><strong>100% électrique</strong><small>Silencieuse au quotidien</small></div>
+        <div><span className={styles.iconCircle}><Icon name="speed"/></span><strong>45 km/h · L6e</strong><small>Voiture sans permis</small></div>
+        <div><span className={styles.iconCircle}><Icon name="plug"/></span><strong>Recharge simple</strong><small>Sur prise domestique</small></div>
+        <div><span className={styles.iconCircle}><Icon name="truck"/></span><strong>Livraison France</strong><small>Jusqu’à votre adresse</small></div>
+        <div><span className={styles.iconCircle}><Icon name="shield"/></span><strong>Paiement à la livraison</strong><small>Après contrôle du véhicule</small></div>
       </section>
 
-      <section className="welcome section">
-        <div className="sectionText">
-          <span className="eyebrow">Une voiture faite pour la vraie vie</span>
-          <h2>Petite à l’extérieur.<br />Étonnamment pratique à l’intérieur.</h2>
+      <section id="pourquoi" className={styles.promise}>
+        <div className={styles.sectionIntro}>
+          <span className={styles.eyebrow}>POURQUOI NEODRIVE ?</span>
+          <h2>Une mobilité <em>simple, pratique et rassurante.</em></h2>
           <p>
-            Facile à garer, silencieuse et simple à recharger, la NeoDrive a été pensée pour
-            les trajets du quotidien : courses, rendez-vous, travail, centre-ville ou petites routes.
+            De vrais véhicules, de vrais équipements et une équipe joignable avant comme après la livraison.
+            Vous pouvez demander des photos ou une vidéo du véhicule avant l’achat.
           </p>
-        </div>
-        <div className="miniFeatures">
-          <article><b>⚡</b><strong>Électrique</strong><span>Recharge simple au quotidien</span></article>
-          <article><b>☀️</b><strong>Toit ouvrant</strong><span>Un habitacle lumineux et agréable</span></article>
-          <article><b>↩</b><strong>Caméra de recul</strong><span>Plus simple pour se garer</span></article>
-          <article><b>♫</b><strong>Bluetooth / USB</strong><span>Vos trajets, votre musique</span></article>
-        </div>
-      </section>
-
-      <section className="showcase section">
-        <div className="carStage">
-          <div className="stageHalo" />
-          <img src="/img1.png" alt="NeoDrive Confort grise vue de trois-quarts avant" />
-          <div className="stageBadge">
-            <span>NeoDrive Confort</span>
-            <strong>4 990 € TTC</strong>
-          </div>
-        </div>
-        <div className="showcaseCopy">
-          <span className="eyebrow">La Confort</span>
-          <h2>Tout ce qu’il faut pour rouler sereinement.</h2>
-          <p>
-            La version Confort rassemble les équipements les plus utiles au quotidien,
-            sans compliquer la voiture : chauffage, ventilation, caméra de recul, Bluetooth,
-            USB et alarme.
-          </p>
-          <div className="pills">
-            <span>Chauffage</span><span>Caméra</span><span>Bluetooth</span><span>Alarme</span>
-          </div>
-          <a href={whatsapp} target="_blank" rel="noreferrer" className="darkBtn">
-            Vérifier une disponibilité →
+          <a href={whatsapp} target="_blank" rel="noreferrer" className={styles.textLink}>
+            Poser une question <Icon name="arrow" size={17}/>
           </a>
         </div>
-      </section>
 
-      <section className="details section">
-        <div className="detailGrid">
-          <figure>
-            <img src="/img2.png" alt="NeoDrive vue de profil" loading="lazy" />
-            <figcaption><strong>Compacte</strong><span>Une silhouette facile à garer.</span></figcaption>
-          </figure>
-          <figure>
-            <img src="/img4.png" alt="Habitacle avant de la NeoDrive" loading="lazy" />
-            <figcaption><strong>Confortable</strong><span>Deux vraies places à l’avant et un espace arrière pratique.</span></figcaption>
-          </figure>
-          <figure>
-            <img src="/img3.png" alt="NeoDrive vue de trois-quarts arrière" loading="lazy" />
-            <figcaption><strong>Simple</strong><span>Une voiture pensée pour être facile à vivre.</span></figcaption>
-          </figure>
+        <div className={styles.promiseGallery}>
+          <article className={styles.promiseBig}>
+            <img src="/neodrive-switch/photos/front-close.webp" alt="NeoDrive en extérieur" loading="lazy"/>
+            <div className={styles.photoCaption}>
+              <strong>Compacte au quotidien</strong>
+              <span>Simple à garer, agréable à utiliser.</span>
+            </div>
+          </article>
+          <article>
+            <img src="/neodrive-switch/photos/interior-wide.webp" alt="Intérieur NeoDrive" loading="lazy"/>
+            <div className={styles.photoCaption}>
+              <strong>Un habitacle rassurant</strong>
+              <span>Fermé, lumineux et pratique.</span>
+            </div>
+          </article>
+          <article>
+            <img src="/neodrive-switch/real/devant-atelier.webp" alt="NeoDrive en point de présentation" loading="lazy"/>
+            <div className={styles.photoCaption}>
+              <strong>Des véhicules réels</strong>
+              <span>À voir en photo ou vidéo avant achat.</span>
+            </div>
+          </article>
         </div>
       </section>
 
-      <section className="versionsSection section">
-        <div className="sectionHeader">
-          <span className="eyebrow">La gamme NeoDrive</span>
-          <h2>Trois versions, selon votre besoin.</h2>
+      <section id="modeles" className={styles.models}>
+        <div className={styles.modelsHeading}>
+          <div>
+            <span className={styles.eyebrowLight}>NOS VERSIONS</span>
+            <h2>Trois finitions.<br/><em>Une même liberté.</em></h2>
+          </div>
           <p>
-            Pas de faux prix ni de formule cachée : chaque version correspond simplement
-            à un niveau d’équipement et de disponibilité différent.
+            Choisissez selon votre budget, votre besoin d’équipement et votre autonomie.
+            Les prix sont présentés clairement.
           </p>
         </div>
-        <div className="versions">
-          {versions.map((v) => (
-            <article key={v.name} className={v.featured ? "version featured" : "version"}>
-              {v.featured && <span className="popular">LA PLUS CHOISIE</span>}
-              <div className="versionTop">
-                <h3>{v.name}</h3>
-                <span>{v.note}</span>
+
+        <div className={styles.modelGrid}>
+          {versions.map((version) => (
+            <article key={version.name} className={version.featured ? styles.modelFeatured : styles.modelCard}>
+              <div className={styles.modelPhoto}>
+                <img src={version.image} alt={"NeoDrive " + version.name} loading="lazy"/>
+                <span>{version.tag}</span>
               </div>
-              <p className="versionPrice">{v.price} <small>TTC</small></p>
-              <p className="versionText">{v.text}</p>
-              <ul>
-                {v.items.map((item) => <li key={item}>{item}</li>)}
-              </ul>
-              <a href={whatsapp} target="_blank" rel="noreferrer">
-                Demander des informations →
-              </a>
+              <div className={styles.modelBody}>
+                <div className={styles.modelTitleRow}>
+                  <h3>{version.name}</h3>
+                  <div><strong>{version.price}</strong><small>TTC</small></div>
+                </div>
+                <p>{version.text}</p>
+                <ul>
+                  {version.features.map((feature) => (
+                    <li key={feature}><Icon name="check" size={16}/>{feature}</li>
+                  ))}
+                </ul>
+                <a href={whatsapp} target="_blank" rel="noreferrer">
+                  Demander les disponibilités <Icon name="arrow" size={17}/>
+                </a>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className={styles.modelFinePrint}>
+          <span><strong>150 €</strong> carte grise + mise en route</span>
+          <span>Livraison facturée selon votre zone</span>
+        </div>
+      </section>
+
+      <section id="equipements" className={styles.equipment}>
+        <div className={styles.equipmentPhoto}>
+          <img src="/neodrive-switch/photos/interior-wide.webp" alt="Habitacle et tableau de bord NeoDrive" loading="lazy"/>
+          <div className={styles.equipmentPhotoTag}>
+            <span>À BORD DE NEODRIVE</span>
+            <strong>Un intérieur pensé pour le quotidien.</strong>
+          </div>
+        </div>
+
+        <div className={styles.equipmentCopy}>
+          <span className={styles.eyebrow}>DESIGN & ÉQUIPEMENTS</span>
+          <h2>Le confort utile.<br/><em>Sans complication.</em></h2>
+          <p>
+            L’essentiel est là : visibilité, chauffage, connectivité et simplicité d’utilisation.
+          </p>
+
+          <div className={styles.equipmentGrid}>
+            <div><Icon name="camera"/><span><strong>Caméra de recul</strong><small>Manœuvres facilitées</small></span></div>
+            <div><Icon name="bluetooth"/><span><strong>Bluetooth / USB</strong><small>Musique et recharge</small></span></div>
+            <div><Icon name="heat"/><span><strong>Chauffage</strong><small>Pour l’hiver</small></span></div>
+            <div><Icon name="fan"/><span><strong>Ventilation</strong><small>Pour le quotidien</small></span></div>
+            <div><Icon name="lock"/><span><strong>Alarme</strong><small>Plus de tranquillité</small></span></div>
+            <div><Icon name="seat"/><span><strong>Banquette arrière</strong><small>Espace pratique</small></span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="quotidien" className={styles.lifestyle}>
+        <div className={styles.lifestyleHeader}>
+          <div>
+            <span className={styles.eyebrow}>NEODRIVE AU QUOTIDIEN</span>
+            <h2>Une voiture pour <em>tous vos moments de vie.</em></h2>
+          </div>
+          <p>
+            Ville, périphérie, petites routes ou bord de mer : une voiture compacte
+            qui trouve naturellement sa place dans votre quotidien.
+          </p>
+        </div>
+
+        <div className={styles.lifestyleGrid}>
+          {lifestyle.map((item, index) => (
+            <article key={item.label} className={index === 0 ? styles.lifeFeatured : styles.lifeCard}>
+              <img src={item.image} alt={"NeoDrive - " + item.label} loading="lazy"/>
+              <div>
+                <span>0{index + 1}</span>
+                <strong>{item.label}</strong>
+                <small>{item.text}</small>
+              </div>
             </article>
           ))}
         </div>
       </section>
 
-      <section id="videos" className="videos section">
-        <div className="sectionHeader lightHeader">
-          <span className="eyebrow lightEyebrow">Voir avant d’acheter</span>
-          <h2>Découvrez la NeoDrive telle qu’elle est vraiment.</h2>
+      <section id="videos" className={styles.videoSection}>
+        <div className={styles.videoIntro}>
+          <span className={styles.eyebrowLight}>VOIR LA VOITURE POUR DE VRAI</span>
+          <h2>Pas seulement des promesses.<br/><em>Des images réelles.</em></h2>
           <p>
-            Présentation, habitacle et conduite : uniquement des vidéos utiles pour voir la voiture,
-            pas des images de manutention ou de déchargement.
+            Présentation du véhicule, intérieur et essai routier :
+            regardez la NeoDrive telle qu’elle est.
           </p>
+          <a href="/videos" className={styles.videoAll}>Voir toutes les vidéos <Icon name="arrow" size={17}/></a>
         </div>
 
-        <div className="videoGrid">
-          <article className="mainVideo">
-            <video controls preload="metadata" playsInline poster="/img1.png">
-              <source src="/presentation1.mp4" type="video/mp4" />
+        <div className={styles.videoGrid}>
+          <article className={styles.videoMain}>
+            <video controls preload="metadata" playsInline poster="/neodrive-switch/real/exterieur-ville.webp">
+              <source src="/presentation1.mp4" type="video/mp4"/>
             </video>
-            <div><strong>Présentation NeoDrive</strong><span>Le véhicule sous tous les angles.</span></div>
+            <div><span><Icon name="play" size={16}/></span><strong>Présentation NeoDrive</strong><small>Découvrez la voiture sous tous les angles.</small></div>
           </article>
-
           <article>
-            <video controls preload="metadata" playsInline poster="/img4.png">
-              <source src="/interieur.mp4" type="video/mp4" />
+            <video controls preload="metadata" playsInline poster="/neodrive-switch/real/interieur-tableau-de-bord.webp">
+              <source src="/interieur.mp4" type="video/mp4"/>
             </video>
-            <div><strong>À l’intérieur</strong><span>Habitacle, commandes et espace.</span></div>
+            <div><span><Icon name="play" size={16}/></span><strong>L’intérieur</strong><small>Habitacle, commandes et espace.</small></div>
           </article>
-
           <article>
-            <video controls preload="metadata" playsInline poster="/img2.png">
-              <source src="/essai-route.mp4" type="video/mp4" />
+            <video controls preload="metadata" playsInline poster="/neodrive-switch/photos/front-landscape.webp">
+              <source src="/essai-route.mp4" type="video/mp4"/>
             </video>
-            <div><strong>Sur la route</strong><span>La NeoDrive en mouvement.</span></div>
+            <div><span><Icon name="play" size={16}/></span><strong>Sur la route</strong><small>La NeoDrive en mouvement.</small></div>
           </article>
         </div>
-
-        <a href="/videos" className="videoLink">Voir toutes les vidéos →</a>
       </section>
 
-      <section className="clients section">
-        <div className="clientIntro">
-          <span className="eyebrow">Des clients partout en France</span>
-          <h2>Une vraie voiture, livrée chez de vrais clients.</h2>
+      <section className={styles.contactBand}>
+        <div className={styles.contactImage}>
+          <img src="/neodrive-switch/real/exterieur-arriere.webp" alt="NeoDrive en extérieur" loading="lazy"/>
+        </div>
+        <div className={styles.contactCopy}>
+          <span className={styles.eyebrowLight}>NEODRIVE</span>
+          <h2>La mobilité <em>plus simple, plus libre.</em></h2>
           <p>
-            Nous préférons montrer des expériences concrètes : livraison, prise en main et utilisation
-            réelle. C’est aussi ce qui permet d’acheter à distance plus sereinement.
+            Dites-nous simplement la version qui vous intéresse et votre code postal.
+            Nous vous indiquons la disponibilité et le prix de livraison.
           </p>
-          <div className="clientPoints">
-            <span>✓ Livraison nationale</span>
-            <span>✓ Vidéo du véhicule possible</span>
-            <span>✓ Accompagnement SAV</span>
+          <div className={styles.contactProofs}>
+            <span><Icon name="camera" size={18}/> Photos & vidéos sur demande</span>
+            <span><Icon name="truck" size={18}/> Livraison partout en France</span>
+            <span><Icon name="shield" size={18}/> Paiement à la livraison</span>
           </div>
-        </div>
-        <div className="clientVideos">
-          <article>
-            <video controls preload="metadata" playsInline>
-              <source src="/client1.mp4" type="video/mp4" />
-            </video>
-            <span>Livraison client</span>
-          </article>
-          <article>
-            <video controls preload="metadata" playsInline>
-              <source src="/client2.mp4" type="video/mp4" />
-            </video>
-            <span>Prise en main NeoDrive</span>
-          </article>
+          <a href={whatsapp} target="_blank" rel="noreferrer" className={styles.bigWhatsapp}>
+            <Icon name="message" size={20}/> Parlez-nous de votre projet
+          </a>
         </div>
       </section>
 
-      <section className="buying section">
-        <div className="buyCard">
-          <span className="eyebrow">Acheter simplement</span>
-          <h2>Vous savez ce que vous achetez avant de payer.</h2>
-          <p>
-            Vous nous contactez avec votre code postal et la version souhaitée. Nous confirmons
-            la disponibilité, le transport et le prix. Le véhicule est ensuite livré à l’adresse convenue.
-          </p>
-          <div className="steps">
-            <div><b>01</b><span><strong>Vous nous contactez</strong><small>Version, couleur et code postal.</small></span></div>
-            <div><b>02</b><span><strong>Nous confirmons</strong><small>Disponibilité, délai et transport.</small></span></div>
-            <div><b>03</b><span><strong>Livraison</strong><small>Votre NeoDrive arrive à l’adresse prévue.</small></span></div>
-            <div><b>04</b><span><strong>Contrôle & règlement</strong><small>Selon les modalités convenues avec NeoDrive.</small></span></div>
-          </div>
-        </div>
-        <div className="buyImage">
-          <img src="/img1.png" alt="NeoDrive électrique grise" loading="lazy" />
-        </div>
-      </section>
-
-      <section className="finalCta">
-        <div className="finalOverlay" />
-        <div className="finalContent">
-          <span className="badge">NeoDrive · voiture sans permis électrique</span>
-          <h2>Envie de voir si une NeoDrive vous correspond ?</h2>
-          <p>
-            Envoyez-nous simplement votre code postal et la version qui vous intéresse.
-            Nous vous répondons avec les disponibilités et le prix de livraison.
-          </p>
-          <div className="finalActions">
-            <a href={whatsapp} target="_blank" rel="noreferrer" className="primaryBtn">💬 WhatsApp</a>
-            <a href="/produit" className="secondaryBtn">Voir les véhicules</a>
-          </div>
-        </div>
-      </section>
-
-      <a className="floatingWhatsapp" href={whatsapp} target="_blank" rel="noreferrer" aria-label="Contacter NeoDrive sur WhatsApp">
-        <span>WhatsApp</span><b>↗</b>
+      <a href={whatsapp} target="_blank" rel="noreferrer" className={styles.floatingWhatsapp} aria-label="Contacter NeoDrive sur WhatsApp">
+        <Icon name="message" size={23}/>
       </a>
-
-      <style jsx global>{`
-        html{scroll-behavior:smooth}
-        body{background:#fff!important}
-      `}</style>
-
-      <style jsx>{`
-        .bis{--ink:#111318;--muted:#6f747c;--orange:#f97316;--green:#25d366;background:#fff;color:var(--ink);overflow:hidden}
-        .section{padding:88px max(20px,6vw)}
-        .hero{position:relative;min-height:690px;display:flex;align-items:center;background:url('/hero.png') center 52%/cover no-repeat;color:#fff}
-        .heroOverlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,10,14,.78) 0%,rgba(8,10,14,.52) 44%,rgba(8,10,14,.14) 100%)}
-        .heroContent{position:relative;z-index:2;width:min(1180px,100%);margin:auto;padding:74px max(22px,4vw);display:flex;flex-direction:column;align-items:flex-start}
-        .badge{display:inline-flex;align-items:center;background:rgba(255,255,255,.94);color:#111;padding:9px 13px;border-radius:999px;font-size:12px;font-weight:900}
-        .hero h1{font-size:clamp(54px,7vw,92px);line-height:.93;letter-spacing:-.055em;max-width:760px;margin:18px 0 20px;font-weight:950}
-        .heroLead{font-size:clamp(18px,2vw,23px);line-height:1.55;max-width:630px;margin:0;color:#eef1f4}.heroLead strong{color:#fff}
-        .priceLine{display:flex;align-items:end;gap:8px;margin-top:24px}.priceLine span{font-size:15px;font-weight:800;margin-bottom:10px}.priceLine strong{font-size:50px;line-height:1;color:#ff972f;letter-spacing:-.05em}.priceLine small{font-weight:900;margin-bottom:8px}
-        .heroActions,.finalActions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}.heroActions a,.finalActions a{text-decoration:none;padding:15px 19px;border-radius:14px;font-weight:950;transition:.2s ease}.heroActions a:hover,.finalActions a:hover{transform:translateY(-2px)}
-        .primaryBtn{background:var(--green);color:#fff}.secondaryBtn{background:#fff;color:#111}.heroProof{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}.heroProof span{font-size:12px;font-weight:850;padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.26);background:rgba(255,255,255,.09);backdrop-filter:blur(8px)}
-        .trustBar{position:relative;z-index:4;width:min(1060px,calc(100% - 34px));margin:-38px auto 0;background:#fff;border-radius:24px;box-shadow:0 20px 55px rgba(16,20,26,.12);display:grid;grid-template-columns:repeat(3,1fr);overflow:hidden}.trustBar div{padding:23px 25px;border-right:1px solid #ececec}.trustBar div:last-child{border:0}.trustBar strong{display:block;font-size:18px}.trustBar span{display:block;margin-top:5px;color:#7a8088;font-size:12px}
-        .eyebrow{display:inline-block;color:#f26618;font-size:11px;font-weight:950;letter-spacing:.13em;text-transform:uppercase}.sectionText,.sectionHeader{max-width:800px}.sectionText h2,.sectionHeader h2,.showcaseCopy h2,.clientIntro h2,.buyCard h2,.finalCta h2{font-size:clamp(40px,5.2vw,64px);line-height:1;letter-spacing:-.05em;margin:14px 0 18px;font-weight:950}.sectionText p,.sectionHeader p,.showcaseCopy p,.clientIntro p,.buyCard>p,.finalCta p{font-size:17px;line-height:1.68;color:var(--muted);margin:0}
-        .welcome{padding-top:110px}.miniFeatures{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:42px}.miniFeatures article{padding:22px;background:#f7f7f5;border:1px solid #ecebe7;border-radius:20px;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center}.miniFeatures b{grid-row:span 2;width:38px;height:38px;border-radius:12px;background:#111;color:#fff;display:grid;place-items:center;font-size:16px}.miniFeatures strong{font-size:15px}.miniFeatures span{font-size:12px;color:#7a7f86}
-        .showcase{background:#f5f5f2;display:grid;grid-template-columns:1.08fr .92fr;gap:70px;align-items:center}.carStage{position:relative;min-height:570px;background:radial-gradient(circle at 50% 48%,#fff 0%,#fff 35%,#ecece8 72%);border-radius:34px;display:grid;place-items:center;overflow:hidden}.carStage img{position:relative;z-index:2;width:93%;height:93%;object-fit:contain}.stageHalo{position:absolute;width:72%;height:20%;left:14%;bottom:10%;background:#c9cbc8;filter:blur(28px);border-radius:50%;opacity:.45}.stageBadge{position:absolute;z-index:3;left:22px;bottom:22px;background:#111;color:#fff;border-radius:15px;padding:13px 16px;display:flex;flex-direction:column}.stageBadge span{font-size:11px;color:#c6cad0}.stageBadge strong{font-size:20px;margin-top:3px}.showcaseCopy{max-width:580px}.pills{display:flex;flex-wrap:wrap;gap:8px;margin:25px 0}.pills span{font-size:12px;font-weight:850;background:#fff;border:1px solid #dddcd6;border-radius:999px;padding:9px 11px}.darkBtn{display:inline-block;background:#111;color:#fff;text-decoration:none;font-weight:900;border-radius:14px;padding:14px 17px}
-        .details{padding-top:70px;padding-bottom:70px}.detailGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:min(1180px,100%);margin:auto}.detailGrid figure{margin:0;background:#f8f8f6;border:1px solid #ecebe8;border-radius:24px;overflow:hidden}.detailGrid img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}.detailGrid figcaption{padding:17px 19px;display:flex;flex-direction:column;gap:4px}.detailGrid strong{font-size:17px}.detailGrid span{font-size:12px;color:#767c84;line-height:1.45}
-        .versionsSection{background:#faf9f7}.sectionHeader{margin:0 auto 46px;text-align:center}.versions{width:min(1180px,100%);margin:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}.version{position:relative;background:#fff;border:1px solid #e7e5e1;border-radius:26px;padding:28px;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(10,14,20,.04)}.version.featured{border:2px solid #f97316;box-shadow:0 24px 55px rgba(249,115,22,.12)}.popular{position:absolute;left:24px;top:-13px;background:#f97316;color:#fff;border-radius:999px;padding:7px 10px;font-size:10px;font-weight:950;letter-spacing:.08em}.versionTop{display:flex;justify-content:space-between;gap:14px;align-items:start}.versionTop h3{font-size:25px;margin:0}.versionTop span{font-size:10px;font-weight:850;color:#757b83;background:#f0f0ee;padding:7px 9px;border-radius:999px}.versionPrice{font-size:39px;font-weight:950;letter-spacing:-.04em;margin:30px 0 12px}.versionPrice small{font-size:12px;letter-spacing:0}.versionText{font-size:14px;line-height:1.55;color:#747981;min-height:66px}.version ul{list-style:none;padding:0;margin:20px 0 28px}.version li{padding:10px 0;border-top:1px solid #eceae6;font-size:14px;font-weight:750}.version li:before{content:'✓';color:#f97316;font-weight:950;margin-right:8px}.version a{margin-top:auto;text-decoration:none;text-align:center;color:#111;font-weight:900;border:1px solid #dedcd7;padding:13px;border-radius:14px}.featured a{background:#f97316;border-color:#f97316;color:#fff}
-        .videos{background:#0c0f14;color:#fff}.lightHeader p{color:#adb3bc}.lightEyebrow{color:#ff9c52}.videoGrid{width:min(1180px,100%);margin:auto;display:grid;grid-template-columns:1.1fr .9fr;grid-template-rows:1fr 1fr;gap:14px}.videoGrid article{background:#171a20;border:1px solid #252a31;border-radius:22px;overflow:hidden}.mainVideo{grid-row:span 2}.videoGrid video{display:block;width:100%;background:#000;object-fit:cover}.mainVideo video{aspect-ratio:4/3}.videoGrid article:not(.mainVideo) video{aspect-ratio:16/9}.videoGrid article>div{padding:14px 17px;display:flex;flex-direction:column;gap:3px}.videoGrid strong{font-size:14px}.videoGrid span{font-size:11px;color:#8f97a1}.videoLink{display:block;width:max-content;margin:24px auto 0;color:#fff;text-decoration:none;font-weight:900;border-bottom:1px solid #666;padding-bottom:3px}
-        .clients{display:grid;grid-template-columns:.8fr 1.2fr;gap:60px;align-items:center}.clientIntro{max-width:570px}.clientPoints{display:flex;flex-direction:column;gap:8px;margin-top:24px}.clientPoints span{font-size:13px;font-weight:850}.clientVideos{display:grid;grid-template-columns:1fr 1fr;gap:14px}.clientVideos article{border-radius:22px;overflow:hidden;background:#111;position:relative}.clientVideos video{display:block;width:100%;aspect-ratio:9/13;object-fit:cover;background:#000}.clientVideos article>span{position:absolute;left:13px;bottom:13px;background:rgba(0,0,0,.72);color:#fff;border-radius:999px;padding:7px 9px;font-size:10px;font-weight:850}
-        .buying{background:#f6f5f2;display:grid;grid-template-columns:.95fr 1.05fr;gap:55px;align-items:center}.buyCard{max-width:640px}.steps{margin-top:30px}.steps>div{display:flex;gap:13px;padding:13px 0;border-top:1px solid #dedcd7}.steps b{width:34px;height:34px;flex:0 0 34px;border-radius:10px;background:#111;color:#fff;display:grid;place-items:center;font-size:10px}.steps span{display:flex;flex-direction:column}.steps strong{font-size:14px}.steps small{font-size:11px;color:#777d85;margin-top:3px}.buyImage{min-height:500px;background:#fff;border-radius:30px;display:grid;place-items:center;overflow:hidden}.buyImage img{width:95%;height:95%;object-fit:contain}
-        .finalCta{position:relative;min-height:530px;margin:0 max(14px,3vw) 38px;border-radius:34px;overflow:hidden;background:url('/hero.png') center/cover no-repeat;color:#fff;display:grid;place-items:center;text-align:center}.finalOverlay{position:absolute;inset:0;background:rgba(5,8,12,.68)}.finalContent{position:relative;z-index:2;max-width:880px;padding:50px 25px}.finalCta p{color:#e0e4e8;max-width:700px;margin:0 auto}.finalActions{justify-content:center}
-        .floatingWhatsapp{position:fixed;right:17px;bottom:17px;z-index:9998;background:#25d366;color:#fff;text-decoration:none;border-radius:999px;padding:12px 14px 12px 17px;display:flex;align-items:center;gap:9px;font-size:12px;font-weight:950;box-shadow:0 12px 30px rgba(0,0,0,.2)}.floatingWhatsapp b{width:27px;height:27px;border-radius:50%;background:#fff;color:#178f45;display:grid;place-items:center}
-        @media(max-width:1000px){.showcase,.clients,.buying{grid-template-columns:1fr}.showcaseCopy,.clientIntro,.buyCard{max-width:760px}.miniFeatures{grid-template-columns:repeat(2,1fr)}.carStage{min-height:500px}.buyImage{min-height:440px}}
-        @media(max-width:800px){.section{padding:66px 18px}.hero{min-height:610px;align-items:flex-end;background-position:58% center}.heroOverlay{background:linear-gradient(180deg,rgba(7,9,13,.12) 0%,rgba(7,9,13,.40) 42%,rgba(7,9,13,.88) 100%)}.heroContent{padding:70px 18px 58px}.hero h1{font-size:49px;max-width:560px}.heroLead{font-size:17px}.priceLine strong{font-size:43px}.trustBar{margin-top:-28px;grid-template-columns:1fr 1fr}.trustBar div{padding:17px 16px}.trustBar div:nth-child(2){border-right:0}.trustBar div:last-child{grid-column:span 2;border-top:1px solid #ececec}.welcome{padding-top:90px}.sectionText h2,.sectionHeader h2,.showcaseCopy h2,.clientIntro h2,.buyCard h2{font-size:39px}.miniFeatures{grid-template-columns:1fr 1fr}.showcase{gap:34px}.carStage{min-height:410px}.detailGrid{grid-template-columns:1fr 1fr}.detailGrid figure:last-child{grid-column:span 2}.detailGrid figure:last-child img{aspect-ratio:16/9}.versions{grid-template-columns:1fr}.version.featured{order:-1}.videoGrid{grid-template-columns:1fr;grid-template-rows:auto}.mainVideo{grid-row:auto}.mainVideo video,.videoGrid article:not(.mainVideo) video{aspect-ratio:16/9}.clientVideos{grid-template-columns:1fr 1fr}.buyImage{min-height:360px}.finalCta{min-height:470px}.finalCta h2{font-size:43px}}
-        @media(max-width:520px){.hero{min-height:560px}.hero h1{font-size:42px}.heroActions,.finalActions{width:100%;flex-direction:column}.heroActions a,.finalActions a{text-align:center;width:100%}.heroProof span{font-size:10px}.trustBar strong{font-size:15px}.trustBar span{font-size:10px}.miniFeatures{grid-template-columns:1fr;gap:9px}.miniFeatures article{padding:16px}.sectionText h2,.sectionHeader h2,.showcaseCopy h2,.clientIntro h2,.buyCard h2{font-size:34px}.carStage{min-height:330px;border-radius:24px}.stageBadge{left:14px;bottom:14px;padding:10px 12px}.stageBadge strong{font-size:17px}.detailGrid{grid-template-columns:1fr}.detailGrid figure:last-child{grid-column:auto}.detailGrid figure:last-child img{aspect-ratio:4/3}.clientVideos{grid-template-columns:1fr}.clientVideos video{aspect-ratio:16/11}.buyImage{min-height:300px}.finalCta{margin-left:10px;margin-right:10px;border-radius:26px}.finalCta h2{font-size:36px}.floatingWhatsapp span{display:none}.floatingWhatsapp{padding:10px}.floatingWhatsapp b{width:34px;height:34px}}
-      `}</style>
     </main>
   );
 }
