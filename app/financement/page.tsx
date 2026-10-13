@@ -25,7 +25,7 @@ export default function Financement(){
  const mensualiteFinale=mensualite+(assurance?assuranceMois:0);
  const eligible=finance>=3000&&finance<=75000;
  return <main className="fin">
-  <section className="hero"><span>FINANCEMENT NEODRIVE</span><h1>Votre voiture.<br/>Votre financement.<br/><em>Un seul dossier.</em></h1><p>Calculez le coût complet de votre NeoDrive, choisissez votre apport et simulez vos mensualités. Pour l’étude des demandes de financement, nous travaillons avec un partenaire Groupama.</p><div className="steps"><b>1. Votre projet</b><b>2. Simulation</b><b>3. Dossier</b></div></section>
+  <section className="hero"><span>FINANCEMENT NEODRIVE</span><h1>Votre voiture.<br/>Votre financement.<br/><em>Un seul dossier.</em></h1><p>Calculez le coût complet de votre NeoDrive, choisissez votre apport et obtenez une estimation indicative de vos mensualités.</p><div className="steps"><b>1. Votre projet</b><b>2. Simulation</b><b>3. Dossier</b></div></section>
   <section className="wrap">
    <div className="notice"><strong>Documents à préparer</strong><p><b>Les 3 derniers bulletins de salaire</b>, le dernier avis d’imposition, le contrat de travail, une pièce d’identité, un justificatif de domicile et un RIB.</p></div>
    <div className="columns">
@@ -39,7 +39,7 @@ export default function Financement(){
      <div className="summary"><div><span>Véhicule</span><b>{versions[version].prix.toLocaleString("fr-FR")} €</b></div><div><span>Livraison</span><b>{livraison.toLocaleString("fr-FR")} €</b></div><div><span>Carte grise / mise en route</span><b>{cg?"150 €":"0 €"}</b></div><div><span>Total du projet</span><b>{total.toLocaleString("fr-FR")} €</b></div><div><span>Apport</span><b>- {apport.toLocaleString("fr-FR")} €</b></div><div className="big"><span>Montant à financer</span><b>{finance.toLocaleString("fr-FR")} €</b></div></div>
     </section>
 
-    <section className="card"><span className="eye">02 — SIMULATION GROUPAMA</span><h2>Votre mensualité</h2>
+    <section className="card"><span className="eye">02 — SIMULATION DE FINANCEMENT</span><h2>Votre mensualité</h2>
      <div className="loan"><div><span>Crédit</span><b>Auto</b></div><div><span>Montant</span><b>{eur(finance)} €</b></div><div><span>Durée</span><b>{duree} mois</b></div><div><span>Code postal</span><b>{cp||"—"}</b></div></div>
      <label>Durée : <b>{duree} mois</b><input className="range" type="range" min="12" max="84" value={duree} onChange={e=>setDuree(Number(e.target.value))}/><div className="ticks"><span>12 mois</span><span>84 mois</span></div></label>
      <div className="presets">{[12,24,36,48,60,72,84].map(x=><button type="button" key={x} className={x===duree?"active":""} onClick={()=>setDuree(x)}>{x}</button>)}</div>
@@ -47,8 +47,8 @@ export default function Financement(){
      <div className="recap"><h3>Récapitulatif <small>(hors assurance facultative)</small></h3><div><span>Montant souhaité</span><b>{eur(finance)} €</b></div><div><span>Mensualités</span><b>{eligible?`${eur(mensualite)} €`:"—"}</b></div><div><span>Frais de dossier</span><b>0,00 €</b></div><div><span>TAEG fixe indicatif</span><b>6,45 %</b></div><div><span>Taux débiteur annuel fixe indicatif</span><b>6,27 %</b></div><div className="green"><span>Montant total dû</span><b>{eligible?`${eur(totalDu)} €`:"—"}</b></div></div>
      <label className="check insurance"><input type="checkbox" checked={assurance} onChange={e=>setAssurance(e.target.checked)}/> Ajouter une estimation d’assurance facultative</label>
      {assurance&&<div className="recap"><h3>Assurance facultative — exemple</h3><div><span>Coût par mois</span><b>{eur(assuranceMois)} €</b></div><div><span>Coût total</span><b>{eur(coutAssurance)} €</b></div><div className="green"><span>Total dû avec assurance</span><b>{eur(totalDu+coutAssurance)} €</b></div></div>}
-     {!eligible&&<p className="warn">Le simulateur Auto Groupama communiqué prévoit actuellement un montant de 3 000 € à 75 000 €.</p>}
-     <p className="source">Simulation non contractuelle. Paramètres reproduits d’après le simulateur Groupama communiqué : TAEG 6,45 %, taux débiteur fixe 6,27 %, frais de dossier 0 €. Les conditions réelles peuvent varier selon la date, le montant, la durée et l’acceptation du dossier.</p>
+     {!eligible&&<p className="warn">La simulation est disponible pour un montant compris entre 3 000 € et 75 000 €.</p>}
+     <p className="source">Simulation indicative et non contractuelle calculée à partir d’un exemple de TAEG fixe de 6,45 %, d’un taux débiteur annuel fixe de 6,27 % et de frais de dossier de 0 €. Les conditions réelles peuvent varier selon l’organisme financier, la date, le montant, la durée et l’acceptation du dossier.</p>
     </section>
    </div>
 
