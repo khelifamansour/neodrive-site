@@ -59,7 +59,7 @@ export default function Home() {
             <h3>Confort</h3>
             <p className="cardPrice">4 990 € TTC</p>
             <p className="cardText">Le meilleur équilibre entre prix, équipement, délai et tranquillité.</p>
-            <div className="infoBox darkInfo"><strong>🚚 Livraison</strong><span>2 à 8 semaines environ</span></div>
+            <div className="infoBox darkInfo"><strong>✅ Disponibilité</strong><span>En stock — disponible immédiatement</span></div>
             <div className="warranty">
               <strong>🛡️ Garantie 2 ans</strong>
               <span>Garantie légale de conformité pendant 2 ans à compter de la livraison.</span>
