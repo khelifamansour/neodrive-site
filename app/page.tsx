@@ -61,10 +61,9 @@ export default function Home() {
             <p className="cardText">Le meilleur équilibre entre prix, équipement, délai et tranquillité.</p>
             <div className="infoBox darkInfo"><strong>🚚 Livraison</strong><span>2 à 8 semaines environ</span></div>
             <div className="warranty">
-              <strong>🛡️ Accompagnement jusqu’à 2 ans</strong>
-              <span>Prise en charge à 100% pendant les 6 premiers mois.</span>
-              <span>Puis jusqu’à 70% pris en charge par NeoDrive pendant la période restante, avec participation client minimale de 30%.</span>
-              <small>Voir conditions.</small>
+              <strong>🛡️ Garantie 2 ans</strong>
+              <span>Garantie légale de conformité pendant 2 ans à compter de la livraison.</span>
+              <small>Une protection simple et claire, selon les conditions légales applicables.</small>
             </div>
             <ul>
               <li>Caméra de recul</li>
