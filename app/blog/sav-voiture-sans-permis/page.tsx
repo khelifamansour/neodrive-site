@@ -111,10 +111,10 @@ export default function Page() {
 
         <h2>5. Garantie et assistance : vérifiez la version achetée</h2>
         <p>
-          Les conditions de garantie ne sont pas identiques sur toutes les versions. Au 17 août 2026, le site NeoDrive affiche une garantie structure et châssis de 2 ans sur les trois versions actuellement présentées. La couverture des pièces et les services d’assistance varient selon la version.
+          Les véhicules NeoDrive neufs vendus à des consommateurs bénéficient de la garantie légale de conformité pendant 2 ans à compter de leur livraison, dans les conditions prévues par la loi.
         </p>
         <p>
-          Le site indique actuellement 3 mois de garantie pièces pour la version Essentiel, 6 mois pour la version Confort et 2 ans pour la version Confort Plus+. La version Confort affiche également une assistance technique gratuite pendant 2 ans, tandis que la Confort Plus+ mentionne elle aussi 2 ans d’assistance technique gratuite.
+          Cette protection de 2 ans est présentée de manière identique pour toutes les versions, sans barème dégressif de prise en charge.
         </p>
         <p>
           Ces conditions étant commerciales et susceptibles d’évoluer, vérifiez toujours la fiche de la version concernée ainsi que vos documents de vente avant de conclure qu’une intervention est couverte.
