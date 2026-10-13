@@ -5,6 +5,13 @@ export const dynamic = "force-dynamic";
 const SUPABASE_URL = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 const BUCKET = "social-media";
 
+type RegisterItem = {
+  path?: unknown;
+  type?: unknown;
+  name?: unknown;
+  context?: unknown;
+};
+
 export async function POST(req: Request) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const uploadSecret = process.env.CRON_SECRET;
@@ -13,14 +20,15 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body || body.passcode !== uploadSecret) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
 
-  const items = Array.isArray(body.items) ? body.items.slice(0, 80) : [];
+  const items = Array.isArray(body.items) ? body.items.slice(0, 80) as RegisterItem[] : [];
   if (!items.length) return NextResponse.json({ ok: false, error: "Aucun média à enregistrer" }, { status: 400 });
 
   const batchContext = String(body.batchContext || "").trim().slice(0, 1000);
-  const rows = items.map((item: any) => {
+  const rows = items.map((item) => {
     const path = String(item.path || "");
     const type = String(item.type || "");
     const name = String(item.name || "").slice(0, 160);
+    const itemContext = String(item.context || "").trim().slice(0, 1000);
     const mediaType = type.startsWith("video/") ? "video" : "image";
     const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path.split("/").map(encodeURIComponent).join("/")}`;
     return {
@@ -28,7 +36,7 @@ export async function POST(req: Request) {
       public_url: publicUrl,
       media_type: mediaType,
       title: name || null,
-      context: batchContext || null,
+      context: itemContext || batchContext || null,
       status: "ready",
       priority: 100,
       updated_at: new Date().toISOString(),

@@ -16,6 +16,8 @@ type Asset = {
   media_type: string;
   context: string | null;
   title: string | null;
+  ai_summary: string | null;
+  ai_tags: string[] | null;
   times_used: number;
   created_at: string;
 };
@@ -37,7 +39,7 @@ export async function GET(req: Request) {
   const since = new Date(Date.now() - MEDIA_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await sb
     .from("social_media_assets")
-    .select("id,storage_path,public_url,media_type,context,title,times_used,created_at")
+    .select("id,storage_path,public_url,media_type,context,title,ai_summary,ai_tags,times_used,created_at")
     .eq("status", "ready")
     .gte("created_at", since)
     .order("times_used", { ascending: true })
@@ -46,7 +48,7 @@ export async function GET(req: Request) {
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
-  const assets = (data || []).filter((x: any) => isRealUpload(x as Asset)) as Asset[];
+  const assets = ((data || []) as Asset[]).filter(isRealUpload);
   if (!assets.length) return NextResponse.json({ ok: true, skipped: true, reason: "Aucun média réel récent dans la bibliothèque" });
 
   await sb.from("social_content_queue").delete().eq("status", "scheduled").in("platform", ["instagram", "facebook"]);
@@ -84,7 +86,7 @@ export async function GET(req: Request) {
     return null;
   }
 
-  const rows: any[] = [];
+  const rows: Array<Record<string, unknown>> = [];
   const recentCopy: string[] = [];
 
   for (let d = 0; d < CAMPAIGN_DAYS; d++) {

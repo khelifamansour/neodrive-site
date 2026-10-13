@@ -11,6 +11,8 @@ export type SocialAssetLike = {
   public_url?: string | null;
   context?: string | null;
   title?: string | null;
+  ai_summary?: string | null;
+  ai_tags?: string[] | null;
 };
 
 export const SOCIAL_THEMES: SocialTheme[] = [
@@ -180,7 +182,7 @@ export function cleanContext(value?: string | null) {
 }
 
 function contextTags(asset: SocialAssetLike) {
-  const text = `${asset.context || ""} ${asset.title || ""}`.toLowerCase();
+  const text = `${asset.context || ""} ${asset.title || ""} ${asset.ai_summary || ""} ${(asset.ai_tags || []).join(" ")}`.toLowerCase();
   const tags = new Set<string>();
   if (/livrai|client|remise|transport|remorque/.test(text)) tags.add("livraison");
   if (/recharg|prise|220|batter/.test(text)) tags.add("recharge");
@@ -195,9 +197,10 @@ function contextTags(asset: SocialAssetLike) {
 export function pickSocialTheme(asset: SocialAssetLike, recentTexts: string[] = [], seed = "") {
   const recent = recentTexts.join("\n").toLowerCase();
   const tags = contextTags(asset);
+  const neutralIds = new Set(["preuve-reelle", "deux-places", "choix-rationnel", "humain", "prix-direct"]);
   const contextual = tags.size
     ? SOCIAL_THEMES.filter((t) => t.tags.some((tag) => tags.has(tag)))
-    : SOCIAL_THEMES;
+    : SOCIAL_THEMES.filter((t) => neutralIds.has(t.id));
   const unseen = contextual.filter((t) => !recent.includes(t.hook.toLowerCase()));
   const pool = unseen.length ? unseen : contextual.length ? contextual : SOCIAL_THEMES;
   const basis = `${seed}|${asset.id || ""}|${asset.title || ""}|${asset.context || ""}|${Date.now()}`;

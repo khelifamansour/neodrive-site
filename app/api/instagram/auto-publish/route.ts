@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { dailyPosterForPublishing } from "@/lib/marketing-posters";
-import { buildSocialCaption, isVideoAsset, pickSocialTheme, type SocialTheme } from "@/lib/social-copy";
+import { isVideoAsset, pickSocialTheme, type SocialTheme } from "@/lib/social-copy";
+import { buildCoherentSocialCopy } from "@/lib/social-copy-ai";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -9,7 +10,7 @@ const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Q = { id:string; caption:string; media_url:string; content_type:string; hook:string|null; retry_count:number|null; max_retries:number|null };
-type A = { id:string; storage_path:string; public_url:string; media_type:string; title:string|null; context:string|null; times_used:number|null; last_used_at:string|null; created_at:string };
+type A = { id:string; storage_path:string; public_url:string; media_type:string; title:string|null; context:string|null; ai_summary:string|null; ai_tags:string[]|null; times_used:number|null; last_used_at:string|null; created_at:string };
 type Kind = "image" | "video";
 
 const H = (k:string) => ({ Authorization:`Bearer ${k}`, apikey:k });
@@ -40,7 +41,7 @@ async function recentTexts(k:string) {
   const r = await fetch(u,{headers:H(k),cache:"no-store"});
   const j = await r.json().catch(()=>[]);
   if (!r.ok || !Array.isArray(j)) return [] as string[];
-  return j.map((x:any)=>`${x.hook||""}\n${x.caption||""}`);
+  return (j as Array<{hook?:unknown;caption?:unknown}>).map((x)=>`${String(x.hook||"")}\n${String(x.caption||"")}`);
 }
 
 async function lastPublishedKind(k:string):Promise<Kind|null> {
@@ -77,7 +78,7 @@ function pickFromPool(list:A[], preferred:Kind|null) {
 async function asset(k:string, preferred:Kind|null=null) {
   const u = new URL(`${SB}/rest/v1/social_media_assets`);
   u.searchParams.set("status","eq.ready");
-  u.searchParams.set("select","id,storage_path,public_url,media_type,title,context,times_used,last_used_at,created_at");
+  u.searchParams.set("select","id,storage_path,public_url,media_type,title,context,ai_summary,ai_tags,times_used,last_used_at,created_at");
   u.searchParams.set("order","created_at.asc");
   u.searchParams.set("limit","1000");
   const r = await fetch(u,{headers:H(k),cache:"no-store"});
@@ -91,14 +92,14 @@ async function asset(k:string, preferred:Kind|null=null) {
 async function assetByUrl(k:string,url:string) {
   const u = new URL(`${SB}/rest/v1/social_media_assets`);
   u.searchParams.set("public_url",`eq.${url}`);
-  u.searchParams.set("select","id,storage_path,public_url,media_type,title,context,times_used,last_used_at,created_at");
+  u.searchParams.set("select","id,storage_path,public_url,media_type,title,context,ai_summary,ai_tags,times_used,last_used_at,created_at");
   u.searchParams.set("limit","1");
   const r = await fetch(u,{headers:H(k),cache:"no-store"});
   const j = await r.json().catch(()=>[]);
   return r.ok && Array.isArray(j) && j[0] ? j[0] as A : null;
 }
 
-async function patch(k:string,id:string,data:any) {
+async function patch(k:string,id:string,data:Record<string,unknown>) {
   await fetch(`${SB}/rest/v1/social_content_queue?id=eq.${encodeURIComponent(id)}`,{
     method:"PATCH",headers:{...H(k),"Content-Type":"application/json",Prefer:"return=minimal"},
     body:JSON.stringify({...data,updated_at:new Date().toISOString()}),cache:"no-store"
@@ -198,18 +199,20 @@ export async function GET(req:Request) {
   const recent=await recentTexts(k);
   const previousKind=await lastPublishedKind(k);
   const preferred:Kind|null=previousKind==="video"?"image":previousKind==="image"?"video":null;
-  const a=poster?.asset||await asset(k,preferred);
+  const queuedAsset=q?.media_url?await assetByUrl(k,q.media_url):null;
+  const a=poster?.asset||queuedAsset||await asset(k,preferred);
   if(!a) return NextResponse.json({ok:true,skipped:true,reason:"Aucun média réel compatible dans la bibliothèque"});
 
   const theme=poster?.theme||pickSocialTheme(a,recent,`instagram-${q?.id||"fresh"}-${a.id}-${Date.now()}`);
-  const msg=poster?.caption||buildSocialCaption(theme,a,`instagram-${q?.id||"fresh"}-${Date.now()}`);
+  const copy=poster?{hook:theme.hook,caption:poster.caption}:await buildCoherentSocialCopy({platform:"instagram",theme,asset:a,recentTexts:recent});
+  const msg=copy.caption;
   const url=a.public_url;
   const typ=a.media_type;
 
   if(q){
     await patch(k,q.id,{
       status:"publishing",
-      hook:theme.hook,
+      hook:copy.hook,
       caption:msg,
       media_url:url,
       content_type:isVideoAsset(a)?"reel":"post",
@@ -225,9 +228,9 @@ export async function GET(req:Request) {
       await mark(k,a.id);
     } else {
       await mark(k,a.id);
-      await rememberFresh(k,a,theme,msg,id);
+      await rememberFresh(k,a,{...theme,hook:copy.hook},msg,id);
     }
-    return NextResponse.json({ok:true,published:true,source:posterMode?"daily-poster":q?"planned-slot-mixed-library":"fresh-mixed-library",mediaId:id,media:url,type:kindOf(a),theme:theme.hook,caption:msg});
+    return NextResponse.json({ok:true,published:true,source:posterMode?"daily-poster":q?"planned-slot-mixed-library":"fresh-mixed-library",mediaId:id,media:url,type:kindOf(a),theme:copy.hook,caption:msg});
   } catch(e){
     if(q){
       const n=Number(q.retry_count||0)+1,max=Number(q.max_retries||3);

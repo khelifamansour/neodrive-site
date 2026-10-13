@@ -2,14 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import * as tus from "tus-js-client";
 
 const U = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 const K = "sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd";
 const supabase = createClient(U, K, { auth: { persistSession: false, autoRefreshToken: false } });
 
 type State = "waiting" | "uploading" | "done" | "error";
-type S = { name: string; size: number; state: State; error?: string };
+type S = { name: string; size: number; state: State; uploaded?: number; error?: string };
 type UploadInfo = { index: number; path?: string; token?: string; type?: string; name?: string; size?: number; error?: string };
+
+const LARGE_FILE_THRESHOLD = 6 * 1024 * 1024;
+const TUS_ENDPOINT = "https://tzlsdjzcxdjaatcpwqwn.storage.supabase.co/storage/v1/upload/resumable";
 
 function mb(n: number) {
   return `${(n / 1024 / 1024).toFixed(n > 10 * 1024 * 1024 ? 0 : 1)} Mo`;
@@ -51,6 +55,7 @@ export default function Page() {
   }, []);
   const [ctx, setCtx] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [fileNotes, setFileNotes] = useState<string[]>([]);
   const [progress, setProgress] = useState<S[]>([]);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,6 +68,43 @@ export default function Page() {
   const [seoLoading, setSeoLoading] = useState(false);
   const [seoArticle, setSeoArticle] = useState<{ title: string; url: string } | null>(null);
   const total = useMemo(() => files.reduce((sum, f) => sum + f.size, 0), [files]);
+  const oversized = useMemo(() => files.filter((f) => f.size > maxFileMb * 1024 * 1024), [files, maxFileMb]);
+
+  function chooseFiles(list: File[]) {
+    setFiles(list);
+    setFileNotes(list.map(() => ""));
+  }
+
+  function uploadResumable(file: File, info: UploadInfo, index: number) {
+    return new Promise<UploadInfo>((resolve, reject) => {
+      const upload = new tus.Upload(file, {
+        endpoint: TUS_ENDPOINT,
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        headers: { "x-signature": info.token || "" },
+        uploadDataDuringCreation: true,
+        removeFingerprintOnSuccess: true,
+        chunkSize: 6 * 1024 * 1024,
+        metadata: {
+          bucketName: "social-media",
+          objectName: info.path || "",
+          contentType: file.type || "application/octet-stream",
+          cacheControl: "3600",
+        },
+        onProgress: (uploaded, bytesTotal) => {
+          const percent = bytesTotal > 0 ? Math.round((uploaded / bytesTotal) * 100) : 0;
+          setProgress((p) => p.map((x, k) => k === index ? { ...x, uploaded: percent } : x));
+        },
+        onError: (error) => reject(error),
+        onSuccess: () => resolve(info),
+      });
+      upload.findPreviousUploads()
+        .then((previous) => {
+          if (previous.length) upload.resumeFromPreviousUpload(previous[0]);
+          upload.start();
+        })
+        .catch(reject);
+    });
+  }
 
   async function uploadOne(file: File, info: UploadInfo, index: number) {
     if (info.error || !info.path || !info.token) {
@@ -75,6 +117,11 @@ export default function Page() {
     let lastError = "Erreur d’envoi";
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
+        if (file.size > LARGE_FILE_THRESHOLD) {
+          await uploadResumable(file, info, index);
+          setProgress((p) => p.map((x, k) => k === index ? { ...x, state: "done", uploaded: 100, error: undefined } : x));
+          return info;
+        }
         const { error } = await supabase.storage
           .from("social-media")
           .uploadToSignedUrl(info.path, info.token, file, {
@@ -112,6 +159,10 @@ export default function Page() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!files.length) return;
+    if (oversized.length) {
+      setStatus(`❌ ${oversized.length} fichier(s) dépassent la limite de ${maxFileMb} Mo.`);
+      return;
+    }
     setLoading(true);
     setStatus("Préparation des médias…");
     setProgress(files.map((f) => ({ name: f.name, size: f.size, state: "waiting" })));
@@ -140,7 +191,11 @@ export default function Page() {
         const reg = await fetch("/api/social-media/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ passcode, batchContext: ctx, items: done }),
+          body: JSON.stringify({
+            passcode,
+            batchContext: ctx,
+            items: done.map((item) => ({ ...item, context: fileNotes[item.index] || ctx })),
+          }),
         });
         const registered = await reg.json();
         if (!reg.ok || !registered.ok) throw new Error(registered.error || "Enregistrement incomplet");
@@ -148,7 +203,7 @@ export default function Page() {
 
       const failed = fs.length - done.length;
       setStatus(`✅ ${done.length} média(s) ajouté(s)${failed ? ` · ❌ ${failed} non envoyé(s)` : ""}.`);
-      if (!failed) { setFiles([]); setCtx(""); }
+      if (!failed) { setFiles([]); setFileNotes([]); setCtx(""); }
     } catch (e) {
       setStatus(`❌ ${e instanceof Error ? e.message : "Erreur"}`);
     } finally {
@@ -258,15 +313,29 @@ export default function Page() {
 
     <form onSubmit={submit} style={{ display: "grid", gap: 16, marginTop: 22 }}>
       <label>Code d’accès<input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} required style={input} /></label>
-      <label>Photos et vidéos<input type="file" multiple accept="image/*,video/mp4,video/quicktime" onChange={(e) => setFiles(Array.from(e.target.files || []))} style={input} /></label>
+      <label>Photos et vidéos<input type="file" multiple accept="image/*,video/mp4,video/quicktime" onChange={(e) => chooseFiles(Array.from(e.target.files || []))} style={input} /></label>
       {files.length > 0 && <div><strong>{files.length} fichier(s)</strong> — {mb(total)}</div>}
-      <label>Note globale facultative<textarea value={ctx} onChange={(e) => setCtx(e.target.value)} rows={3} placeholder="Ex. livraison client à Toulouse, essai sur route, détails intérieur…" style={input} /></label>
-      <button disabled={loading || !files.length} style={button}>{loading ? "Envoi fiable en cours…" : `Envoyer ${files.length || "les"} média(s)`}</button>
+      {files.length > 0 && <div style={{ display: "grid", gap: 10 }}>
+        <strong>Décris chaque média pour obtenir une publication cohérente</strong>
+        {files.map((file, index) => <label key={`${file.name}-${file.size}-${file.lastModified}`} style={{ fontSize: 14 }}>
+          {file.name} · {mb(file.size)}
+          <input
+            value={fileNotes[index] || ""}
+            onChange={(e) => setFileNotes((notes) => notes.map((note, i) => i === index ? e.target.value : note))}
+            placeholder="Ex. je présente la voiture rouge sur la remorque avant livraison à Toulouse"
+            maxLength={500}
+            style={input}
+          />
+        </label>)}
+      </div>}
+      <label>Note globale facultative<textarea value={ctx} onChange={(e) => setCtx(e.target.value)} rows={3} placeholder="Utilisée pour les fichiers sans note individuelle." style={input} /></label>
+      {oversized.length > 0 && <div style={{ color: "#b00020", fontWeight: 700 }}>❌ {oversized.map((f) => f.name).join(", ")} : {maxFileMb} Mo maximum par fichier.</div>}
+      <button disabled={loading || !files.length || oversized.length > 0} style={button}>{loading ? "Envoi fiable en cours…" : `Envoyer ${files.length || "les"} média(s)`}</button>
     </form>
 
     {progress.length > 0 && <div style={{ marginTop: 18, display: "grid", gap: 9 }}>
       {progress.map((p, i) => <div key={i} style={{ fontSize: 14, color: p.state === "error" ? "#b00020" : "#222" }}>
-        {p.state === "done" ? "✅" : p.state === "uploading" ? "⏳" : p.state === "error" ? "❌" : "•"} {p.name} <span style={{ color: "#777" }}>({mb(p.size)})</span>{p.error && <span> — {p.error}</span>}
+        {p.state === "done" ? "✅" : p.state === "uploading" ? "⏳" : p.state === "error" ? "❌" : "•"} {p.name} <span style={{ color: "#777" }}>({mb(p.size)}{p.state === "uploading" && p.uploaded !== undefined ? ` · ${p.uploaded}%` : ""})</span>{p.error && <span> — {p.error}</span>}
       </div>)}
     </div>}
 
