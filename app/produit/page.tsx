@@ -8,11 +8,14 @@ const BASE = "/neodrive-switch";
 type Photo = { path: string; label: string; alt: string };
 
 const photos: Photo[] = [
-  { path: "/real/exterieur-avant.webp", label: "Extérieur", alt: "Vue avant réelle de la NeoDrive SWITCH" },
-  { path: "/real/exterieur-ville.webp", label: "En situation", alt: "NeoDrive SWITCH photographiée en situation réelle" },
-  { path: "/real/exterieur-arriere.webp", label: "Vue arrière", alt: "Vue arrière réelle de la NeoDrive SWITCH" },
-  { path: "/real/interieur-tableau-de-bord.webp", label: "Intérieur", alt: "Habitacle réel de la NeoDrive SWITCH" },
-  { path: "/real/livraison-transporteur.webp", label: "Livraison", alt: "NeoDrive SWITCH pendant une livraison réelle" },
+  { path: "/photos/confort-exterieur-avant.jpg", label: "Extérieur", alt: "Vue avant réelle de la NeoDrive SWITCH Confort" },
+  { path: "/photos/confort-interieur-sieges.jpg", label: "Deux places", alt: "Les deux sièges de la NeoDrive SWITCH Confort" },
+  { path: "/photos/confort-interieur-coffre.jpg", label: "Espace intérieur", alt: "Habitacle et espace arrière de la NeoDrive SWITCH Confort" },
+  { path: "/photos/confort-interieur-large.jpg", label: "Habitacle", alt: "Vue large de l'habitacle de la NeoDrive SWITCH Confort" },
+  { path: "/photos/confort-tableau-de-bord.jpg", label: "Poste de conduite", alt: "Tableau de bord réel de la NeoDrive SWITCH Confort" },
+  { path: "/photos/confort-exterieur-arriere.jpg", label: "Vue arrière", alt: "Vue arrière réelle de la NeoDrive SWITCH Confort" },
+  { path: "/photos/confort-arrivage-transport.jpg", label: "Arrivage", alt: "Arrivage réel de véhicules NeoDrive sur transporteur" },
+  { path: "/photos/confort-transport-dechargement.jpg", label: "Transport", alt: "NeoDrive SWITCH transportées avant leur livraison" },
 ];
 
 const specs = [
@@ -104,7 +107,7 @@ export default function Produit() {
 
       <section className={styles.interior}>
         <div className={styles.interiorPhoto}>
-          <img src={source("/real/interieur-tableau-de-bord.webp")} alt="Intérieur réel de la NeoDrive SWITCH" loading="lazy" />
+          <img src={source("/photos/confort-tableau-de-bord.jpg")} alt="Intérieur réel de la NeoDrive SWITCH Confort" loading="lazy" />
         </div>
         <div>
           <span className={styles.eyebrow}>À L’INTÉRIEUR</span>
@@ -145,7 +148,7 @@ export default function Produit() {
       </section>
 
       <section className={styles.delivery}>
-        <img src={source("/real/livraison-transporteur.webp")} alt="Livraison réelle d’une voiture NeoDrive" loading="lazy" />
+        <img src={source("/photos/confort-arrivage-transport.jpg")} alt="Arrivage réel des voitures NeoDrive" loading="lazy" />
         <div>
           <span className={styles.eyebrow}>DE NOTRE STOCK JUSQU’À CHEZ VOUS</span>
           <h2>Une livraison organisée par NeoDrive.</h2>
