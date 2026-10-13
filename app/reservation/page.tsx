@@ -408,21 +408,13 @@ La livraison ou la remise du véhicule est effectuée après réception du règl
           <div style={cgvStyle}>
 {`CONDITIONS GÉNÉRALES DE VENTE
 
-PHILOSOPHIE DE LA GARANTIE Neodrive
+GARANTIE NEODRIVE
 
-La philosophie Neodrive n'est pas de concentrer l'intégralité de la protection du client sur une courte période, mais de l'accompagner sur plusieurs années.
+Les véhicules neufs vendus par Neodrive à des consommateurs bénéficient de la garantie légale de conformité pendant une durée de 2 ans à compter de leur livraison.
 
-Pendant les 24 premiers mois, Neodrive participe au remplacement des composants selon un système de prise en charge dégressive.
+Cette garantie s'applique dans les conditions prévues par les articles L. 217-3 à L. 217-20 du Code de la consommation. Elle permet au client d'obtenir la réparation ou le remplacement du bien en cas de défaut de conformité reconnu, sans frais, sous réserve des conditions légales applicables.
 
-Parallèlement, le premier propriétaire bénéficie pendant 3 ans :
-
-- d'une assistance technique gratuite ;
-- d'un diagnostic à distance gratuit ;
-- d'une remise permanente de 20 % sur les pièces détachées achetées auprès de Neodrive.
-
-Cette approche permet au client de continuer à bénéficier d'un accompagnement et d'un avantage économique même après la période principale de garantie.
-
-L'objectif est d'aider le propriétaire à maintenir son véhicule en bon état de fonctionnement pendant de nombreuses années tout en limitant le coût global de possession du véhicule.
+Cette garantie légale est indépendante de toute éventuelle prestation commerciale complémentaire proposée par Neodrive.
 
 
 1. IDENTIFICATION DU VENDEUR
@@ -703,33 +695,15 @@ Sont notamment exclus de cette garantie :
 - les dommages causés par un tiers ;
 - les dommages résultant d'une mauvaise utilisation du véhicule.
 
-19. GARANTIE DES COMPOSANTS
+19. GARANTIE LÉGALE DE CONFORMITÉ
 
-Les composants mécaniques, électriques et électroniques du véhicule, y compris les batteries, bénéficient d'un programme de participation dégressive au remplacement pendant une durée maximale de 24 mois à compter de la date de livraison du véhicule.
+La garantie légale de conformité couvre le véhicule et ses composants lorsqu'un défaut de conformité existait au moment de la délivrance du véhicule, dans les conditions prévues par la loi.
 
-La participation de Neodrive est calculée sur le prix public TTC de la pièce vendue par Neodrive au moment de la demande.
+Pour un véhicule neuf, le client dispose d'un délai de 2 ans à compter de la livraison pour demander l'application de cette garantie, sans avoir à prouver que le défaut existait au jour de la vente pendant cette période.
 
-Barème de participation :
+Lorsque la garantie légale de conformité est applicable, la mise en conformité par réparation ou remplacement est réalisée sans frais pour le client, conformément aux dispositions légales.
 
-- de 0 à 6 mois : prise en charge de 100 % du prix de la pièce ;
-- de 7 à 12 mois : prise en charge de 70 % du prix de la pièce ;
-- de 13 à 18 mois : prise en charge de 60 % du prix de la pièce ;
-- de 19 à 24 mois : prise en charge de 50 % du prix de la pièce.
-
-Exemple :
-
-Pour une pièce vendue 100 € TTC :
-
-- entre 0 et 6 mois : reste à charge client = 0 € ;
-- entre 7 et 12 mois : reste à charge client = 30 € ;
-- entre 13 et 18 mois : reste à charge client = 40 € ;
-- entre 19 et 24 mois : reste à charge client = 50 €.
-
-Cette participation concerne exclusivement les pièces reconnues défectueuses après diagnostic.
-
-La garantie porte exclusivement sur la pièce concernée.
-
-La main-d'œuvre, les déplacements, les frais annexes et les frais d'immobilisation ne sont pas couverts sauf accord écrit préalable de Neodrive.
+Les pannes ou dommages résultant notamment de l'usure normale, d'un accident, d'un choc, d'un défaut d'entretien, d'une mauvaise utilisation ou d'une modification non autorisée ne constituent pas des défauts de conformité imputables au vendeur.
 
 20. PIÈCES EXCLUES DE LA GARANTIE
 
@@ -758,11 +732,11 @@ Le client s'engage à coopérer avec Neodrive afin de permettre l'identification
 
 Lorsque le diagnostic à distance ne permet pas d'identifier avec certitude l'origine du problème, Neodrive pourra demander le retour de la pièce concernée afin de procéder à une expertise technique.
 
-Les frais d'expédition de la pièce vers Neodrive restent à la charge du client.
+Lorsque la demande est susceptible de relever de la garantie légale de conformité, les modalités de retour ou d'expertise sont organisées avec Neodrive. Les frais nécessaires à la mise en conformité sont pris en charge conformément aux dispositions légales.
 
 Après expertise :
 
-- si la défaillance est reconnue comme couverte par la garantie, la participation prévue au présent contrat sera appliquée ;
+- si la défaillance est reconnue comme couverte par la garantie légale de conformité, la mise en conformité sera effectuée sans frais dans les conditions prévues par la loi ;
 - si la défaillance n'est pas couverte par la garantie, aucune prise en charge ne sera accordée.
 
 Les frais de retour de la pièce restent à la charge du client lorsque la garantie n'est pas applicable.
@@ -790,23 +764,7 @@ Concernant les batteries, sont notamment exclus :
 
 23. PROGRAMME ASSISTANCE Neodrive
 
-Neodrive privilégie l'accompagnement de ses clients sur le long terme.
-
-Le premier propriétaire du véhicule bénéficie pendant une durée de 3 ans à compter de la date de livraison :
-
-- assistance technique gratuite ;
-- diagnostic à distance gratuit ;
-- assistance téléphonique ;
-- assistance WhatsApp ;
-- aide à la recherche de panne ;
-- accès aux procédures techniques disponibles ;
-- remise de 20 % sur les pièces détachées achetées auprès de Neodrive.
-
-Ce programme est réservé au premier acheteur du véhicule et n'est pas transférable sauf accord écrit de Neodrive.
-
-L'assistance technique a pour objectif d'aider le client à diagnostiquer, comprendre et résoudre les éventuels problèmes rencontrés sur le véhicule.
-
-Cette assistance ne constitue pas une garantie supplémentaire sur les pièces ou sur le véhicule.
+Pendant la période de garantie légale de conformité, Neodrive accompagne le client dans le diagnostic et le traitement des défauts susceptibles d'être couverts. Après cette période, le service après-vente, le diagnostic et les pièces détachées restent accessibles selon les tarifs et disponibilités en vigueur.
 
 24. SERVICE APRÈS-VENTE Neodrive
 
@@ -907,13 +865,13 @@ Cette procédure peut notamment s'appliquer aux :
 - composants électroniques ;
 - ou toute autre pièce concernée par la demande.
 
-Les frais d'expédition de la pièce vers Neodrive demeurent à la charge du client.
+Lorsque la demande est susceptible de relever de la garantie légale de conformité, les modalités et frais nécessaires au retour ou à l'expertise sont organisés et pris en charge conformément aux dispositions légales.
 
 Après réception, Neodrive procédera aux vérifications, mesures et contrôles techniques jugés nécessaires afin de déterminer l'origine de la défaillance.
 
 À l'issue de cette expertise :
 
-- si la défaillance est reconnue comme couverte par les présentes Conditions Générales de Vente, la garantie ou la participation applicable sera accordée conformément aux dispositions prévues ;
+- si la défaillance est reconnue comme couverte par la garantie légale de conformité, la mise en conformité sera effectuée sans frais dans les conditions prévues par la loi ;
 - si la défaillance résulte d'une usure normale, d'un défaut d'entretien, d'une mauvaise utilisation, d'une modification non autorisée ou de toute autre cause exclue de garantie, aucune prise en charge ne sera accordée.
 
 Neodrive se réserve le droit de demander le retour de toute pièce avant validation définitive d'une demande de garantie.
@@ -924,22 +882,7 @@ Le client reconnaît que l'expertise technique réalisée par Neodrive constitue
 
 31. PROGRAMME ASSISTANCE Neodrive
 
-Neodrive privilégie l'accompagnement de ses clients sur le long terme.
-
-Le premier propriétaire du véhicule bénéficie pendant une durée de 3 ans à compter de la date de livraison :
-
-- assistance technique gratuite ;
-- diagnostic à distance gratuit ;
-- assistance par téléphone ou messagerie ;
-- aide à la recherche de panne ;
-- accès aux procédures techniques disponibles ;
-- remise de 20 % sur les pièces détachées achetées auprès de Neodrive.
-
-Ce programme est réservé au premier acheteur du véhicule.
-
-Le programme Assistance Neodrive constitue un accompagnement technique et commercial destiné à faciliter l'entretien et la réparation du véhicule.
-
-Il ne constitue pas une extension de garantie au-delà des dispositions prévues dans les présentes Conditions Générales de Vente.
+Pendant la période de garantie légale de conformité, Neodrive accompagne le client dans le diagnostic et le traitement des défauts susceptibles d'être couverts. Après cette période, le service après-vente, le diagnostic et les pièces détachées restent accessibles selon les tarifs et disponibilités en vigueur. Cet accompagnement ne constitue pas une extension de garantie.
 
 32. RESPONSABILITÉ
 
