@@ -13,7 +13,8 @@ type S = { name: string; size: number; state: State; uploaded?: number; error?: 
 type UploadInfo = { index: number; path?: string; token?: string; type?: string; name?: string; size?: number; error?: string };
 
 const LARGE_FILE_THRESHOLD = 6 * 1024 * 1024;
-const TUS_ENDPOINT = "https://tzlsdjzcxdjaatcpwqwn.storage.supabase.co/storage/v1/upload/resumable";
+// Signed upload tokens must use Supabase's dedicated signed TUS endpoint.
+const TUS_ENDPOINT = "https://tzlsdjzcxdjaatcpwqwn.storage.supabase.co/storage/v1/upload/resumable/sign";
 
 function mb(n: number) {
   return `${(n / 1024 / 1024).toFixed(n > 10 * 1024 * 1024 ? 0 : 1)} Mo`;
