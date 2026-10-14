@@ -52,6 +52,10 @@ export default function VideosPage() {
                 <source src={`/videos-reelles/${video.file}.mp4`} type="video/mp4" />
                 Votre navigateur ne prend pas en charge cette vidéo.
               </video>
+              <span className={styles.playHint} aria-hidden="true">
+                <span className={styles.playIcon}>▶</span>
+                Lire la vidéo
+              </span>
               <span className={styles.number}>{String(index + 1).padStart(2, "0")}</span>
             </div>
             <div className={styles.cardCopy}>
