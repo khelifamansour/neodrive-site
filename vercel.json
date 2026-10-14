@@ -50,6 +50,18 @@
       "schedule": "35 16 * * *"
     },
     {
+      "path": "/api/video/create",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/video/auto-publish",
+      "schedule": "20 18 * * *"
+    },
+    {
+      "path": "/api/tiktok/auto-upload",
+      "schedule": "40 18 * * *"
+    },
+    {
       "path": "/api/crm/auto-followup",
       "schedule": "0 7-18 * * *"
     },

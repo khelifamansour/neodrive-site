@@ -52,7 +52,11 @@ export async function GET(req:Request){
     const now=new Date().toISOString();
     const url=new URL(`${SUPABASE_URL}/rest/v1/leads`);
     url.searchParams.set("select","id,nom,email,telephone,statut,phase,history,created_at,last_contact_at,next_followup_at,documentation_sent_at,modele_interesse,ville,annonce,whatsapp_opt_in,opted_out_at,followup_step,last_inbound_at,ai_enabled");
-    url.searchParams.set("or",`next_followup_at.lte.${now},and(next_followup_at.is.null,statut.eq.Nouveau)`);
+    // PostgREST requires the complete OR expression to be wrapped. Without
+    // the outer parentheses it parses the first token as a column named
+    // `ornext_followup_at` and the hourly automation fails before loading any
+    // leads.
+    url.searchParams.set("or",`(next_followup_at.lte.${now},and(next_followup_at.is.null,statut.eq.Nouveau))`);
     url.searchParams.set("limit","25");
     console.log("[AUTO-FOLLOWUP] loading due leads",{now});
     const rr=await fetch(url,{headers:dbHeaders(key),cache:"no-store"});
