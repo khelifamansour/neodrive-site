@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { dailyPosterForPublishing } from "@/lib/marketing-posters";
 import { isVideoAsset, pickSocialTheme, type SocialTheme } from "@/lib/social-copy";
 import { buildCoherentSocialCopy } from "@/lib/social-copy-ai";
+import { resolveInstagramPublishingAuth, type InstagramPublishingAuth } from "@/lib/instagram-publishing-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -140,19 +141,11 @@ async function rememberFresh(k:string,a:A,theme:SocialTheme,msg:string,externalI
   if(!saved.ok)throw new Error("Publication réussie mais enregistrement impossible : vérifier le canal avant de réessayer");
 }
 
-async function acct(t:string) {
-  const u = new URL("https://graph.instagram.com/me");
-  u.searchParams.set("fields","id,username");u.searchParams.set("access_token",t);
-  const r = await fetch(u);const j = await r.json();
-  if(!r.ok||!j.id) throw new Error(j?.error?.message||"Instagram account error");
-  return j;
-}
-
-async function wait(id:string,t:string) {
+async function wait(id:string,auth:InstagramPublishingAuth) {
   let last="IN_PROGRESS";
   for(let i=0;i<96;i++){
-    const u=new URL(`https://graph.instagram.com/${id}`);
-    u.searchParams.set("fields","status_code,status");u.searchParams.set("access_token",t);
+    const u=new URL(`${auth.graphBase}/${id}`);
+    u.searchParams.set("fields","status_code,status");u.searchParams.set("access_token",auth.token);
     const r=await fetch(u,{cache:"no-store"});const j=await r.json().catch(()=>({}));
     last=j.status_code||j.status||last;
     if(j.status_code==="FINISHED") return;
@@ -162,18 +155,18 @@ async function wait(id:string,t:string) {
   throw new Error(`Media processing timeout after 4 minutes (last status: ${last})`);
 }
 
-async function publish(aid:string,t:string,url:string,msg:string,isV:boolean) {
-  const u=new URL(`https://graph.instagram.com/${aid}/media`);
-  const p:Record<string,string>={caption:msg,access_token:t};
+async function publish(auth:InstagramPublishingAuth,url:string,msg:string,isV:boolean) {
+  const u=new URL(`${auth.graphBase}/${auth.accountId}/media`);
+  const p:Record<string,string>={caption:msg,access_token:auth.token};
   if(isV){p.media_type="REELS";p.video_url=url;p.share_to_feed="true";} else p.image_url=url;
   const r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams(p),cache:"no-store"});
   const j=await r.json().catch(()=>({}));
   if(!r.ok||!j.id) throw new Error(j?.error?.message||"Container creation failed");
-  await wait(j.id,t);
+  await wait(j.id,auth);
   let last="";
   for(let i=0;i<12;i++){
-    const pu=new URL(`https://graph.instagram.com/${aid}/media_publish`);
-    const pr=await fetch(pu,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({creation_id:j.id,access_token:t}),cache:"no-store"});
+    const pu=new URL(`${auth.graphBase}/${auth.accountId}/media_publish`);
+    const pr=await fetch(pu,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({creation_id:j.id,access_token:auth.token}),cache:"no-store"});
     const pj=await pr.json().catch(()=>({}));
     if(pr.ok&&pj.id) return pj.id;
     last=pj?.error?.message||last;
@@ -185,8 +178,8 @@ async function publish(aid:string,t:string,url:string,msg:string,isV:boolean) {
 export async function GET(req:Request) {
   const s=process.env.CRON_SECRET,alt=process.env.INSTAGRAM_AUTOMATION_SECRET,auth=req.headers.get("authorization");
   if(!((s&&auth===`Bearer ${s}`)||(alt&&auth===`Bearer ${alt}`))) return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
-  const k=process.env.SUPABASE_SERVICE_ROLE_KEY,t=process.env.INSTAGRAM_ACCESS_TOKEN;
-  if(!k||!t) return NextResponse.json({ok:false,error:"Configuration missing"},{status:503});
+  const k=process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if(!k) return NextResponse.json({ok:false,error:"Supabase configuration missing"},{status:503});
 
   const posterMode=new URL(req.url).searchParams.get("poster")==="1";
   let poster:Awaited<ReturnType<typeof dailyPosterForPublishing>>=null;
@@ -221,8 +214,8 @@ export async function GET(req:Request) {
   }
 
   try{
-    const ac=await acct(t);
-    const id=await publish(ac.id,t,url,msg,video(typ,url));
+    const auth=await resolveInstagramPublishingAuth();
+    const id=await publish(auth,url,msg,video(typ,url));
     if(q){
       await patch(k,q.id,{status:"published",external_post_id:id,error_message:null});
       await mark(k,a.id);
@@ -230,8 +223,9 @@ export async function GET(req:Request) {
       await mark(k,a.id);
       await rememberFresh(k,a,{...theme,hook:copy.hook},msg,id);
     }
-    return NextResponse.json({ok:true,published:true,source:posterMode?"daily-poster":q?"planned-slot-mixed-library":"fresh-mixed-library",mediaId:id,media:url,type:kindOf(a),theme:copy.hook,caption:msg});
+    return NextResponse.json({ok:true,published:true,source:posterMode?"daily-poster":q?"planned-slot-mixed-library":"fresh-mixed-library",authSource:auth.source,mediaId:id,media:url,type:kindOf(a),theme:copy.hook,caption:msg});
   } catch(e){
+    console.error("[INSTAGRAM] publication failed", { error:e instanceof Error?e.message:"Unknown", queueId:q?.id||null, media:url });
     if(q){
       const n=Number(q.retry_count||0)+1,max=Number(q.max_retries||3);
       await patch(k,q.id,{status:n>=max?"failed":"scheduled",retry_count:n,last_attempt_at:new Date().toISOString(),...(n>=max?{}:{publish_at:new Date(Date.now()+15*60*1000).toISOString()}),error_message:e instanceof Error?e.message:"Unknown"});
