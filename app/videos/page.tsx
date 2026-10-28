@@ -9,23 +9,26 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://www.easydrive-auto.fr/videos" },
 };
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
-type Video = { id:string; title:string|null; context:string|null; public_url:string; created_at:string };
-async function getVideos():Promise<Video[]> {
-  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if(!key) return [];
-  const sb=createClient(SB,key,{auth:{persistSession:false,autoRefreshToken:false}});
-  const {data,error}=await sb.from("social_media_assets")
-    .select("id,title,context,public_url,created_at,storage_path")
-    .eq("status","ready").eq("media_type","video")
-    .not("storage_path","like","generated/%")
-    .order("created_at",{ascending:false}).limit(80);
-  if(error) { console.error("Video gallery:",error.message);return []; }
-  return (data||[]).filter(v=>/^https:\/\//.test(v.public_url) && /\.mp4(?:\?|$)/i.test(v.public_url));
-}
-function titleOf(v:Video) {
-  if(v.context?.trim() && v.context.length>10) return v.context.slice(0,85);
-  if(v.title && !/^\d+\.mp4$/i.test(v.title)) return v.title.replace(/\.mp4$/i,"");
-  return "Vidéo originale NeoDrive";
+type Video = { id:string; title:string|null; public_url:string };
+const featured = [
+{file:"1000170267.mp4",title:"Découvrez la NeoDrive rouge",description:"Présentation extérieure de notre voiture sans permis électrique.",image:"/neodrive-switch/photos/confort-exterieur-avant.jpg",category:"Présentation"},
+{file:"1000170275.mp4",title:"Tour du véhicule NeoDrive",description:"Découvrez son gabarit, sa silhouette et ses détails.",image:"/neodrive-switch/photos/confort-exterieur-arriere.jpg",category:"Extérieur"},
+{file:"1000170235.mp4",title:"À bord de la NeoDrive",description:"Visite de l'habitacle et de l'espace conducteur.",image:"/neodrive-switch/photos/confort-interieur-large.jpg",category:"Habitacle"},
+{file:"1000170241.mp4",title:"Équipements et tableau de bord",description:"Présentation des commandes et des éléments intérieurs.",image:"/neodrive-switch/photos/confort-tableau-de-bord.jpg",category:"Équipements"},
+{file:"1000160304.mp4",title:"Découvrez nos arrivages",description:"Plusieurs véhicules NeoDrive réunis avant leur préparation.",image:"/neodrive-switch/photos/confort-arrivage-transport.jpg",category:"Arrivages"},
+{file:"1000160267.mp4",title:"Transport de voitures NeoDrive",description:"Découvrez les coulisses de notre logistique.",image:"/neodrive-switch/photos/confort-transport-dechargement.jpg",category:"Transport"},
+{file:"1000157437.mp4",title:"Recharge de la NeoDrive",description:"Présentation de la recharge électrique du véhicule.",image:"/neodrive-switch/photos/confort-interieur-large.jpg",category:"Recharge"}
+];
+async function getVideos() {
+ const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
+ if(!key) return [];
+ const sb=createClient(SB,key,{auth:{persistSession:false,autoRefreshToken:false}});
+ const {data,error}=await sb.from("social_media_assets").select("id,title,public_url").eq("status","ready").eq("media_type","video").not("storage_path","like","generated/%").limit(500);
+ if(error){console.error("Video gallery:",error.message);return [];}
+ return featured.flatMap(item=>{
+   const media=(data||[]).find(v=>v.title===item.file && /^https:\/\//.test(v.public_url));
+   return media?[{...item,id:media.id,public_url:media.public_url}]:[];
+ });
 }
 export default async function VideosPage() {
   const videos=await getVideos();
@@ -39,19 +42,20 @@ export default async function VideosPage() {
       </div>
       <div className={styles.heroCard}><strong>{videos.length}</strong><span>vidéos disponibles</span><small>Galerie actualisée depuis NeoDrive.</small></div>
     </section>
-    <section className={styles.intro}><span className={styles.eyebrow}>NOS VIDÉOS</span><h2>Découvrez les véhicules tels qu'ils sont.</h2><p>Sélectionnez une vidéo pour la lire ou ouvrez-la sur sa page dédiée.</p></section>
-    {videos.length===0 ? <section className={styles.intro}><p>Les vidéos sont momentanément indisponibles. Contactez-nous pour recevoir les vidéos originales.</p></section> :
+    <section className={styles.intro}><span className={styles.eyebrow}>NOS VIDÉOS</span><h2>Découvrez les véhicules tels qu'ils sont.</h2><p>Choisissez un sujet et appuyez sur « Lire la vidéo » pour regarder la séquence en grand.</p></section>
+    {videos.length===0 ? <section className={styles.intro}><p>Contactez-nous pour recevoir nos vidéos de présentation.</p></section> :
       <section className={styles.grid} aria-label="Vidéos NeoDrive">
-        {videos.map((v,index)=><article className={styles.card} key={v.id}>
+        {videos.map(v=><article className={styles.card} key={v.id}>
           <div className={styles.media}>
-            <video controls playsInline preload="metadata" aria-label={titleOf(v)} src={v.public_url} style={{width:"100%",height:"100%",objectFit:"contain",background:"#000"}}>Votre navigateur ne prend pas en charge cette vidéo.</video>
-            <span className={styles.number}>{String(index+1).padStart(2,"0")}</span>
+            <a href={`/videos/${v.id}`} className={styles.videoCover} aria-label={`Lire : ${v.title}`}>
+              <img src={v.image} loading="lazy" alt={`Photo NeoDrive : ${v.category.toLowerCase()}`} />
+              <span className={styles.playButton}><span aria-hidden="true">▶</span> Lire la vidéo</span>
+            </a>
           </div>
           <div className={styles.cardCopy}>
-            <span className={styles.category}>Vidéo réelle</span>
-            <h2>{titleOf(v)}</h2>
-            <p>Vidéo originale issue de la médiathèque NeoDrive.</p>
-            <p><a href={`/videos/${v.id}`} style={{fontWeight:700,textDecoration:"underline"}}>Ouvrir la vidéo en grand</a></p>
+            <span className={styles.category}>{v.category}</span>
+            <h2>{v.title}</h2><p>{v.description}</p>
+            <p><a href={`/videos/${v.id}`} className={styles.watchLink}>Regarder la vidéo →</a></p>
           </div>
         </article>)}
       </section>}
