@@ -11,19 +11,26 @@ export const metadata: Metadata = {
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 type Video = { id:string; title:string|null; public_url:string };
 const featured = [
-{file:"1000170275.mp4",title:"Tour extérieur NeoDrive",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-exterieur-arriere.jpg",category:"Extérieur"},
-{file:"1000170241.mp4",title:"Tableau de bord NeoDrive",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-tableau-de-bord.jpg",category:"Habitacle"},
-{file:"1000160287.mp4",title:"Déchargement d'une voiture NeoDrive",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-transport-dechargement.jpg",category:"Déchargement"},
-{file:"1000160304.mp4",title:"Arrivage de véhicules NeoDrive",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-arrivage-transport.jpg",category:"Arrivages"},
-{file:"1000160305.mp4",title:"Vidéo d'arrivage n°2",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-exterieur-avant.jpg",category:"Arrivages"},
-{file:"1000160306.mp4",title:"Vidéo d'arrivage n°3",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-exterieur-arriere.jpg",category:"Arrivages"},
-{file:"1000160307.mp4",title:"Vidéo d'arrivage n°4",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-interieur-large.jpg",category:"Arrivages"},
-{file:"1000160308.mp4",title:"Vidéo d'arrivage n°5",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-interieur-sieges.jpg",category:"Arrivages"},
-{file:"1000160288.mp4",title:"Transport NeoDrive — séquence 2",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-transport-dechargement.jpg",category:"Transport"},
-{file:"1000160265.mp4",title:"Transport NeoDrive — séquence 3",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-arrivage-transport.jpg",category:"Transport"},
-{file:"1000160267.mp4",title:"Transport NeoDrive — séquence 4",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-exterieur-avant.jpg",category:"Transport"},
-{file:"1000170239.mp4",title:"Vidéo NeoDrive — séquence 12",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-interieur-coffre.jpg",category:"Vidéo"},
-{file:"1000170240.mp4",title:"Vidéo NeoDrive — séquence 13",description:"Séquence originale de notre médiathèque NeoDrive.",image:"/neodrive-switch/photos/confort-interieur-large.jpg",category:"Vidéo"}
+{"file":"Présentation NeoDrive","title":"Présentation de la NeoDrive","category":"Présentation","image":"/neodrive-switch/photos/confort-exterieur-avant.jpg","description":"Vidéo de notre médiathèque NeoDrive."},
+{"file":"Intérieur NeoDrive","title":"Découverte de l'intérieur","category":"Habitacle","image":"/neodrive-switch/photos/confort-interieur-large.jpg","description":"Vidéo de notre médiathèque NeoDrive."},
+{"file":"Essai route NeoDrive","title":"NeoDrive en circulation","category":"Essai","image":"/neodrive-switch/photos/confort-tableau-de-bord.jpg","description":"Vidéo de notre médiathèque NeoDrive."},
+{"file":"Client NeoDrive 1","title":"Livraison client : séquence 1","category":"Livraison","image":"/neodrive-switch/photos/confort-exterieur-arriere.jpg","description":"Vidéo de notre médiathèque NeoDrive."},
+{"file":"Présentation NeoDrive 2","title":"Présentation du véhicule : autre vue","category":"Présentation","image":"/neodrive-switch/photos/confort-interieur-sieges.jpg","description":"Vidéo de notre médiathèque NeoDrive."},
+{"file":"Client NeoDrive 2","title":"Livraison client : séquence 2","category":"Livraison","image":"/neodrive-switch/photos/confort-transport-dechargement.jpg","description":"Vidéo de notre médiathèque NeoDrive."},
+{"file":"1000170275.mp4","title":"NeoDrive en vidéo — séquence 1","category":"Découverte","image":"/neodrive-switch/photos/confort-exterieur-arriere.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000170241.mp4","title":"NeoDrive en vidéo — séquence 2","category":"Découverte","image":"/neodrive-switch/photos/confort-tableau-de-bord.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000170239.mp4","title":"NeoDrive en vidéo — séquence 3","category":"Découverte","image":"/neodrive-switch/photos/confort-interieur-coffre.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000170240.mp4","title":"NeoDrive en vidéo — séquence 4","category":"Découverte","image":"/neodrive-switch/photos/confort-interieur-large.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000170246.mp4","title":"NeoDrive en vidéo — séquence 5","category":"Découverte","image":"/neodrive-switch/photos/confort-interieur-sieges.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000170230.mp4","title":"NeoDrive en vidéo — séquence 6","category":"Découverte","image":"/neodrive-switch/photos/confort-exterieur-avant.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000170229.mp4","title":"NeoDrive en vidéo — séquence 7","category":"Découverte","image":"/neodrive-switch/photos/confort-exterieur-arriere.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000170227.mp4","title":"NeoDrive en vidéo — séquence 8","category":"Découverte","image":"/neodrive-switch/photos/confort-tableau-de-bord.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000170786.mp4","title":"NeoDrive en vidéo — séquence 9","category":"Découverte","image":"/neodrive-switch/photos/confort-interieur-coffre.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000170790.mp4","title":"NeoDrive en vidéo — séquence 10","category":"Découverte","image":"/neodrive-switch/photos/confort-interieur-large.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000170854.mp4","title":"NeoDrive en vidéo — séquence 11","category":"Découverte","image":"/neodrive-switch/photos/confort-interieur-sieges.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000170865.mp4","title":"NeoDrive en vidéo — séquence 12","category":"Découverte","image":"/neodrive-switch/photos/confort-exterieur-avant.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000160287.mp4","title":"Déchargement NeoDrive","category":"Transport","image":"/neodrive-switch/photos/confort-transport-dechargement.jpg","description":"Séquence réelle à découvrir en vidéo."},
+{"file":"1000160304.mp4","title":"Arrivage de voitures NeoDrive","category":"Arrivages","image":"/neodrive-switch/photos/confort-arrivage-transport.jpg","description":"Séquence réelle à découvrir en vidéo."}
 ];
 async function getVideos() {
  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
