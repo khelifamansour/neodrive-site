@@ -26,8 +26,6 @@ const featured = [
 {"file":"1000170229.mp4","title":"NeoDrive en vidéo — séquence 7","category":"Découverte","image":"/neodrive-switch/photos/confort-exterieur-arriere.jpg","description":"Séquence réelle à découvrir en vidéo."},
 {"file":"1000170227.mp4","title":"NeoDrive en vidéo — séquence 8","category":"Découverte","image":"/neodrive-switch/photos/confort-tableau-de-bord.jpg","description":"Séquence réelle à découvrir en vidéo."},
 {"file":"1000170786.mp4","title":"NeoDrive en vidéo — séquence 9","category":"Découverte","image":"/neodrive-switch/photos/confort-interieur-coffre.jpg","description":"Séquence réelle à découvrir en vidéo."},
-{"file":"1000170790.mp4","title":"NeoDrive en vidéo — séquence 10","category":"Découverte","image":"/neodrive-switch/photos/confort-interieur-large.jpg","description":"Séquence réelle à découvrir en vidéo."},
-{"file":"1000170854.mp4","title":"NeoDrive en vidéo — séquence 11","category":"Découverte","image":"/neodrive-switch/photos/confort-interieur-sieges.jpg","description":"Séquence réelle à découvrir en vidéo."},
 {"file":"1000170865.mp4","title":"NeoDrive en vidéo — séquence 12","category":"Découverte","image":"/neodrive-switch/photos/confort-exterieur-avant.jpg","description":"Séquence réelle à découvrir en vidéo."},
 {"file":"1000160287.mp4","title":"Déchargement NeoDrive","category":"Transport","image":"/neodrive-switch/photos/confort-transport-dechargement.jpg","description":"Séquence réelle à découvrir en vidéo."},
 {"file":"1000160304.mp4","title":"Arrivage de voitures NeoDrive","category":"Arrivages","image":"/neodrive-switch/photos/confort-arrivage-transport.jpg","description":"Séquence réelle à découvrir en vidéo."}
