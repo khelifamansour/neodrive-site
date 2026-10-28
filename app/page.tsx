@@ -122,6 +122,24 @@ export default function Home() {
         </div>
       </section>
 
+
+      <section className="realGallery" aria-label="Galerie photo NeoDrive">
+        <div className="realGalleryIntro">
+          <span className="miniBadge">NeoDrive en vrai</span>
+          <h2>De vraies voitures. Une activité bien réelle.</h2>
+          <p>Découvrez nos véhicules, leur intérieur, les arrivages et leur transport à travers nos propres photos.</p>
+        </div>
+        <div className="realGalleryTrack" role="region" aria-label="Photos NeoDrive à faire défiler horizontalement" tabIndex={0}>
+          {[{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/137e8afd-9c45-425c-83bf-f68f5f9ef1eb-1000126021.jpg","alt":"Nos véhicules à l'arrivée"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/1842f1c0-2f85-449d-8183-93065c31f252-1000130728.jpg","alt":"L'habitacle NeoDrive"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/9784a94e-fb2c-42ba-b4f3-dcb0fcea11c8-1000126029.jpg","alt":"Notre parc de véhicules"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-09-01/18862335-61bc-4a0c-b60a-b456b94d9c13-1000160283.jpg","alt":"Transport des véhicules"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/0b4e7023-6f6a-4f46-95d5-90e13965e311-1000127389.jpg","alt":"Préparation des livraisons"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/b1c44b3d-265b-428f-ad91-10f2acabcc9a-1000127412.jpg","alt":"Chargement et livraison"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-09-01/beed26ba-f702-41f8-b813-49d2e8598cf0-1000160314.jpg","alt":"Nos voitures sur le transporteur"}].map((photo, index) => (
+            <figure className="realGalleryItem" key={photo.src}>
+              <img src={photo.src} alt={photo.alt} loading="lazy" decoding="async" width="720" height="520" />
+              <figcaption><strong>{photo.alt}</strong><span>{String(index + 1).padStart(2, "0")} / 7</span></figcaption>
+            </figure>
+          ))}
+        </div>
+        <p className="realGalleryHint">← Faites glisser pour découvrir nos photos →</p>
+      </section>
+
       <GoogleReviews />
 
       <section className="finalCta">
@@ -160,6 +178,18 @@ export default function Home() {
         .tag{width:max-content;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:950}.green{background:#dcfce7;color:#16803c}.orange{background:#f97316;color:#fff}.purple{background:#ede9fe;color:#6d28d9}.card h3{font-size:29px;margin:18px 0 6px}.cardPrice{font-size:38px;font-weight:950;margin:0 0 12px}.cardText{font-size:17px;line-height:1.55;color:inherit;opacity:.88;margin:0 0 18px}.infoBox,.warranty{padding:15px 16px;border-radius:17px;background:#f4f4f5;display:flex;flex-direction:column;gap:5px;margin-bottom:16px}.darkInfo,.warranty{background:rgba(255,255,255,.1)}.infoBox span,.warranty span{font-size:14px;line-height:1.45;color:#555}.darkInfo span,.warranty span{color:#e7e7e7}.warranty strong{font-size:16px}.warranty small{color:#bbb;margin-top:2px}.card ul{list-style:none;padding:0;margin:4px 0 26px}.card li{position:relative;padding-left:26px;margin:10px 0;font-size:16px;line-height:1.4}.card li:before{content:'✓';position:absolute;left:0;color:#f97316;font-weight:950}.chooseBtn{margin-top:auto;text-decoration:none;text-align:center;padding:15px 16px;border-radius:15px;font-weight:950}.darkBtn{background:#111;color:white}.orangeBtn{background:linear-gradient(135deg,#ff7a00,#ff006e);color:white}
         .emotionSection{width:min(1180px,calc(100% - 48px));margin:0 auto 100px;display:grid;grid-template-columns:.9fr 1.1fr;gap:42px;align-items:center;background:#0c0c0c;color:#fff;border-radius:34px;padding:44px}.emotionText p{color:#d1d1d1}.textLink{display:inline-block;margin-top:8px;color:#fff;text-decoration:none;font-weight:950}.videoFrame{border-radius:24px;overflow:hidden;background:#000}.videoFrame video,.clientGrid video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#000}
         .compact{margin-bottom:28px}.clientGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;max-width:1080px;margin:0 auto}.clientGrid article{overflow:hidden;border-radius:24px;background:#fff;border:1px solid #eee;box-shadow:0 14px 36px rgba(0,0,0,.07)}.clientGrid article div{padding:17px 20px;display:flex;justify-content:space-between;gap:10px}.clientGrid span{color:#777}
+
+        .realGallery{padding:16px 0 80px;background:#fff}
+        .realGalleryIntro{text-align:center;max-width:760px;margin:0 auto 32px;padding:0 20px}
+        .realGalleryIntro h2{font-size:clamp(30px,4vw,46px);font-weight:950;letter-spacing:-1.7px;line-height:1.12;margin:17px 0 10px}
+        .realGalleryIntro p{font-size:17px;line-height:1.6;color:#666;margin:0}
+        .realGalleryTrack{display:flex;overflow-x:auto;gap:18px;padding:10px max(20px,calc((100vw - 1180px)/2)) 24px;scroll-snap-type:x mandatory;scroll-behavior:smooth;overscroll-behavior-inline:contain;scrollbar-width:thin}
+        .realGalleryItem{flex:0 0 min(70vw,450px);scroll-snap-align:center;margin:0;border-radius:22px;overflow:hidden;background:#f6f6f6;border:1px solid #ececec;box-shadow:0 10px 25px rgba(0,0,0,.06)}
+        .realGalleryItem img{width:100%;aspect-ratio:4/3;height:auto;object-fit:cover;display:block}
+        .realGalleryItem figcaption{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:15px 18px;font-size:15px}
+        .realGalleryItem figcaption span{font-size:12px;color:#888}
+        .realGalleryHint{text-align:center;color:#888;font-size:13px;margin:0;padding:0 16px}
+        @media(max-width:600px){.realGallery{padding:4px 0 50px}.realGalleryIntro h2{font-size:30px}.realGalleryIntro p{font-size:15px}.realGalleryTrack{gap:12px;padding:8px 14px 20px}.realGalleryItem{flex-basis:83vw;border-radius:17px}.realGalleryItem figcaption{padding:12px 14px;font-size:13px}}
         .finalCta{margin:10px 7% 70px;padding:58px;border-radius:34px;background:radial-gradient(circle at top left,#2d3b52,#090909 65%);color:white;text-align:center}.finalCta>span{font-weight:950;color:#ff8a00;letter-spacing:1px}.finalCta p{color:#d7d7d7;max-width:680px;margin:18px auto 0}.ctaActions{justify-content:center}.footer{padding:24px 7%;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;border-top:1px solid #eee;color:#666;font-size:14px}
         @media(max-width:900px){
           .hero{min-height:650px;padding:48px 22px;align-items:flex-end;background-position:58% center}.heroOverlay{background:linear-gradient(180deg,rgba(0,0,0,.16) 0%,rgba(0,0,0,.4) 45%,rgba(0,0,0,.88) 100%)}h1{font-size:48px;letter-spacing:-2.4px}.price{font-size:44px}.subtitle{font-size:18px}.heroProof{gap:7px}.heroProof span{font-size:12px;padding:8px 10px}.heroActions a{flex:1;text-align:center;min-width:145px}
