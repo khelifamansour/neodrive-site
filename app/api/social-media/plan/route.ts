@@ -51,7 +51,7 @@ export async function GET(req: Request) {
   const assets = ((data || []) as Asset[]).filter(isRealUpload);
   if (!assets.length) return NextResponse.json({ ok: true, skipped: true, reason: "Aucun média réel récent dans la bibliothèque" });
 
-  await sb.from("social_content_queue").delete().eq("status", "scheduled").in("platform", ["instagram", "facebook"]);
+
 
   const videos = assets.filter(isVideoAsset);
   const images = assets.filter((a) => !isVideoAsset(a));
@@ -92,7 +92,9 @@ export async function GET(req: Request) {
   for (let d = 0; d < CAMPAIGN_DAYS; d++) {
     const slots = [
       { h: 7, m: 30, prefer: "video" as const },
+      { h: 11, m: 30, prefer: "image" as const },
       { h: 16, m: 30, prefer: "image" as const },
+      { h: 19, m: 30, prefer: "video" as const },
     ];
 
     for (let s = 0; s < slots.length; s++) {
@@ -129,6 +131,8 @@ export async function GET(req: Request) {
 
   if (!rows.length) return NextResponse.json({ ok: true, skipped: true, reason: "Pas assez de médias compatibles" });
 
+  const { error: cleanupError } = await sb.from("social_content_queue").delete().eq("status", "scheduled").in("platform", ["instagram", "facebook"]);
+  if (cleanupError) return NextResponse.json({ ok: false, error: cleanupError.message }, { status: 500 });
   const { error: insertError } = await sb.from("social_content_queue").insert(rows);
   if (insertError) return NextResponse.json({ ok: false, error: insertError.message }, { status: 500 });
 
@@ -137,7 +141,7 @@ export async function GET(req: Request) {
     scheduled: rows.length,
     uniqueMedia: used.size,
     planningDays: CAMPAIGN_DAYS,
-    postsPerDayPerPlatform: 2,
+    postsPerDayPerPlatform: 4,
     themeCount: SOCIAL_THEMES.length,
     videos: videos.length,
     images: images.length,
