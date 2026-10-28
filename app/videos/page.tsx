@@ -11,6 +11,14 @@ export const metadata: Metadata = {
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 type Video = { id:string; title:string|null; public_url:string };
 const featured = [
+{file:"1000160287.mp4",title:"Déchargement d'une NeoDrive",description:"Un véhicule lors des opérations de transport.",image:"/neodrive-switch/photos/confort-transport-dechargement.jpg",category:"Logistique"},
+{file:"1000160305.mp4",title:"Véhicules NeoDrive en arrivage",description:"Images de notre flotte à l'arrivée.",image:"/neodrive-switch/photos/confort-arrivage-transport.jpg",category:"Arrivages"},
+{file:"1000160306.mp4",title:"Les voitures NeoDrive en stock",description:"Découvrez plusieurs véhicules de notre gamme.",image:"/neodrive-switch/photos/confort-arrivage-transport.jpg",category:"Véhicules"},
+{file:"1000160307.mp4",title:"Les véhicules avant préparation",description:"Images de nos opérations logistiques.",image:"/neodrive-switch/photos/confort-arrivage-transport.jpg",category:"Préparation"},
+{file:"1000160308.mp4",title:"Arrivage de voitures électriques",description:"Découvrez les coulisses de notre activité.",image:"/neodrive-switch/photos/confort-arrivage-transport.jpg",category:"Arrivages"},
+{file:"1000160288.mp4",title:"Transport de la NeoDrive",description:"Présentation de nos opérations de livraison.",image:"/neodrive-switch/photos/confort-transport-dechargement.jpg",category:"Transport"},
+{file:"1000160265.mp4",title:"Coulisses de nos livraisons",description:"Une séquence filmée pendant nos opérations.",image:"/neodrive-switch/photos/confort-transport-dechargement.jpg",category:"Livraison"},
+
 {file:"1000170267.mp4",title:"Découvrez la NeoDrive rouge",description:"Présentation extérieure de notre voiture sans permis électrique.",image:"/neodrive-switch/photos/confort-exterieur-avant.jpg",category:"Présentation"},
 {file:"1000170275.mp4",title:"Tour du véhicule NeoDrive",description:"Découvrez son gabarit, sa silhouette et ses détails.",image:"/neodrive-switch/photos/confort-exterieur-arriere.jpg",category:"Extérieur"},
 {file:"1000170235.mp4",title:"À bord de la NeoDrive",description:"Visite de l'habitacle et de l'espace conducteur.",image:"/neodrive-switch/photos/confort-interieur-large.jpg",category:"Habitacle"},
