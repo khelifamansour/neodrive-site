@@ -18,28 +18,20 @@
       "schedule": "15 5 * * *"
     },
     {
-      "path": "/api/instagram/auto-publish?force=1",
-      "schedule": "30 7 * * *"
-    },
-    {
-      "path": "/api/facebook/auto-publish?force=1",
-      "schedule": "35 7 * * *"
-    },
-    {
-      "path": "/api/instagram/auto-publish?force=1",
-      "schedule": "30 16 * * *"
-    },
-    {
-      "path": "/api/facebook/auto-publish?force=1",
-      "schedule": "35 16 * * *"
-    },
-    {
       "path": "/api/tiktok/auto-upload",
       "schedule": "40 18 * * *"
     },
     {
       "path": "/api/crm/auto-followup",
       "schedule": "0 7-18 * * *"
+    },
+    {
+      "path": "/api/instagram/auto-publish?force=1",
+      "schedule": "30 7,11,16,19 * * *"
+    },
+    {
+      "path": "/api/facebook/auto-publish?force=1",
+      "schedule": "35 7,11,16,19 * * *"
     }
   ]
 }
