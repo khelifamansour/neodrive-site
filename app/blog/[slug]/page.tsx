@@ -6,7 +6,7 @@ const U = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 const K = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 type Article = { slug:string; title:string; content:string; excerpt?:string; meta_description?:string; description?:string; published_at?:string; updated_at?:string; target_keyword?:string };
-type Media = { id:string; public_url:string; media_type:string; title?:string; context?:string };
+type Media = { id:string; public_url:string; media_type:string; title?:string; context?:string; ai_summary?:string; ai_tags?:string[] };
 async function supabaseGet(path:string) {
   if (!K) return [];
   const r = await fetch(`${U}/rest/v1/${path}`, { headers:{ apikey:K, Authorization:`Bearer ${K}` }, next:{revalidate:3600} });
@@ -22,8 +22,10 @@ function stableIndex(slug:string, length:number) {
   return length ? (hash>>>0)%length : 0;
 }
 async function gallery(slug:string, html:string):Promise<Media[]> {
-  const assets:Media[]=await supabaseGet("social_media_assets?status=eq.ready&media_type=eq.image&select=id,public_url,media_type,title,context&order=created_at.desc&limit=200");
-  const filtered=assets.filter(a=>a.public_url?.startsWith(U+"/storage/v1/object/public/") && !html.includes(a.public_url));
+  const assets:Media[]=await supabaseGet("social_media_assets?status=eq.ready&media_type=eq.image&select=id,public_url,media_type,title,context,ai_summary,ai_tags&order=created_at.desc&limit=300");
+  const terms=slug.toLowerCase().split("-").filter(t=>t.length>4 && !["voiture","permis","neodrive","electrique"].includes(t) && !/^20[0-9]{2}$/.test(t));
+  const filtered=assets.filter(a=>a.public_url?.startsWith(U+"/storage/v1/object/public/") && !html.includes(a.public_url))
+  .filter(a=>{const words=[a.context,a.ai_summary,...(a.ai_tags||[])].filter(Boolean).join(" ").toLowerCase();return words.length>15 && terms.some(t=>words.includes(t));});
   if(filtered.length<2) return filtered;
   const start=stableIndex(slug,filtered.length);
   return [filtered[start],filtered[(start+1+Math.floor(filtered.length/2))%filtered.length]].filter((x,i,arr)=>arr.findIndex(y=>y.id===x.id)===i);
