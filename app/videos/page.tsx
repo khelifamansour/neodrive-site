@@ -1,80 +1,60 @@
 import type { Metadata } from "next";
+import { createClient } from "@supabase/supabase-js";
 import styles from "./videos.module.css";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Vidéos réelles NeoDrive | Présentations, essais et arrivages",
-  description:
-    "Découvrez NeoDrive en vidéos réelles : présentation des voitures sans permis électriques, habitacle, conduite, recharge et arrivages.",
+  title: "Vidéos réelles NeoDrive | Essais, habitacle et livraisons",
+  description: "Regardez nos vidéos originales de voitures sans permis électriques NeoDrive : démonstrations, habitacle, préparation et arrivages.",
   alternates: { canonical: "https://www.easydrive-auto.fr/videos" },
 };
-
-const videos = [
-  { file: "1000170267", title: "Présentation de la NeoDrive rouge", description: "Découvrez la voiture de près, son gabarit compact et ses lignes extérieures.", category: "Présentation" },
-  { file: "1000170275", title: "Le tour complet du véhicule", description: "Une visite réelle autour de la NeoDrive pour mieux apprécier ses proportions et ses finitions.", category: "Extérieur" },
-  { file: "1000170235", title: "À bord de la NeoDrive", description: "Position de conduite, visibilité et prise en main : découvrez l’habitacle en conditions réelles.", category: "Conduite" },
-  { file: "1000170241", title: "Les équipements intérieurs", description: "Présentation du tableau de bord, des commandes et des équipements utiles au quotidien.", category: "Habitacle" },
-  { file: "1000170272", title: "Poste de conduite et détails pratiques", description: "Un aperçu concret des commandes et de l’environnement du conducteur.", category: "Détails" },
-  { file: "1000160304", title: "Nos véhicules à leur arrivée", description: "Les NeoDrive arrivent en plusieurs couleurs avant leur préparation et leur contrôle.", category: "Arrivage" },
-  { file: "1000160267", title: "Arrivée du transporteur NeoDrive", description: "Un nouvel arrivage de voitures électriques rejoint notre stock.", category: "Transport" },
-  { file: "1000160287", title: "Déchargement d’une NeoDrive grise", description: "Le véhicule descend du transporteur avant de passer entre les mains de notre équipe.", category: "Préparation" },
-  { file: "1000160322", title: "Déchargement d’une NeoDrive rouge", description: "Une voiture tout juste arrivée, prête à être contrôlée et préparée.", category: "Préparation" },
-  { file: "1000157437", title: "Recharge sur une prise 220 V", description: "La NeoDrive se recharge simplement sur une prise domestique classique.", category: "Recharge" },
-];
-
-export default function VideosPage() {
-  return (
-    <main className={styles.page}>
-      <section className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <span className={styles.eyebrow}>FILMÉ PAR NEODRIVE · SANS IMAGES DE SYNTHÈSE</span>
-          <h1>NeoDrive,<br /><em>en vrai.</em></h1>
-          <p>Découvrez nos voitures sans permis électriques à travers nos propres vidéos : présentation, habitacle, conduite, recharge et arrivages.</p>
-          <div className={styles.pills}><span>Véhicules réels</span><span>Vidéos récentes</span><span>Son original</span></div>
-        </div>
-        <div className={styles.heroCard}>
-          <strong>{videos.length}</strong>
-          <span>premières vidéos<br />déjà disponibles</span>
-          <small>D’autres contenus seront ajoutés prochainement.</small>
-        </div>
-      </section>
-
-      <section className={styles.intro}>
-        <span className={styles.eyebrow}>LA VOITURE SOUS TOUS LES ANGLES</span>
-        <h2>Regardez. Écoutez. Faites-vous votre propre avis.</h2>
-        <p>Toutes les vidéos ci-dessous ont été tournées avec nos véhicules. Lancez celle qui vous intéresse pour voir la NeoDrive telle qu’elle est réellement.</p>
-      </section>
-
-      <section className={styles.grid} aria-label="Vidéos réelles NeoDrive">
-        {videos.map((video, index) => (
-          <article className={styles.card} key={video.file}>
-            <div className={styles.media}>
-              <video controls playsInline preload="metadata" poster={`/videos-reelles/${video.file}.jpg`} aria-label={video.title}>
-                <source src={`/videos-reelles/${video.file}.mp4`} type="video/mp4" />
-                Votre navigateur ne prend pas en charge cette vidéo.
-              </video>
-              <span className={styles.playHint} aria-hidden="true">
-                <span className={styles.playIcon}>▶</span>
-                Lire la vidéo
-              </span>
-              <span className={styles.number}>{String(index + 1).padStart(2, "0")}</span>
-            </div>
-            <div className={styles.cardCopy}>
-              <span className={styles.category}>{video.category}</span>
-              <h2>{video.title}</h2>
-              <p>{video.description}</p>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section className={styles.cta}>
-        <div>
-          <span className={styles.eyebrow}>UNE QUESTION AVANT DE CHOISIR ?</span>
-          <h2>Demandez-nous une vidéo personnalisée.</h2>
-          <p>Nous pouvons vous montrer en visio le véhicule, sa couleur et les détails qui comptent pour vous.</p>
-        </div>
-        <a href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20voir%20une%20NeoDrive%20en%20vid%C3%A9o" target="_blank" rel="noreferrer">Demander sur WhatsApp</a>
-      </section>
-    </main>
-  );
+const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
+type Video = { id:string; title:string|null; context:string|null; public_url:string; created_at:string };
+async function getVideos():Promise<Video[]> {
+  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if(!key) return [];
+  const sb=createClient(SB,key,{auth:{persistSession:false,autoRefreshToken:false}});
+  const {data,error}=await sb.from("social_media_assets")
+    .select("id,title,context,public_url,created_at,storage_path")
+    .eq("status","ready").eq("media_type","video")
+    .not("storage_path","like","generated/%")
+    .order("created_at",{ascending:false}).limit(80);
+  if(error) { console.error("Video gallery:",error.message);return []; }
+  return (data||[]).filter(v=>/^https:\/\//.test(v.public_url) && /\.mp4(?:\?|$)/i.test(v.public_url));
+}
+function titleOf(v:Video) {
+  if(v.context?.trim() && v.context.length>10) return v.context.slice(0,85);
+  if(v.title && !/^\d+\.mp4$/i.test(v.title)) return v.title.replace(/\.mp4$/i,"");
+  return "Vidéo originale NeoDrive";
+}
+export default async function VideosPage() {
+  const videos=await getVideos();
+  return <main className={styles.page}>
+    <section className={styles.hero}>
+      <div className={styles.heroCopy}>
+        <span className={styles.eyebrow}>VIDÉOS ORIGINALES · NEODRIVE</span>
+        <h1>NeoDrive,<br/><em>en vrai.</em></h1>
+        <p>Découvrez nos vraies vidéos directement depuis notre médiathèque : véhicules, habitacle, équipements, essais et préparations.</p>
+        <div className={styles.pills}><span>Véhicules réels</span><span>Lecture complète</span><span>Contenus actualisés</span></div>
+      </div>
+      <div className={styles.heroCard}><strong>{videos.length}</strong><span>vidéos disponibles</span><small>Galerie actualisée depuis NeoDrive.</small></div>
+    </section>
+    <section className={styles.intro}><span className={styles.eyebrow}>NOS VIDÉOS</span><h2>Découvrez les véhicules tels qu'ils sont.</h2><p>Sélectionnez une vidéo pour la lire ou ouvrez-la sur sa page dédiée.</p></section>
+    {videos.length===0 ? <section className={styles.intro}><p>Les vidéos sont momentanément indisponibles. Contactez-nous pour recevoir les vidéos originales.</p></section> :
+      <section className={styles.grid} aria-label="Vidéos NeoDrive">
+        {videos.map((v,index)=><article className={styles.card} key={v.id}>
+          <div className={styles.media}>
+            <video controls playsInline preload="metadata" aria-label={titleOf(v)} src={v.public_url} style={{width:"100%",height:"100%",objectFit:"contain",background:"#000"}}>Votre navigateur ne prend pas en charge cette vidéo.</video>
+            <span className={styles.number}>{String(index+1).padStart(2,"0")}</span>
+          </div>
+          <div className={styles.cardCopy}>
+            <span className={styles.category}>Vidéo réelle</span>
+            <h2>{titleOf(v)}</h2>
+            <p>Vidéo originale issue de la médiathèque NeoDrive.</p>
+            <p><a href={`/videos/${v.id}`} style={{fontWeight:700,textDecoration:"underline"}}>Ouvrir la vidéo en grand</a></p>
+          </div>
+        </article>)}
+      </section>}
+    <section className={styles.cta}><div><span className={styles.eyebrow}>UNE QUESTION ?</span><h2>Demandez une vidéo personnalisée.</h2><p>Nous pouvons vous montrer un véhicule, ses équipements et sa couleur.</p></div><a href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20voir%20une%20NeoDrive%20en%20vid%C3%A9o">Demander sur WhatsApp</a></section>
+  </main>;
 }
