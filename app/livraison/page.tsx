@@ -158,11 +158,11 @@ export default function LivraisonFusionPage() {
           <span className="eyebrow">LIVRAISON NEODRIVE · FRANCE ENTIÈRE</span>
           <h1>Votre NeoDrive livrée simplement, jusqu’à chez vous.</h1>
           <p className="lead">
-            Nous organisons la livraison de votre véhicule de A à Z. Vous connaissez votre tarif avant la réservation,
+            De notre dépôt de Toulouse jusqu’à votre porte : transport sécurisé, aucun acompte et paiement seulement après avoir vu et essayé votre véhicule. Vous connaissez votre tarif avant la réservation,
             le rendez-vous est organisé avec vous et la remise comprend l’inspection ainsi que la prise en main du véhicule.
           </p>
           <div className="heroChecks">
-            <span>✓ Paiement à la livraison selon votre commande</span>
+            <span>✓ Aucun acompte · paiement à la livraison</span>
             <span>✓ Inspection du véhicule lors de la remise</span>
             <span>✓ Explications et prise en main sur place</span>
           </div>
@@ -181,34 +181,11 @@ export default function LivraisonFusionPage() {
         </div>
       </section>
 
-      <section className="simpleSteps">
-        <article><b>01</b><span><strong>Vous choisissez</strong>Votre modèle et votre adresse.</span></article>
-        <article><b>02</b><span><strong>Nous organisons</strong>Transport et rendez-vous sont planifiés.</span></article>
-        <article><b>03</b><span><strong>Vous recevez</strong>Inspection, paiement et prise en main.</span></article>
-      </section>
-
-      <section className="section prices">
-        <div className="heading">
-          <span className="eyebrow">FORFAITS DE LIVRAISON</span>
-          <h2>Des tarifs simples selon votre zone.</h2>
-          <p>Le tarif exact est confirmé avant la réservation. Vous savez ainsi à l’avance combien vous coûtera la livraison de votre NeoDrive.</p>
-        </div>
-        <div className="zones">
-          {ZONES.map((zone) => (
-            <article key={zone.title}>
-              <div className="zoneTop"><span>{zone.title}</span><strong>{money(zone.price)}</strong></div>
-              <p>{zone.text}</p>
-            </article>
-          ))}
-        </div>
-        <p className="fine">Les forfaits de livraison incluent la préparation du véhicule, les contrôles avant départ, le chargement, le transport, le déchargement, la remise des clés et la prise en main. Carte grise et dossier d’immatriculation : 150 €.</p>
-      </section>
-
       <section id="simulateur" className="simSection">
         <div className="simIntro">
           <span className="eyebrow">VOTRE TARIF EN QUELQUES SECONDES</span>
           <h2>Calculez votre NeoDrive livrée.</h2>
-          <p>Entrez simplement votre code postal. Le simulateur vous montre votre forfait et l’ampleur de la mission, sans détail inutile de nos coûts internes.</p>
+          <p>Indiquez votre code postal pour estimer le prix de votre véhicule livré à domicile. Le tarif est confirmé avec vous avant toute réservation.</p>
         </div>
 
         <form className="calculator" onSubmit={simulate}>
@@ -276,6 +253,43 @@ export default function LivraisonFusionPage() {
         ) : null}
       </section>
 
+      <section className="section deliveryGallery" aria-label="Nos livraisons en images">
+        <div className="heading">
+          <span className="eyebrow">DES LIVRAISONS RÉELLES, DES CLIENTS RASSURÉS</span>
+          <h2>De Toulouse jusqu’à votre porte, en toute sérénité.</h2>
+          <p>Votre voiture voyage sur un transport adapté. Nous convenons d’un rendez-vous, la déchargeons devant chez vous et vous pouvez la découvrir et l’essayer avant de régler. Aucun acompte, aucune surprise.</p>
+        </div>
+        <div className="deliveryGalleryGrid">
+          <figure><img src="/livraison-neodrive.webp" alt="Exemple réel de livraison d’une NeoDrive" loading="lazy" /><figcaption>Une NeoDrive livrée avec soin</figcaption></figure>
+          <figure><video src="/client1.mp4" controls playsInline preload="metadata" aria-label="Vidéo de livraison avec un client NeoDrive" /><figcaption>Nos clients partagent leur expérience</figcaption></figure>
+          <figure><video src="/client2.mp4" controls playsInline preload="metadata" aria-label="Deuxième vidéo de client NeoDrive" /><figcaption>Des véhicules remis en personne</figcaption></figure>
+        </div>
+        <p className="deliveryGalleryPromise">♡ Une vraie équipe, de vraies livraisons, et un paiement uniquement à la remise du véhicule après vérification.</p>
+      </section>
+
+      <section className="simpleSteps">
+        <article><b>01</b><span><strong>Vous choisissez</strong>Votre modèle et votre adresse.</span></article>
+        <article><b>02</b><span><strong>Nous organisons</strong>Transport et rendez-vous sont planifiés.</span></article>
+        <article><b>03</b><span><strong>Vous recevez</strong>Inspection, paiement et prise en main.</span></article>
+      </section>
+
+      <section className="section prices">
+        <div className="heading">
+          <span className="eyebrow">FORFAITS DE LIVRAISON</span>
+          <h2>Des tarifs simples selon votre zone.</h2>
+          <p>Le tarif exact est confirmé avant la réservation. Vous savez ainsi à l’avance combien vous coûtera la livraison de votre NeoDrive.</p>
+        </div>
+        <div className="zones">
+          {ZONES.map((zone) => (
+            <article key={zone.title}>
+              <div className="zoneTop"><span>{zone.title}</span><strong>{money(zone.price)}</strong></div>
+              <p>{zone.text}</p>
+            </article>
+          ))}
+        </div>
+        <p className="fine">Les forfaits de livraison incluent la préparation du véhicule, les contrôles avant départ, le chargement, le transport, le déchargement, la remise des clés et la prise en main. Carte grise et dossier d’immatriculation : 150 €.</p>
+      </section>
+
       <section className="section included">
         <div className="heading">
           <span className="eyebrow">CE QUE VOUS ACHETEZ VRAIMENT</span>
@@ -336,6 +350,16 @@ export default function LivraisonFusionPage() {
       <style jsx>{`
         .fusionPage{background:#fff;color:#0b0b0c}.eyebrow{font-size:12px;font-weight:950;letter-spacing:1.7px;color:#f4512a}.hero{max-width:1200px;margin:auto;padding:64px 24px 54px;display:grid;grid-template-columns:.95fr 1.05fr;gap:54px;align-items:center}.hero h1{font-size:clamp(46px,5.6vw,72px);line-height:.98;letter-spacing:-3.3px;margin:16px 0 22px}.lead,.heading p,.simIntro p{font-size:18px;line-height:1.7;color:#686d75}.heroChecks{display:grid;gap:9px;margin-top:24px;color:#3d4249;font-weight:750;font-size:14px}.heroActions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.heroActions a{padding:16px 21px;border-radius:13px;text-decoration:none;font-weight:900}.primary{background:#0b0b0c;color:#fff}.secondary{border:1px solid #dedfe3;color:#111}.heroVisual{position:relative;border-radius:30px;overflow:hidden;box-shadow:0 25px 65px #0000001b}.heroVisual img{display:block;width:100%;height:470px;object-fit:cover}.photoBadge{position:absolute;left:18px;right:18px;bottom:18px;background:#fffffff0;backdrop-filter:blur(12px);padding:15px 17px;border-radius:17px;display:flex;flex-direction:column;gap:4px}.photoBadge span{color:#666b73;font-size:13px}.simpleSteps{max-width:1152px;margin:auto;padding:0 24px 54px;display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #eceef1}.simpleSteps article{display:flex;gap:15px;padding:18px 22px;border-right:1px solid #eceef1}.simpleSteps article:last-child{border-right:0}.simpleSteps b{color:#f4512a;font-size:13px}.simpleSteps span{display:grid;gap:4px;color:#71767e;font-size:13px}.simpleSteps strong{font-size:16px;color:#111}.section{max-width:1180px;margin:auto;padding:78px 24px}.heading{max-width:760px}.heading h2,.simIntro h2,.cta h2{font-size:clamp(36px,4.5vw,56px);line-height:1.04;letter-spacing:-2.4px;margin:12px 0 17px}.zones{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:36px}.zones article{border:1px solid #e5e7eb;border-radius:24px;padding:26px}.zoneTop{display:flex;justify-content:space-between;align-items:center;gap:18px}.zoneTop span{font-weight:900;color:#50565e}.zoneTop strong{font-size:31px;letter-spacing:-1px}.zones p{color:#6b7078;line-height:1.62}.fine,.pickupFine{font-size:13px;line-height:1.55;color:#777d84;margin-top:18px}.simSection{background:#0d0d0f;color:#fff;padding:82px max(24px,calc((100vw - 1132px)/2))}.simIntro{max-width:760px}.simIntro p{color:#b6bac2}.calculator{margin-top:34px;background:#fff;color:#111;border-radius:25px;padding:24px;display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end}.calculator label{display:grid;gap:8px;font-weight:850;font-size:14px}.calculator select,.calculator input{height:52px;border:1px solid #d9dce1;border-radius:13px;padding:0 15px;font-size:16px;background:#fff;color:#111}.calculator button{height:52px;border:0;border-radius:13px;background:#ff4b24;color:#fff;font-weight:950;padding:0 22px;font-size:15px}.calculator button:disabled{opacity:.6}.error{grid-column:1/-1;color:#b42318;margin:0}.result{margin-top:18px;background:#fff;color:#111;border-radius:25px;padding:28px}.resultTop{display:flex;justify-content:space-between;gap:30px;align-items:start}.resultTop h3{font-size:clamp(38px,5vw,58px);letter-spacing:-2.5px;margin:7px 0 5px}.resultTop p{color:#6b7078}.resultPrice{background:#111;color:#fff;padding:18px 22px;border-radius:18px;min-width:240px}.resultPrice span{display:block;color:#bfc3ca;font-size:13px}.resultPrice strong{display:block;font-size:34px;margin-top:5px}.resultPrice small{display:block;color:#bfc3ca;line-height:1.4;margin-top:5px}.priceBreakdown,.missionLine{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:18px}.priceBreakdown article,.missionLine article{border:1px solid #e5e7eb;border-radius:17px;padding:17px}.priceBreakdown span,.missionLine span{display:block;color:#737881;font-size:13px}.priceBreakdown strong,.missionLine strong{display:block;font-size:21px;margin-top:6px}.priceBreakdown small{display:block;color:#7b8088;font-size:12px;line-height:1.5;margin-top:8px}.contextNote{margin-top:18px;background:#f3f4f6;border-radius:18px;padding:21px}.contextNote.short{background:#fff3ee;border:1px solid #ffd7c9}.contextNote b{font-size:18px}.contextNote p{color:#626870;line-height:1.65;margin-bottom:0}.benefits{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:34px}.benefits article{background:#f5f6f7;border-radius:23px;padding:25px}.benefits span{font-size:12px;color:#f4512a;font-weight:950}.benefits h3{font-size:21px;margin:17px 0 9px}.benefits p{color:#6a7078;line-height:1.55;margin:0}.discreetPickup{padding-top:20px}.discreetPickup details{border:1px solid #e2e4e8;border-radius:24px;overflow:hidden}.discreetPickup summary{cursor:pointer;padding:24px 27px;font-size:20px;font-weight:900;list-style:none}.discreetPickup summary::-webkit-details-marker{display:none}.discreetPickup summary:after{content:"+";float:right;font-size:24px}.discreetPickup details[open] summary:after{content:"−"}.pickupContent{padding:0 27px 27px}.pickupIntro{color:#676d75;line-height:1.65;max-width:850px}.pickupGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px;margin-top:18px}.pickupGrid article{background:#f5f6f7;border-radius:20px;padding:23px}.pickupGrid article.local{background:#fff3ee}.pickupGrid span{font-size:12px;color:#737881;font-weight:900}.pickupGrid h3{font-size:22px;margin:9px 0}.pickupGrid strong{font-size:34px}.pickupGrid p{color:#696f77;line-height:1.58}.faq{padding-top:54px}.faqList{display:grid;gap:10px;margin-top:30px}.faqList details{border:1px solid #e4e6ea;border-radius:17px;padding:0 20px}.faqList summary{cursor:pointer;padding:19px 0;font-weight:900}.faqList p{color:#666c74;line-height:1.62;margin-top:0;padding-bottom:18px}.cta{max-width:1132px;margin:20px auto 88px;background:linear-gradient(135deg,#ff6a2b,#ff3152);color:#fff;border-radius:31px;padding:48px;display:flex;justify-content:space-between;align-items:center;gap:36px}.cta span{font-size:12px;font-weight:950;letter-spacing:1.6px;color:#ffffffc2}.cta h2{margin-bottom:10px}.cta p{line-height:1.6}.ctaButtons{display:flex;gap:10px;flex-wrap:wrap}.ctaButtons a{background:#fff;color:#111;text-decoration:none;font-weight:950;padding:15px 19px;border-radius:13px}.ctaButtons a:last-child{background:#111;color:#fff}
         @media(max-width:850px){.hero{grid-template-columns:1fr;padding-top:43px;gap:30px}.hero h1{letter-spacing:-2.4px}.heroVisual img{height:335px}.simpleSteps,.zones,.benefits,.pickupGrid,.priceBreakdown,.missionLine{grid-template-columns:1fr}.simpleSteps{padding:0 20px 42px}.simpleSteps article{border-right:0;border-bottom:1px solid #eceef1;padding:17px 2px}.simpleSteps article:last-child{border-bottom:0}.section{padding:60px 20px}.calculator{grid-template-columns:1fr;padding:19px}.result{padding:20px}.resultTop{display:grid}.resultPrice{min-width:0}.simSection{padding:62px 20px}.cta{margin:15px 15px 65px;padding:30px;display:grid}.ctaButtons{display:grid}.ctaButtons a{text-align:center}}
+      `}</style>
+
+      <style jsx>{`
+        .deliveryGallery { background: linear-gradient(145deg,#fffaf3,#f0f8ff); border-radius: 28px; margin: 34px auto; padding: 34px 26px; }
+        .deliveryGalleryGrid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:24px; }
+        .deliveryGalleryGrid figure { margin:0;overflow:hidden;border-radius:18px;background:white;box-shadow:0 8px 28px #1c36531a; }
+        .deliveryGalleryGrid img,.deliveryGalleryGrid video { width:100%;height:240px;object-fit:cover;display:block;background:#13243a; }
+        .deliveryGalleryGrid figcaption { padding:15px;font-weight:650;color:#233b55; }
+        .deliveryGalleryPromise { text-align:center;margin-top:24px;font-weight:700;color:#246083; }
+        @media(max-width:750px){ .deliveryGallery {padding:22px 15px;} .deliveryGalleryGrid{grid-template-columns:1fr;} .deliveryGalleryGrid img,.deliveryGalleryGrid video{height:220px;} }
       `}</style>
     </main>
   );
