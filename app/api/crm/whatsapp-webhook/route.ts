@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       let lead = lookup.data;
       if (!lead) {
         const name = change.value?.contacts?.[0]?.profile?.name || "Prospect WhatsApp";
-        const inserted = await db.from("leads").insert({ nom: name, telephone: phone, source: "whatsapp", statut: "Nouveau", phase: "À contacter", whatsapp_opt_in: true, ai_enabled: true, lead_score: 50 }).select().single();
+        const inserted = await db.from("leads").insert({ nom: name, telephone: phone, source: "whatsapp", statut: "Nouveau", phase: "À contacter", whatsapp_opt_in: false, ai_enabled: true, lead_score: 50 }).select().single();
         lead = inserted.data;
         if (inserted.error) console.error("[WA-WEBHOOK] lead creation error", inserted.error);
       }
@@ -61,11 +61,10 @@ export async function POST(request: Request) {
       await db.from("crm_messages").insert({ lead_id: lead.id, direction: "inbound", channel: "whatsapp", body: text, provider_message_id: message.id || null, status: "received" });
       const stop = /^(stop|désabonner|desabonner|unsubscribe|ne plus contacter|non merci)$/i.test(text);
       const now = new Date().toISOString();
-      await db.from("leads").update({ last_inbound_at: now, whatsapp_opt_in: !stop, opted_out_at: stop ? now : null, next_followup_at: null, statut: stop ? "Perdu" : "Chaud", phase: stop ? "Terminé" : "Attente réponse", updated_at: now }).eq("id", lead.id);
+      await db.from("leads").update({ last_inbound_at: now, whatsapp_opt_in: stop ? false : lead.whatsapp_opt_in, opted_out_at: stop ? now : lead.opted_out_at, next_followup_at: null, statut: stop ? "Perdu" : "Chaud", phase: stop ? "Terminé" : "Attente réponse", updated_at: now }).eq("id", lead.id);
 
-      // WhatsApp inbound conversations should be answered automatically by default.
-      // Only an explicit ai_enabled=false disables the agent.
-      const aiEnabled = lead.ai_enabled !== false;
+      // Sending requires an explicit server-side activation flag.
+      const aiEnabled = lead.ai_enabled !== false && !lead.opted_out_at && process.env.NEODRIVE_AI_AUTO_SEND === "true";
       if (!stop && aiEnabled) {
         console.log("[WA-WEBHOOK] AI reply starting", { leadId: lead.id });
         const historyResult = await db.from("crm_messages").select("direction,body").eq("lead_id", lead.id).order("created_at", { ascending: false }).limit(8);
