@@ -1,0 +1,30 @@
+name: Extract NeoDrive delivery photos
+on:
+  push:
+    paths:
+      - 'public/photos_livraisons_neodrive.zip'
+      - '.github/workflows/extract-delivery-photos.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Extract provided delivery photos
+        run: |
+          mkdir -p public/livraisons-clients
+          unzip -o -j public/photos_livraisons_neodrive.zip 'livraison-client-*.jpg' -d public/livraisons-clients
+          test "$(find public/livraisons-clients -maxdepth 1 -name 'livraison-client-*.jpg' | wc -l)" -eq 10
+      - name: Commit extracted photos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/livraisons-clients/
+          if ! git diff --cached --quiet; then
+            git commit -m "Add real NeoDrive delivery photos from uploaded archive"
+            git push
+          fi
