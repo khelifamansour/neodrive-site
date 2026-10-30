@@ -259,11 +259,14 @@ export default function LivraisonFusionPage() {
           <h2>De Toulouse jusqu’à votre porte, en toute sérénité.</h2>
           <p>Votre voiture voyage sur un transport adapté. Nous convenons d’un rendez-vous, la déchargeons devant chez vous et vous pouvez la découvrir et l’essayer avant de régler. Aucun acompte, aucune surprise.</p>
         </div>
-        <div className="deliveryGalleryGrid">
-          <figure><img src="/livraison-neodrive.webp" alt="Exemple réel de livraison d’une NeoDrive" loading="lazy" /><figcaption>Une NeoDrive livrée avec soin</figcaption></figure>
+        <div className="deliveryGalleryGrid" role="region" aria-label="Galerie de nos livraisons" tabIndex={0}>
+          <figure><img src="/livraison-neodrive.webp" alt="NeoDrive transportée jusqu'au client" loading="lazy" /><figcaption>Transport sécurisé jusqu’à votre domicile</figcaption></figure>
+          <figure><img src="/img1.png" alt="Photo NeoDrive" loading="lazy" /><figcaption>Découvrez nos véhicules</figcaption></figure>
+          <figure><img src="/img2.png" alt="Photo NeoDrive" loading="lazy" /><figcaption>Une équipe à votre écoute</figcaption></figure>
           <figure><video src="/client1.mp4" controls playsInline preload="metadata" aria-label="Vidéo de livraison avec un client NeoDrive" /><figcaption>Nos clients partagent leur expérience</figcaption></figure>
           <figure><video src="/client2.mp4" controls playsInline preload="metadata" aria-label="Deuxième vidéo de client NeoDrive" /><figcaption>Des véhicules remis en personne</figcaption></figure>
         </div>
+        <p className="deliveryGalleryHint">← Faites défiler pour découvrir nos livraisons →</p>
         <p className="deliveryGalleryPromise">♡ Une vraie équipe, de vraies livraisons, et un paiement uniquement à la remise du véhicule après vérification.</p>
       </section>
 
@@ -354,12 +357,12 @@ export default function LivraisonFusionPage() {
 
       <style jsx>{`
         .deliveryGallery { background: linear-gradient(145deg,#fffaf3,#f0f8ff); border-radius: 28px; margin: 34px auto; padding: 34px 26px; }
-        .deliveryGalleryGrid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:24px; }
+        .deliveryGalleryGrid { display:flex;gap:18px;margin-top:24px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding-bottom:14px;overscroll-behavior-inline:contain; } .deliveryGalleryGrid figure { flex:0 0 min(75vw,360px);scroll-snap-align:start; } .deliveryGalleryHint{text-align:center;color:#526c82;font-size:0.9rem;margin-top:10px;}
         .deliveryGalleryGrid figure { margin:0;overflow:hidden;border-radius:18px;background:white;box-shadow:0 8px 28px #1c36531a; }
         .deliveryGalleryGrid img,.deliveryGalleryGrid video { width:100%;height:240px;object-fit:cover;display:block;background:#13243a; }
         .deliveryGalleryGrid figcaption { padding:15px;font-weight:650;color:#233b55; }
         .deliveryGalleryPromise { text-align:center;margin-top:24px;font-weight:700;color:#246083; }
-        @media(max-width:750px){ .deliveryGallery {padding:22px 15px;} .deliveryGalleryGrid{grid-template-columns:1fr;} .deliveryGalleryGrid img,.deliveryGalleryGrid video{height:220px;} }
+        @media(max-width:750px){ .deliveryGallery {padding:22px 15px;} .deliveryGalleryGrid figure{flex-basis:85%;} .deliveryGalleryGrid img,.deliveryGalleryGrid video{height:220px;} }
       `}</style>
     </main>
   );
