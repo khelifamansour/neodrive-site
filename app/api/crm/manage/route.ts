@@ -49,6 +49,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, leads: data || [], whatsappConfigured: whatsappConfigured(), aiConfigured: Boolean(process.env.OPENAI_API_KEY), templateConfigured: Boolean(process.env.WHATSAPP_TEMPLATE_NAME), webhookConfigured: Boolean(process.env.WHATSAPP_VERIFY_TOKEN && process.env.WHATSAPP_APP_SECRET), automationReady: Boolean(whatsappConfigured() && process.env.WHATSAPP_TEMPLATE_NAME) });
   }
 
+  if (action === "preview-import") {
+    const csv = String(body.csv || "").replace(/^\\uFEFF/, "");
+    if (!csv || csv.length > 2_000_000) return NextResponse.json({ ok: false, error: "CSV manquant ou trop volumineux" }, { status: 400 });
+    const rows = splitCsv(csv);
+    if (rows.length < 2) return NextResponse.json({ ok: false, error: "Aucun contact" }, { status: 400 });
+    const records = rows.slice(1, 1001).map(values => csvRecord(rows[0], values));
+    const phones = new Set<string>(); const emails = new Set<string>();
+    let duplicates = 0, invalid = 0, eligible = 0;
+    for (const lead of records) {
+      const phone = normalizePhone(lead.telephone);
+      const email = lead.email.trim().toLowerCase();
+      if (!phone && !email) { invalid++; continue; }
+      if ((phone && phones.has(phone)) || (email && emails.has(email))) duplicates++;
+      else { if (phone) phones.add(phone); if (email) emails.add(email); }
+      if (lead.whatsapp_opt_in && phone) eligible++;
+    }
+    return NextResponse.json({ ok: true, total: records.length, duplicatesInFile: duplicates, invalid, phones: records.filter(x => normalizePhone(x.telephone)).length, explicitOptInClaims: eligible, warning: "Aucun message envoyé ; consentement à vérifier avant campagne WhatsApp." });
+  }
+
   if (action === "import") {
     const text = String(body.csv || "").replace(/^\uFEFF/, "");
     if (!text || text.length > 2_000_000) return NextResponse.json({ ok: false, error: "Fichier CSV manquant ou trop volumineux" }, { status: 400 });
