@@ -1,22 +1,342 @@
 "use client";
 
-export default function LivraisonPage() {
-  const zones = [
-    { price: "450 €", title: "Zone 1", text: "Haute-Garonne, Tarn, Tarn-et-Garonne, Gers, Ariège" },
-    { price: "590 €", title: "Zone 2", text: "Sud-Ouest et départements proches : Aude, Aveyron, Lot, Lot-et-Garonne, Gironde, Hautes-Pyrénées, Pyrénées-Orientales, Hérault, Gard, Landes, Dordogne, Corrèze, Haute-Vienne, Cantal" },
-    { price: "690 €", title: "Zone 3", text: "Île-de-France et plusieurs grandes zones : Paris, petite et grande couronne, Bouches-du-Rhône, Rhône, Puy-de-Dôme, Charente, Charente-Maritime, Vienne" },
-    { price: "790 €", title: "Zone 4 / longue distance", text: "Bretagne, Pays de la Loire, Alsace, Nord, Normandie, Grand Est et autres départements éloignés" },
-  ];
+import { FormEvent, useMemo, useState } from "react";
+
+type Model = { id: string; name: string; price: number };
+type Simulation = {
+  city: string;
+  department: string;
+  distanceOneWay: number;
+  roundTripDistance: number;
+  totalMissionHours: number;
+  deliveryPrice: number;
+};
+
+const MODELS: Model[] = [
+  { id: "confort", name: "NeoDrive Confort", price: 4990 },
+  { id: "essentielle", name: "NeoDrive Essentielle", price: 3990 },
+  { id: "lithium", name: "NeoDrive Lithium", price: 5990 },
+];
+
+const REGISTRATION_PACKAGE_PRICE = 150;
+const ORIGIN = { lat: 43.4607, lon: 1.3256, label: "Muret (31)" };
+const ZONE_1 = new Set(["31", "81", "82", "32", "09"]);
+const ZONE_2 = new Set(["11", "12", "46", "47", "33", "65", "66", "34", "30", "40", "24", "19", "87", "15"]);
+const ZONE_3 = new Set(["75", "92", "93", "94", "95", "77", "78", "91", "13", "69", "63", "16", "17", "86"]);
+
+const ZONES = [
+  { title: "Zone 1", price: 450, text: "Haute-Garonne, Tarn, Tarn-et-Garonne, Gers, Ariège" },
+  { title: "Zone 2", price: 590, text: "Sud-Ouest et départements proches : Aude, Aveyron, Lot, Lot-et-Garonne, Gironde, Hautes-Pyrénées, Pyrénées-Orientales, Hérault, Gard, Landes, Dordogne, Corrèze, Haute-Vienne, Cantal" },
+  { title: "Zone 3", price: 690, text: "Île-de-France et plusieurs grandes zones : Paris, petite et grande couronne, Bouches-du-Rhône, Rhône, Puy-de-Dôme, Charente, Charente-Maritime, Vienne" },
+  { title: "Zone 4", price: 790, text: "Bretagne, Pays de la Loire, Alsace, Nord, Normandie, Grand Est et autres départements éloignés" },
+];
+
+function money(value: number) {
+  return `${Math.round(value).toLocaleString("fr-FR")} €`;
+}
+
+function deliveryPriceFor(department: string) {
+  if (ZONE_1.has(department)) return 450;
+  if (ZONE_2.has(department)) return 590;
+  if (ZONE_3.has(department)) return 690;
+  return 790;
+}
+
+function departmentFromPostalCode(postalCode: string) {
+  if (postalCode.startsWith("20")) return "20";
+  return postalCode.slice(0, 2);
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const radius = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * radius * Math.asin(Math.sqrt(a));
+}
+
+async function getRouteForPostalCode(postalCode: string) {
+  const communeResponse = await fetch(
+    `https://geo.api.gouv.fr/communes?codePostal=${encodeURIComponent(postalCode)}&fields=nom,centre,codeDepartement&format=json&geometry=centre`,
+    { cache: "no-store" }
+  );
+  if (!communeResponse.ok) throw new Error("Impossible de trouver ce code postal.");
+  const communes = await communeResponse.json();
+  const commune = Array.isArray(communes) ? communes[0] : null;
+  if (!commune?.centre?.coordinates?.length) throw new Error("Code postal introuvable ou non pris en charge.");
+
+  const [lon, lat] = commune.centre.coordinates as [number, number];
+  let distanceKm: number | null = null;
+  let durationHours: number | null = null;
+
+  try {
+    const routeResponse = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${ORIGIN.lon},${ORIGIN.lat};${lon},${lat}?overview=false&steps=false`,
+      { cache: "no-store" }
+    );
+    if (routeResponse.ok) {
+      const routeData = await routeResponse.json();
+      const route = routeData?.routes?.[0];
+      if (route?.distance && route?.duration) {
+        distanceKm = route.distance / 1000;
+        durationHours = route.duration / 3600;
+      }
+    }
+  } catch {
+    // Estimation de secours ci-dessous.
+  }
+
+  if (!distanceKm || !durationHours) {
+    const directDistance = haversineKm(ORIGIN.lat, ORIGIN.lon, lat, lon);
+    distanceKm = directDistance * 1.22;
+    durationHours = distanceKm / 78;
+  }
+
+  return {
+    city: commune.nom as string,
+    department: (commune.codeDepartement as string) || departmentFromPostalCode(postalCode),
+    distanceKm,
+    durationHours,
+  };
+}
+
+export default function LivraisonFusionPage() {
+  const [postalCode, setPostalCode] = useState("");
+  const [modelId, setModelId] = useState("confort");
+  const [simulation, setSimulation] = useState<Simulation | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const selectedModel = useMemo(() => MODELS.find((m) => m.id === modelId) ?? MODELS[0], [modelId]);
+
+  async function simulate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const clean = postalCode.replace(/\D/g, "").slice(0, 5);
+    setPostalCode(clean);
+    setError("");
+    if (clean.length !== 5) {
+      setError("Veuillez saisir un code postal français à 5 chiffres.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const route = await getRouteForPostalCode(clean);
+      const department = departmentFromPostalCode(clean);
+      const deliveryPrice = deliveryPriceFor(department);
+      const roundTripDistance = route.distanceKm * 2;
+      const drivingHours = route.durationHours * 2;
+      const pauseHours = Math.floor(drivingHours / 4.5) * 0.5;
+      const totalMissionHours = Math.max(3, drivingHours + pauseHours + 2.5);
+      setSimulation({
+        city: route.city,
+        department: route.department,
+        distanceOneWay: route.distanceKm,
+        roundTripDistance,
+        totalMissionHours,
+        deliveryPrice,
+      });
+    } catch (caught) {
+      setSimulation(null);
+      setError(caught instanceof Error ? caught.message : "Une erreur est survenue.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const total = simulation
+    ? selectedModel.price + simulation.deliveryPrice + REGISTRATION_PACKAGE_PRICE
+    : null;
+
+  const shortTrip = simulation ? simulation.distanceOneWay < 120 : false;
 
   return (
-    <main className="delivery">
-      <section className="hero"><div className="copy"><span className="eyebrow">LIVRAISON NEODRIVE • FRANCE ENTIÈRE</span><h1>Votre NeoDrive livrée directement chez vous.</h1><p className="lead">Nous organisons votre livraison de A à Z, avec nos solutions de transport ou un transporteur automobile partenaire selon votre destination.</p><div className="buttons"><a className="primary" href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20un%20tarif%20de%20livraison%20NeoDrive">Obtenir mon tarif</a><a className="secondary" href="/reservation">Réserver une NeoDrive</a></div><div className="reassurance"><span>✓ Livraison partout en France</span><span>✓ Rendez-vous organisé à l’avance</span><span>✓ Suivi jusqu’à la remise du véhicule</span></div></div><div className="visual"><div className="photoWrap"><img src="/livraison-neodrive.webp" alt="Livraison réelle d'une NeoDrive par transporteur automobile" /><div className="photoBadge"><b>Livraison réelle</b><span>NeoDrive prise en charge par un transporteur partenaire</span></div></div><div className="trust"><b>France entière</b><b>Transport professionnel</b><b>Suivi client</b></div></div></section>
-      <section className="proofbar"><div><strong>01</strong><span><b>Vous choisissez votre véhicule</b>Nous confirmons modèle, disponibilité et adresse.</span></div><div><strong>02</strong><span><b>Nous planifions le transport</b>NeoDrive ou un partenaire prend en charge la livraison.</span></div><div><strong>03</strong><span><b>Vous recevez votre NeoDrive</b>Le rendez-vous est confirmé avant le départ.</span></div></section>
-      <section className="section prices"><div className="heading"><span>TARIFS INDICATIFS</span><h2>Une estimation simple selon votre zone.</h2><p>Donnez-nous votre département : nous vous confirmons le tarif exact avant la réservation. Le prix peut varier selon le trajet, le planning et les possibilités de groupage.</p></div><div className="zones">{zones.map((z) => (<article key={z.title}><div className="zoneTop"><span>{z.title}</span><strong>{z.price}</strong></div><p>{z.text}</p><a href={`https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20un%20devis%20de%20livraison%20NeoDrive%20pour%20la%20${encodeURIComponent(z.title)}`}>Demander un devis →</a></article>))}</div><p className="fine">Ces montants sont des repères de livraison et ne constituent pas un devis contractuel. Un transport groupé peut permettre un tarif différent selon la destination.</p></section>
-      <section className="dark"><div className="darkIntro"><span>UNE LIVRAISON SANS SURPRISE</span><h2>Nous nous occupons de l’organisation.</h2><p>Vous savez avant le départ qui transporte votre véhicule, comment la remise est organisée et quand vous devez être disponible.</p></div><div className="darkGrid"><article><span>01</span><b>Transport adapté</b><p>Selon la destination, livraison NeoDrive ou transporteur automobile professionnel.</p></article><article><span>02</span><b>Rendez-vous confirmé</b><p>Nous coordonnons la date et les modalités avant l’expédition.</p></article><article><span>03</span><b>Documents préparés</b><p>Les documents nécessaires et les démarches d’immatriculation sont expliqués en amont.</p></article><article><span>04</span><b>Votre transporteur accepté</b><p>Vous pouvez aussi organiser un enlèvement avec votre propre prestataire.</p></article></div></section>
-      <section className="section groupage"><div><span className="eyebrow">LONGUE DISTANCE</span><h2>Le groupage peut réduire le coût de livraison.</h2><p>Pour certaines destinations, plusieurs véhicules peuvent être transportés sur le même trajet. Nous choisissons la solution la plus cohérente selon le planning disponible.</p></div><div className="box"><div className="boxIcon">↗</div><h3>Vous avez déjà un transporteur ?</h3><p>Nous préparons le véhicule pour l’enlèvement et coordonnons directement le rendez-vous avec votre prestataire.</p><a href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20organiser%20un%20enl%C3%A8vement%20NeoDrive">Organiser un enlèvement →</a></div></section>
-      <section className="cta"><div><span>DEVIS DE LIVRAISON</span><h2>Indiquez simplement votre département.</h2><p>Nous vous répondons avec la solution et le tarif adaptés à votre destination.</p></div><a href="https://wa.me/33628261446?text=Bonjour%2C%20mon%20d%C3%A9partement%20est%20%3A%20">Calculer ma livraison</a></section>
-      <style jsx>{`.delivery{background:#fff;color:#0b0b0c}.hero{max-width:1220px;margin:auto;padding:72px 24px 62px;display:grid;grid-template-columns:.96fr 1.04fr;gap:64px;align-items:center}.eyebrow,.heading>span,.darkIntro>span,.cta span{font-size:12px;font-weight:950;letter-spacing:1.8px;color:#ff4b24}.hero h1{font-size:clamp(46px,5.7vw,72px);line-height:.98;letter-spacing:-3.3px;margin:17px 0 23px;max-width:650px}.lead,.heading p,.groupage p{font-size:18px;line-height:1.7;color:#5f6570}.buttons{display:flex;gap:12px;flex-wrap:wrap;margin-top:29px}.primary,.secondary{padding:16px 22px;border-radius:13px;text-decoration:none;font-weight:900}.primary{background:#0b0b0c;color:#fff}.secondary{background:#fff;color:#111;border:1px solid #dadde2}.reassurance{display:grid;gap:9px;margin-top:28px;color:#3c4149;font-size:14px;font-weight:750}.photoWrap{position:relative;overflow:hidden;border-radius:30px;background:#eee;box-shadow:0 28px 75px #0000001c}.photoWrap img{width:100%;height:455px;display:block;object-fit:cover;object-position:center}.photoBadge{position:absolute;left:18px;right:18px;bottom:18px;background:#fffffff2;backdrop-filter:blur(12px);border-radius:17px;padding:14px 16px;display:flex;flex-direction:column;gap:3px;box-shadow:0 8px 25px #0002}.photoBadge b{font-size:14px}.photoBadge span{font-size:12px;color:#5f6570}.trust{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}.trust b{font-size:12px;background:#f4f5f7;padding:9px 12px;border-radius:999px}.proofbar{max-width:1172px;margin:0 auto 20px;padding:0 0 54px;display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #eceef1}.proofbar>div{display:flex;gap:16px;padding:18px 26px;border-right:1px solid #eceef1}.proofbar>div:last-child{border-right:0}.proofbar strong{font-size:13px;color:#ff4b24}.proofbar span{display:grid;gap:6px;color:#6b7078;font-size:13px;line-height:1.45}.proofbar b{font-size:16px;color:#111}.section{max-width:1180px;margin:auto;padding:85px 24px}.heading{max-width:760px}.heading h2,.dark h2,.groupage h2,.cta h2{font-size:clamp(36px,4.6vw,56px);letter-spacing:-2.4px;line-height:1.04;margin:12px 0 18px}.zones{display:grid;grid-template-columns:repeat(2,1fr);gap:15px;margin-top:38px}.zones article{border:1px solid #e7e9ed;border-radius:24px;padding:27px;transition:.2s ease}.zones article:hover{transform:translateY(-2px);box-shadow:0 16px 35px #0000000d}.zoneTop{display:flex;align-items:center;justify-content:space-between;gap:16px}.zoneTop span{font-weight:900;color:#4c535d}.zoneTop strong{font-size:31px;letter-spacing:-1px}.zones p{color:#666d76;line-height:1.6;min-height:52px}.zones a{color:#111;text-decoration:none;font-weight:900;font-size:14px}.fine{font-size:13px;color:#777d85;line-height:1.55;margin-top:20px}.dark{background:#0b0b0c;color:#fff;padding:92px max(24px,calc((100vw - 1132px)/2));display:grid;grid-template-columns:.9fr 1.1fr;gap:60px}.darkIntro p{color:#b8bcc3;font-size:17px;line-height:1.7}.darkGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.darkGrid article{background:#18191b;border:1px solid #292b2f;border-radius:19px;padding:23px}.darkGrid span{display:block;color:#ff6a46;font-size:11px;font-weight:950;margin-bottom:15px}.darkGrid b{font-size:18px}.darkGrid p{color:#bfc2c7;line-height:1.55;font-size:14px}.groupage{display:grid;grid-template-columns:1.08fr .92fr;gap:60px;align-items:center}.box{background:#f3f4f6;border-radius:28px;padding:34px}.boxIcon{width:46px;height:46px;border-radius:14px;background:#111;color:#fff;display:grid;place-items:center;font-size:22px;margin-bottom:25px}.box h3{font-size:28px;letter-spacing:-1px;margin:0 0 12px}.box p{font-size:16px}.box a{font-weight:900;color:#111;text-decoration:none}.cta{max-width:1132px;margin:20px auto 92px;border-radius:31px;background:linear-gradient(135deg,#ff6a2a,#ff2b55);color:#fff;padding:52px;display:flex;justify-content:space-between;align-items:center;gap:42px}.cta span{color:#ffffffb8}.cta h2{margin-bottom:10px}.cta p{max-width:650px;line-height:1.6;color:#fff}.cta a{background:#fff;color:#111;text-decoration:none;font-weight:950;padding:17px 24px;border-radius:14px;white-space:nowrap}@media(max-width:850px){.hero,.dark,.groupage,.cta{grid-template-columns:1fr;display:grid}.hero{padding-top:45px;gap:34px}.hero h1{letter-spacing:-2.3px}.photoWrap img{height:340px}.proofbar,.zones,.darkGrid{grid-template-columns:1fr}.proofbar{padding:0 20px 45px}.proofbar>div{border-right:0;border-bottom:1px solid #eceef1;padding:18px 4px}.proofbar>div:last-child{border-bottom:0}.section{padding:62px 20px}.dark{padding-top:65px;padding-bottom:65px}.cta{margin:18px 15px 65px;padding:31px}.cta a{white-space:normal;text-align:center}}`}</style>
+    <main className="fusionPage">
+      <section className="hero">
+        <div className="heroCopy">
+          <span className="eyebrow">LIVRAISON NEODRIVE · FRANCE ENTIÈRE</span>
+          <h1>Votre NeoDrive livrée simplement, jusqu’à chez vous.</h1>
+          <p className="lead">
+            Nous organisons la livraison de votre véhicule de A à Z. Vous connaissez votre tarif avant la réservation,
+            le rendez-vous est organisé avec vous et la remise comprend l’inspection ainsi que la prise en main du véhicule.
+          </p>
+          <div className="heroChecks">
+            <span>✓ Paiement à la livraison selon votre commande</span>
+            <span>✓ Inspection du véhicule lors de la remise</span>
+            <span>✓ Explications et prise en main sur place</span>
+          </div>
+          <div className="heroActions">
+            <a className="primary" href="#simulateur">Calculer mon tarif</a>
+            <a className="secondary" href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20un%20tarif%20de%20livraison%20NeoDrive">Nous contacter</a>
+          </div>
+        </div>
+
+        <div className="heroVisual">
+          <img src="/livraison-neodrive.webp" alt="Livraison réelle d'une NeoDrive" />
+          <div className="photoBadge">
+            <b>Livraison réelle</b>
+            <span>Votre NeoDrive est prise en charge avec un transport adapté.</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="simpleSteps">
+        <article><b>01</b><span><strong>Vous choisissez</strong>Votre modèle et votre adresse.</span></article>
+        <article><b>02</b><span><strong>Nous organisons</strong>Transport et rendez-vous sont planifiés.</span></article>
+        <article><b>03</b><span><strong>Vous recevez</strong>Inspection, paiement et prise en main.</span></article>
+      </section>
+
+      <section className="section prices">
+        <div className="heading">
+          <span className="eyebrow">FORFAITS DE LIVRAISON</span>
+          <h2>Des tarifs simples selon votre zone.</h2>
+          <p>Le tarif exact est confirmé avant la réservation. Vous savez ainsi à l’avance combien vous coûtera la livraison de votre NeoDrive.</p>
+        </div>
+        <div className="zones">
+          {ZONES.map((zone) => (
+            <article key={zone.title}>
+              <div className="zoneTop"><span>{zone.title}</span><strong>{money(zone.price)}</strong></div>
+              <p>{zone.text}</p>
+            </article>
+          ))}
+        </div>
+        <p className="fine">Les forfaits de livraison incluent la préparation du véhicule, les contrôles avant départ, le chargement, le transport, le déchargement, la remise des clés et la prise en main. Carte grise et dossier d’immatriculation : 150 €.</p>
+      </section>
+
+      <section id="simulateur" className="simSection">
+        <div className="simIntro">
+          <span className="eyebrow">VOTRE TARIF EN QUELQUES SECONDES</span>
+          <h2>Calculez votre NeoDrive livrée.</h2>
+          <p>Entrez simplement votre code postal. Le simulateur vous montre votre forfait et l’ampleur de la mission, sans détail inutile de nos coûts internes.</p>
+        </div>
+
+        <form className="calculator" onSubmit={simulate}>
+          <label>
+            <span>Votre NeoDrive</span>
+            <select value={modelId} onChange={(event) => setModelId(event.target.value)}>
+              {MODELS.map((model) => <option key={model.id} value={model.id}>{model.name} — {money(model.price)} TTC</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Votre code postal</span>
+            <input inputMode="numeric" maxLength={5} value={postalCode} onChange={(event) => setPostalCode(event.target.value)} placeholder="Ex. 67000" />
+          </label>
+          <button type="submit" disabled={loading}>{loading ? "Calcul en cours…" : "Calculer ma livraison"}</button>
+          {error ? <p className="error">{error}</p> : null}
+        </form>
+
+        {simulation ? (
+          <div className="result">
+            <div className="resultTop">
+              <div>
+                <span className="eyebrow">VOTRE BUDGET GLOBAL</span>
+                <h3>{money(total ?? 0)} TTC</h3>
+                <p>{selectedModel.name} livrée à {simulation.city} ({simulation.department})</p>
+              </div>
+              <div className="resultPrice">
+                <span>Livraison + préparation</span>
+                <strong>{money(simulation.deliveryPrice)}</strong>
+                <small>Préparation du véhicule, transport et remise des clés</small>
+              </div>
+            </div>
+
+            <div className="priceBreakdown">
+              <article>
+                <span>Véhicule</span>
+                <strong>{money(selectedModel.price)}</strong>
+              </article>
+              <article>
+                <span>Livraison, préparation & remise</span>
+                <strong>{money(simulation.deliveryPrice)}</strong>
+                <small>Préparation du véhicule, contrôle des serrages et points de contrôle, chargement, arrimage, transport, déchargement, remise des clés, inspection et prise en main.</small>
+              </article>
+              <article>
+                <span>Carte grise & dossier d’immatriculation</span>
+                <strong>{money(REGISTRATION_PACKAGE_PRICE)}</strong>
+                <small>Préparation et traitement du dossier carte grise, certificat provisoire d’immatriculation (CPI), formalités et taxe d’immatriculation incluse dans le forfait.</small>
+              </article>
+            </div>
+
+            <div className="missionLine">
+              <article><span>Distance jusqu’à vous</span><strong>{Math.round(simulation.distanceOneWay).toLocaleString("fr-FR")} km</strong></article>
+              <article><span>Mission aller-retour</span><strong>{Math.round(simulation.roundTripDistance).toLocaleString("fr-FR")} km</strong></article>
+              <article><span>Temps mobilisé estimé</span><strong>≈ {Math.round(simulation.totalMissionHours)} h</strong></article>
+            </div>
+
+            <div className={shortTrip ? "contextNote short" : "contextNote"}>
+              <b>{shortTrip ? "Pourquoi un forfait minimum, même à proximité ?" : "Un forfait pour une mission complète"}</b>
+              <p>
+                {shortTrip
+                  ? "Même pour une courte distance, une livraison nécessite un créneau dédié, un conducteur, un véhicule tracteur et une remorque, ainsi que la préparation du véhicule, les contrôles, le chargement, le déchargement, la remise des clés, l’inspection et la prise en main. Le tarif ne correspond donc pas à un simple prix au kilomètre."
+                  : "Votre forfait couvre une mission organisée de bout en bout : préparation et contrôles du véhicule, chargement, transport, rendez-vous, déchargement, remise des clés, inspection, prise en main et retour du conducteur et du matériel."}
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="section included">
+        <div className="heading">
+          <span className="eyebrow">CE QUE VOUS ACHETEZ VRAIMENT</span>
+          <h2>Une remise accompagnée, pas un simple dépôt.</h2>
+          <p>La livraison est pensée pour que vous receviez votre véhicule dans de bonnes conditions et que vous sachiez l’utiliser avant le départ de notre intervenant.</p>
+        </div>
+        <div className="benefits">
+          <article><span>01</span><h3>Préparation & contrôles</h3><p>Préparation du véhicule, contrôle des serrages et vérifications avant départ.</p></article>
+          <article><span>02</span><h3>Chargement & transport</h3><p>Chargement, arrimage puis acheminement jusqu’à l’adresse convenue.</p></article>
+          <article><span>03</span><h3>Déchargement & remise des clés</h3><p>Le véhicule est déchargé, inspecté avec vous puis les clés vous sont remises.</p></article>
+          <article><span>04</span><h3>Prise en main</h3><p>Recharge, commandes, autonomie et bonnes pratiques vous sont expliquées.</p></article>
+        </div>
+      </section>
+
+      <section className="section discreetPickup">
+        <details>
+          <summary>Vous préférez récupérer votre véhicule sur un point de remise ?</summary>
+          <div className="pickupContent">
+            <p className="pickupIntro">
+              Nos entrepôts sont des sites logistiques et ne sont pas ouverts directement au public. Lorsque cela est possible,
+              nous pouvons cependant organiser une remise sur un point adapté, uniquement sur rendez-vous et selon disponibilité.
+            </p>
+            <div className="pickupGrid">
+              <article className="local">
+                <span>Région toulousaine</span>
+                <h3>Point de remise proche de Muret</h3>
+                <strong>249 €</strong>
+                <p>Transfert local, préparation de la remise, rendez-vous, inspection et explications de prise en main.</p>
+              </article>
+              <article>
+                <span>Autre région · selon disponibilité</span>
+                <h3>Point de remise régional</h3>
+                <strong>450 €</strong>
+                <p>Ce forfait correspond notamment au transfert logistique du véhicule depuis Toulouse vers la région concernée, puis à l’organisation de sa remise sur rendez-vous.</p>
+              </article>
+            </div>
+            <p className="pickupFine">Un point régional n’est proposé que lorsqu’une solution de remise est disponible dans la zone concernée.</p>
+          </div>
+        </details>
+      </section>
+
+      <section className="faq section">
+        <div className="heading"><span className="eyebrow">QUESTIONS FRÉQUENTES</span><h2>Les réponses simples.</h2></div>
+        <div className="faqList">
+          <details><summary>Puis-je venir directement à l’entrepôt ?</summary><p>Non. Nos entrepôts sont des sites logistiques avec circulation de véhicules, remorques et opérations de manutention ; ils ne sont pas conçus pour recevoir le public. Une remise sur un point adapté peut être proposée selon la région.</p></details>
+          <details><summary>Pourquoi le tarif ne dépend-il pas uniquement des kilomètres ?</summary><p>Parce que chaque livraison mobilise une personne, du matériel de transport et un créneau dédié, avec préparation du véhicule, contrôles, chargement, transport, déchargement, remise des clés, inspection et prise en main.</p></details>
+          <details><summary>Que comprennent les 150 € de carte grise ?</summary><p>Le forfait couvre la préparation et le traitement du dossier d’immatriculation, l’établissement du certificat provisoire d’immatriculation (CPI), les formalités carte grise et la taxe d’immatriculation incluse dans le forfait.</p></details>
+          <details><summary>Puis-je voir le véhicule avant l’achat ?</summary><p>Oui. Selon les disponibilités, nous pouvons organiser une présentation en visio, envoyer des photos et vidéos, ou proposer une démonstration locale sur rendez-vous.</p></details>
+          <details><summary>Quand est-ce que je paie ?</summary><p>Selon les modalités prévues sur votre commande, le paiement peut être finalisé au moment de la remise du véhicule.</p></details>
+        </div>
+      </section>
+
+      <section className="cta">
+        <div><span>VOTRE NEODRIVE, SANS SURPRISE</span><h2>Connaissez votre tarif avant de réserver.</h2><p>Calculez votre livraison ou contactez-nous directement pour confirmer votre destination.</p></div>
+        <div className="ctaButtons"><a href="#simulateur">Calculer mon tarif</a><a href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20confirmer%20mon%20tarif%20de%20livraison%20NeoDrive">WhatsApp</a></div>
+      </section>
+
+      <style jsx>{`
+        .fusionPage{background:#fff;color:#0b0b0c}.eyebrow{font-size:12px;font-weight:950;letter-spacing:1.7px;color:#f4512a}.hero{max-width:1200px;margin:auto;padding:64px 24px 54px;display:grid;grid-template-columns:.95fr 1.05fr;gap:54px;align-items:center}.hero h1{font-size:clamp(46px,5.6vw,72px);line-height:.98;letter-spacing:-3.3px;margin:16px 0 22px}.lead,.heading p,.simIntro p{font-size:18px;line-height:1.7;color:#686d75}.heroChecks{display:grid;gap:9px;margin-top:24px;color:#3d4249;font-weight:750;font-size:14px}.heroActions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.heroActions a{padding:16px 21px;border-radius:13px;text-decoration:none;font-weight:900}.primary{background:#0b0b0c;color:#fff}.secondary{border:1px solid #dedfe3;color:#111}.heroVisual{position:relative;border-radius:30px;overflow:hidden;box-shadow:0 25px 65px #0000001b}.heroVisual img{display:block;width:100%;height:470px;object-fit:cover}.photoBadge{position:absolute;left:18px;right:18px;bottom:18px;background:#fffffff0;backdrop-filter:blur(12px);padding:15px 17px;border-radius:17px;display:flex;flex-direction:column;gap:4px}.photoBadge span{color:#666b73;font-size:13px}.simpleSteps{max-width:1152px;margin:auto;padding:0 24px 54px;display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #eceef1}.simpleSteps article{display:flex;gap:15px;padding:18px 22px;border-right:1px solid #eceef1}.simpleSteps article:last-child{border-right:0}.simpleSteps b{color:#f4512a;font-size:13px}.simpleSteps span{display:grid;gap:4px;color:#71767e;font-size:13px}.simpleSteps strong{font-size:16px;color:#111}.section{max-width:1180px;margin:auto;padding:78px 24px}.heading{max-width:760px}.heading h2,.simIntro h2,.cta h2{font-size:clamp(36px,4.5vw,56px);line-height:1.04;letter-spacing:-2.4px;margin:12px 0 17px}.zones{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:36px}.zones article{border:1px solid #e5e7eb;border-radius:24px;padding:26px}.zoneTop{display:flex;justify-content:space-between;align-items:center;gap:18px}.zoneTop span{font-weight:900;color:#50565e}.zoneTop strong{font-size:31px;letter-spacing:-1px}.zones p{color:#6b7078;line-height:1.62}.fine,.pickupFine{font-size:13px;line-height:1.55;color:#777d84;margin-top:18px}.simSection{background:#0d0d0f;color:#fff;padding:82px max(24px,calc((100vw - 1132px)/2))}.simIntro{max-width:760px}.simIntro p{color:#b6bac2}.calculator{margin-top:34px;background:#fff;color:#111;border-radius:25px;padding:24px;display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end}.calculator label{display:grid;gap:8px;font-weight:850;font-size:14px}.calculator select,.calculator input{height:52px;border:1px solid #d9dce1;border-radius:13px;padding:0 15px;font-size:16px;background:#fff;color:#111}.calculator button{height:52px;border:0;border-radius:13px;background:#ff4b24;color:#fff;font-weight:950;padding:0 22px;font-size:15px}.calculator button:disabled{opacity:.6}.error{grid-column:1/-1;color:#b42318;margin:0}.result{margin-top:18px;background:#fff;color:#111;border-radius:25px;padding:28px}.resultTop{display:flex;justify-content:space-between;gap:30px;align-items:start}.resultTop h3{font-size:clamp(38px,5vw,58px);letter-spacing:-2.5px;margin:7px 0 5px}.resultTop p{color:#6b7078}.resultPrice{background:#111;color:#fff;padding:18px 22px;border-radius:18px;min-width:240px}.resultPrice span{display:block;color:#bfc3ca;font-size:13px}.resultPrice strong{display:block;font-size:34px;margin-top:5px}.resultPrice small{display:block;color:#bfc3ca;line-height:1.4;margin-top:5px}.priceBreakdown,.missionLine{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:18px}.priceBreakdown article,.missionLine article{border:1px solid #e5e7eb;border-radius:17px;padding:17px}.priceBreakdown span,.missionLine span{display:block;color:#737881;font-size:13px}.priceBreakdown strong,.missionLine strong{display:block;font-size:21px;margin-top:6px}.priceBreakdown small{display:block;color:#7b8088;font-size:12px;line-height:1.5;margin-top:8px}.contextNote{margin-top:18px;background:#f3f4f6;border-radius:18px;padding:21px}.contextNote.short{background:#fff3ee;border:1px solid #ffd7c9}.contextNote b{font-size:18px}.contextNote p{color:#626870;line-height:1.65;margin-bottom:0}.benefits{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:34px}.benefits article{background:#f5f6f7;border-radius:23px;padding:25px}.benefits span{font-size:12px;color:#f4512a;font-weight:950}.benefits h3{font-size:21px;margin:17px 0 9px}.benefits p{color:#6a7078;line-height:1.55;margin:0}.discreetPickup{padding-top:20px}.discreetPickup details{border:1px solid #e2e4e8;border-radius:24px;overflow:hidden}.discreetPickup summary{cursor:pointer;padding:24px 27px;font-size:20px;font-weight:900;list-style:none}.discreetPickup summary::-webkit-details-marker{display:none}.discreetPickup summary:after{content:"+";float:right;font-size:24px}.discreetPickup details[open] summary:after{content:"−"}.pickupContent{padding:0 27px 27px}.pickupIntro{color:#676d75;line-height:1.65;max-width:850px}.pickupGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px;margin-top:18px}.pickupGrid article{background:#f5f6f7;border-radius:20px;padding:23px}.pickupGrid article.local{background:#fff3ee}.pickupGrid span{font-size:12px;color:#737881;font-weight:900}.pickupGrid h3{font-size:22px;margin:9px 0}.pickupGrid strong{font-size:34px}.pickupGrid p{color:#696f77;line-height:1.58}.faq{padding-top:54px}.faqList{display:grid;gap:10px;margin-top:30px}.faqList details{border:1px solid #e4e6ea;border-radius:17px;padding:0 20px}.faqList summary{cursor:pointer;padding:19px 0;font-weight:900}.faqList p{color:#666c74;line-height:1.62;margin-top:0;padding-bottom:18px}.cta{max-width:1132px;margin:20px auto 88px;background:linear-gradient(135deg,#ff6a2b,#ff3152);color:#fff;border-radius:31px;padding:48px;display:flex;justify-content:space-between;align-items:center;gap:36px}.cta span{font-size:12px;font-weight:950;letter-spacing:1.6px;color:#ffffffc2}.cta h2{margin-bottom:10px}.cta p{line-height:1.6}.ctaButtons{display:flex;gap:10px;flex-wrap:wrap}.ctaButtons a{background:#fff;color:#111;text-decoration:none;font-weight:950;padding:15px 19px;border-radius:13px}.ctaButtons a:last-child{background:#111;color:#fff}
+        @media(max-width:850px){.hero{grid-template-columns:1fr;padding-top:43px;gap:30px}.hero h1{letter-spacing:-2.4px}.heroVisual img{height:335px}.simpleSteps,.zones,.benefits,.pickupGrid,.priceBreakdown,.missionLine{grid-template-columns:1fr}.simpleSteps{padding:0 20px 42px}.simpleSteps article{border-right:0;border-bottom:1px solid #eceef1;padding:17px 2px}.simpleSteps article:last-child{border-bottom:0}.section{padding:60px 20px}.calculator{grid-template-columns:1fr;padding:19px}.result{padding:20px}.resultTop{display:grid}.resultPrice{min-width:0}.simSection{padding:62px 20px}.cta{margin:15px 15px 65px;padding:30px;display:grid}.ctaButtons{display:grid}.ctaButtons a{text-align:center}}
+      `}</style>
     </main>
   );
 }
