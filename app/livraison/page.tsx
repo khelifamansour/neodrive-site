@@ -153,38 +153,34 @@ export default function LivraisonFusionPage() {
 
   return (
     <main className="fusionPage">
-      <section className="hero">
-        <div className="heroCopy">
-          <span className="eyebrow">LIVRAISON NEODRIVE · FRANCE ENTIÈRE</span>
-          <h1>Votre NeoDrive livrée simplement, jusqu’à chez vous.</h1>
-          <p className="lead">
-            De notre dépôt de Toulouse jusqu’à votre porte : transport sécurisé, aucun acompte et paiement seulement après avoir vu et essayé votre véhicule. Vous connaissez votre tarif avant la réservation,
-            le rendez-vous est organisé avec vous et la remise comprend l’inspection ainsi que la prise en main du véhicule.
-          </p>
-          <div className="heroChecks">
-            <span>✓ Aucun acompte · paiement à la livraison</span>
-            <span>✓ Inspection du véhicule lors de la remise</span>
-            <span>✓ Explications et prise en main sur place</span>
-          </div>
-          <div className="heroActions">
-            <a className="primary" href="#simulateur">Calculer mon tarif</a>
-            <a className="secondary" href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20un%20tarif%20de%20livraison%20NeoDrive">Nous contacter</a>
-          </div>
+      <section className="section deliveryGallery" aria-label="Nos livraisons en images">
+        <div className="heading">
+          <span className="eyebrow">DES LIVRAISONS RÉELLES, DES CLIENTS RASSURÉS</span>
+          <h1>Votre NeoDrive livrée jusqu’à votre porte.</h1>
+          <p>Découvrez nos vraies livraisons et nos clients. Votre voiture arrive chez vous en transport sécurisé : vous la voyez, vous l’essayez, puis vous payez. Aucun acompte.</p>
         </div>
-
-        <div className="heroVisual">
-          <img src="/livraison-neodrive.webp" alt="Livraison réelle d'une NeoDrive" />
-          <div className="photoBadge">
-            <b>Livraison réelle</b>
-            <span>Votre NeoDrive est prise en charge avec un transport adapté.</span>
-          </div>
+        <div className="deliveryGalleryGrid" role="region" aria-label="Photos réelles de livraisons NeoDrive" tabIndex={0}>
+          <figure><img src="/livraisons-clients/livraison-client-01.jpg" alt="Livraison réelle NeoDrive 01" loading="lazy" /><figcaption>Livraison sur plateau adapté</figcaption></figure>
+          <figure><img src="/livraisons-clients/livraison-client-02.jpg" alt="Livraison réelle NeoDrive 02" loading="lazy" /><figcaption>Remise d’une NeoDrive à nos clients</figcaption></figure>
+          <figure><img src="/livraisons-clients/livraison-client-03.jpg" alt="Livraison réelle NeoDrive 03" loading="lazy" /><figcaption>Transport de plusieurs NeoDrive</figcaption></figure>
+          <figure><img src="/livraisons-clients/livraison-client-04.jpg" alt="Livraison réelle NeoDrive 04" loading="lazy" /><figcaption>Nos véhicules prennent la route</figcaption></figure>
+          <figure><img src="/livraisons-clients/livraison-client-05.jpg" alt="Livraison réelle NeoDrive 05" loading="lazy" /><figcaption>Votre voiture livrée à domicile</figcaption></figure>
+          <figure><img src="/livraisons-clients/livraison-client-06.jpg" alt="Livraison réelle NeoDrive 06" loading="lazy" /><figcaption>Un véhicule remis en main propre</figcaption></figure>
+          <figure><img src="/livraisons-clients/livraison-client-07.jpg" alt="Livraison réelle NeoDrive 07" loading="lazy" /><figcaption>Transport sécurisé en camion</figcaption></figure>
+          <figure><img src="/livraisons-clients/livraison-client-08.jpg" alt="Livraison réelle NeoDrive 08" loading="lazy" /><figcaption>Préparation et acheminement</figcaption></figure>
+          <figure><img src="/livraisons-clients/livraison-client-09.jpg" alt="Livraison réelle NeoDrive 09" loading="lazy" /><figcaption>Une livraison au plus près de chez vous</figcaption></figure>
+          <figure><img src="/livraisons-clients/livraison-client-10.jpg" alt="Livraison réelle NeoDrive 10" loading="lazy" /><figcaption>Nos clients découvrent leur NeoDrive</figcaption></figure>
+          <figure><video src="/client1.mp4" controls playsInline preload="metadata" aria-label="Vidéo de livraison avec un client NeoDrive" /><figcaption>Nos clients partagent leur expérience</figcaption></figure>
+          <figure><video src="/client2.mp4" controls playsInline preload="metadata" aria-label="Deuxième vidéo de client NeoDrive" /><figcaption>Des véhicules remis en personne</figcaption></figure>
         </div>
+        <p className="deliveryGalleryHint">← Faites défiler pour découvrir nos livraisons →</p>
+        <p className="deliveryGalleryPromise">♡ Une vraie équipe, de vraies livraisons, et un paiement uniquement à la remise du véhicule après vérification.</p>
       </section>
 
       <section id="simulateur" className="simSection">
         <div className="simIntro">
           <span className="eyebrow">VOTRE TARIF EN QUELQUES SECONDES</span>
-          <h2>Calculez votre NeoDrive livrée.</h2>
+          <h2>Calculez votre prix total, livraison comprise.</h2>
           <p>Indiquez votre code postal pour estimer le prix de votre véhicule livré à domicile. Le tarif est confirmé avec vous avant toute réservation.</p>
         </div>
 
@@ -253,28 +249,32 @@ export default function LivraisonFusionPage() {
         ) : null}
       </section>
 
-      <section className="section deliveryGallery" aria-label="Nos livraisons en images">
-        <div className="heading">
-          <span className="eyebrow">DES LIVRAISONS RÉELLES, DES CLIENTS RASSURÉS</span>
-          <h2>De Toulouse jusqu’à votre porte, en toute sérénité.</h2>
-          <p>Votre voiture voyage sur un transport adapté. Nous convenons d’un rendez-vous, la déchargeons devant chez vous et vous pouvez la découvrir et l’essayer avant de régler. Aucun acompte, aucune surprise.</p>
+      <section className="hero" id="livraison-details">
+        <div className="heroCopy">
+          <span className="eyebrow">LIVRAISON NEODRIVE · FRANCE ENTIÈRE</span>
+          <h2>Comment se passe votre livraison ?</h2>
+          <p className="lead">
+            De notre dépôt de Toulouse jusqu’à votre porte : transport sécurisé, aucun acompte et paiement seulement après avoir vu et essayé votre véhicule. Vous connaissez votre tarif avant la réservation,
+            le rendez-vous est organisé avec vous et la remise comprend l’inspection ainsi que la prise en main du véhicule.
+          </p>
+          <div className="heroChecks">
+            <span>✓ Aucun acompte · paiement à la livraison</span>
+            <span>✓ Inspection du véhicule lors de la remise</span>
+            <span>✓ Explications et prise en main sur place</span>
+          </div>
+          <div className="heroActions">
+            <a className="primary" href="#simulateur">Calculer mon tarif</a>
+            <a className="secondary" href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20un%20tarif%20de%20livraison%20NeoDrive">Nous contacter</a>
+          </div>
         </div>
-        <div className="deliveryGalleryGrid" role="region" aria-label="Photos réelles de livraisons NeoDrive" tabIndex={0}>
-          <figure><img src="/livraisons-clients/livraison-client-01.jpg" alt="Livraison réelle NeoDrive 01" loading="lazy" /><figcaption>Livraison sur plateau adapté</figcaption></figure>
-          <figure><img src="/livraisons-clients/livraison-client-02.jpg" alt="Livraison réelle NeoDrive 02" loading="lazy" /><figcaption>Remise d’une NeoDrive à nos clients</figcaption></figure>
-          <figure><img src="/livraisons-clients/livraison-client-03.jpg" alt="Livraison réelle NeoDrive 03" loading="lazy" /><figcaption>Transport de plusieurs NeoDrive</figcaption></figure>
-          <figure><img src="/livraisons-clients/livraison-client-04.jpg" alt="Livraison réelle NeoDrive 04" loading="lazy" /><figcaption>Nos véhicules prennent la route</figcaption></figure>
-          <figure><img src="/livraisons-clients/livraison-client-05.jpg" alt="Livraison réelle NeoDrive 05" loading="lazy" /><figcaption>Votre voiture livrée à domicile</figcaption></figure>
-          <figure><img src="/livraisons-clients/livraison-client-06.jpg" alt="Livraison réelle NeoDrive 06" loading="lazy" /><figcaption>Un véhicule remis en main propre</figcaption></figure>
-          <figure><img src="/livraisons-clients/livraison-client-07.jpg" alt="Livraison réelle NeoDrive 07" loading="lazy" /><figcaption>Transport sécurisé en camion</figcaption></figure>
-          <figure><img src="/livraisons-clients/livraison-client-08.jpg" alt="Livraison réelle NeoDrive 08" loading="lazy" /><figcaption>Préparation et acheminement</figcaption></figure>
-          <figure><img src="/livraisons-clients/livraison-client-09.jpg" alt="Livraison réelle NeoDrive 09" loading="lazy" /><figcaption>Une livraison au plus près de chez vous</figcaption></figure>
-          <figure><img src="/livraisons-clients/livraison-client-10.jpg" alt="Livraison réelle NeoDrive 10" loading="lazy" /><figcaption>Nos clients découvrent leur NeoDrive</figcaption></figure>
-          <figure><video src="/client1.mp4" controls playsInline preload="metadata" aria-label="Vidéo de livraison avec un client NeoDrive" /><figcaption>Nos clients partagent leur expérience</figcaption></figure>
-          <figure><video src="/client2.mp4" controls playsInline preload="metadata" aria-label="Deuxième vidéo de client NeoDrive" /><figcaption>Des véhicules remis en personne</figcaption></figure>
+
+        <div className="heroVisual">
+          <img src="/livraison-neodrive.webp" alt="Livraison réelle d'une NeoDrive" />
+          <div className="photoBadge">
+            <b>Livraison réelle</b>
+            <span>Votre NeoDrive est prise en charge avec un transport adapté.</span>
+          </div>
         </div>
-        <p className="deliveryGalleryHint">← Faites défiler pour découvrir nos livraisons →</p>
-        <p className="deliveryGalleryPromise">♡ Une vraie équipe, de vraies livraisons, et un paiement uniquement à la remise du véhicule après vérification.</p>
       </section>
 
       <section className="simpleSteps">
@@ -363,8 +363,8 @@ export default function LivraisonFusionPage() {
       `}</style>
 
       <style jsx>{`
-        .deliveryGallery { background: linear-gradient(145deg,#fffaf3,#f0f8ff); border-radius: 28px; margin: 34px auto; padding: 34px 26px; }
-        .deliveryGalleryGrid { display:flex;gap:18px;margin-top:24px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding-bottom:14px;overscroll-behavior-inline:contain; } .deliveryGalleryGrid figure { flex:0 0 min(75vw,360px);scroll-snap-align:start; } .deliveryGalleryHint{text-align:center;color:#526c82;font-size:0.9rem;margin-top:10px;}
+        .deliveryGallery { background: linear-gradient(145deg,#fffaf3,#f0f8ff); border-radius: 28px; margin: 14px auto 20px; padding: 22px 26px; } .deliveryGallery .heading p {max-width:720px;} .deliveryGallery .heading h1 {font-size:clamp(2rem,5vw,3.5rem);line-height:1.08;}
+        .deliveryGalleryGrid { display:flex;gap:18px;margin-top:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding-bottom:14px;overscroll-behavior-inline:contain; } .deliveryGalleryGrid figure { flex:0 0 min(75vw,360px);scroll-snap-align:start; } .deliveryGalleryHint{text-align:center;color:#526c82;font-size:0.9rem;margin-top:10px;}
         .deliveryGalleryGrid figure { margin:0;overflow:hidden;border-radius:18px;background:white;box-shadow:0 8px 28px #1c36531a; }
         .deliveryGalleryGrid img,.deliveryGalleryGrid video { width:100%;height:240px;object-fit:cover;display:block;background:#13243a; }
         .deliveryGalleryGrid figcaption { padding:15px;font-weight:650;color:#233b55; }
