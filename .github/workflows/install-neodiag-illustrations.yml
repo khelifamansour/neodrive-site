@@ -1,0 +1,31 @@
+name: Install NeoDiag illustrations
+on:
+  push:
+    paths:
+      - 'public/neodiag_illustrations.zip'
+      - '.github/workflows/install-neodiag-illustrations.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract illustrated NeoDiag cards
+        run: |
+          test -f public/neodiag_illustrations.zip
+          mkdir -p public/neodiag-images
+          unzip -o -j public/neodiag_illustrations.zip '*.webp' -d public/neodiag-images
+          test "$(find public/neodiag-images -maxdepth 1 -name '*.webp' | wc -l)" -eq 15
+      - name: Commit artwork without overwriting new changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/neodiag-images/
+          if ! git diff --cached --quiet; then
+            git commit -m "Install fifteen illustrated NeoDiag cards"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
