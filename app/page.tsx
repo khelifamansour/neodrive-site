@@ -31,6 +31,23 @@ export default function Home() {
         <div><strong>France</strong><span>livraison possible</span></div>
       </section>
 
+      <section className="realGallery" aria-label="Galerie photo NeoDrive">
+        <div className="realGalleryIntro">
+          <span className="miniBadge">NeoDrive en vrai</span>
+          <h2>De vraies voitures. Une activité bien réelle.</h2>
+          <p>Découvrez nos véhicules, leur intérieur, les arrivages et leur transport à travers nos propres photos.</p>
+        </div>
+        <div className="realGalleryTrack" role="region" aria-label="Photos NeoDrive à faire défiler horizontalement" tabIndex={0}>
+          {[{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/137e8afd-9c45-425c-83bf-f68f5f9ef1eb-1000126021.jpg","alt":"Nos véhicules à l'arrivée"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/1842f1c0-2f85-449d-8183-93065c31f252-1000130728.jpg","alt":"L'habitacle NeoDrive"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/9784a94e-fb2c-42ba-b4f3-dcb0fcea11c8-1000126029.jpg","alt":"Notre parc de véhicules"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-09-01/18862335-61bc-4a0c-b60a-b456b94d9c13-1000160283.jpg","alt":"Transport des véhicules"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/0b4e7023-6f6a-4f46-95d5-90e13965e311-1000127389.jpg","alt":"Préparation des livraisons"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/b1c44b3d-265b-428f-ad91-10f2acabcc9a-1000127412.jpg","alt":"Chargement et livraison"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-09-01/beed26ba-f702-41f8-b813-49d2e8598cf0-1000160314.jpg","alt":"Nos voitures sur le transporteur"}].map((photo, index) => (
+            <figure className="realGalleryItem" key={photo.src}>
+              <img src={photo.src} alt={photo.alt} loading="lazy" decoding="async" width="720" height="520" />
+              <figcaption><strong>{photo.alt}</strong><span>{String(index + 1).padStart(2, "0")} / 7</span></figcaption>
+            </figure>
+          ))}
+        </div>
+        <p className="realGalleryHint">← Faites glisser pour découvrir nos photos →</p>
+      </section>
+
       <section id="versions" className="modelsSection">
         <div className="sectionHeader">
           <span className="miniBadge">Choisissez votre NeoDrive</span>
@@ -123,22 +140,7 @@ export default function Home() {
       </section>
 
 
-      <section className="realGallery" aria-label="Galerie photo NeoDrive">
-        <div className="realGalleryIntro">
-          <span className="miniBadge">NeoDrive en vrai</span>
-          <h2>De vraies voitures. Une activité bien réelle.</h2>
-          <p>Découvrez nos véhicules, leur intérieur, les arrivages et leur transport à travers nos propres photos.</p>
-        </div>
-        <div className="realGalleryTrack" role="region" aria-label="Photos NeoDrive à faire défiler horizontalement" tabIndex={0}>
-          {[{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/137e8afd-9c45-425c-83bf-f68f5f9ef1eb-1000126021.jpg","alt":"Nos véhicules à l'arrivée"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/1842f1c0-2f85-449d-8183-93065c31f252-1000130728.jpg","alt":"L'habitacle NeoDrive"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/9784a94e-fb2c-42ba-b4f3-dcb0fcea11c8-1000126029.jpg","alt":"Notre parc de véhicules"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-09-01/18862335-61bc-4a0c-b60a-b456b94d9c13-1000160283.jpg","alt":"Transport des véhicules"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/0b4e7023-6f6a-4f46-95d5-90e13965e311-1000127389.jpg","alt":"Préparation des livraisons"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/b1c44b3d-265b-428f-ad91-10f2acabcc9a-1000127412.jpg","alt":"Chargement et livraison"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-09-01/beed26ba-f702-41f8-b813-49d2e8598cf0-1000160314.jpg","alt":"Nos voitures sur le transporteur"}].map((photo, index) => (
-            <figure className="realGalleryItem" key={photo.src}>
-              <img src={photo.src} alt={photo.alt} loading="lazy" decoding="async" width="720" height="520" />
-              <figcaption><strong>{photo.alt}</strong><span>{String(index + 1).padStart(2, "0")} / 7</span></figcaption>
-            </figure>
-          ))}
-        </div>
-        <p className="realGalleryHint">← Faites glisser pour découvrir nos photos →</p>
-      </section>
+
 
       <GoogleReviews />
 
