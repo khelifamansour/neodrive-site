@@ -2,34 +2,13 @@
 
 import React from "react";
 import GoogleReviews from "./_components/GoogleReviews";
+import { HomeHero, TrustStrip, WhyUs, Compare, HowItWorks, HomeFootnotes, MobileCta } from "./_components/HomeConversion";
 
 export default function Home() {
   return (
     <main className="page">
-      <section className="hero">
-        <div className="heroOverlay" />
-        <div className="heroContent">
-          <span className="badge">🇫🇷 Marque toulousaine</span>
-          <h1>La liberté de rouler, simplement.</h1>
-          <p className="price">Dès 3 990 €</p>
-          <p className="subtitle">Une voiture électrique sans permis, neuve, rassurante et accessible.</p>
-          <div className="heroProof">
-            <span>✓ 100% électrique</span>
-            <span>✓ Livraison France</span>
-            <span>✓ SAV & accompagnement</span>
-          </div>
-          <div className="heroActions">
-            <a href="https://wa.me/33628261446" target="_blank" rel="noreferrer" className="primaryBtn">Parler avec nous</a>
-            <a href="/videos" className="secondaryBtn">▶ Voir les vidéos</a>
-          </div>
-        </div>
-      </section>
-
-      <section className="trustBar">
-        <div><strong>6 ans</strong><span>d’expérience VSP</span></div>
-        <div><strong>Toulouse</strong><span>marque française</span></div>
-        <div><strong>France</strong><span>livraison possible</span></div>
-      </section>
+      <HomeHero />
+      <TrustStrip />
 
       <section className="realGallery" aria-label="Galerie photo NeoDrive">
         <div className="realGalleryIntro">
@@ -47,6 +26,8 @@ export default function Home() {
         </div>
         <p className="realGalleryHint">← Faites glisser pour découvrir nos photos →</p>
       </section>
+
+      <WhyUs />
 
       <section id="versions" className="modelsSection">
         <div className="sectionHeader">
@@ -68,7 +49,8 @@ export default function Home() {
               <li>Grand coffre</li>
               <li>Batterie incluse</li>
             </ul>
-            <a className="chooseBtn darkBtn" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">Demander l’Essentiel</a>
+            <a className="chooseBtn darkBtn" href="/reservation-devis?modele=essentielle">Réserver l’Essentielle</a>
+            <a className="financeLink" href="/financement">ou en financement, dès quelques dizaines d’euros par mois →</a>
           </article>
 
           <article className="card featured">
@@ -88,7 +70,8 @@ export default function Home() {
               <li>Bluetooth / USB</li>
               <li>Alarme antivol</li>
             </ul>
-            <a className="chooseBtn orangeBtn" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">Demander la Confort</a>
+            <a className="chooseBtn orangeBtn" href="/reservation-devis?modele=confort">Réserver la Confort</a>
+            <a className="financeLink" href="/financement">ou en financement, dès quelques dizaines d’euros par mois →</a>
           </article>
 
           <article className="card premium">
@@ -103,10 +86,14 @@ export default function Home() {
               <li>Plus d’autonomie</li>
               <li>Accompagnement renforcé</li>
             </ul>
-            <a className="chooseBtn darkBtn" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">Demander la Plus+</a>
+            <a className="chooseBtn darkBtn" href="/reservation-devis?modele=confortPlus">Réserver la Plus+</a>
+            <a className="financeLink" href="/financement">ou en financement, dès quelques dizaines d’euros par mois →</a>
           </article>
         </div>
       </section>
+
+      <Compare />
+      <HowItWorks />
 
       <section className="emotionSection">
         <div className="emotionText">
@@ -154,6 +141,9 @@ export default function Home() {
         </div>
       </section>
 
+      <HomeFootnotes />
+      <MobileCta />
+
       <footer className="footer">
         <strong>NeoDrive</strong>
         <span>31 rue Jean Nougaro, 31600 Muret</span>
@@ -166,7 +156,7 @@ export default function Home() {
       `}</style>
 
       <style jsx>{`
-        .page{width:100%;overflow:hidden;background:#fff;color:#101010;font-family:Arial,sans-serif}
+        .page{width:100%;overflow:hidden;background:#fffdf9;color:#101010;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}.financeLink{display:block;margin-top:12px;text-align:center;font-size:13px;font-weight:700;color:inherit;opacity:.8;text-decoration:underline}@media(max-width:760px){.page{padding-bottom:76px}}
         .hero{position:relative;min-height:700px;background:url('/hero.png') center/cover no-repeat;display:flex;align-items:center;padding:80px 8%;color:#fff}
         .heroOverlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.46) 45%,rgba(0,0,0,.12) 100%)}
         .heroContent{position:relative;z-index:1;max-width:760px}

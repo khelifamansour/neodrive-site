@@ -50,6 +50,7 @@ export default function ReservationDevis(){
    .finally(()=>{if(!controller.signal.aborted)setPostalLoading(false)});
   return ()=>controller.abort();
  },[postal]);
+ useEffect(()=>{try{const m=new URLSearchParams(window.location.search).get("modele");if(m&&m in VEHICLES)setModel(m as VehicleKey);}catch{}},[]);
  const quote=useMemo(()=>calculateQuote(model,postal,registration),[model,postal,registration]);
  const normalizeCity=(v:string)=>v.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
  const cityMatches=postalCities.some(city=>normalizeCity(city)===normalizeCity(customer.ville));
