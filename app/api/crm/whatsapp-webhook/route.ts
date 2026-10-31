@@ -1,11 +1,13 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { crmDatabase, generateCommercialReply, normalizePhone, sendWhatsApp } from "@/lib/crm-agent";
+import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
+  await applyStoredSecrets();
   const url = new URL(request.url);
   const verify = process.env.WHATSAPP_VERIFY_TOKEN;
   console.log("[WA-WEBHOOK] GET verification received", {
@@ -23,6 +25,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  await applyStoredSecrets();
   console.log("[WA-WEBHOOK] POST received", { at: new Date().toISOString(), contentType: request.headers.get("content-type"), hasSignature: Boolean(request.headers.get("x-hub-signature-256")) });
   try {
     const appSecret = process.env.WHATSAPP_APP_SECRET;

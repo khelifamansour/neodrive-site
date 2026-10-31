@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
+  await applyStoredSecrets();
   const { passcode } = await request.json().catch(() => ({}));
   const secret = process.env.CRON_SECRET;
   if (!secret || passcode !== secret) return NextResponse.json({ ok:false,error:"Code d’accès incorrect" },{status:401});

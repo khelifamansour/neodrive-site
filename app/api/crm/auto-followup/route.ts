@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { crmDatabase, firstMessage, generateCommercialReply, sendWhatsApp, whatsappConfigured } from "@/lib/crm-agent";
+import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -41,6 +42,7 @@ async function patchLead(key:string,id:number,patch:Record<string,unknown>){
 }
 
 export async function GET(req:Request){
+  await applyStoredSecrets();
   console.log("[AUTO-FOLLOWUP] cron started",{at:new Date().toISOString()});
   try {
     const secret=process.env.CRON_SECRET; const auth=req.headers.get("authorization");

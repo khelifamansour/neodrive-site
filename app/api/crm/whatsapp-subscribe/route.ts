@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -17,6 +18,7 @@ async function graphGet(path: string, token: string) {
 }
 
 export async function GET(request: Request) {
+  await applyStoredSecrets();
   const url = new URL(request.url);
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   if (!token) {
@@ -80,6 +82,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  await applyStoredSecrets();
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   if (!token) return NextResponse.json({ ok: false, error: "WHATSAPP_ACCESS_TOKEN missing" }, { status: 503 });
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { dailyPosterForPublishing } from "@/lib/marketing-posters";
 import { isVideoAsset, pickSocialTheme, type SocialTheme } from "@/lib/social-copy";
 import { buildCoherentSocialCopy } from "@/lib/social-copy-ai";
+import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic="force-dynamic";
 export const maxDuration=90;
@@ -95,6 +96,7 @@ async function publish(p:string,t:string,u:string,msg:string,v:boolean){
 }
 
 export async function GET(req:Request){
+  await applyStoredSecrets();
   const s=process.env.CRON_SECRET;if(!s||req.headers.get("authorization")!==`Bearer ${s}`)return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
   const k=process.env.SUPABASE_SERVICE_ROLE_KEY,t=process.env.FACEBOOK_PAGE_ACCESS_TOKEN,p=process.env.FACEBOOK_PAGE_ID;if(!k||!t||!p)return NextResponse.json({ok:false,error:"Configuration missing"},{status:503});
 

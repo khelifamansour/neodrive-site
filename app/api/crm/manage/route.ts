@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { crmDatabase, firstMessage, generateCommercialReply, leadScore, normalizePhone, sendWhatsApp, whatsappConfigured } from "@/lib/crm-agent";
+import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -37,6 +38,7 @@ function csvRecord(headers: string[], values: string[]) {
 }
 
 export async function POST(request: Request) {
+  await applyStoredSecrets();
   const body = await request.json().catch(() => ({}));
   if (!authorized(body.passcode)) return NextResponse.json({ ok: false, error: "Code d'accès incorrect" }, { status: 401 });
   let db: ReturnType<typeof crmDatabase>;

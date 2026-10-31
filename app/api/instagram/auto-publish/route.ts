@@ -3,6 +3,7 @@ import { dailyPosterForPublishing } from "@/lib/marketing-posters";
 import { isVideoAsset, pickSocialTheme, type SocialTheme } from "@/lib/social-copy";
 import { buildCoherentSocialCopy } from "@/lib/social-copy-ai";
 import { resolveInstagramPublishingAuth, type InstagramPublishingAuth } from "@/lib/instagram-publishing-auth";
+import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -176,6 +177,7 @@ async function publish(auth:InstagramPublishingAuth,url:string,msg:string,isV:bo
 }
 
 export async function GET(req:Request) {
+  await applyStoredSecrets();
   const s=process.env.CRON_SECRET,alt=process.env.INSTAGRAM_AUTOMATION_SECRET,auth=req.headers.get("authorization");
   if(!((s&&auth===`Bearer ${s}`)||(alt&&auth===`Bearer ${alt}`))) return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
   const k=process.env.SUPABASE_SERVICE_ROLE_KEY;

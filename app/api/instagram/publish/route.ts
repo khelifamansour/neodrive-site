@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -61,6 +62,7 @@ async function publishContainer(accountId: string, containerId: string, token: s
 }
 
 export async function POST(req: Request) {
+  await applyStoredSecrets();
   const token = process.env.INSTAGRAM_ACCESS_TOKEN;
   const secret = process.env.INSTAGRAM_AUTOMATION_SECRET;
   if (!token) return NextResponse.json({ ok: false, error: "INSTAGRAM_ACCESS_TOKEN is not configured" }, { status: 503 });
