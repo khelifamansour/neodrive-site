@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 
-type Attachment = { name: string; type?: string; size?: number; path: string };
+type Attachment = { name: string; type?: string; size?: number; path: string; bucket?: string };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function readTimeline(sb: any, ref: string): Promise<SavTimeline | null> {
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const { data } = await sb.from("sav_tickets").select("attachments").eq("public_reference", ref).maybeSingle();
     const att = (data?.attachments || []) as Attachment[];
     const media = [];
-    for (const a of att) { const { data: s } = await sb.storage.from(SAV_BUCKET).createSignedUrl(a.path, 3600); if (s?.signedUrl) media.push({ name: a.name, type: a.type || "", url: s.signedUrl }); }
+    for (const a of att) { const { data: s } = await sb.storage.from(a.bucket || SAV_BUCKET).createSignedUrl(a.path, 3600); if (s?.signedUrl) media.push({ name: a.name, type: a.type || "", url: s.signedUrl }); }
     return NextResponse.json({ ok: true, media });
   }
 

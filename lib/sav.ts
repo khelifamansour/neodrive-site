@@ -12,7 +12,8 @@ export const stageOf = (k: string) => SAV_STAGES.find(s => s.key === k) || SAV_S
 export type SavEvent = { at: string; stage: SavStageKey; note?: string; internal?: string };
 export type SavTimeline = { ref: string; folder: string; events: SavEvent[] };
 
-export const SAV_BUCKET = "erp-documents";
+export const SAV_BUCKET = "erp-documents"; // suivi (JSON)
+export const SAV_MEDIA_BUCKET = "sav-medias"; // photos & vidéos clients (privé)
 export const SAV_MAX_PHOTO = 15 * 1024 * 1024;
 export const SAV_MAX_VIDEO = 50 * 1024 * 1024; // limite par défaut du stockage Supabase
 export const SAV_MAX_FILES = 8;

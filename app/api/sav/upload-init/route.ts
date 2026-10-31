@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { SAV_BUCKET, SAV_MAX_FILES, SAV_MAX_PHOTO, SAV_MAX_VIDEO } from "../../../../lib/sav";
+import { SAV_MEDIA_BUCKET, SAV_MAX_FILES, SAV_MAX_PHOTO, SAV_MAX_VIDEO } from "../../../../lib/sav";
 
 export const dynamic = "force-dynamic";
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
@@ -23,12 +23,17 @@ export async function POST(req: Request) {
   const ref = `SAV-${new Date().getFullYear()}-${String(Date.now()).slice(-7)}`;
   const folder = `sav/${ref}-${crypto.randomUUID()}`;
   const sb = createClient(SB, sk, { auth: { persistSession: false } });
+  // Espace privé dédié aux médias SAV (créé automatiquement au premier envoi)
+  if (files.length) {
+    const { error: bErr } = await sb.storage.createBucket(SAV_MEDIA_BUCKET, { public: false, fileSizeLimit: SAV_MAX_VIDEO, allowedMimeTypes: ["image/*", "video/*"] });
+    if (bErr && !/exist/i.test(bErr.message)) return NextResponse.json({ ok: false, error: "Stockage indisponible, réessayez." }, { status: 502 });
+  }
   const uploads = [];
   for (const [i, f] of files.entries()) {
     const path = `${folder}/${String(i + 1).padStart(2, "0")}-${safeName(f.name || "media")}`;
-    const { data, error } = await sb.storage.from(SAV_BUCKET).createSignedUploadUrl(path);
+    const { data, error } = await sb.storage.from(SAV_MEDIA_BUCKET).createSignedUploadUrl(path);
     if (error || !data) return NextResponse.json({ ok: false, error: "Stockage indisponible, réessayez." }, { status: 502 });
     uploads.push({ index: i, path: data.path, token: data.token });
   }
-  return NextResponse.json({ ok: true, ref, folder, bucket: SAV_BUCKET, uploads });
+  return NextResponse.json({ ok: true, ref, folder, bucket: SAV_MEDIA_BUCKET, uploads });
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
-import { ALERT_ENDPOINT, SAV_BUCKET, timelinePath, waNumber, type SavTimeline } from "../../../../lib/sav";
+import { ALERT_ENDPOINT, SAV_BUCKET, SAV_MEDIA_BUCKET, timelinePath, waNumber, type SavTimeline } from "../../../../lib/sav";
 
 export const dynamic="force-dynamic";
 export const maxDuration=60;
@@ -42,8 +42,8 @@ export async function POST(req:Request){
  if(exists)return NextResponse.json({ok:false,error:"Cette demande a déjà été envoyée."},{status:409});
 
  // Médias réellement reçus dans le dossier privé
- const {data:listed}=await sb.storage.from(SAV_BUCKET).list(folder,{limit:50});
- const attachments=(listed||[]).filter(f=>f.name&&!f.name.startsWith(".")).map(f=>({name:f.name,type:(f.metadata as {mimetype?:string}|null)?.mimetype||"",size:(f.metadata as {size?:number}|null)?.size||0,path:`${folder}/${f.name}`}));
+ const {data:listed}=await sb.storage.from(SAV_MEDIA_BUCKET).list(folder,{limit:50});
+ const attachments=(listed||[]).filter(f=>f.name&&!f.name.startsWith(".")).map(f=>({name:f.name,type:(f.metadata as {mimetype?:string}|null)?.mimetype||"",size:(f.metadata as {size?:number}|null)?.size||0,path:`${folder}/${f.name}`,bucket:SAV_MEDIA_BUCKET}));
 
  let vehicle:{id:string;vin:string;internal_ref:string;model:string;version:string}|null=null;
  if(vin){const {data}=await sb.from("vehicles").select("id,vin,internal_ref,model,version,current_customer_id").or(`vin.eq.${vin},chassis_number.eq.${vin}`).maybeSingle();vehicle=data||null;}
@@ -58,7 +58,7 @@ export async function POST(req:Request){
 
  // Alerte NeoDrive
  const links:string[]=[];
- for(const a of attachments){const {data}=await sb.storage.from(SAV_BUCKET).createSignedUrl(a.path,LINK_TTL);if(data?.signedUrl)links.push(`${a.name} : ${data.signedUrl}`);}
+ for(const a of attachments){const {data}=await sb.storage.from(a.bucket).createSignedUrl(a.path,LINK_TTL);if(data?.signedUrl)links.push(`${a.name} : ${data.signedUrl}`);}
  const fields:Record<string,string>={
   _subject:`🔧 Nouvelle demande SAV ${ref} — ${name}`,
   reference:ref,client:name,telephone:phone,email,
