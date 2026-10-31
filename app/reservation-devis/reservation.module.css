@@ -23,30 +23,26 @@
 .btnLink svg{color:#25a35a;font-size:20px}
 
 /* HERO */
-.hero{display:grid;grid-template-columns:1.05fr 1fr;gap:36px;align-items:center;background:linear-gradient(160deg,#fff 0%,var(--cream) 60%,#fdeee3 100%);border:1px solid var(--line);border-radius:30px;padding:40px;box-shadow:var(--shadow);overflow:hidden}
-.kicker{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);padding:8px 14px;border-radius:999px;font-size:13px;font-weight:700;color:var(--ink2)}
+.hero{position:relative;display:grid;grid-template-columns:minmax(0,500px) 1fr;min-height:540px;border-radius:30px;overflow:hidden;background:#f6efe4;box-shadow:0 24px 60px rgba(120,80,40,.16);isolation:isolate}
+.heroMedia{position:absolute;top:0;bottom:0;right:0;left:40%;margin:0;z-index:-1}
+.heroMedia picture,.heroMedia img{display:block;width:100%;height:100%}
+.heroMedia img{object-fit:cover;object-position:50% 75%}
+.heroMedia:before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,#f6efe4 0%,rgba(246,239,228,.75) 6%,rgba(246,239,228,0) 20%),linear-gradient(0deg,rgba(60,40,20,.18),rgba(60,40,20,0) 30%)}
+.heroCopy{position:relative;z-index:2;padding:44px 0 44px 44px;align-self:center}
+.kicker{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);padding:8px 14px;border-radius:999px;font-size:13px;font-weight:700;color:var(--ink2);box-shadow:0 4px 12px rgba(0,0,0,.04)}
 .kicker i{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.18)}
-.hero h1{font-size:clamp(34px,4.6vw,56px);line-height:1.02;font-weight:900;letter-spacing:-.035em;margin:18px 0 16px}
+.hero h1{font-size:clamp(34px,4.4vw,54px);line-height:1.02;font-weight:900;letter-spacing:-.035em;margin:18px 0 16px}
 .hero h1 span{color:var(--orange)}
-.heroCopy>p{font-size:17px;line-height:1.6;color:var(--ink2);margin:0;max-width:520px}
+.heroCopy>p{font-size:17px;line-height:1.6;color:var(--ink2);margin:0;max-width:470px}
 .heroCopy>p b{color:var(--ink)}
 .heroPrice{display:flex;align-items:baseline;gap:8px;margin:22px 0 4px}
 .heroPrice small{font-size:14px;color:var(--muted);font-weight:600}
 .heroPrice strong{font-size:34px;font-weight:900;letter-spacing:-.03em}
 .heroPrice span{font-size:14px;font-weight:700;color:var(--muted)}
 .heroCtas{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-top:18px}
-.heroScene{position:relative;margin:0;aspect-ratio:5/4;border-radius:26px;overflow:hidden;
-  background:radial-gradient(120% 90% at 78% 18%,#ffe7b8 0%,#ffd2a1 28%,#ffb98c 52%,#f7a27e 72%,#ee8f78 100%);
-  box-shadow:0 24px 50px rgba(184,84,38,.22),inset 0 0 0 1px rgba(255,255,255,.35)}
-.sun{position:absolute;left:8%;top:10%;width:30%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff6d8 0%,#ffe6a3 55%,rgba(255,224,150,0) 72%);filter:blur(1px)}
-.hills{position:absolute;left:-10%;right:-10%;bottom:22%;height:30%;background:radial-gradient(60% 100% at 25% 100%,#f3b28b 0%,#f3b28b 60%,transparent 61%),radial-gradient(55% 100% at 80% 100%,#eea07f 0%,#eea07f 60%,transparent 61%);opacity:.9}
-.road{position:absolute;left:0;right:0;bottom:0;height:26%;background:linear-gradient(180deg,#e9876c 0%,#d9735d 100%)}
-.road:after{content:"";position:absolute;left:0;right:0;top:46%;height:3px;background:repeating-linear-gradient(90deg,rgba(255,240,220,.75) 0 34px,transparent 34px 64px)}
-.carShadow{position:absolute;left:15%;right:9%;bottom:6%;height:9%;border-radius:50%;background:radial-gradient(closest-side,rgba(70,30,20,.45),rgba(70,30,20,0));z-index:1}
-.heroCar{position:absolute;z-index:2;left:13%;width:76%;bottom:8%;height:auto;filter:drop-shadow(0 8px 14px rgba(90,40,20,.25))}
-.heroScene figcaption{position:absolute;z-index:3;bottom:12px;left:14px;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);padding:7px 12px;border-radius:999px;font-size:12px;font-weight:700;color:var(--ink)}
-.heroScene figcaption i{width:7px;height:7px;border-radius:50%;background:#22c55e}
-.heroFloat{position:absolute;z-index:3;right:14px;top:14px;display:flex;align-items:center;gap:12px;background:#fff;border-radius:18px;padding:12px 16px 12px 12px;box-shadow:0 14px 34px rgba(22,32,46,.18)}
+.heroMedia figcaption{position:absolute;z-index:2;right:18px;bottom:18px;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);padding:8px 13px;border-radius:999px;font-size:12px;font-weight:700;color:var(--ink);box-shadow:0 6px 16px rgba(0,0,0,.12)}
+.heroMedia figcaption i{width:7px;height:7px;border-radius:50%;background:#22c55e}
+.heroFloat{position:absolute;z-index:2;right:18px;top:18px;display:flex;align-items:center;gap:12px;background:#fff;border-radius:18px;padding:12px 16px 12px 12px;box-shadow:0 14px 34px rgba(22,32,46,.18)}
 .heroFloat strong{display:block;font-size:15px}
 .heroFloat small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 .heroFloatIcon{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:var(--greenSoft);color:var(--green);font-size:22px}
@@ -221,14 +217,16 @@
 }
 @media (max-width:760px){
   .page{padding:12px 12px 110px}
-  .hero{grid-template-columns:1fr;gap:22px;padding:22px 18px 26px;border-radius:24px}
-  .heroScene{order:-1;aspect-ratio:4/3.3;border-radius:20px}
-  .heroFloat{right:10px;top:10px;padding:7px 11px 7px 7px}
-  .heroCar{left:12%;width:76%;bottom:7%}
-  .heroScene figcaption{bottom:9px;left:10px;font-size:11px;padding:6px 10px}
+  .hero{display:flex;flex-direction:column;min-height:0;border-radius:24px}
+  .heroMedia{position:relative;inset:auto;left:auto;z-index:0;aspect-ratio:4/3.1;order:-1}
+  .heroMedia img{object-position:50% 70%}
+  .heroMedia:before{background:linear-gradient(0deg,#f6efe4 0%,rgba(246,239,228,0) 10%)}
+  .heroMedia figcaption{display:none}
+  .heroFloat{top:10px;right:10px;padding:7px 11px 7px 7px}
   .heroFloatIcon{width:34px;height:34px;font-size:18px}
   .heroFloat strong{font-size:14px}
-  .hero h1{font-size:36px;margin:10px 0 12px}
+  .heroCopy{padding:4px 18px 24px}
+  .hero h1{font-size:36px;margin:12px 0 12px}
   .heroCopy>p{font-size:15.5px}
   .heroCtas .btnPrimary{width:100%}
   .heroCtas{justify-content:center}
