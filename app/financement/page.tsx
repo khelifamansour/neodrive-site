@@ -1,60 +1,226 @@
 "use client";
-import React,{useState}from"react";
+import {useEffect,useMemo,useState} from "react";
+import {VEHICLES,REGISTRATION_PRICE,quoteDelivery,type VehicleKey} from "../../lib/neodrive-pricing";
+import {FINANCE,FINANCE_DOCS,FINANCE_MAX_FILE,monthlyPayment,type FinanceDocKey} from "../../lib/neodrive-finance";
+import {supabase} from "../../lib/supabase";
+import r from "../reservation-devis/reservation.module.css";
+import s from "./financement.module.css";
 
-const versions={essentiel:{label:"NeoDrive Essentielle",prix:3990},confort:{label:"NeoDrive Confort",prix:4990},confortPlus:{label:"NeoDrive Confort Plus",prix:5990}};
-const docs=["Bulletin de salaire du mois dernier","Bulletin de salaire M-2","Bulletin de salaire M-3","Dernier avis d’imposition","Contrat de travail","Pièce d’identité recto-verso","Justificatif de domicile","RIB"];
-const eur=(n:number)=>n.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const eur0=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n);
+const eur2=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+const pct=(n:number)=>n.toLocaleString("fr-FR",{minimumFractionDigits:2})+" %";
+const WHATSAPP="https://wa.me/33628261446?text="+encodeURIComponent("Bonjour, j'ai une question sur le financement d'une NeoDrive.");
+const MODEL_IMG:Record<VehicleKey,string>={essentielle:"/reservation/essentielle.svg",confort:"/reservation/confort.svg",confortPlus:"/reservation/confort-plus.svg"};
+
+const lowest=Math.ceil(monthlyPayment(VEHICLES.essentielle.price+REGISTRATION_PRICE,84));
 
 export default function Financement(){
- const[version,setVersion]=useState<keyof typeof versions>("confort");
- const[cp,setCp]=useState("");
- const[apport,setApport]=useState(0);
- const[cg,setCg]=useState(true);
- const[delivery,setDelivery]=useState("790");
- const[customDelivery,setCustomDelivery]=useState(790);
- const[duree,setDuree]=useState(48);
- const[assurance,setAssurance]=useState(false);
- const livraison=delivery==="custom"?Math.max(0,customDelivery):Number(delivery);
- const total=versions[version].prix+livraison+(cg?150:0);
- const finance=Math.max(0,total-apport);
- const tauxDebiteur=6.27,taeg=6.45,r=tauxDebiteur/100/12;
- const mensualite=finance===0?0:(finance*r*Math.pow(1+r,duree))/(Math.pow(1+r,duree)-1);
- const totalDu=mensualite*duree;
- const assuranceMois=finance*0.00084;
- const coutAssurance=assuranceMois*duree;
- const mensualiteFinale=mensualite+(assurance?assuranceMois:0);
- const eligible=finance>=3000&&finance<=75000;
- return <main className="fin">
-  <section className="hero"><span>FINANCEMENT NEODRIVE</span><h1>Votre voiture.<br/>Votre financement.<br/><em>Un seul dossier.</em></h1><p>Calculez le coût complet de votre NeoDrive, choisissez votre apport et obtenez une estimation indicative de vos mensualités.</p><div className="steps"><b>1. Votre projet</b><b>2. Simulation</b><b>3. Dossier</b></div></section>
-  <section className="wrap">
-   <div className="notice"><strong>Documents à préparer</strong><p><b>Les 3 derniers bulletins de salaire</b>, le dernier avis d’imposition, le contrat de travail, une pièce d’identité, un justificatif de domicile et un RIB.</p></div>
-   <div className="columns">
-    <section className="card"><span className="eye">01 — VOTRE PROJET</span><h2>Montant à financer</h2>
-     <label>Modèle<select value={version} onChange={e=>setVersion(e.target.value as keyof typeof versions)}>{Object.entries(versions).map(([k,v])=><option value={k} key={k}>{v.label} — {v.prix.toLocaleString("fr-FR")} €</option>)}</select></label>
-     <label>Livraison<select value={delivery} onChange={e=>setDelivery(e.target.value)}><option value="0">Retrait sur place — 0 €</option><option value="350">Livraison — 350 €</option><option value="490">Livraison — 490 €</option><option value="690">Livraison — 690 €</option><option value="790">Livraison — 790 €</option><option value="custom">Livraison personnalisée</option></select></label>
-     {delivery==="custom"&&<label className="custom">Prix personnalisé de livraison (€)<input type="number" min="0" value={customDelivery||""} onChange={e=>setCustomDelivery(Number(e.target.value)||0)} placeholder="Ex. 790"/><small>Saisissez ici le tarif réel communiqué au client.</small></label>}
-     <label>Code postal du client<input value={cp} onChange={e=>setCp(e.target.value.replace(/\D/g,"").slice(0,5))} placeholder="31600"/></label>
-     <label className="check"><input type="checkbox" checked={cg} onChange={e=>setCg(e.target.checked)}/> Mise en route / carte grise — 150 €</label>
-     <label>Apport du client (€)<input type="number" min="0" value={apport||""} onChange={e=>setApport(Number(e.target.value)||0)} placeholder="Ex. 1 000"/></label>
-     <div className="summary"><div><span>Véhicule</span><b>{versions[version].prix.toLocaleString("fr-FR")} €</b></div><div><span>Livraison</span><b>{livraison.toLocaleString("fr-FR")} €</b></div><div><span>Carte grise / mise en route</span><b>{cg?"150 €":"0 €"}</b></div><div><span>Total du projet</span><b>{total.toLocaleString("fr-FR")} €</b></div><div><span>Apport</span><b>- {apport.toLocaleString("fr-FR")} €</b></div><div className="big"><span>Montant à financer</span><b>{finance.toLocaleString("fr-FR")} €</b></div></div>
-    </section>
+ const [model,setModel]=useState<VehicleKey>("confort");
+ const [postal,setPostal]=useState("");
+ const [pickup,setPickup]=useState(false);
+ const [apport,setApport]=useState(0);
+ const [months,setMonths]=useState<number>(60);
 
-    <section className="card"><span className="eye">02 — SIMULATION DE FINANCEMENT</span><h2>Votre mensualité</h2>
-     <div className="loan"><div><span>Crédit</span><b>Auto</b></div><div><span>Montant</span><b>{eur(finance)} €</b></div><div><span>Durée</span><b>{duree} mois</b></div><div><span>Code postal</span><b>{cp||"—"}</b></div></div>
-     <label>Durée : <b>{duree} mois</b><input className="range" type="range" min="12" max="84" value={duree} onChange={e=>setDuree(Number(e.target.value))}/><div className="ticks"><span>12 mois</span><span>84 mois</span></div></label>
-     <div className="presets">{[12,24,36,48,60,72,84].map(x=><button type="button" key={x} className={x===duree?"active":""} onClick={()=>setDuree(x)}>{x}</button>)}</div>
-     <div className="monthly"><span>Mensualité estimée</span><strong>{eligible?`${eur(mensualiteFinale)} € / mois`:"—"}</strong></div>
-     <div className="recap"><h3>Récapitulatif <small>(hors assurance facultative)</small></h3><div><span>Montant souhaité</span><b>{eur(finance)} €</b></div><div><span>Mensualités</span><b>{eligible?`${eur(mensualite)} €`:"—"}</b></div><div><span>Frais de dossier</span><b>0,00 €</b></div><div><span>TAEG fixe indicatif</span><b>6,45 %</b></div><div><span>Taux débiteur annuel fixe indicatif</span><b>6,27 %</b></div><div className="green"><span>Montant total dû</span><b>{eligible?`${eur(totalDu)} €`:"—"}</b></div></div>
-     <label className="check insurance"><input type="checkbox" checked={assurance} onChange={e=>setAssurance(e.target.checked)}/> Ajouter une estimation d’assurance facultative</label>
-     {assurance&&<div className="recap"><h3>Assurance facultative — exemple</h3><div><span>Coût par mois</span><b>{eur(assuranceMois)} €</b></div><div><span>Coût total</span><b>{eur(coutAssurance)} €</b></div><div className="green"><span>Total dû avec assurance</span><b>{eur(totalDu+coutAssurance)} €</b></div></div>}
-     {!eligible&&<p className="warn">La simulation est disponible pour un montant compris entre 3 000 € et 75 000 €.</p>}
-     <p className="source">Simulation indicative et non contractuelle calculée à partir d’un exemple de TAEG fixe de 6,45 %, d’un taux débiteur annuel fixe de 6,27 % et de frais de dossier de 0 €. Les conditions réelles peuvent varier selon l’organisme financier, la date, le montant, la durée et l’acceptation du dossier.</p>
-    </section>
+ const delivery=quoteDelivery(postal);
+ const deliveryPrice=pickup?0:delivery.status==="estimated"?delivery.price:0;
+ const deliveryKnown=pickup||delivery.status==="estimated";
+ const total=VEHICLES[model].price+REGISTRATION_PRICE+deliveryPrice;
+ const financed=Math.max(0,total-Math.max(0,apport));
+ const eligible=financed>=FINANCE.minAmount&&financed<=FINANCE.maxAmount;
+ const monthly=monthlyPayment(financed,months);
+ const totalDue=monthly*months;
+ const cost=totalDue-financed;
+ const table=useMemo(()=>FINANCE.durations.map(m=>({m,v:monthlyPayment(financed,m)})),[financed]);
+
+ // Dossier
+ const [p,setP]=useState({civilite:"",prenom:"",nom:"",naissance:"",email:"",telephone:"",adresse:"",ville:"",familiale:"",enfants:"0",logement:"",loyer:"",situation:"",employeur:"",anciennete:"",revenus:"",autresRevenus:"",credits:"",message:""});
+ const [files,setFiles]=useState<Partial<Record<FinanceDocKey,File>>>({});
+ const [consent,setConsent]=useState(false);
+ const [sending,setSending]=useState(false);
+ const [progress,setProgress]=useState("");
+ const [error,setError]=useState("");
+ const [doneRef,setDoneRef]=useState("");
+ useEffect(()=>{if(doneRef)window.scrollTo({top:0,behavior:"smooth"})},[doneRef]);
+
+ const set=(k:keyof typeof p)=>(e:React.ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>)=>setP(v=>({...v,[k]:e.target.value}));
+ const requiredFields:(keyof typeof p)[]=["prenom","nom","naissance","email","telephone","adresse","ville","situation","revenus"];
+ const missingFields=requiredFields.filter(k=>!String(p[k]).trim());
+ const missingDocs=FINANCE_DOCS.filter(d=>d.required&&!files[d.key]);
+ const canSend=!missingFields.length&&!missingDocs.length&&consent&&eligible&&/^[0-9]{5}$/.test(postal)&&!sending;
+
+ const pickFile=(key:FinanceDocKey)=>(e:React.ChangeEvent<HTMLInputElement>)=>{
+  const f=e.target.files?.[0];if(!f)return;
+  if(f.size>FINANCE_MAX_FILE){setError(`${f.name} dépasse 10 Mo. Prenez une photo plus légère ou un PDF.`);return;}
+  setError("");setFiles(v=>({...v,[key]:f}));
+ };
+
+ const submit=async(ev:React.FormEvent)=>{
+  ev.preventDefault();if(!canSend)return;setSending(true);setError("");
+  try{
+   const list=(Object.entries(files) as [FinanceDocKey,File][]).filter(([,f])=>!!f);
+   setProgress("Préparation du dossier sécurisé…");
+   const init=await fetch("/api/financement/init",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({files:list.map(([key,f])=>({key,name:f.name,type:f.type,size:f.size}))})}).then(x=>x.json());
+   if(!init.ok)throw new Error(init.error||"Envoi impossible");
+   let i=0;
+   for(const u of init.uploads as {key:FinanceDocKey;path:string;token:string}[]){
+    i++;setProgress(`Envoi des justificatifs (${i}/${init.uploads.length})…`);
+    const f=files[u.key]!;
+    const {error:upErr}=await supabase.storage.from(init.bucket).uploadToSignedUrl(u.path,u.token,f,{contentType:f.type||"application/octet-stream"});
+    if(upErr)throw new Error(`Échec de l’envoi de « ${f.name} ». Réessayez.`);
+   }
+   setProgress("Finalisation…");
+   const simulation={modele:VEHICLES[model].label,prix_vehicule:VEHICLES[model].price,carte_grise:REGISTRATION_PRICE,livraison:pickup?"retrait sur place":deliveryKnown?deliveryPrice:"sur devis",code_postal:postal,total_projet:total,apport,montant_finance:financed,duree_mois:months,mensualite_estimee:Number(monthly.toFixed(2)),taeg_indicatif:FINANCE.taeg};
+   const done=await fetch("/api/financement/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({folder:init.folder,applicant:{...p,code_postal:postal},simulation,consent})}).then(x=>x.json());
+   if(!done.ok)throw new Error(done.error||"Envoi impossible");
+   // Notification e-mail NeoDrive (liens privés valables 7 jours)
+   const mail=new FormData();
+   mail.append("_subject",`Dossier financement ${done.ref} — ${p.prenom} ${p.nom}`);
+   mail.append("reference",done.ref);
+   Object.entries(p).forEach(([k,v])=>mail.append(k,v));
+   mail.append("code_postal",postal);
+   Object.entries(simulation).forEach(([k,v])=>mail.append(k,String(v)));
+   (done.links as {label:string;url:string}[]).forEach(l=>mail.append(`document · ${l.label}`,l.url));
+   await fetch("https://formspree.io/f/xjgjrqqg",{method:"POST",body:mail,headers:{Accept:"application/json"}}).catch(()=>null);
+   setDoneRef(done.ref);
+  }catch(e){setError(e instanceof Error?e.message:"Erreur d’envoi");}
+  finally{setSending(false);setProgress("");}
+ };
+
+ if(doneRef){
+  return <main className={r.page}><section className={r.successCard}>
+   <div className={r.successIcon}><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></div>
+   <h1>Dossier reçu, merci {p.prenom}&nbsp;!</h1>
+   <p>Votre demande de financement <b>{doneRef}</b> pour une <b>{VEHICLES[model].label}</b> a bien été transmise avec vos justificatifs. Un conseiller NeoDrive vérifie votre dossier puis le présente à notre partenaire financier. Vous serez recontacté rapidement.</p>
+   <div className={r.successTotal}><span>Votre simulation</span><strong>{eur2(monthly)} / mois</strong><small>{months} mois · montant financé {eur0(financed)}</small></div>
+   <div className={r.successActions}><a className={r.btnWhatsapp} href={WHATSAPP} target="_blank" rel="noreferrer">Une question ? WhatsApp</a><a className={r.btnGhost} href="/reservation-devis">Voir la réservation</a></div>
+  </section></main>;
+ }
+
+ return <main className={`${r.page} ${s.page}`}>
+  {/* HERO */}
+  <section className={r.hero}>
+   <div className={r.heroCopy}>
+    <span className={r.kicker}><i/> Financement · réponse personnalisée</span>
+    <h1>Votre NeoDrive<br/><span>dès {lowest} €/mois<sup>*</sup></span></h1>
+    <p>Simulez vos mensualités en 30 secondes, puis déposez votre dossier en ligne&nbsp;: pièce d’identité, justificatifs, c’est tout. <b>Nous nous occupons du reste</b> avec notre partenaire financier.</p>
+    <div className={r.heroCtas}>
+     <a href="#simulateur" className={r.btnPrimary}>Simuler mes mensualités</a>
+     <a href="#dossier" className={r.btnLink}>Déposer mon dossier →</a>
+    </div>
+    <p className={s.heroLegal}>* Exemple pour une NeoDrive Essentielle ({eur0(VEHICLES.essentielle.price+REGISTRATION_PRICE)} carte grise incluse, hors livraison), sans apport, sur 84 mois, TAEG fixe indicatif {pct(FINANCE.taeg)}. Sous réserve d’acceptation du dossier par l’organisme prêteur.</p>
+   </div>
+   <figure className={r.heroMedia}>
+    <picture><img src="/reservation/neodrive-jardin-mobile.webp" alt="NeoDrive Confort grise dans un jardin ensoleillé" fetchPriority="high"/></picture>
+    <figcaption><i/> NeoDrive Confort · véhicule réel</figcaption>
+   </figure>
+  </section>
+
+  <ol className={s.howto}>
+   <li><b>1</b><div><strong>Simulez</strong><small>Modèle, apport, durée</small></div></li>
+   <li><b>2</b><div><strong>Déposez votre dossier</strong><small>Formulaire + justificatifs</small></div></li>
+   <li><b>3</b><div><strong>Réponse du partenaire</strong><small>Nous vous recontactons</small></div></li>
+  </ol>
+
+  {/* SIMULATEUR */}
+  <div className={s.simGrid} id="simulateur">
+   <section className={r.card}>
+    <header className={r.cardHead}><span className={r.stepNum}>1</span><div><h2>Votre projet</h2><p>Le même barème que la réservation en ligne.</p></div></header>
+    <div className={s.models}>
+     {(Object.keys(VEHICLES) as VehicleKey[]).map(k=><button type="button" key={k} onClick={()=>setModel(k)} className={`${s.model} ${model===k?s.modelOn:""}`} aria-pressed={model===k}>
+      <img src={MODEL_IMG[k]} alt=""/><strong>{VEHICLES[k].label.replace("NeoDrive ","")}</strong><span>{eur0(VEHICLES[k].price)}</span>
+     </button>)}
+    </div>
+    <div className={s.row2}>
+     <label className={r.field}><span>Code postal de livraison</span><span className={r.inputWrap}><input inputMode="numeric" maxLength={5} value={postal} onChange={e=>setPostal(e.target.value.replace(/\D/g,"").slice(0,5))} placeholder="Ex. 31600" autoComplete="postal-code"/></span></label>
+     <label className={r.field}><span>Apport (facultatif)</span><span className={r.inputWrap}><input inputMode="numeric" value={apport||""} onChange={e=>setApport(Math.max(0,Number(e.target.value.replace(/\D/g,""))||0))} placeholder="0 €"/></span></label>
+    </div>
+    <label className={s.pickup}><input type="checkbox" checked={pickup} onChange={e=>setPickup(e.target.checked)}/> Retrait sur place à Muret (31) — pas de livraison</label>
+    <dl className={s.costs}>
+     <div><dt>{VEHICLES[model].label}</dt><dd>{eur0(VEHICLES[model].price)}</dd></div>
+     <div><dt>Carte grise (formalités)</dt><dd>{eur0(REGISTRATION_PRICE)}</dd></div>
+     <div><dt>Livraison{!pickup&&delivery.status==="estimated"?` · zone ${delivery.zone}`:""}</dt><dd>{pickup?"0 €":delivery.status==="estimated"?eur0(delivery.price):postal.length===5?"Sur devis":"—"}</dd></div>
+     {apport>0?<div><dt>Apport</dt><dd>− {eur0(apport)}</dd></div>:null}
+     <div className={s.costsTotal}><dt>Montant à financer</dt><dd>{eur0(financed)}</dd></div>
+    </dl>
+    {!pickup&&delivery.status==="manual"&&postal.length===5?<p className={r.note}>{delivery.reason}&nbsp;: la livraison sera ajoutée après devis.</p>:null}
+   </section>
+
+   <section className={`${r.card} ${s.result}`}>
+    <header className={r.cardHead}><span className={r.stepNum}>2</span><div><h2>Vos mensualités</h2><p>Choisissez la durée qui vous convient.</p></div></header>
+    <div className={s.durations} role="radiogroup" aria-label="Durée du crédit">
+     {table.map(({m,v})=><button type="button" role="radio" aria-checked={months===m} key={m} onClick={()=>setMonths(m)} className={`${s.duration} ${months===m?s.durationOn:""}`}><strong>{m}</strong><small>mois</small><span>{eligible?`${Math.round(v)} €`:"—"}</span></button>)}
+    </div>
+    <div className={s.monthly}>
+     <small>Mensualité estimée</small>
+     <strong>{eligible?eur2(monthly):"—"}<em>/mois</em></strong>
+     <span>pendant {months} mois · hors assurance facultative</span>
+    </div>
+    <dl className={s.costs}>
+     <div><dt>Montant financé</dt><dd>{eur2(financed)}</dd></div>
+     <div><dt>TAEG fixe indicatif</dt><dd>{pct(FINANCE.taeg)}</dd></div>
+     <div><dt>Taux débiteur fixe indicatif</dt><dd>{pct(FINANCE.tauxDebiteur)}</dd></div>
+     <div><dt>Frais de dossier</dt><dd>{eur2(FINANCE.fraisDossier)}</dd></div>
+     <div><dt>Coût total du crédit</dt><dd>{eligible?eur2(cost):"—"}</dd></div>
+     <div className={s.costsTotal}><dt>Montant total dû</dt><dd>{eligible?eur2(totalDue):"—"}</dd></div>
+    </dl>
+    {!eligible?<p className={r.note}>Simulation possible entre {eur0(FINANCE.minAmount)} et {eur0(FINANCE.maxAmount)} financés.</p>:null}
+    <a href="#dossier" className={`${r.btnPrimary} ${s.full}`}>Déposer mon dossier avec cette simulation</a>
+    <p className={s.legal}><b>Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager.</b> Simulation indicative et non contractuelle. Les conditions définitives (taux, durée, assurance) sont fixées par l’organisme prêteur après étude et acceptation de votre dossier. Vous disposez d’un délai de rétractation de 14 jours.</p>
+   </section>
+  </div>
+
+  {/* DOSSIER */}
+  <form className={r.card} id="dossier" onSubmit={submit}>
+   <header className={r.cardHead}><span className={r.stepNum}>3</span><div><h2>Votre dossier de financement</h2><p>Données transmises de façon sécurisée, uniquement pour l’étude de votre demande.</p></div></header>
+
+   <div className={s.recapBar}><span>{VEHICLES[model].label}</span><span>{eur0(financed)} financés</span><span>{months} mois</span><b>{eligible?`${eur2(monthly)}/mois`:"—"}</b></div>
+
+   <h3 className={s.h3}>Vous</h3>
+   <div className={r.fields}>
+    <label className={r.field}><span>Civilité</span><span className={r.inputWrap}><select className={s.select} value={p.civilite} onChange={set("civilite")}><option value="">—</option><option>Madame</option><option>Monsieur</option></select></span></label>
+    <label className={r.field}><span>Date de naissance</span><span className={r.inputWrap}><input type="date" value={p.naissance} onChange={set("naissance")} required/></span></label>
+    <label className={r.field}><span>Prénom</span><span className={r.inputWrap}><input value={p.prenom} onChange={set("prenom")} autoComplete="given-name" required/></span></label>
+    <label className={r.field}><span>Nom</span><span className={r.inputWrap}><input value={p.nom} onChange={set("nom")} autoComplete="family-name" required/></span></label>
+    <label className={r.field}><span>E-mail</span><span className={r.inputWrap}><input type="email" value={p.email} onChange={set("email")} autoComplete="email" required/></span></label>
+    <label className={r.field}><span>Téléphone</span><span className={r.inputWrap}><input type="tel" value={p.telephone} onChange={set("telephone")} autoComplete="tel" required/></span></label>
+    <label className={`${r.field} ${r.wide}`}><span>Adresse</span><span className={r.inputWrap}><input value={p.adresse} onChange={set("adresse")} autoComplete="street-address" required/></span></label>
+    <label className={r.field}><span>Code postal</span><span className={r.inputWrap}><input value={postal} inputMode="numeric" maxLength={5} onChange={e=>setPostal(e.target.value.replace(/\D/g,"").slice(0,5))} autoComplete="postal-code" required/></span></label>
+    <label className={r.field}><span>Ville</span><span className={r.inputWrap}><input value={p.ville} onChange={set("ville")} autoComplete="address-level2" required/></span></label>
+    <label className={r.field}><span>Situation familiale</span><span className={r.inputWrap}><select className={s.select} value={p.familiale} onChange={set("familiale")}><option value="">—</option><option>Célibataire</option><option>Marié(e) / Pacsé(e)</option><option>Concubinage</option><option>Divorcé(e) / Séparé(e)</option><option>Veuf(ve)</option></select></span></label>
+    <label className={r.field}><span>Enfants à charge</span><span className={r.inputWrap}><input inputMode="numeric" value={p.enfants} onChange={set("enfants")}/></span></label>
+    <label className={r.field}><span>Logement</span><span className={r.inputWrap}><select className={s.select} value={p.logement} onChange={set("logement")}><option value="">—</option><option>Locataire</option><option>Propriétaire</option><option>Propriétaire avec crédit</option><option>Hébergé(e) gratuitement</option></select></span></label>
+    <label className={r.field}><span>Loyer ou crédit immobilier (€/mois)</span><span className={r.inputWrap}><input inputMode="numeric" value={p.loyer} onChange={set("loyer")}/></span></label>
    </div>
 
-   <section className="form"><span className="eye">03 — DOSSIER DE FINANCEMENT</span><h2>Déposer les informations et justificatifs</h2><div className="fields"><input placeholder="Nom"/><input placeholder="Prénom"/><input type="email" placeholder="E-mail"/><input type="tel" placeholder="Téléphone"/><input placeholder="Adresse"/><input placeholder="Code postal / Ville"/><select defaultValue=""><option value="" disabled>Situation professionnelle</option><option>CDI</option><option>CDD</option><option>Intérimaire</option><option>Indépendant</option><option>Retraité</option><option>Autre</option></select><input type="number" placeholder="Revenu net mensuel (€)"/></div><h3>Justificatifs</h3><div className="uploads">{docs.map((d,i)=><label key={d}><span><b>{i+1}</b>{d}</span><input type="file" accept=".pdf,.jpg,.jpeg,.png"/></label>)}</div><label className="check consent"><input type="checkbox"/> J’autorise NeoDrive à traiter ces informations et à transmettre le dossier au partenaire financier concerné pour étude.</label><button disabled type="button">Envoyer mon dossier de financement</button><p className="source">🔒 L’envoi sera activé après raccordement au stockage sécurisé NeoDrive.</p></section>
-   <p className="legal">Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager.</p>
-  </section>
-  <style jsx>{`.fin{background:#f6f7f5;color:#132018}.hero{padding:65px max(20px,calc((100vw - 1120px)/2));background:linear-gradient(135deg,#0d1811,#173d23);color:#fff}.hero>span,.eye{font-size:12px;font-weight:950;letter-spacing:1.5px;color:#7bd36c}.hero h1{font-size:clamp(44px,7vw,74px);line-height:.96;letter-spacing:-3px;margin:13px 0}.hero h1 em{font-style:normal;color:#9ee57d}.hero p{max-width:720px;line-height:1.6;color:#d8e2da;font-size:18px}.steps{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}.steps b{padding:10px 13px;border:1px solid #ffffff25;border-radius:999px}.wrap{max-width:1160px;margin:auto;padding:38px 18px 70px}.notice{background:#e9f5e5;padding:22px;border-radius:20px;margin-bottom:18px}.notice strong{font-size:22px}.notice p{margin-bottom:0;line-height:1.5;color:#536057}.columns{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card,.form{background:#fff;border:1px solid #e4e8e3;border-radius:25px;padding:28px;box-shadow:0 15px 40px #1b3b210d}.eye{color:#25733a}.card h2,.form h2{font-size:31px;margin:7px 0 22px;letter-spacing:-1.2px}.card>label{display:grid;gap:7px;margin:13px 0;font-weight:800}input,select{width:100%;padding:14px;border:1px solid #dce2dc;border-radius:12px;background:#fafbfa;font:inherit}.custom{padding:13px;background:#fff7e9;border-radius:14px}.custom small{font-weight:500;color:#786a55}.check{display:flex!important;align-items:flex-start;gap:9px;background:#f4f6f3;padding:12px;border-radius:12px;font-size:13px}.check input{width:auto;margin-top:2px}.summary{background:#111b14;color:#fff;padding:18px;border-radius:18px;margin-top:18px}.summary div,.recap div{display:flex;justify-content:space-between;gap:14px;padding:8px 0}.summary span{color:#b9c4bb}.summary .big{border-top:1px solid #ffffff25;margin-top:7px;padding-top:14px}.summary .big b{font-size:24px;color:#9ee57d}.loan{display:grid;grid-template-columns:1fr 1fr;background:#f6f4ef;border-radius:16px;padding:16px}.loan div:nth-child(even){border-left:1px solid #d7d4ce;padding-left:17px}.loan span,.loan b{display:block}.loan b{font-size:21px;margin-top:3px}.range{padding:0;accent-color:#ff8000}.ticks{display:flex;justify-content:space-between;color:#777;font-size:12px}.presets{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.presets button{padding:8px 2px;border:1px solid #dce1dc;border-radius:9px;background:#fff;font-weight:800}.presets .active{background:#08755f;color:#fff}.monthly{background:#08755f;color:#fff;border-radius:18px;padding:20px;margin:18px 0}.monthly span,.monthly strong{display:block}.monthly strong{font-size:32px;margin-top:4px}.recap h3{color:#ff7900}.recap h3 small{font-weight:500;color:#68726b}.recap div{border-bottom:1px solid #ddd}.recap .green{color:#08755f;font-size:18px;font-weight:900}.insurance{margin-top:16px!important}.warn{background:#fff2d5;padding:12px;border-radius:12px;color:#775817;font-size:12px}.source{font-size:11px;color:#768078;line-height:1.5}.form{margin-top:18px}.fields,.uploads{display:grid;grid-template-columns:1fr 1fr;gap:9px}.form h3{margin-top:26px}.uploads label{border:1px solid #e0e5df;border-radius:14px;padding:12px;background:#fafbfa}.uploads span{display:flex;gap:8px;align-items:center;font-weight:800;margin-bottom:8px}.uploads span b{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#173d23;color:#fff;font-size:11px}.uploads input{font-size:12px;padding:7px}.consent{margin:20px 0}.form button{width:100%;border:0;border-radius:14px;padding:16px;background:#173d23;color:#fff;font-weight:900;font-size:16px;opacity:.55}.legal{text-align:center;font-size:12px;color:#6f7971;margin-top:30px}@media(max-width:820px){.columns,.fields,.uploads{grid-template-columns:1fr}.hero{padding-top:45px}.hero h1{letter-spacing:-2px}.card,.form{padding:21px}.card h2,.form h2{font-size:27px}.presets{grid-template-columns:repeat(4,1fr)}.monthly strong{font-size:28px}}`}</style>
- </main>
+   <h3 className={s.h3}>Vos revenus</h3>
+   <div className={r.fields}>
+    <label className={r.field}><span>Situation professionnelle</span><span className={r.inputWrap}><select className={s.select} value={p.situation} onChange={set("situation")} required><option value="">—</option><option>CDI</option><option>CDD</option><option>Intérim</option><option>Fonctionnaire</option><option>Indépendant / Artisan</option><option>Retraité(e)</option><option>Étudiant(e) / Apprenti(e)</option><option>Sans activité</option></select></span></label>
+    <label className={r.field}><span>Employeur</span><span className={r.inputWrap}><input value={p.employeur} onChange={set("employeur")} autoComplete="organization"/></span></label>
+    <label className={r.field}><span>Ancienneté</span><span className={r.inputWrap}><input value={p.anciennete} onChange={set("anciennete")} placeholder="Ex. 3 ans"/></span></label>
+    <label className={r.field}><span>Revenus nets mensuels (€)</span><span className={r.inputWrap}><input inputMode="numeric" value={p.revenus} onChange={set("revenus")} required/></span></label>
+    <label className={r.field}><span>Autres revenus (€/mois)</span><span className={r.inputWrap}><input inputMode="numeric" value={p.autresRevenus} onChange={set("autresRevenus")} placeholder="Allocations, pensions…"/></span></label>
+    <label className={r.field}><span>Autres crédits en cours (€/mois)</span><span className={r.inputWrap}><input inputMode="numeric" value={p.credits} onChange={set("credits")}/></span></label>
+   </div>
+
+   <h3 className={s.h3}>Vos justificatifs <small>PDF, JPG ou PNG · 10 Mo max · une photo nette suffit</small></h3>
+   <div className={s.docs}>
+    {FINANCE_DOCS.map(d=>{const f=files[d.key];return <label key={d.key} className={`${s.doc} ${f?s.docOk:""}`}>
+     <input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*" onChange={pickFile(d.key)}/>
+     <i>{f?"✓":"+"}</i>
+     <div><strong>{d.label}{!d.required?<em> · facultatif</em>:null}</strong><small>{f?f.name:"Toucher pour ajouter (photo ou fichier)"}</small></div>
+    </label>})}
+   </div>
+
+   <label className={`${r.field} ${s.msg}`}><span>Un message pour nous ? <em>· facultatif</em></span><textarea value={p.message} onChange={set("message")} rows={3}/></label>
+
+   <label className={r.check}><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>J’accepte que NeoDrive (MK HOLDING SAS) traite ces informations et transmette mon dossier à son partenaire financier pour l’étude de ma demande de crédit. Mes documents sont conservés de façon sécurisée et supprimés s’ils ne sont plus nécessaires.</span></label>
+
+   <div className={s.submitRow}>
+    <button type="submit" className={r.btnPrimary} disabled={!canSend}>{sending?progress||"Envoi…":"Envoyer mon dossier de financement"}</button>
+   </div>
+   {!canSend&&!sending?<p className={r.missing}>Pour envoyer, il manque : {[...(!/^[0-9]{5}$/.test(postal)?["le code postal"]:[]),...(missingFields.length?["vos informations obligatoires"]:[]),...missingDocs.map(d=>d.label.split(" (")[0].toLowerCase()),...(!eligible?["un montant finançable"]:[]),...(!consent?["votre accord"]:[])].join(", ")}.</p>:null}
+   {error?<p role="alert" className={r.error}>{error}</p>:null}
+   <p className={s.legal}>🔒 Vos justificatifs sont envoyés directement vers un espace de stockage privé, accessible uniquement par NeoDrive. Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager.</p>
+  </form>
+ </main>;
 }

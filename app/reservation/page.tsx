@@ -3,6 +3,7 @@
 
 import React, { useRef, useState } from "react";
 import Script from "next/script";
+import { quoteDelivery } from "../../lib/neodrive-pricing";
 
 export default function Reservation() {
 
@@ -42,26 +43,21 @@ const [manualTransport, setManualTransport] = useState("");
 const [discount, setDiscount] = useState(0);
   
 
-  const getTransportPrice = (dept: string) => {
-  if (["31","81","82","32","09"].includes(dept)) return 450;
-
-  if (["11","12","46","47","33","65","66",
-       "34","30","40","24","19","87","15"].includes(dept)) return 590;
-
-  if (["75","77","78","91","92","93","94","95",
-       "13","69","63","16","17","86"].includes(dept)) return 690;
-
-  if (["44","35","56","29","22","53","49","67","68"].includes(dept)) return 790;
-
-  return 790;
-};
-const transport = noDelivery
-  ? 0
-  : manualTransport
-      ? Number(manualTransport)
-      : getTransportPrice(
-          client.code_postal?.substring(0,2) || ""
-        );
+  // Barème commun avec la page /reservation-devis (lib/neodrive-pricing.ts)
+  const delivery = quoteDelivery(client.code_postal || "");
+  const autoTransport = delivery.status === "estimated" ? delivery.price : 0;
+  const transport = noDelivery
+    ? 0
+    : manualTransport
+        ? Number(manualTransport)
+        : autoTransport;
+  const transportLabel = noDelivery
+    ? "Retrait sur place"
+    : manualTransport
+        ? "Tarif personnalisé"
+        : delivery.status === "estimated"
+            ? `Zone ${delivery.zone} · département ${delivery.department}`
+            : (client.code_postal || "").length === 5 ? delivery.reason : "Saisir le code postal";
 const totalTTC =
   (prixVehicule * quantity)
   + transport
@@ -85,9 +81,24 @@ const totalTTC =
     const html2canvas = (window as any).html2canvas;
     const jsPDF = (window as any).jspdf.jsPDF;
 
+    // Toujours capturer le devis au format A4 (794 px), même sur téléphone,
+    // sinon le PDF reprend la largeur de l'écran mobile (page étroite, texte énorme).
+    printRef.current.setAttribute("data-pdf-root", "1");
     const canvas = await html2canvas(printRef.current, {
       scale: 2,
-      useCORS: true
+      useCORS: true,
+      windowWidth: 1100,
+      width: 794,
+      onclone: (doc: Document) => {
+        const el = doc.querySelector('[data-pdf-root="1"]') as HTMLElement | null;
+        if (el) {
+          el.style.width = "794px";
+          el.style.maxWidth = "794px";
+          el.style.margin = "0";
+          el.style.boxSizing = "border-box";
+          el.style.border = "0";
+        }
+      }
     });
 
     const imgData = canvas.toDataURL("image/png");
@@ -132,6 +143,12 @@ const totalTTC =
       >
 
         <input type="hidden" name="_subject" value="Nouvelle réservation véhicule" />
+        <input type="hidden" name="modele" value={versions[version].label.trim()} />
+        <input type="hidden" name="quantite" value={quantity} />
+        <input type="hidden" name="livraison" value={noDelivery ? "retrait sur place" : delivery.status === "estimated" || manualTransport ? `${transport} €` : "sur devis"} />
+        <input type="hidden" name="carte_grise" value={`${carteGrise * quantity} €`} />
+        <input type="hidden" name="remise" value={`${discount} €`} />
+        <input type="hidden" name="total_ttc" value={`${totalTTC} €`} />
 
         <div style={section}>
           <h3>Informations client</h3>
@@ -154,78 +171,10 @@ const totalTTC =
           <input name="telephone" placeholder="Téléphone" style={input} onChange={handleChange} required />
           <input name="email" type="email" placeholder="Email" style={input} onChange={handleChange} required />
           <input name="adresse" placeholder="Adresse" style={input} onChange={handleChange} required />
-          <input name="code_postal" placeholder="Code postal" style={input} onChange={handleChange} required />
-        <select
-  style={input}
-  onChange={(e) =>
-    setClient({
-      ...client,
-      code_postal: e.target.value
-    })
-  }
-  required
->
-  <option value="">Sélectionner votre département</option>
-
-  {/* ZONE 1 */}
-  <optgroup label="Zone 1 — 350 €">
-    <option value="31">Haute-Garonne (31)</option>
-    <option value="81">Tarn (81)</option>
-    <option value="82">Tarn-et-Garonne (82)</option>
-    <option value="32">Gers (32)</option>
-    <option value="09">Ariège (09)</option>
-  </optgroup>
-
-  {/* ZONE 2 + 3 fusionnées */}
-  <optgroup label="Zone 2 — 490 €">
-    <option value="11">Aude (11)</option>
-    <option value="12">Aveyron (12)</option>
-    <option value="46">Lot (46)</option>
-    <option value="47">Lot-et-Garonne (47)</option>
-    <option value="33">Gironde (33)</option>
-    <option value="65">Hautes-Pyrénées (65)</option>
-    <option value="66">Pyrénées-Orientales (66)</option>
-
-    <option value="34">Hérault (34)</option>
-    <option value="30">Gard (30)</option>
-    <option value="40">Landes (40)</option>
-    <option value="24">Dordogne (24)</option>
-    <option value="19">Corrèze (19)</option>
-    <option value="87">Haute-Vienne (87)</option>
-    <option value="15">Cantal (15)</option>
-  </optgroup>
-
-  {/* ZONE 3 */}
-  <optgroup label="Zone 3 — 690 €">
-    <option value="75">Paris (75)</option>
-    <option value="77">Seine-et-Marne (77)</option>
-    <option value="78">Yvelines (78)</option>
-    <option value="91">Essonne (91)</option>
-    <option value="92">Hauts-de-Seine (92)</option>
-    <option value="93">Seine-Saint-Denis (93)</option>
-    <option value="94">Val-de-Marne (94)</option>
-    <option value="95">Val-d’Oise (95)</option>
-    <option value="13">Bouches-du-Rhône (13)</option>
-    <option value="69">Rhône (69)</option>
-    <option value="63">Puy-de-Dôme (63)</option>
-    <option value="16">Charente (16)</option>
-    <option value="17">Charente-Maritime (17)</option>
-    <option value="86">Vienne (86)</option>
-  </optgroup>
-
-  {/* ZONE 4 */}
-  <optgroup label="Zone 4 — 790 €">
-    <option value="44">Loire-Atlantique (44)</option>
-    <option value="35">Ille-et-Vilaine (35)</option>
-    <option value="56">Morbihan (56)</option>
-    <option value="29">Finistère (29)</option>
-    <option value="22">Côtes-d’Armor (22)</option>
-    <option value="53">Mayenne (53)</option>
-    <option value="49">Maine-et-Loire (49)</option>
-    <option value="67">Bas-Rhin (67)</option>
-    <option value="68">Haut-Rhin (68)</option>
-  </optgroup>
-</select>
+          <input name="code_postal" placeholder="Code postal (5 chiffres)" inputMode="numeric" maxLength={5} pattern="[0-9]{5}" style={input} value={client.code_postal} onChange={(e) => setClient({ ...client, code_postal: e.target.value.replace(/[^0-9]/g, "").slice(0, 5) })} required />
+<div style={{ padding: "12px 14px", borderRadius: 12, margin: "6px 0 10px", background: delivery.status === "estimated" || noDelivery || manualTransport ? "#eaf6ef" : "#fff6e8", color: delivery.status === "estimated" || noDelivery || manualTransport ? "#1d7a4c" : "#7a4a12", fontWeight: 700 }}>
+  Livraison : {noDelivery ? "0 €" : manualTransport ? `${Number(manualTransport)} €` : delivery.status === "estimated" ? `${delivery.price} €` : "sur devis"} <span style={{ fontWeight: 500 }}>— {transportLabel}</span>
+</div>
 
 <p style={label}>Nombre de véhicules</p>
 <input
