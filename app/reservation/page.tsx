@@ -25,7 +25,7 @@ const versions = {
 const [version, setVersion] = useState<keyof typeof versions>("confort");
 
 const prixVehicule = versions[version].prix;
-  const carteGrise = 249;
+  const carteGrise = 150;
   const [client, setClient] = useState({
     nom: "",
     prenom: "",
@@ -43,10 +43,10 @@ const [discount, setDiscount] = useState(0);
   
 
   const getTransportPrice = (dept: string) => {
-  if (["31","81","82","32","09"].includes(dept)) return 350;
+  if (["31","81","82","32","09"].includes(dept)) return 450;
 
   if (["11","12","46","47","33","65","66",
-       "34","30","40","24","19","87","15"].includes(dept)) return 490;
+       "34","30","40","24","19","87","15"].includes(dept)) return 590;
 
   if (["75","77","78","91","92","93","94","95",
        "13","69","63","16","17","86"].includes(dept)) return 690;
