@@ -1,82 +1,61 @@
 "use client";
 
-// Temporary switch: set to true to show the Google reviews section again.
-const GOOGLE_REVIEWS_ENABLED = false;
+/** Avis Google réels de clients NeoDrive (recopiés depuis la fiche Google, prénoms + initiale). */
+import { GOOGLE_PROFILE_URL } from "../../lib/reviews";
 
-export default function GoogleReviews(){
-  const rating=process.env.NEXT_PUBLIC_GOOGLE_RATING||"4,8";
-  const count=process.env.NEXT_PUBLIC_GOOGLE_REVIEW_COUNT||"9";
-  const url=process.env.NEXT_PUBLIC_GOOGLE_REVIEWS_URL||"https://g.page/r/CY-pd6eO0lLtEBM/review";
-  const testimonialUrl="https://share.google/kr0l1LnJs6n3pKfSe";
+const REVIEWS = [
+  { name: "Jessica A.", when: "Octobre 2026", text: "Achat sans aucun regret… Ma fille de 16 ans l’utilise tous les jours, très pratique surtout lorsqu’elle a des coupures au lycée. Très bon investissement et personnel très réactif et disponible. Je recommande sincèrement." },
+  { name: "Morgane L.", when: "La Rochelle", text: "Le monsieur nous l’a livrée sur La Rochelle très rapidement en prenant le temps de tout nous expliquer. Nous avons eu un léger problème sur le chargeur, il nous a renvoyé un chargeur neuf très rapidement. Je recommande vraiment cette société très à l’écoute." },
+  { name: "Gautier Z.", when: "Association", text: "Super produit, très compétitif. Nous en avons acheté trois pour notre association et nous sommes très satisfaits par la qualité par rapport au prix. C’est imbattable !" },
+  { name: "Candice", when: "Yvelines", text: "Très satisfaite de mon achat ! Agréable à conduire, confortable et fonctionne très bien. Livraison rapide en 2 jours en sachant qu’on est situé dans les Yvelines. Merci pour votre professionnalisme." },
+  { name: "Jean-Marie M.", when: "Alsace", text: "Conforme à ce que nous attendions. Véhicule pour un jeune en apprentissage (il sera au chaud et au sec). Réponse très rapide à la moindre question. Livraison à notre domicile en Alsace dans le délai promis." },
+  { name: "Jean-François G.", when: "Août 2026", text: "Bien reçu le VSP, carte grise reçue 8 jours plus tard, satisfait de mon achat." },
+  { name: "Fatiha B.", when: "Août 2026", text: "La voiture est très bien, je la charge à la maison, elle consomme pas. Ils me l’ont ramenée en bas de chez moi, pas cher. Même après la vente ils sont là pour répondre à nos questions." },
+  { name: "Nicolas B.", when: "Août 2026", text: "Livraison parfaitement réalisée, le véhicule fonctionne très bien." },
+  { name: "Pauline C.", when: "Octobre 2026", text: "Très réactif, professionnel et à l’écoute." },
+];
 
-  const reviewCards = [
-    { label:"Témoignage 5 étoiles", sub:"Avis client partagé sur Google", href:testimonialUrl, featured:true },
-    { label:"Avis client NeoDrive", sub:"Consulter le retour sur Google", href:url },
-    { label:"Expérience après livraison", sub:"Voir les avis publics de nos clients", href:url },
-    { label:"Retour d’un client", sub:"Découvrir les témoignages Google", href:url },
-    { label:"Avis sur l’accompagnement", sub:"Lire les retours clients", href:url },
-    { label:"Avis sur la NeoDrive", sub:"Voir les expériences publiées", href:url },
-  ];
-
-  if (!GOOGLE_REVIEWS_ENABLED) return null;
-
+export default function GoogleReviews({ compact = false }: { compact?: boolean }) {
   return (
-    <section className="reviewsWrap">
-      <section className="reviewsHead">
-        <div className="intro">
-          <span className="eyebrow">AVIS CLIENTS GOOGLE</span>
-          <h2>Ce sont nos clients qui parlent le mieux de nous.</h2>
-          <p>Des retours publics, consultables directement sur Google. Pas de témoignages inventés : vous pouvez ouvrir les avis originaux.</p>
-        </div>
-        <div className="score">
-          <div className="googleMark">G</div>
-          <div className="stars">★★★★★</div>
-          <strong>{rating}/5</strong>
-          <span>{count} avis Google</span>
-          <a href={url} target="_blank" rel="noreferrer">Voir tous les avis →</a>
-        </div>
-      </section>
-
-      <div className="reviewsTitleRow">
+    <section className={compact ? "gr compact" : "gr"} aria-label="Avis clients Google">
+      <div className="head">
         <div>
-          <span>TÉMOIGNAGES</span>
-          <strong>Quelques retours à découvrir</strong>
+          <span className="eyebrow">AVIS CLIENTS GOOGLE</span>
+          <h2>Ils roulent en NeoDrive.</h2>
+          <p>De vrais avis, publiés par nos clients sur Google.</p>
         </div>
-        <small>Faites défiler →</small>
+        <a className="all" href={GOOGLE_PROFILE_URL} target="_blank" rel="noreferrer"><span className="g">G</span><span><b>★★★★★</b><small>Voir tous les avis sur Google →</small></span></a>
       </div>
-
-      <div className="reviewsRail" aria-label="Témoignages clients Google">
-        {reviewCards.map((review, index)=>(
-          <a key={index} className={review.featured ? "reviewCard featured" : "reviewCard"} href={review.href} target="_blank" rel="noreferrer">
-            <div className="cardTop">
-              <span className="googleMini">G</span>
-              {review.featured ? <span className="fiveStars">★★★★★</span> : <span className="googleLabel">Avis Google</span>}
-            </div>
-            <strong>{review.label}</strong>
-            <p>{review.sub}</p>
-            <span className="readMore">Lire sur Google →</span>
-          </a>
+      <div className="rail" tabIndex={0}>
+        {REVIEWS.map(r => (
+          <figure key={r.name} className="card">
+            <div className="top"><span className="stars">★★★★★</span><span className="gm">G</span></div>
+            <blockquote>« {r.text} »</blockquote>
+            <figcaption><b>{r.name}</b><small>{r.when}</small></figcaption>
+          </figure>
         ))}
       </div>
-
       <style jsx>{`
-        .reviewsWrap{max-width:1160px;margin:30px auto 90px;padding:0 14px}
-        .reviewsHead{padding:46px;border-radius:32px;background:linear-gradient(135deg,#111 0%,#1d1d1d 70%,#292929 100%);color:#fff;display:grid;grid-template-columns:1.35fr .65fr;gap:40px;align-items:center;box-shadow:0 24px 65px rgba(0,0,0,.16)}
-        .eyebrow{font-size:12px;font-weight:950;letter-spacing:1.7px;color:#ff8a00}
-        .intro h2{font-size:clamp(34px,4vw,52px);line-height:1.03;letter-spacing:-2px;margin:10px 0 14px}
-        .intro p{color:#cfcfcf;line-height:1.65;font-size:17px;max-width:650px;margin:0}
-        .score{position:relative;background:#fff;color:#111;border-radius:24px;padding:28px;display:grid;gap:7px;box-shadow:0 14px 36px rgba(0,0,0,.18)}
-        .googleMark{position:absolute;right:20px;top:18px;width:36px;height:36px;border-radius:12px;background:#f5f5f5;display:grid;place-items:center;font-weight:950;font-size:20px}
-        .stars{font-size:24px;letter-spacing:2px;color:#f6b800}.score strong{font-size:42px;line-height:1}.score span{color:#666}.score a{margin-top:10px;color:#111;text-decoration:none;font-weight:950}
-        .reviewsTitleRow{display:flex;justify-content:space-between;align-items:end;gap:16px;margin:28px 4px 14px}.reviewsTitleRow div{display:grid;gap:3px}.reviewsTitleRow span{font-size:11px;color:#f97316;font-weight:950;letter-spacing:1.3px}.reviewsTitleRow strong{font-size:24px}.reviewsTitleRow small{color:#777}
-        .reviewsRail{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(245px,1fr);gap:14px;overflow-x:auto;padding:4px 4px 16px;scroll-snap-type:x mandatory;scrollbar-width:thin}
-        .reviewCard{scroll-snap-align:start;min-height:190px;padding:22px;border:1px solid #eaeaea;border-radius:22px;background:#fff;color:#111;text-decoration:none;display:flex;flex-direction:column;box-shadow:0 12px 30px rgba(0,0,0,.055);transition:transform .2s ease,box-shadow .2s ease}
-        .reviewCard:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,0,0,.09)}
-        .reviewCard.featured{background:linear-gradient(135deg,#fff8ef,#fff);border-color:#ffd6ad}
-        .cardTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:17px}.googleMini{width:34px;height:34px;border-radius:11px;background:#f5f5f5;display:grid;place-items:center;font-weight:950}.fiveStars{font-size:16px;letter-spacing:1px;color:#f6b800}.googleLabel{font-size:11px;font-weight:900;color:#777;text-transform:uppercase;letter-spacing:.7px}.reviewCard>strong{font-size:19px;line-height:1.2}.reviewCard p{margin:8px 0 16px;color:#6a6a6a;font-size:14px;line-height:1.45}.readMore{margin-top:auto;font-size:13px;font-weight:950;color:#111}
-        @media(max-width:780px){
-          .reviewsWrap{margin:20px auto 58px;padding:0 14px}.reviewsHead{padding:28px 22px;grid-template-columns:1fr;gap:22px;border-radius:26px}.intro h2{font-size:34px;letter-spacing:-1.5px}.intro p{font-size:15px}.score{padding:22px}.score strong{font-size:36px}.reviewsTitleRow{margin-top:24px}.reviewsTitleRow strong{font-size:20px}.reviewsTitleRow small{display:none}.reviewsRail{grid-auto-columns:82%;gap:11px}.reviewCard{min-height:178px;padding:19px;border-radius:20px}
-        }
+        .gr{max-width:1180px;margin:70px auto;padding:0 20px;font-family:inherit;color:#111}
+        .gr.compact{margin:40px auto}
+        .head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+        .eyebrow{font-size:12px;font-weight:950;letter-spacing:1.6px;color:#ff5a1f}
+        h2{font-size:clamp(32px,4.6vw,52px);line-height:1.02;letter-spacing:-2px;margin:10px 0 8px;font-weight:950}
+        .head p{margin:0;color:#666;font-size:17px}
+        .all{display:flex;align-items:center;gap:12px;text-decoration:none;color:#111;border:1px solid #e5e7eb;border-radius:18px;padding:12px 16px;background:#fff;box-shadow:0 10px 30px rgba(0,0,0,.05)}
+        .g,.gm{display:grid;place-items:center;border-radius:50%;background:#fff;font-weight:950;color:#4285f4;border:1px solid #e5e7eb}
+        .g{width:40px;height:40px;font-size:20px}
+        .gm{width:26px;height:26px;font-size:13px}
+        .all b{display:block;color:#fbbc04;letter-spacing:2px}
+        .all small{display:block;font-weight:800;font-size:13px}
+        .rail{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(280px,340px);gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 2px 14px}
+        .card{margin:0;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:space-between;gap:14px;background:#fff;border:1px solid #ececec;border-radius:22px;padding:22px;box-shadow:0 14px 34px rgba(0,0,0,.06)}
+        .top{display:flex;justify-content:space-between;align-items:center}
+        .stars{color:#fbbc04;letter-spacing:2px;font-size:18px}
+        blockquote{margin:0;font-size:16px;line-height:1.6;color:#222;flex:1}
+        figcaption b{display:block;font-size:15px}
+        figcaption small{color:#777}
+        @media(max-width:600px){.gr{margin:50px auto;padding:0 14px}.rail{grid-auto-columns:84%}.head p{font-size:15px}}
       `}</style>
     </section>
   );

@@ -8,6 +8,8 @@ export const maxDuration = 60;
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 
 export async function GET(req: Request) {
+  // Affiches désactivées : le texte sortait illisible (pas de polices sur le serveur) et elles font 10x moins de vues que les vraies vidéos.
+  if (process.env.ENABLE_GENERATED_POSTERS !== "1") return NextResponse.json({ ok: true, skipped: true, reason: "Affiches automatiques désactivées" });
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

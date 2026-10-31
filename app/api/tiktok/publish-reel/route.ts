@@ -67,17 +67,25 @@ async function refreshIfNeeded(sb:any, row:any) {
 }
 
 export async function POST(req: Request) {
-  const { passcode, jobId, caption } = await req.json().catch(()=>({}));
+  const { passcode, jobId, caption, videoUrl } = await req.json().catch(()=>({}));
   const secret = process.env.CRON_SECRET;
   if (!secret || passcode !== secret) return NextResponse.json({ ok:false, error:"Code d’accès incorrect" }, { status:401 });
   const sk = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!sk) return NextResponse.json({ ok:false, error:"Supabase missing" }, { status:503 });
   const sb = createClient(SB, sk, { auth:{ persistSession:false } });
 
-  let q = sb.from("video_generation_jobs").select("id,theme,hook,output_url,status,error_message");
-  if (jobId) q = q.eq("id", String(jobId)); else q = q.eq("status","succeeded").not("output_url","is",null).order("completed_at",{ascending:false}).limit(1);
-  const { data:job, error:jobError } = await q.maybeSingle();
-  if (jobError) return NextResponse.json({ ok:false, error:jobError.message }, { status:500 });
+  let job: { id:string; theme?:string|null; hook?:string|null; output_url:string|null; status:string } | null = null;
+  if (videoUrl) {
+    // Vidéo réelle déposée depuis le Studio (stockage public social-media uniquement)
+    if (!String(videoUrl).startsWith(`${SB}/storage/v1/object/public/social-media/`)) return NextResponse.json({ ok:false, error:"Vidéo non autorisée" }, { status:400 });
+    job = { id:`studio-${Date.now()}`, hook: caption || null, output_url:String(videoUrl), status:"succeeded" };
+  } else {
+    let q = sb.from("video_generation_jobs").select("id,theme,hook,output_url,status,error_message");
+    if (jobId) q = q.eq("id", String(jobId)); else q = q.eq("status","succeeded").not("output_url","is",null).order("completed_at",{ascending:false}).limit(1);
+    const { data, error:jobError } = await q.maybeSingle();
+    if (jobError) return NextResponse.json({ ok:false, error:jobError.message }, { status:500 });
+    job = data;
+  }
   if (!job) return NextResponse.json({ ok:false, error:"Reel introuvable" }, { status:404 });
   if (job.status !== "succeeded" || !job.output_url) return NextResponse.json({ ok:false, error:"Le Reel n’est pas encore prêt" }, { status:409 });
 
