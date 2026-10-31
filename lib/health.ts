@@ -51,11 +51,11 @@ export async function runHealthChecks(): Promise<Check[]> {
   const sb = serviceClient();
   if (!process.env.TIKTOK_CLIENT_KEY) checks.push({ key: "tiktok", label: "TikTok", ok: false, detail: "Application TikTok non configurée" });
   else if (sb) {
-    const { data } = await sb.from("tiktok_connection").select("open_id,access_expires_at,refresh_expires_at,updated_at").eq("id", 1).maybeSingle();
+    const { data } = await sb.from("tiktok_connection").select("open_id,scope,access_expires_at,refresh_expires_at,updated_at").eq("id", 1).maybeSingle();
     if (!data?.open_id) checks.push({ key: "tiktok", label: "TikTok", ok: false, detail: "Compte TikTok pas encore connecté", action: "Connecter TikTok" });
     else {
       const refreshOk = !data.refresh_expires_at || new Date(data.refresh_expires_at).getTime() > Date.now();
-      checks.push({ key: "tiktok", label: "TikTok", ok: refreshOk, detail: refreshOk ? `Connecté (renouvellement jusqu’au ${new Date(data.refresh_expires_at || Date.now()).toLocaleDateString("fr-FR")})` : "Connexion expirée", action: refreshOk ? undefined : "Reconnecter TikTok" });
+      checks.push({ key: "tiktok", label: "TikTok", ok: refreshOk, detail: refreshOk ? `Connecté (jusqu’au ${new Date(data.refresh_expires_at || Date.now()).toLocaleDateString("fr-FR")}) · ${String(data.scope || "").includes("video.publish") ? "publication directe autorisée" : "envoi en brouillons (reconnecter pour la publication directe)"}` : "Connexion expirée", action: refreshOk ? (String(data.scope || "").includes("video.publish") ? undefined : "Reconnecter TikTok pour activer la publication directe") : "Reconnecter TikTok" });
     }
   }
 

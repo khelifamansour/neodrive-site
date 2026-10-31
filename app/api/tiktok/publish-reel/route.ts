@@ -67,7 +67,7 @@ async function refreshIfNeeded(sb:any, row:any) {
 }
 
 export async function POST(req: Request) {
-  const { passcode, jobId } = await req.json().catch(()=>({}));
+  const { passcode, jobId, caption } = await req.json().catch(()=>({}));
   const secret = process.env.CRON_SECRET;
   if (!secret || passcode !== secret) return NextResponse.json({ ok:false, error:"Code d’accès incorrect" }, { status:401 });
   const sk = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -96,10 +96,21 @@ export async function POST(req: Request) {
   }
   const size = buf.length;
 
-  const init = await fetch("https://open.tiktokapis.com/v2/post/publish/inbox/video/init/", {
+  // Publication directe si TikTok l'autorise (permission video.publish + compte public autorisé), sinon brouillon.
+  const H = { Authorization:`Bearer ${conn.access_token}`, "Content-Type":"application/json; charset=UTF-8" };
+  let direct = false, privacy = "";
+  if (String(conn.scope || stored?.scope || "").includes("video.publish")) {
+    const ci = await fetch("https://open.tiktokapis.com/v2/post/publish/creator_info/query/", { method:"POST", headers:H, cache:"no-store" }).then(r=>r.json()).catch(()=>({}));
+    const options: string[] = ci?.data?.privacy_level_options || [];
+    console.log("[tiktok-upload] creator_info", { options, error: ci?.error?.code });
+    if (options.includes("PUBLIC_TO_EVERYONE")) { direct = true; privacy = "PUBLIC_TO_EVERYONE"; }
+  }
+  const title = String(caption || job.hook || job.theme || "NeoDrive — voiture sans permis électrique").slice(0, 2200);
+  const init = await fetch(direct ? "https://open.tiktokapis.com/v2/post/publish/video/init/" : "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/", {
     method:"POST",
-    headers:{ Authorization:`Bearer ${conn.access_token}`, "Content-Type":"application/json; charset=UTF-8" },
+    headers:H,
     body:JSON.stringify({
+      ...(direct ? { post_info:{ title, privacy_level:privacy, disable_comment:false, disable_duet:false, disable_stitch:false, video_cover_timestamp_ms:1000 } } : {}),
       source_info:{ source:"FILE_UPLOAD", video_size:size, chunk_size:size, total_chunk_count:1 }
     }),
     cache:"no-store",
@@ -111,7 +122,7 @@ export async function POST(req: Request) {
   const up = await fetch(ij.data.upload_url, {
     method:"PUT",
     headers:{ "Content-Type":"video/mp4", "Content-Length":String(size), "Content-Range":`bytes 0-${size-1}/${size}` },
-    body:buf,
+    body:new Uint8Array(buf),
     cache:"no-store",
   });
   if (![200,201,204].includes(up.status)) return NextResponse.json({ ok:false, error:`Upload TikTok échoué (${up.status})`, publishId }, { status:500 });
@@ -132,9 +143,9 @@ export async function POST(req: Request) {
     console.log("[tiktok-upload] status", { publishId, attempt, httpStatus:sr.status, status, failReason });
     if (!sr.ok || status === "FAILED") return NextResponse.json({ ok:false, error:failReason || "TikTok a refusé la vidéo", publishId, tiktokStatus:status }, { status:500 });
     if (["SEND_TO_USER_INBOX","PUBLISH_COMPLETE"].includes(status)) {
-      return NextResponse.json({ ok:true, uploaded:true, confirmed:true, publishId, tiktokStatus:status, note:"TikTok a confirmé la réception. Ouvre la boîte de réception TikTok pour terminer la publication." });
+      return NextResponse.json({ ok:true, uploaded:true, confirmed:true, publishId, tiktokStatus:status, mode: direct ? "direct" : "inbox", note: direct ? "Vidéo publiée sur TikTok." : "TikTok a confirmé la réception. Ouvre la boîte de réception TikTok pour terminer la publication." });
     }
   }
 
-  return NextResponse.json({ ok:true, uploaded:true, confirmed:false, publishId, tiktokStatus:status, note:"TikTok traite encore la vidéo. Vérifie la boîte de réception dans quelques minutes." }, { status:202 });
+  return NextResponse.json({ ok:true, uploaded:true, confirmed:false, publishId, tiktokStatus:status, mode: direct ? "direct" : "inbox", note:"TikTok traite encore la vidéo. Vérifie la boîte de réception dans quelques minutes." }, { status:202 });
 }

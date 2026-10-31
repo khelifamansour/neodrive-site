@@ -106,7 +106,7 @@ export async function GET(req: Request) {
   const upload = await fetch(`${origin}/api/tiktok/publish-reel`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ passcode: secret, jobId: job.id }),
+    body: JSON.stringify({ passcode: secret, jobId: job.id, caption }),
     cache: "no-store",
   });
   const result = await upload.json().catch(() => ({}));
@@ -121,7 +121,7 @@ export async function GET(req: Request) {
   }
 
   await sb.from("social_content_queue").update({
-    status: "review",
+    status: result.mode === "direct" ? "published" : "review",
     external_post_id: result.publishId || null,
     error_message: null,
     updated_at: new Date().toISOString(),
