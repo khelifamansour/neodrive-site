@@ -186,8 +186,12 @@ export default function ReservationDevis(){
      <a href={WHATSAPP} target="_blank" rel="noreferrer" className={s.btnLink}>{Icon.chat} Parler à un conseiller</a>
     </div>
    </div>
-   <figure className={s.heroPhoto}>
-    <img src="/reservation/neodrive-confort-face.jpg" alt="NeoDrive Confort grise, photo réelle du véhicule" fetchPriority="high"/>
+   <figure className={s.heroScene}>
+    <span className={s.sun} aria-hidden="true"/>
+    <span className={s.hills} aria-hidden="true"/>
+    <span className={s.road} aria-hidden="true"/>
+    <span className={s.carShadow} aria-hidden="true"/>
+    <img className={s.heroCar} src="/reservation/neodrive-confort-cutout.webp" alt="NeoDrive Confort grise, photo réelle du véhicule" fetchPriority="high"/>
     <figcaption><i/> Photo réelle du véhicule</figcaption>
     <div className={s.heroFloat}><span className={s.heroFloatIcon}>{Icon.wallet}</span><div><strong>0 € aujourd’hui</strong><small>Paiement à la livraison</small></div></div>
    </figure>
