@@ -187,7 +187,7 @@ export default function ReservationDevis(){
    </div>
    <figure className={s.heroPhoto}>
     <img src="/reservation/neodrive-confort-face.jpg" alt="NeoDrive Confort grise, photo réelle du véhicule" fetchPriority="high"/>
-    <figcaption><i/> Photo réelle, non retouchée</figcaption>
+    <figcaption><i/> Photo réelle du véhicule</figcaption>
     <div className={s.heroFloat}><span className={s.heroFloatIcon}>{Icon.wallet}</span><div><strong>0 € aujourd’hui</strong><small>Paiement à la livraison</small></div></div>
    </figure>
   </section>
@@ -237,7 +237,7 @@ export default function ReservationDevis(){
      {quote.delivery.status==="manual"&&postal.length===5?<p className={s.note}>{quote.delivery.reason}. Nous vous communiquerons un tarif personnalisé avant toute confirmation — ou <a href={WHATSAPP} target="_blank" rel="noreferrer">demandez-le sur WhatsApp</a>.</p>:null}
      {postal.length===5&&!postalLoading&&!postalVerified&&quote.delivery.status==="estimated"?<p className={s.note}>Nous ne trouvons pas ce code postal. Vérifiez-le pour continuer.</p>:null}
 
-     <div className={s.subHead}><i>{Icon.user}</i><div><h3>Vos coordonnées</h3><p>Pour établir votre devis nominatif. Jamais revendues.</p></div></div>
+     <div className={s.subHead}><i>{Icon.user}</i><div><h3>Vos coordonnées</h3><p>Pour établir votre devis nominatif.</p></div></div>
      <div className={s.fields}>
       {field("prenom","Prénom",{autoComplete:"given-name"})}
       {field("nom","Nom",{autoComplete:"family-name"})}
