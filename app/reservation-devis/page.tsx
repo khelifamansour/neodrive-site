@@ -1,7 +1,31 @@
 "use client";
 import {useMemo,useState,useEffect} from "react";
-import {VEHICLES,calculateQuote,type VehicleKey} from "../../lib/neodrive-pricing";
+import {VEHICLES,REGISTRATION_PRICE,calculateQuote,type VehicleKey} from "../../lib/neodrive-pricing";
+import s from "./reservation.module.css";
+
 const euro=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n);
+const WHATSAPP="https://wa.me/33628261446?text="+encodeURIComponent("Bonjour, j'ai une question sur la réservation de ma NeoDrive.");
+
+const MODELS:Record<VehicleKey,{img:string;tagline:string;badge?:string}>={
+ essentielle:{img:"/reservation/essentielle.svg",tagline:"L’essentiel au meilleur prix"},
+ confort:{img:"/reservation/confort.svg",tagline:"Le meilleur équilibre",badge:"Le plus équilibré"},
+ confortPlus:{img:"/reservation/confort-plus.svg",tagline:"Tout le confort"},
+};
+
+const Icon={
+ truck:<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/></svg>,
+ shield:<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M8.8 12.2l2.2 2.2 4.4-4.6"/></svg>,
+ wallet:<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M16 14.5h2"/></svg>,
+ doc:<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h4"/></svg>,
+ pin:<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0113 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>,
+ user:<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.3-6 8-6s6.8 2 8 6"/></svg>,
+ pen:<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg>,
+ check:<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>,
+ chat:<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19l1.3-3.6A7.8 7.8 0 1112 20a8 8 0 01-3.9-1z"/></svg>,
+ download:<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>,
+ lock:<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>,
+};
+
 export default function ReservationDevis(){
  const [model,setModel]=useState<VehicleKey>("confort");
  const [postal,setPostal]=useState("");
@@ -14,11 +38,34 @@ export default function ReservationDevis(){
  const [sendError,setSendError]=useState("");
  const [postalVerified,setPostalVerified]=useState(false);
  const [postalCities,setPostalCities]=useState<string[]>([]);
- useEffect(()=>{setPostalVerified(false);setPostalCities([]);if(!/^[0-9]{5}$/.test(postal))return;const controller=new AbortController();fetch("https://geo.api.gouv.fr/communes?codePostal="+postal+"&fields=nom&format=json",{signal:controller.signal}).then(r=>r.ok?r.json():[]).then(d=>{if(!controller.signal.aborted){setPostalVerified(Array.isArray(d)&&d.length>0);setPostalCities(Array.isArray(d)?d.map((c:{nom:string})=>c.nom):[])}}).catch(()=>{});return ()=>controller.abort()},[postal]);
+ const [postalLoading,setPostalLoading]=useState(false);
+ useEffect(()=>{
+  setPostalVerified(false);setPostalCities([]);
+  if(!/^[0-9]{5}$/.test(postal))return;
+  const controller=new AbortController();setPostalLoading(true);
+  fetch("https://geo.api.gouv.fr/communes?codePostal="+postal+"&fields=nom&format=json",{signal:controller.signal})
+   .then(r=>r.ok?r.json():[])
+   .then(d=>{if(controller.signal.aborted)return;const cities=Array.isArray(d)?d.map((c:{nom:string})=>c.nom):[];setPostalVerified(cities.length>0);setPostalCities(cities);if(cities.length===1)setCustomer(p=>p.ville?p:{...p,ville:cities[0]});})
+   .catch(()=>{})
+   .finally(()=>{if(!controller.signal.aborted)setPostalLoading(false)});
+  return ()=>controller.abort();
+ },[postal]);
  const quote=useMemo(()=>calculateQuote(model,postal,registration),[model,postal,registration]);
- const normalizeCity=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+ const normalizeCity=(v:string)=>v.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
  const cityMatches=postalCities.some(city=>normalizeCity(city)===normalizeCity(customer.ville));
+ const contactDone=!!(customer.nom&&customer.prenom&&customer.email&&customer.adresse&&customer.ville);
  const valid=postalVerified&&cityMatches&&quote.total!==null&&accepted&&signed.trim().length>=3&&customer.nom&&customer.prenom&&customer.email&&customer.adresse&&customer.ville;
+
+ const missing:string[]=[];
+ if(!postalVerified)missing.push("un code postal de livraison valide");
+ else if(quote.total===null)missing.push("un tarif de livraison (zone sur devis : contactez-nous)");
+ if(!contactDone)missing.push("vos coordonnées complètes");
+ else if(postalVerified&&!cityMatches)missing.push("une ville correspondant au code postal");
+ if(signed.trim().length<3)missing.push("votre nom de signataire");
+ if(!accepted)missing.push("la case de confirmation");
+
+ const deliveryLabel=quote.delivery.status==="estimated"?euro(quote.delivery.price):postal.length===5?"Sur devis":"—";
+ const stepState=[true,postalVerified&&contactDone,!!valid];
 
  const makePdf=async()=>{
   const {jsPDF}=await import("jspdf");
@@ -79,39 +126,199 @@ export default function ReservationDevis(){
    const response=await fetch("https://formspree.io/f/xjgjrqqg",{method:"POST",body:data,headers:{Accept:"application/json"}});
    if(!response.ok)throw new Error("La transmission a échoué. Réessayez ou contactez NeoDrive.");
    setSent(true);
+   if(typeof window!=="undefined")window.scrollTo({top:0,behavior:"smooth"});
   }catch(e){setSendError(e instanceof Error?e.message:"Erreur d'envoi");}
   finally{setSending(false)}
  };
- const field=(name:keyof typeof customer,label:string,required=true)=><label className="field">{label}<input required={required} value={customer[name]} onChange={e=>setCustomer(p=>({...p,[name]:e.target.value}))}/></label>;
- return <main className="reserve">
- <div className="hero"><div className="heroTop"><span className="eyebrow">NEODRIVE · 100 % ÉLECTRIQUE</span></div><h1>Votre NeoDrive, <em>livrée chez vous.</em></h1><p>Moderne, confortable et économique. Réservez votre NeoDrive en quelques minutes et recevez-la directement chez vous.</p><div className="heroIllustration"><div className="realHeroPhoto"><div className="realHeroCrop"><img src="/neodrive-switch/photos/confort-transport-dechargement.jpg" alt="Véhicules NeoDrive sur transporteur" /></div><span className="realBadge">● Nos véritables véhicules</span></div><div className="heroDeliveryPhoto"><img src="/neodrive-switch/photos/confort-arrivage-transport.jpg" alt="Véhicules NeoDrive transportés pour livraison" /><div><strong>De notre stock jusqu'à chez vous</strong><small>Transport sécurisé, livraison personnalisée partout en France</small></div></div></div><div className="trust"><span><b>🚚 Livraison à domicile</b><small>Transport sécurisé</small></span><span><b>✓ Garantie 2 ans</b><small>Selon conditions de garantie</small></span><span><b>💳 Paiement à la livraison</b><small>Sans acompte</small></span><span><b>📄 Carte grise 150 €</b><small>Formalités incluses au devis</small></span></div></div>
 
- <section className="deliveryStory"><div className="deliveryStoryPhoto"><img src="/neodrive-switch/photos/confort-arrivage-transport.jpg" alt="Transport réel des voitures NeoDrive en France" /><span>Notre logistique en images</span></div><div className="deliveryStoryCopy"><span className="deliveryEyebrow">LIVRAISON À DOMICILE</span><h2>De notre stock jusqu’à votre porte</h2><p>Votre NeoDrive est acheminée sur un transporteur sécurisé. À la livraison, vous découvrez le véhicule et vous réglez le montant convenu.</p></div></section>
- <div className="steps"><span><b>1</b> Choisissez votre voiture</span><span><b>2</b> Indiquez vos coordonnées</span><span><b>3</b> Recevez votre devis</span></div>
- <form onSubmit={sendReservation}>
- <section className="panel"><div className="sectionHead"><span className="number">🚗</span><div><h2>Choisissez votre NeoDrive</h2><p>Choisissez votre niveau d’équipement. Même carrosserie, trois versions.</p></div></div>
- <div className="vehicleCards">{Object.entries(VEHICLES).map(([key,v])=><button type="button" key={key} onClick={()=>setModel(key as VehicleKey)} aria-pressed={model===key} className={`vehicleCard ${model===key?"selected":""}`}><div className="carVisual"><img className="carPhoto" src={`/reservation/${key==="essentielle"?"essentielle":key==="confort"?"confort":"confort-plus"}.svg`} alt={`Illustration du véhicule ${v.label}`} /><span className="selectedTick">{model===key?"✓":"+"}</span></div><strong>{v.label.replace("NeoDrive ","")}</strong><small className="modelSubtitle">{key==="essentielle"?"L’essentiel au meilleur prix":key==="confort"?"Le meilleur équilibre":"Tout le confort"}</small><b>{euro(v.price)} TTC</b><small>{model===key?"✓ Sélectionné":"Choisir ce modèle"}</small></button>)}</div>
- <div className="deliveryHeading"><span className="number">📍</span><div><h2>Votre livraison à domicile</h2><p>Entrez votre code postal : le prix s’ajoute automatiquement à votre devis.</p></div></div><div className="two"><label className="field">Code postal de livraison<input inputMode="numeric" maxLength={5} pattern="[0-9]{5}" required value={postal} onChange={e=>setPostal(e.target.value.replace(/[^0-9]/g,"").slice(0,5))} placeholder="Ex. 31600"/></label><div className="deliveryResult"><small>Tarif de livraison à votre porte</small><strong>{quote.delivery.status==="estimated"?euro(quote.delivery.price):"Sur devis"}</strong><small>{quote.delivery.status==="estimated"?"Tarif forfaitaire de la zone pour ce code postal":"Devis personnalisé requis"}</small></div></div>
- <p className="registrationIncluded">✓ Formalités carte grise incluses : 150 €</p>
- {quote.delivery.status==="manual"&&postal.length===5?<p className="warning">{quote.delivery.reason}. Nous vous communiquerons un tarif personnalisé avant toute confirmation.</p>:null}
- </section>
- <section className="panel"><div className="sectionHead"><span className="number">02</span><div><h2>Vos coordonnées</h2><p>Pour préparer votre devis nominatif.</p></div></div>{postalVerified?<p className="postalHint">Commune(s) pour {postal} : {postalCities.slice(0,6).join(", ")}. Veuillez saisir la commune correspondant au code postal.</p>:null}<div className="fields">{field("prenom","Prénom")}{field("nom","Nom")}{field("email","Adresse e-mail")}{field("telephone","Téléphone")}{field("societe","Entreprise (facultatif)",false)}{field("adresse","Adresse de livraison")}{field("ville","Ville")}</div></section>
- <section className="panel"><div className="sectionHead"><span className="number">03</span><div><h2>Votre devis de réservation</h2><p>Vérifiez le récapitulatif avant de signer.</p></div></div>
- <article id="devis-neodrive" className="quote">
- <div className="quoteHeader"><div><span className="quoteBrand">NeoDrive</span><small>Mobilité électrique accessible</small></div><div className="quoteTitle">DEVIS DE RÉSERVATION<small>Établi le {new Date().toLocaleDateString("fr-FR")}</small></div></div>
- <div className="quoteCustomer"><small>CLIENT / DESTINATAIRE</small><strong>{customer.prenom||"Prénom"} {customer.nom||"Nom"}</strong><span>{customer.societe}</span><span>{customer.adresse||"Adresse de livraison"}</span><span>{postal||"Code postal"} {customer.ville||"Ville"}</span></div>
- <div className="quoteRows"><div><span>{VEHICLES[model].label}</span><strong>{euro(quote.vehiclePrice)}</strong></div><div><span>Livraison · {postal||"code postal à saisir"}</span><strong>{quote.delivery.status==="estimated"?euro(quote.delivery.price):"À confirmer"}</strong></div><div><span>Formalités carte grise {registration?"incluses":"non demandées"}</span><strong>{euro(quote.registrationPrice)}</strong></div></div>
- <div className="quoteTotal"><span>TOTAL TTC {quote.total===null?"À CONFIRMER":""}</span><strong>{quote.total===null?"Sur devis":euro(quote.total)}</strong></div>
- <div className="quoteTerms"><strong>Conditions essentielles</strong><p>Aucun acompte demandé. Paiement à la livraison selon les modalités convenues. Délai et disponibilité à confirmer par NeoDrive. Le tarif de livraison est calculé pour le code postal renseigné selon notre barème ; tout changement du montant nécessitera votre accord. Les conditions générales de vente et les informations légales applicables doivent être remises au client avant conclusion du contrat.</p></div>
- <div className="quoteSign"><span>ACCORD DU CLIENT</span><strong>{signed||"Nom et prénom du signataire"}</strong><small>Signature électronique simple — nom saisi par le client</small></div>
- </article>
- <label className="field signature">Nom et prénom du signataire<input value={signed} onChange={e=>setSigned(e.target.value)} placeholder="Votre nom et prénom" required/></label>
- <label className="check"><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/> Je confirme avoir vérifié les informations du devis et souhaite demander cette réservation.</label>
- <div className="actions"><button type="button" onClick={downloadPdf} className="secondary">Télécharger mon devis PDF</button><button type="submit" disabled={!valid||sending||sent} className="primary">{sent?"Réservation envoyée":sending?"Envoi en cours…":"Envoyer ma réservation"}</button></div>
- {sendError?<p role="alert" className="warning">{sendError}</p>:null}{sent?<p role="status" className="success">Votre demande a été transmise à NeoDrive.</p>:null}{postalVerified&&customer.ville&&!cityMatches?<p className="warning">La ville saisie ne correspond pas au code postal. Corrigez-la avant envoi.</p>:null}<p className="disclaimer">Signature électronique simple par saisie du nom et acceptation. NeoDrive confirme ensuite la disponibilité et le délai de livraison.</p>
- </section></form>
- <style jsx global>{`
- .reserve{max-width:1050px;margin:0 auto;padding:22px 16px 70px;color:#20252b;font-family:Arial,sans-serif}.reserve .hero{background:linear-gradient(130deg,#e8f5ff,#fff 56%,#e8f9ee);border-radius:28px;padding:36px 32px;position:relative;overflow:hidden}.reserve .heroIllustration{display:flex;align-items:center;gap:12px;margin:18px 0;padding:15px 18px;background:#ffffffc4;border-radius:16px;width:max-content;max-width:100%}.reserve .scene{width:min(100%,410px);height:auto;border-radius:18px}.reserve .heroIllustration{width:100%;justify-content:space-between;flex-wrap:wrap}.reserve .heroIllustration small{max-width:190px}.reserve .heroIllustration small{font-weight:800;color:#9b4827}.reserve .vehicleCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.reserve .vehicleCard{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;border:2px solid #e8e9ed;background:#fff;padding:16px;border-radius:15px;color:#24242a;min-height:160px}.reserve .vehicleCard.selected{border-color:#f36a32;background:#fff6f0}.reserve .vehicleCard .carPhoto{width:100%;height:105px;border-radius:10px}.reserve .vehicleCard b{color:#dc562c}.reserve .vehicleCard small{color:#61717a}.reserve .hero:after{content:"";position:absolute;right:-75px;top:-90px;width:270px;height:270px;border:42px solid #ff773c22;border-radius:50%;pointer-events:none}.reserve .heroTop{display:flex;justify-content:space-between;align-items:center}.reserve .eyebrow{font-size:11px;font-weight:800;letter-spacing:1.8px;color:#c25126}.reserve .heroIcon{display:grid;place-items:center;width:44px;height:44px;background:linear-gradient(135deg,#ff8a28,#ff375c);border-radius:14px;color:white;font-size:27px;font-weight:900}.reserve h1{font-size:clamp(30px,5vw,47px);line-height:1.12;letter-spacing:-1.6px;max-width:580px;margin:22px 0 12px}.reserve .hero p{font-size:17px;line-height:1.6;max-width:590px;color:#595451}.reserve .trust{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}.reserve .trust span{padding:10px 12px;background:#ffffffc9;border-radius:100px;font-size:12px;font-weight:750}.reserve .demo{padding:13px 16px;background:#fff5df;border:1px solid #f4dda8;border-radius:12px;font-size:13px;margin-top:20px;color:#76551d}.reserve .steps{display:flex;justify-content:space-between;gap:10px;margin:26px 2px;color:#b75a36;font-size:12px;font-weight:800}.reserve .panel{background:#fff;border:1px solid #e8e6e3;box-shadow:0 10px 35px #22222208;border-radius:22px;padding:28px;margin-top:19px}.reserve .sectionHead{display:flex;align-items:flex-start;gap:15px;margin-bottom:24px}.reserve .number{background:#fff0e8;color:#da5628;border-radius:13px;padding:11px;font-weight:900}.reserve h2{margin:0 0 6px;font-size:23px;letter-spacing:-.5px}.reserve .sectionHead p{margin:0;color:#72777d;font-size:14px}.reserve .field{display:grid;gap:8px;font-size:13px;font-weight:750;color:#41454a}.reserve .field input,.reserve .field select{width:100%;border:1px solid #d9dce1;border-radius:12px;padding:14px;font-size:16px;background:#fff;color:#24272b;min-height:49px}.reserve .two{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:18px}.reserve .deliveryResult{display:grid;gap:4px;padding:10px 16px;background:#f5f9f6;border:1px solid #dbe8de;border-radius:12px}.reserve .deliveryResult small{font-size:11px;color:#65716a}.reserve .deliveryResult strong{font-size:22px;color:#1b6840}.reserve .check{display:flex;gap:11px;align-items:flex-start;line-height:1.5;font-size:14px;margin-top:20px}.reserve .check input{width:18px;height:18px;flex:0 0 18px;accent-color:#f36a32}.reserve .registrationIncluded{padding:12px;background:#e9f8ed;color:#20653c;border-radius:12px;font-weight:750}.reserve .postalHint{font-size:13px;color:#526777;margin-bottom:15px}.reserve .success{padding:12px;background:#e9f8ed;color:#20653c;border-radius:12px}.reserve .warning{color:#8c4c12;background:#fff4e4;border-radius:10px;padding:12px}.reserve .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.reserve .quote{border:1px solid #e6e7ea;border-radius:15px;padding:28px;background:#fff}.reserve .quoteHeader{display:flex;justify-content:space-between;gap:15px;border-bottom:2px solid #f36a32;padding-bottom:20px}.reserve .quoteBrand{font-size:28px;font-weight:900;letter-spacing:-1px;color:#e45d30}.reserve .quoteHeader small,.reserve .quoteTitle small{display:block;color:#777;font-size:11px;margin-top:4px}.reserve .quoteTitle{text-align:right;font-size:13px;font-weight:900;letter-spacing:.5px}.reserve .quoteCustomer{display:flex;flex-direction:column;gap:5px;padding:24px 0;font-size:13px}.reserve .quoteCustomer small,.reserve .quoteSign span{color:#858585;font-size:10px;letter-spacing:1.2px;font-weight:800}.reserve .quoteCustomer strong{font-size:17px}.reserve .quoteRows{border-top:1px solid #eee}.reserve .quoteRows>div{display:flex;justify-content:space-between;gap:15px;padding:14px 0;border-bottom:1px solid #eee;font-size:14px}.reserve .quoteTotal{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fff0e7;padding:19px;border-radius:12px;margin-top:20px;font-weight:850}.reserve .quoteTotal strong{font-size:25px;color:#b84822}.reserve .quoteTerms{font-size:11px;line-height:1.6;color:#666;margin-top:24px}.reserve .quoteTerms p{margin:5px 0}.reserve .quoteSign{border-top:1px solid #ddd;margin-top:23px;padding-top:17px;display:flex;flex-direction:column;gap:9px}.reserve .quoteSign strong{font-size:16px}.reserve .quoteSign small{color:#777;font-size:10px}.reserve .signature{margin-top:23px}.reserve .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:25px}.reserve button{padding:14px 18px;border-radius:12px;font-weight:800;cursor:pointer}.reserve button.secondary{background:white;border:1px solid #d2d4d8;color:#292929}.reserve button.primary{background:#ed4162;border:0;color:#fff;cursor:pointer}.reserve button.primary:disabled{background:#c4c4c4;cursor:not-allowed}.reserve .disclaimer{font-size:12px;color:#777;line-height:1.5;margin-top:16px}@media(max-width:600px){.reserve .vehicleCards{grid-template-columns:1fr}.reserve .vehicleCard{min-height:100px}.reserve .hero{padding:26px 22px}.reserve .steps{font-size:10px}.reserve .panel{padding:19px}.reserve .fields,.reserve .two{grid-template-columns:1fr}.reserve .quote{padding:16px}.reserve .quoteHeader{flex-direction:column}.reserve .quoteTitle{text-align:left}.reserve .quoteTotal strong{font-size:21px}.reserve .actions button{width:100%}}@media print{header,footer,nav,.reserve .hero,.reserve .demo,.reserve .steps,.reserve .panel:not(:last-of-type),.reserve .sectionHead,.reserve .signature,.reserve .check,.reserve .actions,.reserve .disclaimer{display:none!important}.reserve{padding:0;margin:0;max-width:none}.reserve .panel{padding:0;margin:0;border:0;box-shadow:none}.reserve .quote{border:0;padding:0}.reserve .quoteTotal{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-.reserve{background:#fffdf9;max-width:1060px}.reserve .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);column-gap:22px;align-items:center;background:linear-gradient(135deg,#fff8ed 0%,#fff 46%,#eaf8f1 100%);padding:30px;border:1px solid #f1e6da;box-shadow:0 15px 38px #b36d3010}.reserve .heroTop{grid-column:1;align-self:end}.reserve .hero h1{grid-column:1;font-size:clamp(32px,4.4vw,52px);margin:8px 0 6px;line-height:1.04;letter-spacing:-1.8px;color:#162338}.reserve .hero>p{grid-column:1;font-size:16px;margin:0;color:#566171;line-height:1.55}.reserve .heroIllustration{grid-column:2;grid-row:1/5;display:block!important;padding:0!important;margin:0!important;background:none!important;border:0!important;width:100%!important;max-width:none!important}.reserve .heroIllustration .scene{width:100%;height:auto;display:block;border-radius:20px;box-shadow:0 10px 28px #31465715}.reserve .trust{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:22px}.reserve .trust span{display:flex;align-items:center;justify-content:center;min-height:56px;text-align:center;background:#fff;border:1px solid #f0e8df;border-radius:13px;color:#293c4c;font-size:12px;box-shadow:0 4px 15px #00000006}.reserve .hero:after{display:none}.reserve .steps{display:grid;grid-template-columns:repeat(3,1fr);margin:22px 0 4px;gap:8px;color:#596272}.reserve .steps span{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e9e5df;padding:11px;border-radius:13px;justify-content:center;font-size:13px}.reserve .steps b{display:grid;place-items:center;background:#f06435;color:#fff;border-radius:50%;width:27px;height:27px;flex-shrink:0}.reserve .steps span:not(:first-child) b{background:#c6cbd0}.reserve .panel{border:1px solid #ece6e0;box-shadow:0 12px 35px #302b2510;border-radius:23px}.reserve .number{border-radius:50%;width:45px;height:45px;display:grid;place-items:center;background:#fff0e5;color:#df612f}.reserve .vehicleCards{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.reserve .vehicleCard{padding:12px;min-width:0;min-height:0;border:2px solid #e8e8e8;gap:6px;position:relative;box-shadow:0 4px 14px #25304208}.reserve .vehicleCard.selected{border-color:#ed6b38;background:#fff8f2;box-shadow:0 6px 20px #ed6b381b}.reserve .carVisual{position:relative;width:100%}.reserve .vehicleCard .carPhoto{width:100%;height:auto;aspect-ratio:320/190;object-fit:contain;display:block;border-radius:10px}.reserve .selectedTick{position:absolute;right:7px;top:7px;background:#fff;color:#e65e30;width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-weight:900;box-shadow:0 2px 8px #0002}.reserve .vehicleCard.selected .selectedTick{background:#ed6b38;color:white}.reserve .vehicleCard strong{font-size:14px;line-height:1.3;color:#17283d}.reserve .vehicleCard b{font-size:19px;color:#e55c2c}.reserve .vehicleCard small{font-size:11px}.reserve .deliveryIntro{background:#f0f9f3;border:1px solid #dceee1;padding:14px;border-radius:12px;font-size:13px;line-height:1.55;color:#365a45}.reserve .deliveryResult{background:#e9f8ee;border:1px solid #ccebd5}.reserve .deliveryResult strong{font-size:27px}.reserve .quoteTotal{background:#eaf4ff}.reserve .quoteTotal strong{color:#195baf}.reserve .actions .primary:not(:disabled){background:#ef5b37}.reserve .field input:focus{outline:2px solid #f6a47f;outline-offset:1px}@media(max-width:650px){.reserve{padding:10px 12px 45px}.reserve .hero{grid-template-columns:1fr;padding:19px;gap:10px;border-radius:22px}.reserve .heroTop,.reserve .hero h1,.reserve .hero>p,.reserve .heroIllustration,.reserve .trust{grid-column:1}.reserve .heroIllustration{grid-row:auto;max-width:none}.reserve .hero h1{font-size:34px;margin:3px 0}.reserve .hero>p{font-size:14px}.reserve .trust{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:5px}.reserve .trust span{font-size:11px;min-height:52px;padding:8px}.reserve .steps{gap:5px}.reserve .steps span{font-size:10px;padding:7px 4px;gap:4px;flex-direction:column;text-align:center}.reserve .steps b{width:24px;height:24px}.reserve .panel{padding:17px;margin-top:14px}.reserve h2{font-size:21px}.reserve .vehicleCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.reserve .vehicleCard{padding:6px;border-radius:13px;min-height:0;gap:5px}.reserve .vehicleCard strong{font-size:11px;line-height:1.2;min-height:27px}.reserve .vehicleCard b{font-size:14px}.reserve .vehicleCard small{font-size:10px}.reserve .selectedTick{width:21px;height:21px;font-size:12px;right:3px;top:3px}.reserve .quoteTotal{padding:13px;flex-wrap:wrap}.reserve .quoteTotal strong{font-size:22px}.reserve .quoteHeader{flex-direction:row}.reserve .quoteTitle{text-align:right;font-size:10px}.reserve .quoteBrand{font-size:23px}}.reserve{background:#fffaf3!important;color:#172238}.reserve .hero{background:linear-gradient(108deg,#fff9ef 0%,#fffaf4 52%,#e9f8f0 100%)!important;border:0!important;box-shadow:0 18px 55px #9a69411a!important;gap:16px!important}.reserve .heroTop{justify-content:flex-start}.reserve .heroIcon{display:none}.reserve .eyebrow{background:#fff0df;color:#eb5b2a!important;padding:10px 15px;border-radius:100px;letter-spacing:.4px!important;font-size:12px!important}.reserve .hero h1{font-weight:900!important;letter-spacing:-2px!important;color:#101b32!important}.reserve .hero h1 em{font-style:normal;color:#f15b2c}.reserve .hero>p{color:#334154!important;font-size:17px!important}.reserve .heroIllustration{border-radius:20px;overflow:hidden;box-shadow:0 12px 26px #27395022}.reserve .heroIllustration img{width:100%!important;display:block}.reserve .trust{background:#fff;border-radius:18px;padding:8px;box-shadow:0 10px 30px #2739500c}.reserve .trust span{border:0!important;box-shadow:none!important;font-weight:800!important}.reserve .panel{background:white!important;box-shadow:0 14px 35px #2a38510c!important;border:1px solid #f0ebe4!important}.reserve .sectionHead{align-items:center}.reserve .number{background:#fff0e2!important;font-size:20px!important}.reserve .vehicleCard{border:1px solid #e4eaf0!important;background:#fff!important;border-radius:18px!important;padding:10px!important}.reserve .vehicleCard.selected{border:2px solid #ff6232!important;background:#fff8f1!important;box-shadow:0 8px 24px #ff6a321d!important}.reserve .vehicleCard .carPhoto{aspect-ratio:320/190;object-fit:cover;background:#f4f8fb}.reserve .vehicleCard strong{font-size:15px!important}.reserve .vehicleCard b{color:#f05c2b!important}.reserve .modelSubtitle{color:#687587!important;line-height:1.35;min-height:30px}.reserve .deliveryHeading{display:flex;align-items:center;gap:14px;margin-top:28px;margin-bottom:12px}.reserve .deliveryHeading h2{font-size:19px;margin:0 0 5px}.reserve .deliveryHeading p{font-size:13px;color:#67717e;margin:0}.reserve .deliveryResult{background:#eaf9ee!important;border:0!important}.reserve .deliveryResult strong{color:#07844e!important}.reserve .registrationIncluded{background:#f2f9f5!important}.reserve .quoteTotal{background:#edf8f0!important}.reserve .quoteTotal strong{color:#087b4b!important}.reserve .actions .primary:not(:disabled){background:linear-gradient(90deg,#ff6831,#ef4361)!important}.reserve .steps span:first-child{color:#f05d30;font-weight:800}.reserve .steps b{background:#ff6831!important}@media(max-width:650px){.reserve .hero{padding:20px!important}.reserve .hero h1{font-size:35px!important}.reserve .hero>p{font-size:15px!important}.reserve .vehicleCards{grid-template-columns:repeat(3,minmax(0,1fr))!important}.reserve .vehicleCard{padding:5px!important}.reserve .vehicleCard strong{font-size:11px!important}.reserve .vehicleCard b{font-size:13px!important}.reserve .modelSubtitle{display:none}.reserve .vehicleCard small:last-child{font-size:9px}.reserve .trust{grid-template-columns:repeat(2,1fr)!important}.reserve .heroIllustration{box-shadow:none}.reserve .quoteHeader{gap:8px}.reserve .quoteTotal{align-items:flex-start}}.reserve .hero{background:#fff!important;box-shadow:0 18px 45px #23374c0c!important;border:1px solid #edf0f2!important}.reserve .heroIllustration{display:flex!important;flex-direction:column;gap:12px!important;overflow:visible!important;box-shadow:none!important}.reserve .realHeroPhoto{position:relative;overflow:hidden;border-radius:20px;background:#eaf0f3;box-shadow:0 12px 30px #20374a18}.reserve .realHeroPhoto img{display:block;width:100%;height:300px;object-fit:cover;object-position:center 44%}.reserve .realBadge{position:absolute;left:13px;bottom:13px;background:#fffefaed;color:#174b38;padding:9px 12px;border-radius:30px;font-size:12px;font-weight:800;box-shadow:0 4px 10px #0002}.reserve .heroDeliveryPhoto{display:grid;grid-template-columns:100px 1fr;gap:12px;align-items:center;background:#f3f8f5;border-radius:16px;padding:9px;border:1px solid #e0eee5}.reserve .heroDeliveryPhoto img{width:100px;height:72px;object-fit:cover;border-radius:11px}.reserve .heroDeliveryPhoto strong{display:block;font-size:13px;color:#1b3540}.reserve .heroDeliveryPhoto small{display:block;font-size:11px;color:#60727b;line-height:1.45;margin-top:5px}.reserve .trust{background:#fff!important;border:1px solid #e9eee9;box-shadow:0 10px 25px #18283a0a}.reserve .trust span{display:flex!important;flex-direction:column;gap:5px;justify-content:center;align-items:center}.reserve .trust b{font-size:12px;color:#24364b}.reserve .trust small{font-size:10px;font-weight:500;color:#7a8790}.reserve .vehicleCard .carPhoto{height:135px!important;aspect-ratio:auto!important;object-fit:contain!important;background:#f2f5f5!important}.reserve .vehicleCard{border:1px solid #e8ecf0!important}.reserve .vehicleCard.selected{border:2px solid #f26c37!important}.reserve .hero h1{font-size:clamp(34px,4.5vw,52px)!important}.reserve .eyebrow{background:#fff3e9!important}.reserve .quote{background:white}.reserve .deliveryResult{border:1px solid #d8eee0!important}@media(max-width:650px){.reserve .realHeroPhoto img{height:230px;object-fit:contain;background:#e9f0f3}.reserve .heroDeliveryPhoto{grid-template-columns:80px 1fr}.reserve .heroDeliveryPhoto img{width:80px;height:65px}.reserve .trust b{font-size:11px}.reserve .trust small{font-size:9px}.reserve .vehicleCard .carPhoto{height:83px!important;object-fit:contain!important}.reserve .hero{gap:13px!important}}.reserve .hero{display:grid!important;grid-template-columns:48% 52%!important;gap:0!important;align-items:center!important;position:relative!important;overflow:hidden!important;padding:0!important;min-height:390px!important;background:linear-gradient(95deg,#fffdf8 0%,#fff8ef 48%,#e7f0ee 100%)!important;border-radius:26px!important}.reserve .heroTop{grid-column:1!important;grid-row:1!important;padding:35px 12px 0 32px!important;z-index:2!important}.reserve .hero h1{grid-column:1!important;grid-row:2!important;padding:0 10px 0 32px!important;font-size:clamp(32px,4vw,48px)!important;line-height:1.08!important;z-index:2!important;letter-spacing:-1.7px!important}.reserve .hero>p{grid-column:1!important;grid-row:3!important;padding:0 18px 0 32px!important;z-index:2!important;line-height:1.6!important}.reserve .heroIllustration{grid-column:2!important;grid-row:1/5!important;height:100%!important;display:block!important;border-radius:0!important;overflow:hidden!important;box-shadow:none!important;position:relative!important}.reserve .realHeroPhoto{height:100%!important;min-height:390px!important;border-radius:0!important;box-shadow:none!important;background:#dce8e5!important;overflow:hidden!important}.reserve .realHeroCrop{position:absolute;inset:0;overflow:hidden}.reserve .realHeroCrop img{position:absolute!important;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover!important;object-position:center!important;right:0!important;top:0!important;filter:saturate(1.05) contrast(1.04)}.reserve .realHeroPhoto:before{content:"";position:absolute;z-index:1;inset:0;background:linear-gradient(90deg,#fff8ef 0%,#fff8ef22 30%,transparent 75%);pointer-events:none}.reserve .realBadge{z-index:2!important;left:16px!important;bottom:15px!important;background:#fffffff2!important;color:#225f49!important}.reserve .trust{grid-column:1/-1!important;grid-row:5!important;margin:0 18px 16px!important;z-index:3!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;box-shadow:0 8px 26px #142a3215!important}.reserve .trust span{min-height:70px!important}.reserve .deliveryStory{display:grid;grid-template-columns:1.05fr 1fr;gap:24px;align-items:center;margin:19px 0;padding:15px;background:#fff;border:1px solid #eaece9;border-radius:23px;box-shadow:0 10px 24px #1b354008}.reserve .deliveryStoryPhoto{position:relative;overflow:hidden;border-radius:16px;background:#e8eef0}.reserve .deliveryStoryPhoto img{display:block;width:100%;height:190px;object-fit:cover}.reserve .deliveryStoryPhoto span{position:absolute;bottom:10px;left:10px;background:#fffffff0;border-radius:20px;padding:7px 11px;color:#244639;font-size:11px;font-weight:750}.reserve .deliveryStoryCopy{padding:10px}.reserve .deliveryEyebrow{color:#e95d2b;font-weight:850;font-size:11px;letter-spacing:1px}.reserve .deliveryStoryCopy h2{font-size:25px!important;line-height:1.2;margin:9px 0!important;color:#14263a}.reserve .deliveryStoryCopy p{color:#617080;font-size:14px;line-height:1.65;margin:0}.reserve .vehicleCards .carPhoto{object-fit:contain!important}.reserve .hero h1 em{color:#f15b2c!important}@media(max-width:700px){.reserve .hero{grid-template-columns:1fr!important;min-height:0!important;padding:0!important}.reserve .heroTop{grid-column:1!important;grid-row:1!important;padding:23px 20px 0!important}.reserve .hero h1{grid-column:1!important;grid-row:2!important;padding:0 20px!important;font-size:34px!important;margin:10px 0 0!important}.reserve .hero>p{grid-column:1!important;grid-row:3!important;padding:0 20px!important;font-size:14px!important;margin:5px 0 12px!important}.reserve .heroIllustration{grid-column:1!important;grid-row:4!important;height:235px!important;margin:0 12px!important;border-radius:17px!important}.reserve .realHeroPhoto{min-height:235px!important;height:235px!important;border-radius:17px!important}.reserve .realHeroCrop img{width:100%!important;right:0!important;object-position:80% center!important}.reserve .realHeroPhoto:before{background:linear-gradient(90deg,#fff8ef55,transparent 35%)!important}.reserve .realBadge{font-size:10px!important}.reserve .trust{grid-column:1!important;grid-row:5!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;margin:12px!important;gap:6px!important}.reserve .trust span{min-height:60px!important}.reserve .deliveryStory{grid-template-columns:1fr;gap:10px;margin:13px 0;padding:10px}.reserve .deliveryStoryPhoto img{height:145px}.reserve .deliveryStoryCopy h2{font-size:20px!important}.reserve .deliveryStoryCopy p{font-size:13px}}.reserve .vehicleCard .carPhoto{width:100%!important;height:auto!important;aspect-ratio:320/190!important;object-fit:contain!important;background:#fff8f2!important}.reserve .vehicleCard:nth-child(2) .carPhoto{background:#edf7ff!important}.reserve .vehicleCard:nth-child(3) .carPhoto{background:#f1f9ef!important}.reserve .vehicleCard .carVisual{background:#fff;border-radius:13px;overflow:hidden}.reserve .vehicleCard .selectedTick{z-index:2}.reserve .realHeroPhoto .realHeroCrop img{object-fit:contain!important;width:100%!important;max-width:100%!important;right:0!important;background:#e5f0f2!important}.reserve .heroDeliveryPhoto{display:none!important}@media(max-width:650px){.reserve .vehicleCard .carPhoto{height:auto!important;aspect-ratio:320/190!important}.reserve .realHeroPhoto .realHeroCrop img{object-fit:contain!important}} `}</style>
+ type FieldName=keyof typeof customer;
+ const field=(name:FieldName,label:string,opts:{required?:boolean;type?:string;autoComplete?:string;wide?:boolean;placeholder?:string;list?:string;inputMode?:"text"|"tel"|"email"}={})=>{
+  const {required=true,type="text",autoComplete,wide,placeholder,list,inputMode}=opts;
+  const filled=!!customer[name].trim();
+  return <label className={`${s.field} ${wide?s.wide:""}`}>
+   <span>{label}{!required?<em> · facultatif</em>:null}</span>
+   <span className={s.inputWrap}>
+    <input required={required} type={type} autoComplete={autoComplete} placeholder={placeholder} list={list} inputMode={inputMode} value={customer[name]} onChange={e=>setCustomer(p=>({...p,[name]:e.target.value}))}/>
+    {filled&&required?<i className={s.ok}>{Icon.check}</i>:null}
+   </span>
+  </label>;
+ };
+
+ const summary=<div className={s.summary}>
+  <div className={s.summaryHead}><img src={MODELS[model].img} alt=""/><div><small>Votre sélection</small><strong>{VEHICLES[model].label}</strong></div></div>
+  <dl>
+   <div><dt>Véhicule</dt><dd>{euro(quote.vehiclePrice)}</dd></div>
+   <div><dt>Livraison à domicile{quote.delivery.status==="estimated"?<small> · {postal}</small>:null}</dt><dd className={quote.delivery.status==="estimated"?"":s.muted}>{deliveryLabel}</dd></div>
+   <div><dt>Carte grise (formalités)</dt><dd>{euro(REGISTRATION_PRICE)}</dd></div>
+  </dl>
+  <div className={s.summaryTotal}><span>Total TTC</span>{quote.total===null?<em>{postal.length===5?"Sur devis":"Saisissez votre code postal pour voir le prix livré"}</em>:<strong>{euro(quote.total)}</strong>}</div>
+  <ul className={s.summaryPerks}>
+   <li>{Icon.check} 0 € à payer aujourd’hui</li>
+   <li>{Icon.check} Paiement à la livraison</li>
+   <li>{Icon.check} Garantie 2 ans selon conditions</li>
+  </ul>
+ </div>;
+
+ if(sent){
+  return <main className={s.page}><section className={s.successCard}>
+   <div className={s.successIcon}>{Icon.check}</div>
+   <h1>Merci {customer.prenom}, votre demande est bien envoyée&nbsp;!</h1>
+   <p>Nous avons reçu votre devis signé pour une <b>{VEHICLES[model].label}</b> livrée à <b>{customer.ville} ({postal})</b>. Un conseiller NeoDrive vous recontacte pour confirmer la disponibilité et la date de livraison.</p>
+   <div className={s.successTotal}><span>Total TTC de votre devis</span><strong>{quote.total===null?"Sur devis":euro(quote.total)}</strong><small>Aucun acompte · paiement à la livraison</small></div>
+   <div className={s.successActions}>
+    <button type="button" className={s.btnGhost} onClick={downloadPdf}>{Icon.download} Télécharger mon devis PDF</button>
+    <a className={s.btnWhatsapp} href={WHATSAPP} target="_blank" rel="noreferrer">{Icon.chat} Une question ? WhatsApp</a>
+   </div>
+  </section></main>;
+ }
+
+ return <main className={s.page}>
+  {/* HERO */}
+  <section className={s.hero}>
+   <div className={s.heroCopy}>
+    <span className={s.kicker}><i/> Réservation en ligne · 100 % électrique</span>
+    <h1>Votre NeoDrive,<br/><span>livrée devant chez vous.</span></h1>
+    <p>Choisissez votre version, obtenez votre prix livré en direct et réservez en 3 minutes. <b>Aucun acompte&nbsp;:</b> vous payez seulement le jour où vous découvrez votre voiture.</p>
+    <div className={s.heroPrice}><small>À partir de</small><strong>{euro(VEHICLES.essentielle.price)}</strong><span>TTC</span></div>
+    <div className={s.heroCtas}>
+     <a href="#configurer" className={s.btnPrimary}>Calculer mon prix livré</a>
+     <a href={WHATSAPP} target="_blank" rel="noreferrer" className={s.btnLink}>{Icon.chat} Parler à un conseiller</a>
+    </div>
+   </div>
+   <figure className={s.heroPhoto}>
+    <img src="/reservation/neodrive-confort-face.jpg" alt="NeoDrive Confort grise, photo réelle du véhicule" fetchPriority="high"/>
+    <figcaption><i/> Photo réelle, non retouchée</figcaption>
+    <div className={s.heroFloat}><span className={s.heroFloatIcon}>{Icon.wallet}</span><div><strong>0 € aujourd’hui</strong><small>Paiement à la livraison</small></div></div>
+   </figure>
+  </section>
+
+  <ul className={s.trust}>
+   <li><span>{Icon.truck}</span><div><b>Livraison à domicile</b><small>Transport sécurisé en France</small></div></li>
+   <li><span>{Icon.wallet}</span><div><b>Sans acompte</b><small>Vous payez à la livraison</small></div></li>
+   <li><span>{Icon.shield}</span><div><b>Garantie 2 ans</b><small>Selon conditions de garantie</small></div></li>
+   <li><span>{Icon.doc}</span><div><b>Carte grise gérée</b><small>Formalités {euro(REGISTRATION_PRICE)}</small></div></li>
+  </ul>
+
+  <div className={s.layout} id="configurer">
+   <form onSubmit={sendReservation} className={s.form}>
+    <ol className={s.progress} aria-label="Étapes de réservation">
+     {["Votre NeoDrive","Livraison & coordonnées","Devis & signature"].map((t,i)=><li key={t} className={stepState[i]?s.done:""}><b>{stepState[i]&&i<2?Icon.check:i+1}</b><span>{t}</span></li>)}
+    </ol>
+
+    {/* STEP 1 */}
+    <section className={s.card}>
+     <header className={s.cardHead}><span className={s.stepNum}>1</span><div><h2>Choisissez votre version</h2><p>Même carrosserie, trois niveaux d’équipement.</p></div></header>
+     <div className={s.models} role="radiogroup" aria-label="Version du véhicule">
+      {(Object.keys(VEHICLES) as VehicleKey[]).map(key=>{const v=VEHICLES[key];const m=MODELS[key];const on=model===key;return <button type="button" role="radio" aria-checked={on} key={key} onClick={()=>setModel(key)} className={`${s.model} ${on?s.modelOn:""}`}>
+       {m.badge?<span className={s.badge}>{m.badge}</span>:null}
+       <span className={s.radio}>{on?Icon.check:null}</span>
+       <img src={m.img} alt=""/>
+       <strong>{v.label.replace("NeoDrive ","")}</strong>
+       <small>{m.tagline}</small>
+       <b>{euro(v.price)}<em> TTC</em></b>
+      </button>})}
+     </div>
+     <a className={s.seeCar} href="/produit">Voir les photos et équipements du véhicule →</a>
+    </section>
+
+    {/* STEP 2 */}
+    <section className={s.card}>
+     <header className={s.cardHead}><span className={s.stepNum}>2</span><div><h2>Où livrons-nous votre NeoDrive&nbsp;?</h2><p>Le prix de livraison s’affiche instantanément.</p></div></header>
+     <div className={s.postalRow}>
+      <label className={s.field}><span>Code postal de livraison</span>
+       <span className={s.inputWrap}><i className={s.inputIcon}>{Icon.pin}</i><input className={s.withIcon} inputMode="numeric" autoComplete="postal-code" maxLength={5} pattern="[0-9]{5}" required value={postal} onChange={e=>setPostal(e.target.value.replace(/[^0-9]/g,"").slice(0,5))} placeholder="Ex. 31600"/>{postalVerified?<i className={s.ok}>{Icon.check}</i>:null}</span>
+      </label>
+      <div className={`${s.deliveryBox} ${quote.delivery.status==="estimated"?s.deliveryOk:""}`} aria-live="polite">
+       <small>Livraison à votre porte</small>
+       <strong>{postal.length<5?"—":postalLoading?"Calcul…":quote.delivery.status==="estimated"?euro(quote.delivery.price):"Sur devis"}</strong>
+       <span>{postal.length<5?"Saisissez vos 5 chiffres":quote.delivery.status==="estimated"?(postalVerified?postalCities.slice(0,2).join(", ")+(postalCities.length>2?"…":""):"Tarif forfaitaire de la zone"):"Tarif personnalisé avant confirmation"}</span>
+      </div>
+     </div>
+     {quote.delivery.status==="manual"&&postal.length===5?<p className={s.note}>{quote.delivery.reason}. Nous vous communiquerons un tarif personnalisé avant toute confirmation — ou <a href={WHATSAPP} target="_blank" rel="noreferrer">demandez-le sur WhatsApp</a>.</p>:null}
+     {postal.length===5&&!postalLoading&&!postalVerified&&quote.delivery.status==="estimated"?<p className={s.note}>Nous ne trouvons pas ce code postal. Vérifiez-le pour continuer.</p>:null}
+
+     <div className={s.subHead}><i>{Icon.user}</i><div><h3>Vos coordonnées</h3><p>Pour établir votre devis nominatif. Jamais revendues.</p></div></div>
+     <div className={s.fields}>
+      {field("prenom","Prénom",{autoComplete:"given-name"})}
+      {field("nom","Nom",{autoComplete:"family-name"})}
+      {field("email","E-mail",{type:"email",autoComplete:"email",inputMode:"email",placeholder:"vous@exemple.fr"})}
+      {field("telephone","Téléphone",{type:"tel",autoComplete:"tel",inputMode:"tel",placeholder:"06 12 34 56 78"})}
+      {field("adresse","Adresse de livraison",{autoComplete:"street-address",wide:true,placeholder:"N° et rue"})}
+      {field("ville","Ville",{autoComplete:"address-level2",list:"rd-cities"})}
+      {field("societe","Entreprise",{required:false,autoComplete:"organization"})}
+     </div>
+     <datalist id="rd-cities">{postalCities.map(c=><option key={c} value={c}/>)}</datalist>
+     {postalVerified&&customer.ville&&!cityMatches?<p className={s.note}>La ville ne correspond pas au code postal {postal}. Communes possibles&nbsp;: {postalCities.slice(0,6).join(", ")}.</p>:null}
+    </section>
+
+    {/* STEP 3 */}
+    <section className={s.card} id="devis">
+     <header className={s.cardHead}><span className={s.stepNum}>3</span><div><h2>Votre devis de réservation</h2><p>Vérifiez, signez, c’est réservé.</p></div></header>
+     <article className={s.quote}>
+      <div className={s.quoteHeader}>
+       <div className={s.quoteBrand}><span>N</span><div><strong>NeoDrive</strong><small>MK HOLDING SAS · SIREN 908 645 393</small></div></div>
+       <div className={s.quoteTitle}>Devis de réservation<small>Établi le {new Date().toLocaleDateString("fr-FR")}</small></div>
+      </div>
+      <div className={s.quoteClient}><small>Client</small><strong>{(customer.prenom||customer.nom)?`${customer.prenom} ${customer.nom}`:"Prénom Nom"}</strong>{customer.societe?<span>{customer.societe}</span>:null}<span>{customer.adresse||"Adresse de livraison"}</span><span>{postal||"Code postal"} {customer.ville||"Ville"}</span></div>
+      <div className={s.quoteRows}>
+       <div><span>{VEHICLES[model].label}</span><strong>{euro(quote.vehiclePrice)}</strong></div>
+       <div><span>Livraison à domicile{postal?` · ${postal}`:""}</span><strong>{quote.delivery.status==="estimated"?euro(quote.delivery.price):"À confirmer"}</strong></div>
+       <div><span>Formalités carte grise {registration?"incluses":"non demandées"}</span><strong>{euro(quote.registrationPrice)}</strong></div>
+      </div>
+      <div className={s.quoteTotal}><span>Total TTC{quote.total===null?" à confirmer":""}<small>Aucun acompte · payable à la livraison</small></span><strong>{quote.total===null?"Sur devis":euro(quote.total)}</strong></div>
+      <details className={s.terms}><summary>Conditions essentielles</summary><p>Aucun acompte demandé. Paiement à la livraison selon les modalités convenues. Délai et disponibilité à confirmer par NeoDrive. Le tarif de livraison est calculé pour le code postal renseigné selon notre barème ; tout changement du montant nécessitera votre accord. Les conditions générales de vente et les informations légales applicables doivent être remises au client avant conclusion du contrat.</p></details>
+      <div className={s.quoteSign}><small>Accord du client</small><strong className={signed?s.signature:""}>{signed||"Votre signature apparaîtra ici"}</strong></div>
+     </article>
+
+     <label className={`${s.field} ${s.signField}`}><span>{Icon.pen} Signez en tapant votre nom et prénom</span><span className={s.inputWrap}><input value={signed} onChange={e=>setSigned(e.target.value)} placeholder="Ex. Marie Dupont" autoComplete="name" required/></span></label>
+     <label className={s.check}><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/><span>J’ai vérifié les informations du devis et je souhaite réserver ce véhicule. Je ne paie rien aujourd’hui.</span></label>
+
+     <div className={s.actions}>
+      <button type="submit" disabled={!valid||sending} className={s.btnPrimary}>{sending?"Envoi en cours…":<>{Icon.lock} Réserver ma NeoDrive</>}</button>
+      <button type="button" onClick={downloadPdf} className={s.btnGhost}>{Icon.download} Télécharger le devis PDF</button>
+     </div>
+     {!valid&&missing.length?<p className={s.missing}>Pour réserver, il manque&nbsp;: {missing.join(", ")}.</p>:null}
+     {sendError?<p role="alert" className={s.error}>{sendError}</p>:null}
+     <p className={s.legal}>Signature électronique simple par saisie du nom et acceptation. NeoDrive vous recontacte ensuite pour confirmer la disponibilité et la date de livraison.</p>
+    </section>
+   </form>
+
+   <aside className={s.aside}>
+    {summary}
+    <a className={s.help} href={WHATSAPP} target="_blank" rel="noreferrer"><span>{Icon.chat}</span><div><b>Une question avant de réserver&nbsp;?</b><small>Un conseiller vous répond sur WhatsApp</small></div></a>
+   </aside>
+  </div>
+
+  {/* PREUVE LOGISTIQUE */}
+  <section className={s.story}>
+   <div className={s.storyPhotos}>
+    <img src="/neodrive-switch/photos/confort-transport-dechargement.jpg" alt="Véhicules NeoDrive sur le camion de transport" loading="lazy"/>
+    <img src="/neodrive-switch/photos/confort-interieur-large.jpg" alt="Intérieur réel de la NeoDrive Confort" loading="lazy"/>
+   </div>
+   <div className={s.storyCopy}>
+    <span className={s.eyebrow}>Comment se passe la livraison</span>
+    <h2>De notre stock jusqu’à votre porte</h2>
+    <ol>
+     <li><b>Vous réservez en ligne</b><span>Devis signé en quelques minutes, sans rien payer.</span></li>
+     <li><b>Nous vous appelons</b><span>Confirmation de la disponibilité et de la date de livraison.</span></li>
+     <li><b>Livraison par transporteur</b><span>Votre NeoDrive arrive chez vous sur camion sécurisé.</span></li>
+     <li><b>Vous découvrez, puis vous payez</b><span>Le règlement se fait à la livraison, selon le montant convenu.</span></li>
+    </ol>
+   </div>
+  </section>
+
+  <section className={s.faq}>
+   <h2>Questions fréquentes</h2>
+   <details><summary>Dois-je payer quelque chose pour réserver&nbsp;?</summary><p>Non. Aucun acompte n’est demandé. Vous réglez le montant convenu au moment de la livraison.</p></details>
+   <details><summary>Comment est calculé le prix de livraison&nbsp;?</summary><p>Il dépend de votre code postal, selon notre barème par zone. Il s’ajoute automatiquement à votre devis ; pour certaines destinations (Corse, outre-mer…), un tarif personnalisé vous est communiqué avant toute confirmation.</p></details>
+   <details><summary>Que comprennent les 150 € de carte grise&nbsp;?</summary><p>Les formalités d’immatriculation de votre véhicule, gérées par NeoDrive et incluses dans votre devis.</p></details>
+   <details><summary>Ma réservation m’engage-t-elle immédiatement&nbsp;?</summary><p>NeoDrive vous recontacte d’abord pour confirmer la disponibilité et le délai. Tout changement de montant nécessite votre accord.</p></details>
+  </section>
+
+  {/* BARRE MOBILE */}
+  <div className={s.mobileBar}>
+   <div><small>{VEHICLES[model].label.replace("NeoDrive ","")} · total TTC</small><strong>{quote.total===null?(postal.length===5?"Sur devis":euro(quote.vehiclePrice+REGISTRATION_PRICE)+" + livr."):euro(quote.total)}</strong></div>
+   <a href={valid?"#devis":postalVerified&&contactDone?"#devis":"#configurer"} className={s.btnPrimary}>{valid?"Réserver":"Continuer"}</a>
+  </div>
  </main>;
 }
