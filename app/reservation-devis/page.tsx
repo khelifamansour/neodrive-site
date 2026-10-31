@@ -180,7 +180,7 @@ export default function ReservationDevis(){
    <div className={s.heroCopy}>
     <span className={s.kicker}><i/> Réservation en ligne · 100 % électrique</span>
     <h1>Votre NeoDrive,<br/><span>livrée devant chez vous.</span></h1>
-    <p>Choisissez votre version, obtenez votre prix livré en direct et réservez en 3 minutes. <b>Aucun acompte&nbsp;:</b> vous payez seulement le jour où vous découvrez votre voiture.</p>
+    <p>Choisissez votre version, obtenez votre prix livré en direct et réservez en 3 minutes. <b>Aucun acompte&nbsp;:</b> vous payez tout le jour de la livraison.</p>
     <div className={s.heroPrice}><small>À partir de</small><strong>{euro(VEHICLES.essentielle.price)}</strong><span>TTC</span></div>
     <div className={s.heroCtas}>
      <a href="#configurer" className={s.btnPrimary}>Calculer mon prix livré</a>
@@ -306,7 +306,7 @@ export default function ReservationDevis(){
      <li><b>Vous réservez en ligne</b><span>Devis signé en quelques minutes, sans rien payer.</span></li>
      <li><b>Nous vous appelons</b><span>Confirmation de la disponibilité et de la date de livraison.</span></li>
      <li><b>Livraison par transporteur</b><span>Votre NeoDrive arrive chez vous sur camion sécurisé.</span></li>
-     <li><b>Vous découvrez, puis vous payez</b><span>Le règlement se fait à la livraison, selon le montant convenu.</span></li>
+     <li><b>Vous payez à la livraison</b><span>Le règlement se fait le jour de la livraison, selon le montant convenu.</span></li>
     </ol>
    </div>
   </section>

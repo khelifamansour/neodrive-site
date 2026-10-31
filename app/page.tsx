@@ -34,8 +34,8 @@ export default function Home() {
       <section className="realGallery" aria-label="Galerie photo NeoDrive">
         <div className="realGalleryIntro">
           <span className="miniBadge">NeoDrive en vrai</span>
-          <h2>De vraies voitures. Une activité bien réelle.</h2>
-          <p>Découvrez nos véhicules, leur intérieur, les arrivages et leur transport à travers nos propres photos.</p>
+          <h2>De vraies voitures en acier. Un vrai service. Une vraie qualité.</h2>
+          <p>Nos véhicules, leur intérieur, nos arrivages et nos livraisons partout en France : le meilleur rapport qualité-prix, en images.</p>
         </div>
         <div className="realGalleryTrack" role="region" aria-label="Photos NeoDrive à faire défiler horizontalement" tabIndex={0}>
           {[{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/137e8afd-9c45-425c-83bf-f68f5f9ef1eb-1000126021.jpg","alt":"Nos véhicules à l'arrivée"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/1842f1c0-2f85-449d-8183-93065c31f252-1000130728.jpg","alt":"L'habitacle NeoDrive"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/9784a94e-fb2c-42ba-b4f3-dcb0fcea11c8-1000126029.jpg","alt":"Notre parc de véhicules"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-09-01/18862335-61bc-4a0c-b60a-b456b94d9c13-1000160283.jpg","alt":"Transport des véhicules"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/0b4e7023-6f6a-4f46-95d5-90e13965e311-1000127389.jpg","alt":"Préparation des livraisons"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-10-28/b1c44b3d-265b-428f-ad91-10f2acabcc9a-1000127412.jpg","alt":"Chargement et livraison"},{"src":"https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/2026-09-01/beed26ba-f702-41f8-b813-49d2e8598cf0-1000160314.jpg","alt":"Nos voitures sur le transporteur"}].map((photo, index) => (
@@ -117,7 +117,9 @@ export default function Home() {
           <article><b>01</b><h3>Carrosserie acier</h3><p>Une structure et des panneaux en acier, là où beaucoup de voitures sans permis sont en plastique.</p></article>
           <article><b>02</b><h3>3 200 € de moins</h3><p>NeoDrive Confort à 4 990 € TTC, contre 8 190 € pour une Citroën Ami de base.*</p></article>
           <article><b>03</b><h3>Vraiment équipée</h3><p>Chauffage, caméra de recul, Bluetooth / USB et alarme antivol sur la version Confort.</p></article>
-          <article><b>04</b><h3>0 € d’acompte</h3><p>Vous découvrez votre voiture à la livraison, puis vous réglez le montant convenu.</p></article>
+          <article><b>04</b><h3>0 € d’acompte</h3><p>Livraison jusqu’à votre domicile. Vous payez tout le jour de la livraison.</p></article>
+          <article><b>05</b><h3>SAV national</h3><p>Un service après-vente partout en France : diagnostic à distance NeoDiag, pièces détachées et assistance sur WhatsApp.</p></article>
+          <article><b>06</b><h3>Fiable, simple, modulaire</h3><p>Un véhicule fiable et simple, conçu de façon modulaire : entretien et réparations facilités.</p></article>
         </div>
         <p className="whyNote">* Tarif constructeur Citroën Ami relevé sur citroen.fr en août 2026, version d’entrée de gamme. Citroën et Ami sont des marques de leurs propriétaires respectifs.</p>
       </section>
@@ -216,7 +218,7 @@ export default function Home() {
         .reserveBtn{background:linear-gradient(135deg,#ff8a00,#f05a28);color:#fff;box-shadow:0 14px 34px rgba(240,90,40,.35)}
         .whySection{width:min(1180px,calc(100% - 48px));margin:0 auto 100px;background:#0c0c0c;color:#fff;border-radius:34px;padding:56px 48px}
         .whyHead{max-width:760px;margin-bottom:38px}.whyHead h2{font-size:clamp(36px,5vw,56px);line-height:1.04;letter-spacing:-2px;margin:14px 0 0;font-weight:950}
-        .whyGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px}.whyGrid article{border-top:1px solid rgba(255,255,255,.16);padding-top:22px}.whyGrid b{display:block;font-size:15px;font-weight:950;color:#ff8a00;letter-spacing:1px}.whyGrid h3{font-size:24px;line-height:1.1;margin:12px 0 10px;font-weight:950;letter-spacing:-.5px}.whyGrid p{margin:0;color:#bdbdbd;font-size:16px;line-height:1.6}
+        .whyGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:34px 28px}.whyGrid article{border-top:1px solid rgba(255,255,255,.16);padding-top:22px}.whyGrid b{display:block;font-size:15px;font-weight:950;color:#ff8a00;letter-spacing:1px}.whyGrid h3{font-size:24px;line-height:1.1;margin:12px 0 10px;font-weight:950;letter-spacing:-.5px}.whyGrid p{margin:0;color:#bdbdbd;font-size:16px;line-height:1.6}
         .whyNote{margin:34px 0 0;font-size:12px;color:#7d7d7d;line-height:1.5}
         @media(max-width:900px){.whySection{width:calc(100% - 28px);margin-bottom:62px;padding:30px 24px;border-radius:26px}.whyGrid{grid-template-columns:1fr 1fr;gap:22px}.whyGrid h3{font-size:21px}.whyGrid p{font-size:15px}}
         @media(max-width:520px){.whyGrid{grid-template-columns:1fr}.whyHead h2{font-size:34px;letter-spacing:-1.4px}}
