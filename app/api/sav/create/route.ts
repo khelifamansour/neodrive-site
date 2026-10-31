@@ -1,21 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
+import { ALERT_ENDPOINT, SAV_BUCKET, timelinePath, waNumber, type SavTimeline } from "../../../../lib/sav";
 
 export const dynamic="force-dynamic";
 export const maxDuration=60;
 const SB="https://tzlsdjzcxdjaatcpwqwn.supabase.co";
+const SITE="https://www.easydrive-auto.fr";
+const LINK_TTL=60*60*24*14; // liens médias valables 14 jours dans l'alerte
 
-function clean(v:FormDataEntryValue|null){return String(v||"").trim();}
-function safeName(s:string){return s.replace(/[^a-zA-Z0-9._-]+/g,"-").slice(0,100);}
-function ticketRef(){return `SAV-${new Date().getFullYear()}-${String(Date.now()).slice(-7)}`;}
-
-async function upload(sb:any,file:File,ref:string){
- const path=`sav/${ref}/${Date.now()}-${crypto.randomUUID()}-${safeName(file.name||"media")}`;
- const {error}=await sb.storage.from("erp-documents").upload(path,Buffer.from(await file.arrayBuffer()),{contentType:file.type||"application/octet-stream",upsert:false});
- if(error)throw error;
- return {name:file.name,type:file.type,size:file.size,path};
-}
+const clean=(v:unknown)=>String(v??"").trim();
 
 async function triage(input:{category:string;description:string;errorCode:string;vin:string}){
  if(!process.env.OPENAI_API_KEY)return {diagnosis:"Votre demande a été enregistrée. Un technicien NeoDrive vérifiera le dossier.",confidence:0};
@@ -27,17 +21,54 @@ async function triage(input:{category:string;description:string;errorCode:string
  }catch{return {diagnosis:"Votre demande a été enregistrée. Un technicien NeoDrive vérifiera le dossier.",confidence:0};}
 }
 
+/** Envoie l'alerte e-mail à NeoDrive. Renvoie true si Formspree a accepté. */
+async function sendAlert(fields:Record<string,string>){
+ try{
+  const r=await fetch(ALERT_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json",Referer:SITE+"/sav",Origin:SITE},body:JSON.stringify(fields)});
+  return r.ok;
+ }catch{return false;}
+}
+
 export async function POST(req:Request){
  const sk=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!sk)return NextResponse.json({ok:false,error:"Configuration serveur incomplète"},{status:503});
- const sb=createClient(SB,sk,{auth:{persistSession:false}});const fd=await req.formData();
- const name=clean(fd.get("name")),email=clean(fd.get("email")).toLowerCase(),phone=clean(fd.get("phone")),vin=clean(fd.get("vin")).replace(/\s+/g,"").toUpperCase(),category=clean(fd.get("category")),description=clean(fd.get("description")),errorCode=clean(fd.get("error_code"));
+ const sb=createClient(SB,sk,{auth:{persistSession:false}});
+ const b=await req.json().catch(()=>null) as Record<string,unknown>|null;
+ if(!b)return NextResponse.json({ok:false,error:"Requête invalide."},{status:400});
+ const name=clean(b.name),email=clean(b.email).toLowerCase(),phone=clean(b.phone),vin=clean(b.vin).replace(/\s+/g,"").toUpperCase(),category=clean(b.category),description=clean(b.description),errorCode=clean(b.error_code);
+ const ref=clean(b.ref),folder=clean(b.folder);
  if(!name||!email||!phone||!description)return NextResponse.json({ok:false,error:"Nom, e-mail, téléphone et description sont obligatoires."},{status:400});
- const ref=ticketRef();let vehicle:any=null,customer:any=null;
+ if(!/^SAV-\d{4}-\d{7}$/.test(ref)||!folder.startsWith(`sav/${ref}-`)||!/^sav\/SAV-\d{4}-\d{7}-[0-9a-f-]{36}$/.test(folder))return NextResponse.json({ok:false,error:"Référence invalide, rechargez la page."},{status:400});
+ const {data:exists}=await sb.from("sav_tickets").select("id").eq("public_reference",ref).maybeSingle();
+ if(exists)return NextResponse.json({ok:false,error:"Cette demande a déjà été envoyée."},{status:409});
+
+ // Médias réellement reçus dans le dossier privé
+ const {data:listed}=await sb.storage.from(SAV_BUCKET).list(folder,{limit:50});
+ const attachments=(listed||[]).filter(f=>f.name&&!f.name.startsWith(".")).map(f=>({name:f.name,type:(f.metadata as {mimetype?:string}|null)?.mimetype||"",size:(f.metadata as {size?:number}|null)?.size||0,path:`${folder}/${f.name}`}));
+
+ let vehicle:{id:string;vin:string;internal_ref:string;model:string;version:string}|null=null;
  if(vin){const {data}=await sb.from("vehicles").select("id,vin,internal_ref,model,version,current_customer_id").or(`vin.eq.${vin},chassis_number.eq.${vin}`).maybeSingle();vehicle=data||null;}
- const {data:existingCustomer}=await sb.from("customers").select("id,first_name,last_name,email,phone").eq("email",email).maybeSingle();customer=existingCustomer||null;
- const attachments:any[]=[];for(const [k,v] of fd.entries()){if(k==="media"&&v instanceof File&&v.size){if(v.size>50*1024*1024)return NextResponse.json({ok:false,error:`${v.name} dépasse 50 Mo.`},{status:400});attachments.push(await upload(sb,v,ref));}}
+ const {data:customer}=await sb.from("customers").select("id").eq("email",email).maybeSingle();
  const ai=await triage({category,description,errorCode,vin});
  const {data:ticket,error}=await sb.from("sav_tickets").insert({ticket_number:ref,public_reference:ref,customer_id:customer?.id||null,vehicle_id:vehicle?.id||null,customer_name:name,customer_email:email,customer_phone:phone,vin:vin||vehicle?.vin||null,category:category||"autre",description,symptom:description,error_code:errorCode||null,status:"open",priority:"normal",ai_diagnosis:ai.diagnosis,ai_confidence:ai.confidence,attachments}).select("id,ticket_number,public_reference,status,ai_diagnosis,vin,created_at").single();
  if(error)return NextResponse.json({ok:false,error:error.message},{status:500});
- return NextResponse.json({ok:true,ticket,vehicleMatched:!!vehicle,vehicle:vehicle?{vin:vehicle.vin,internal_ref:vehicle.internal_ref,model:vehicle.model,version:vehicle.version}:null});
+
+ // Historique de suivi
+ const timeline:SavTimeline={ref,folder,events:[{at:new Date().toISOString(),stage:"received",note:"Votre demande est bien enregistrée. Un technicien NeoDrive revient vers vous."}]};
+ await sb.storage.from(SAV_BUCKET).upload(timelinePath(ref),Buffer.from(JSON.stringify(timeline,null,2)),{contentType:"application/json",upsert:true});
+
+ // Alerte NeoDrive
+ const links:string[]=[];
+ for(const a of attachments){const {data}=await sb.storage.from(SAV_BUCKET).createSignedUrl(a.path,LINK_TTL);if(data?.signedUrl)links.push(`${a.name} : ${data.signedUrl}`);}
+ const fields:Record<string,string>={
+  _subject:`🔧 Nouvelle demande SAV ${ref} — ${name}`,
+  reference:ref,client:name,telephone:phone,email,
+  whatsapp_client:phone?`https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(`Bonjour ${name.split(" ")[0]}, NeoDrive au sujet de votre demande ${ref}.`)}`:"",
+  vin:vin||"non renseigné",vehicule_reconnu:vehicle?`${vehicle.model||""} ${vehicle.version||""} (${vehicle.internal_ref||vehicle.vin})`:"non",
+  categorie:category||"autre",code_erreur:errorCode||"aucun",description,
+  pre_diagnostic:ai.diagnosis,
+  medias:links.length?links.join("\n"):"aucun",
+  suivi_admin:`${SITE}/sav/admin`,
+ };
+ const alertSent=await sendAlert(fields);
+ return NextResponse.json({ok:true,ticket,alertSent,alertFields:alertSent?null:fields,vehicleMatched:!!vehicle,mediaCount:attachments.length});
 }
