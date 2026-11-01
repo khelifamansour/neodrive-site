@@ -16,7 +16,7 @@ export type Params = {
   prodDays: number; toPortDays: number; seaDays: number; customsDays: number; transferDays: number;
   priceTtc: number; deliveryTtc: number; deliveryCost: number; costPerKm: number; carsPerTrip: number;
   forecast: number[]; safety: number; oldPerWeek: number; adsDefault: number; truckCost: number; truckCars: number;
-  havreSiteRent: number; havreSiteUnload: number; maxPerMonth: number; landedEstimate: number;
+  havreSiteRent: number; havreSiteUnload: number; maxPerMonth: number; landedEstimate: number; scenLow: number; scenHigh: number; minCash: number;
 };
 export type Gestion = { params: Params; hubs: Hub[]; lots: Lot[]; containers: Container[]; payments: Payment[]; quarters: Quarter[]; updated_at?: string };
 
@@ -73,7 +73,7 @@ export function defaultGestion(today = iso(new Date())): Gestion {
       prodDays: 45, toPortDays: 10, seaDays: 54, customsDays: 2, transferDays: 10,
       priceTtc: 4990, deliveryTtc: 690, deliveryCost: 390, costPerKm: 0.65, carsPerTrip: 2,
       forecast: Array(12).fill(17), safety: 6, oldPerWeek: 3, adsDefault: 325, truckCost: 1800, truckCars: 13,
-      havreSiteRent: 600, havreSiteUnload: 300, maxPerMonth: 3, landedEstimate: 2500,
+      havreSiteRent: 600, havreSiteUnload: 300, maxPerMonth: 3, landedEstimate: 2500, scenLow: 0.7, scenHigh: 1.3, minCash: 10000,
     },
     hubs: [
       { id: "boran", name: "Boran-sur-Oise (Nord)", rentMonthly: 0, perCarMonthly: 25, capacity: 20, transferPerCar: 150, avgDeliveryKm: 250 },
@@ -207,4 +207,39 @@ export function distributionOptions(p: Params, hubs: Hub[]) {
     { id: "havre-sud", label: "Le Havre → dépotage → Lamasquère (voiture par voiture)", perCar: base(freightH) + (p.warehouseTransfer + p.unload) / n + sud.transferPerCar, delivery: tripCost(sud), storage: sud.rentMonthly / Math.max(1, sud.capacity) },
     { id: "fos-sud", label: "Fos → conteneur entier jusqu'à Muret", perCar: base(freightF) + (p.fosToMuret + p.unload) / n, delivery: tripCost(sud), storage: sud.rentMonthly / Math.max(1, sud.capacity) },
   ].map(o => ({ ...o, total: o.perCar + o.delivery + o.storage }));
+}
+
+// ── Recommandations : combien de stock injecter sans mettre la trésorerie en danger
+export const MARKET = { newPerYear: 24977, usedPerYear: 42000, leaderPerYear: 7408, leader: "Citroën Ami" };
+export function recommend(g: Gestion, today = iso(new Date())) {
+  const p = g.params, low = p.scenLow || 0.7, high = p.scenHigh || 1.3;
+  const prob = project(g, today, true, 1);
+  const S = prob.suggestions.map(s => ({ ...s, suggested: false, label: s.label.replace("suggérée", "conseillée") }));
+  const withK = (k: number) => ({ ...g, containers: [...g.containers, ...S.slice(0, k)] });
+  // on garde le plus de commandes possible tant que le scénario défavorable reste au-dessus du seuil de trésorerie
+  // seuil : la réserve voulue, ou le point bas qui existe déjà sans nouvelle commande s'il est plus bas
+  const floor = Math.min(p.minCash, project(g, today, false, low).min.cash) - 1;
+  let k = S.length;
+  while (k > 0 && project(withK(k), today, false, low).min.cash < floor) k--;
+  const plan = withK(k);
+  const defav = project(plan, today, false, low), probable = project(plan, today, false, 1), fav = project(plan, today, false, high);
+  const sum = (r: ReturnType<typeof project>, f: "sold" | "lost") => r.quarters.reduce((a, q) => a + q[f], 0);
+  const soldYear = sum(probable, "sold");
+  const recos: { level: "ok" | "warn" | "bad"; text: string }[] = [];
+  const firstMin = defav.min;
+  if (defav.min.cash < 0) recos.push({ level: "bad", text: `Même sans nouvelle commande, en vente lente la trésorerie passe à ${Math.round(defav.min.cash).toLocaleString("fr-FR")} € la semaine du ${fr(firstMin.start)}. Priorité : déstocker l’ancien stock, livrer les voitures vendues, négocier un délai sur un solde usine.` });
+  else if (defav.min.cash < p.minCash * 2) recos.push({ level: "warn", text: `Point bas en vente lente : ${Math.round(defav.min.cash).toLocaleString("fr-FR")} € (semaine du ${fr(firstMin.start)}). Garde une réserve : ne commande pas plus que le plan ci-dessous avant cette date.` });
+  else recos.push({ level: "ok", text: `Même en vente lente, la trésorerie ne descend pas sous ${Math.round(defav.min.cash).toLocaleString("fr-FR")} €. Tu peux suivre le plan de commandes sans risque.` });
+  recos.push({ level: k < S.length ? "warn" : "ok", text: k < S.length ? `Plan prudent : ${k} conteneur(s) au lieu de ${S.length}. Les ${S.length - k} autres ne passent qu’avec plus de trésorerie (déstockage, acomptes clients ou financement).` : `Les ${k} commandes conseillées passent même en vente lente.` });
+  const lostFav = sum(fav, "lost");
+  if (lostFav > 0) recos.push({ level: "warn", text: `Si les ventes sont bonnes (+${Math.round((high - 1) * 100)} %), tu manqueras environ ${lostFav} voitures sur 12 mois : prends des réservations avec acompte sur les prochains arrivages, ou ajoute un conteneur dès que la trésorerie le permet.` });
+  const lostProb = sum(probable, "lost");
+  if (lostProb > 0) recos.push({ level: "warn", text: `Scénario probable : ${lostProb} ventes perdues faute de stock (surtout au début, délai de 4 mois). Vends en réservation avec acompte les voitures des conteneurs en route.` });
+  const ads = g.quarters.reduce((a, q) => a + q.adsMonthly, 0) / Math.max(1, g.quarters.length) * 12;
+  const cps = ads / Math.max(1, soldYear);
+  recos.push({ level: cps < 150 ? "ok" : "warn", text: cps < 150 ? `La pub coûte ≈ ${Math.round(cps)} € par vente : c’est très bas. Augmente les annonces Leboncoin (avec remontée) tant que ce coût reste sous 150 €.` : `La pub coûte ≈ ${Math.round(cps)} € par vente : vérifie quelles annonces vendent vraiment avant d’augmenter.` });
+  const old = g.lots.filter(l => l.status === "ancien").reduce((a, l) => a + l.qty, 0);
+  if (old) recos.push({ level: "warn", text: `${old} voitures d’ancien stock : les vendre en 3-4 semaines (4 290–4 490 € TTC, « disponible immédiatement ») apporte ≈ ${Math.round(old * 4300 / 1000)} 000 € au moment le plus tendu.` });
+  const share = (soldYear * 12 / 12) / MARKET.newPerYear * 100, shareAll = soldYear / (MARKET.newPerYear + MARKET.usedPerYear) * 100;
+  return { plan: S.slice(0, k), dropped: S.slice(k), defav, probable, fav, recos, soldYear, share, shareAll, lostFav, k, total: S.length };
 }

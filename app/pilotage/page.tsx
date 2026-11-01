@@ -2,18 +2,18 @@
 import {useEffect,useMemo,useState} from "react";
 import s from "../planificateur/planif.module.css";
 import p from "./pilotage.module.css";
-import {containerCosts,containerDates,distributionOptions,fr,iso,project,situationContainers,situationLots,type Container,type Gestion,type Hub,type Lot,type Params,type Payment,type Port,type Quarter} from "../../lib/gestion";
+import {recommend,MARKET,containerCosts,containerDates,distributionOptions,fr,iso,project,situationContainers,situationLots,type Container,type Gestion,type Hub,type Lot,type Params,type Payment,type Port,type Quarter} from "../../lib/gestion";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
-type Tab="bord"|"stock"|"conteneurs"|"paiements"|"treso"|"plan"|"distrib"|"reglages";
-const TABS:[Tab,string][]=[["bord","📊 Tableau de bord"],["stock","🚗 Stock"],["conteneurs","🚢 Conteneurs"],["paiements","💳 Paiements"],["treso","🏦 Trésorerie"],["plan","🗓️ Plan trimestriel"],["distrib","🗺️ Hubs & distribution"],["reglages","⚙️ Réglages"]];
+type Tab="reco"|"bord"|"stock"|"conteneurs"|"paiements"|"treso"|"plan"|"distrib"|"reglages";
+const TABS:[Tab,string][]=[["reco","🧭 Recommandations"],["bord","📊 Tableau de bord"],["stock","🚗 Stock"],["conteneurs","🚢 Conteneurs"],["paiements","💳 Paiements"],["treso","🏦 Trésorerie"],["plan","🗓️ Plan trimestriel"],["distrib","🗺️ Hubs & distribution"],["reglages","⚙️ Réglages"]];
 const LOT:Record<Lot["status"],string>={dispo:"Disponible",vendu:"Vendue, à livrer",ancien:"Ancien stock (à déstocker)"};
-const SCEN:[string,string,number][]=[["lente","🐢 Vente lente",0.7],["inter","🚗 Intermédiaire",1],["rapide","🚀 Vente rapide",1.3]];
+const SCEN0:[string,string][]=[["défavorable","🌧️ Défavorable"],["probable","⛅ Probable"],["favorable","☀️ Favorable"]];
 const uid=()=>`${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
 
 export default function PilotagePage(){
  const [code,setCode]=useState("");const [authed,setAuthed]=useState(false);
- const [d,setD]=useState<Gestion|null>(null);const [tab,setTab]=useState<Tab>("bord");
+ const [d,setD]=useState<Gestion|null>(null);const [tab,setTab]=useState<Tab>("reco");
  const [busy,setBusy]=useState("");const [msg,setMsg]=useState("");const [dirty,setDirty]=useState(false);
  const today=iso(new Date());
  const api=async(body:object,pc=code)=>{const r=await fetch("/api/pilotage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:pc,...body})});const j=await r.json().catch(()=>({ok:false,error:"Erreur"}));if(r.status===401)setAuthed(false);if(!j.ok)throw new Error(j.error||"Erreur");return j;};
@@ -25,10 +25,12 @@ export default function PilotagePage(){
  const upd=(f:(x:Gestion)=>Gestion)=>{setD(x=>x?f(x):x);setDirty(true);setMsg("");};
  const setP=(k:keyof Params,v:unknown)=>upd(x=>({...x,params:{...x.params,[k]:v}}));
  const [scen,setScen]=useState(1);
- const projs=useMemo(()=>d?SCEN.map(x=>project(d,today,true,x[2])):null,[d,today]);
+ const SCEN:[string,string,number][]=SCEN0.map((x,i)=>[x[0],x[1],d?[d.params.scenLow??0.7,1,d.params.scenHigh??1.3][i]:1]);
+ const projs=useMemo(()=>d?[d.params.scenLow??0.7,1,d.params.scenHigh??1.3].map(f=>project(d,today,true,f)):null,[d,today]);
+ const reco=useMemo(()=>d?recommend(d,today):null,[d,today]);
  const proj=projs?projs[scen]:null;
 
- if(!authed||!d||!proj||!projs)return <main className={s.page}><form className={s.login} onSubmit={e=>{e.preventDefault();load();}}><span className={s.logo}>N</span><h1>Pilotage</h1><p>Code d’accès NeoDrive (le même que l’ERP).</p><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code" autoFocus/><button disabled={busy==="load"}>{busy==="load"?"…":"Entrer"}</button>{msg?<p className={s.err}>{msg}</p>:null}</form></main>;
+ if(!authed||!d||!proj||!projs||!reco)return <main className={s.page}><form className={s.login} onSubmit={e=>{e.preventDefault();load();}}><span className={s.logo}>N</span><h1>Pilotage</h1><p>Code d’accès NeoDrive (le même que l’ERP).</p><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code" autoFocus/><button disabled={busy==="load"}>{busy==="load"?"…":"Entrer"}</button>{msg?<p className={s.err}>{msg}</p>:null}</form></main>;
 
  const P=d.params;
  const N=(k:keyof Params,label:string,step=1)=><label className={s.param}><span>{label}</span><input type="number" step={step} value={P[k] as number} onChange={e=>setP(k,Number(e.target.value)||0)}/></label>;
@@ -56,6 +58,28 @@ export default function PilotagePage(){
   <div className={s.seg} style={{marginTop:12}}>{SCEN.map((x,i)=><button key={x[0]} className={scen===i?s.on:""} onClick={()=>setScen(i)}>{x[1]} ({Math.round(x[2]*100)} %)</button>)}</div>
   {!d.containers.length?<p className={s.tip}>Ton outil est vide. <button className={s.small} onClick={()=>upd(x=>({...x,containers:situationContainers(),lots:situationLots()}))}>Charger ma situation du 1er novembre</button> (conteneurs en route, ancien stock) puis complète et enregistre.</p>:null}
   <nav className={p.tabs}>{TABS.map(([k,l])=><button key={k} className={tab===k?p.on:""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
+
+  {tab==="reco"?<section className={s.card}>
+   <h2>🧭 Recommandations</h2>
+   <p className={s.muted}>Calcul : le plan de commandes est fait pour le scénario probable, puis on garde le maximum de conteneurs qui laissent au moins {eur(P.minCash)} de trésorerie même en scénario défavorable ({Math.round((P.scenLow??0.7)*100)} % des ventes prévues).</p>
+   <ul className={p.sugs}>{reco.recos.map((r,i)=><li key={i} className={r.level==="bad"?p.sugNow:p.sug} style={r.level==="ok"?{borderColor:"#bbf7d0",background:"#f0fdf4"}:r.level==="warn"?{borderColor:"#fde68a",background:"#fffbeb"}:undefined}><div>{r.level==="ok"?"✅ ":r.level==="warn"?"⚠️ ":"🔴 "}{r.text}</div></li>)}</ul>
+   <h3>Combien de stock injecter : {reco.k} conteneur{reco.k>1?"s":""} ({reco.k*9} voitures) sur 12 mois</h3>
+   {reco.plan.length?<ul className={s.mini}>{reco.plan.map(o=><li key={o.id}><span><b>{fr(o.orderDate)}</b> · 9 voitures · {o.port==="fos"?"Fos → Sud":"Le Havre → Nord"} · au hub ≈ {fr(containerDates(P,o).hub)}</span><button title="Ajouter à mes conteneurs" onClick={()=>{addC(o);setMsg("✅ Ajouté à tes conteneurs. Pense à enregistrer.");}}>＋</button></li>)}</ul>:<p className={s.muted}>Aucune nouvelle commande conseillée pour l’instant.</p>}
+   {reco.dropped.length?<p className={s.muted}>Commandes en attente de trésorerie : {reco.dropped.map(o=>fr(o.orderDate)).join(", ")}.</p>:null}
+   <h3>Avec ce plan, selon les ventes</h3>
+   <div className={s.tableWrap}><table className={p.table}><thead><tr><th>Scénario</th><th>Livrées 12 mois</th><th>Ventes perdues</th><th>Tréso la plus basse</th><th>Tréso dans 12 mois</th></tr></thead><tbody>
+    {([["🌧️ Défavorable",reco.defav],["⛅ Probable",reco.probable],["☀️ Favorable",reco.fav]] as const).map(([l,r])=><tr key={l}><td><b>{l}</b></td><td>{r.quarters.reduce((a,q)=>a+q.sold,0)}</td><td className={r.quarters.some(q=>q.lost)?p.red:""}>{r.quarters.reduce((a,q)=>a+q.lost,0)||"—"}</td><td className={r.min.cash<P.minCash?p.red:""}>{eur(r.min.cash)} <small>({fr(r.min.start)})</small></td><td><b>{eur(r.rows[r.rows.length-1].cash)}</b></td></tr>)}
+   </tbody></table></div>
+   <h3>Face au marché national</h3>
+   <div className={s.kpis}>
+    <div><small>Tes ventes prévues / an</small><b>{reco.soldYear}</b></div>
+    <div><small>Part du neuf ({MARKET.newPerYear.toLocaleString("fr-FR")} / an)</small><b>{reco.share.toFixed(1)} %</b></div>
+    <div><small>Part neuf + occasion</small><b>{reco.shareAll.toFixed(1)} %</b></div>
+    <div><small>Leader : {MARKET.leader}</small><b>{Math.round(MARKET.leaderPerYear/12)} / mois</b></div>
+   </div>
+   <p className={s.muted}>Marché 2025 des voitures sans permis neuves : 24 977 ventes (source AAA Data). Occasion estimée à ≈ 42 000 / an. Pour viser 1 % de part de marché en plus, il faut ≈ {Math.round((MARKET.newPerYear)/100/12)} ventes de plus par mois.</p>
+   <div className={s.params}>{N("scenLow","Défavorable (× ventes)",0.05)}{N("scenHigh","Favorable (× ventes)",0.05)}{N("minCash","Trésorerie minimum à garder (€)",500)}</div>
+  </section>:null}
 
   {tab==="bord"?<section className={s.card}>
    <h2>📊 Tableau de bord</h2>
@@ -144,7 +168,7 @@ export default function PilotagePage(){
     <div className={s.kpis}>
      <div><small>Conteneurs à commander</small><b>{pq.orders}</b></div>
      <div><small>Voitures qui arrivent</small><b>{pq.arrivals}</b></div>
-     <div><small>Ventes prévues (lente / inter / rapide)</small><b>{SCEN.map((_,i)=>projs[i].quarters[qi]?.sold||0).join(" / ")}</b></div>
+     <div><small>Ventes prévues (défav. / probable / fav.)</small><b>{SCEN.map((_,i)=>projs[i].quarters[qi]?.sold||0).join(" / ")}</b></div>
      <div><small>Marge estimée ({SCEN[scen][0]})</small><b>{eur(pq.sold*unit-q.adsMonthly*3)}</b></div>
     </div>
     {pq.orderList.length?<ul className={s.mini}>{pq.orderList.map(o=><li key={o.id}><span>{fr(o.orderDate)} · {o.cars} voitures · {o.port==="fos"?"Fos → Sud":"Le Havre → Nord"} · au hub ≈ {fr(containerDates(P,o).hub)}</span>{o.suggested?<button title="Ajouter à mes conteneurs" onClick={()=>{addC(o);setMsg("✅ Ajouté à tes conteneurs. Pense à enregistrer.");}}>＋</button>:<span>✔︎</span>}</li>)}</ul>:<p className={s.muted}>Pas de commande à passer sur cette période.</p>}
