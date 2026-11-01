@@ -6,6 +6,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  */
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 export const DATA_BUCKET = "neodrive-data";
+const LEGACY_BUCKET = "erp-documents";
 let ensured = false;
 
 export function dataClient(): SupabaseClient | null {
@@ -22,7 +23,9 @@ async function ensure(sb: SupabaseClient) {
 
 export async function readJson<X>(sb: SupabaseClient, path: string): Promise<X | null> {
   await ensure(sb);
-  const { data } = await sb.storage.from(DATA_BUCKET).download(path);
+  let { data } = await sb.storage.from(DATA_BUCKET).download(path);
+  // Anciennes données : lecture de secours dans l'ancien bucket
+  if (!data) ({ data } = await sb.storage.from(LEGACY_BUCKET).download(path));
   if (!data) return null;
   try { return JSON.parse(await data.text()) as X; } catch { return null; }
 }

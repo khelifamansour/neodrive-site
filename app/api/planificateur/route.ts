@@ -70,6 +70,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // Public : prix moyen national des carburants (données publiques)
+    if (b.action === "fuel") return NextResponse.json(await fuelPrices());
     if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
 
     if (b.action === "list") {
@@ -97,7 +99,6 @@ export async function POST(req: Request) {
       if (del.length) await removeJson(sb, del.map(c => `${C}/${c.id}.json`));
       return NextResponse.json({ ok: true, deleted: del.length });
     }
-    if (b.action === "fuel") return NextResponse.json(await fuelPrices());
     if (b.action === "add") {
       const c = await buildClient(b, "manuel");
       if ("error" in c) return NextResponse.json({ ok: false, error: c.error }, { status: 400 });
