@@ -2,7 +2,7 @@
 import {useEffect,useState} from "react";
 import s from "./planif.module.css";
 import TourMap from "./TourMap";
-import {departmentFromPostalCode,deliveryPriceForDepartment} from "../../lib/neodrive-pricing";
+import {VEHICLES,departmentFromPostalCode,deliveryPriceForDepartment} from "../../lib/neodrive-pricing";
 import {TRAILERS,DEFAULT_PARAMS,FUELS,splitTrips,type Stop,planRoute,estimateKm,computeCosts,mapsUrl,type Hub,type PlanClient,type PlanTour,type CostParams} from "../../lib/planif";
 import {waNumber} from "../../lib/sav";
 
@@ -13,6 +13,9 @@ const recLink=(c:PlanClient)=>`${SITE}/reception?id=${encodeURIComponent(c.id)}&
 const nav=(p:Stop)=>`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving`;
 const waze=(p:Stop)=>`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`;
 const billed=(c:PlanClient)=>{const d=departmentFromPostalCode(c.code_postal);return d?deliveryPriceForDepartment(d)||0:0;};
+const carPrice=(m:string)=>Object.values(VEHICLES).find(v=>v.label===m)?.price||VEHICLES.confort.price;
+type Eco={carCost:number;ttc:boolean};
+const ECO0:Eco={carCost:2800,ttc:true};
 const hm=(h:number)=>`${Math.floor(h)} h ${String(Math.round((h%1)*60)).padStart(2,"0")}`;
 
 export default function Planificateur(){
@@ -25,6 +28,9 @@ export default function Planificateur(){
  const [sel,setSel]=useState<string[]>([]);const [target,setTarget]=useState("");
  const [params,setParams]=useState<CostParams>(DEFAULT_PARAMS);
  const [open,setOpen]=useState<string|null>(null);
+ const [eco,setEco]=useState<Eco>(()=>{try{return {...ECO0,...JSON.parse(localStorage.getItem("nd_eco")||"{}")}}catch{return ECO0}});
+ const [boss,setBoss]=useState(true);
+ const saveEco=(e:Eco)=>{setEco(e);try{localStorage.setItem("nd_eco",JSON.stringify(e))}catch{}};
  const [live,setLive]=useState<Record<string,number>|null>(null);
 
  const api=async(body:object,pc=code)=>{const r=await fetch("/api/planificateur",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:pc,...body})});const j=await r.json().catch(()=>({ok:false,error:"Erreur"}));if(r.status===401)setAuthed(false);if(!j.ok)throw new Error(j.error||"Erreur");return j;};
@@ -175,6 +181,31 @@ export default function Planificateur(){
        <div><small>Km remorque vide</small><b>{Math.round(empty)} km · {Math.round(100*empty/Math.max(1,t.km||1))} %</b></div>
        <div><small>Voyages (chargements)</small><b>{trips.length}</b></div>
       </div>;})()}
+      {boss?(()=>{const div=eco.ttc?1.2:1;const ids=t.stops.filter(x=>x.kind==="client").map(x=>x.id);const rows=ids.map(id=>clients.find(c=>c.id===id)).filter(Boolean) as PlanClient[];
+       const perCar=(t.costs?.total||0)/Math.max(1,rows.length);
+       const L=rows.map(c=>{const sale=carPrice(c.modele)/div;const fee=billed(c)/div;return {c,sale,fee,carM:sale-eco.carCost,delM:fee-perCar,tot:sale-eco.carCost+fee-perCar};});
+       const S=(k:"sale"|"fee"|"carM"|"delM"|"tot")=>L.reduce((a,r)=>a+r[k],0);
+       const ca=S("sale")+S("fee");const mt=S("tot");
+       return <section className={s.dash}>
+        <div className={s.rowHead}><h3>📊 Tableau de bord — marges ({eco.ttc?"HT":"prix bruts"})</h3><button className={s.small} onClick={()=>setBoss(false)}>Masquer</button></div>
+        <div className={s.grid2}>
+         <label className={s.field}><span>Coût d’achat d’une voiture (€ HT)</span><input type="number" value={eco.carCost} onChange={e=>saveEco({...eco,carCost:Number(e.target.value)||0})}/></label>
+         <label className={s.field}><span>Prix du site</span><select value={eco.ttc?"ttc":"ht"} onChange={e=>saveEco({...eco,ttc:e.target.value==="ttc"})}><option value="ttc">TTC → je retire la TVA 20 %</option><option value="ht">Déjà HT</option></select></label>
+        </div>
+        <div className={s.biz}>
+         <div><small>Chiffre d’affaires {eco.ttc?"HT":""}</small><b>{eur(ca)}</b></div>
+         <div><small>Marge voitures</small><b>{eur(S("carM"))}</b></div>
+         <div className={S("delM")>=0?s.pos:s.neg}><small>Marge livraison</small><b>{eur(S("delM"))}</b></div>
+         <div className={s.pos}><small>Marge totale</small><b>{eur(mt)}</b></div>
+         <div><small>Marge par voiture</small><b>{eur(mt/Math.max(1,L.length))}</b></div>
+         <div><small>Taux de marge</small><b>{Math.round(100*mt/Math.max(1,ca))} %</b></div>
+        </div>
+        <div className={s.tableWrap}><table className={s.dtable}><thead><tr><th>Client</th><th>Vente voiture</th><th>Marge voiture</th><th>Livraison facturée</th><th>Coût livraison</th><th>Marge livraison</th><th>Marge totale</th></tr></thead><tbody>
+         {L.map(r=><tr key={r.c.id}><td><b>{r.c.nom}</b><small>{r.c.ville}</small></td><td>{eur(r.sale)}</td><td>{eur(r.carM)}</td><td>{eur(r.fee)}</td><td>{eur(perCar)}</td><td className={r.delM>=0?s.posT:s.negT}>{eur(r.delM)}</td><td><b>{eur(r.tot)}</b></td></tr>)}
+         <tr className={s.tot}><td>Total</td><td>{eur(S("sale"))}</td><td>{eur(S("carM"))}</td><td>{eur(S("fee"))}</td><td>{eur(t.costs?.total||0)}</td><td>{eur(S("delM"))}</td><td>{eur(mt)}</td></tr>
+        </tbody></table></div>
+        <p className={s.muted}>Coût de livraison = coût total de la tournée (carburant, péages, livreur, repas, hôtel) partagé à parts égales entre les voitures. {eco.ttc?"Prix du site divisés par 1,2 pour comparer en HT.":""} Hors carte grise.</p>
+       </section>;})():<button className={s.ghost} onClick={()=>setBoss(true)}>📊 Afficher le tableau de bord des marges</button>}
       <p className={s.tip}>🛡️ Carburant attendu : environ <b>{Math.round(t.costs.liters)} L</b>. Un écart de plus de 15 % avec les tickets ou la carte mérite une explication.</p>
       <div className={s.btns}><a className={s.ghost} href={mapsUrl(t.stops)} target="_blank" rel="noreferrer">🗺️ Google Maps</a><button className={s.ghost} onClick={()=>copy(t)}>📋 Feuille de route</button></div>
       {!locked?<button className={s.primary} disabled={!!busy||!!t.warning} onClick={()=>validate(t)}>Valider la tournée (déduit le stock)</button>:null}
