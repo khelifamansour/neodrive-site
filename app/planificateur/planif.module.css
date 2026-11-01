@@ -65,3 +65,4 @@
 .biz{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.biz div{background:#f6f7f8;border-radius:14px;padding:12px}.biz small{display:block;color:#7a8594;font-weight:700;font-size:12px}.biz b{font-size:18px}
 .pos{background:#ecfdf3!important}.pos b{color:#067647}.neg{background:#fef3f2!important}.neg b{color:#b42318}
 @media(max-width:640px){.biz{grid-template-columns:1fr 1fr}}
+.ver{font-size:12px;font-weight:800;color:#fff;background:#16a34a;border-radius:999px;padding:3px 8px;vertical-align:middle}.topBtns{flex-wrap:wrap}

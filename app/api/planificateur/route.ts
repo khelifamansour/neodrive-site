@@ -77,6 +77,25 @@ export async function POST(req: Request) {
       for (const c of clients) if (!c.token) { c.token = crypto.randomUUID(); await writeJson(sb, `${C}/${c.id}.json`, c); }
       return NextResponse.json({ ok: true, clients, tours, hubs });
     }
+    if (b.action === "demo") {
+      // Simulation : 10 clients test répartis en France + 20 voitures par hub
+      const DEMO: [string, string, string, string, string][] = [["Martin","Julie","12 rue Alsace Lorraine","31000","Toulouse"],["Dubois","Karim","10 cours de l'Intendance","33000","Bordeaux"],["Bernard","Sophie","5 rue Foch","34000","Montpellier"],["Petit","Nadia","20 La Canebière","13001","Marseille"],["Robert","Paul","3 rue de la République","69001","Lyon"],["Richard","Emma","8 rue Crébillon","44000","Nantes"],["Durand","Hugo","15 rue Nationale","37000","Tours"],["Leroy","Inès","2 rue Faidherbe","59000","Lille"],["Moreau","Lucas","1 place Kléber","67000","Strasbourg"],["Simon","Léa","30 rue du Gros Horloge","76000","Rouen"]];
+      const existing = await listJson<PlanClient>(sb, C);
+      let created = 0;
+      for (const [i, [nom, prenom, adresse, code_postal, ville]] of DEMO.entries()) {
+        if (existing.some(c => c.nom === nom && c.prenom === prenom && c.note?.startsWith("TEST"))) continue;
+        const c = await buildClient({ nom, prenom, adresse, code_postal, ville, telephone: `06 12 34 56 ${String(10 + i)}`, email: `test${i + 1}@example.com`, modele: ["NeoDrive Essentielle", "NeoDrive Confort", "NeoDrive Confort Plus"][i % 3], note: "TEST simulation — à supprimer" }, "reservation");
+        if (!("error" in c)) { await writeJson(sb, `${C}/${c.id}.json`, c); created++; }
+      }
+      const hubs = (await readHubs(sb)).map(h => ({ ...h, stock: h.id === "lamasquere" || h.id === "boran" ? 20 : h.stock }));
+      await writeJson(sb, H, hubs);
+      return NextResponse.json({ ok: true, created });
+    }
+    if (b.action === "demo_clear") {
+      const del = (await listJson<PlanClient>(sb, C)).filter(c => c.note?.startsWith("TEST") || c.prenom === "TEST");
+      if (del.length) await removeJson(sb, del.map(c => `${C}/${c.id}.json`));
+      return NextResponse.json({ ok: true, deleted: del.length });
+    }
     if (b.action === "fuel") return NextResponse.json(await fuelPrices());
     if (b.action === "add") {
       const c = await buildClient(b, "manuel");

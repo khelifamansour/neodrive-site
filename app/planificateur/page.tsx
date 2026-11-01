@@ -77,6 +77,8 @@ export default function Planificateur(){
  const removeTour=(t:PlanTour)=>{if(confirm(`Supprimer ${t.name} ? Ses clients repassent « à planifier »${t.status==="valide"?" et le stock est restitué":""}.`))run("del",async()=>{await api({action:"delete_tour",id:t.id});await load();});};
  const roadmap=(t:PlanTour)=>`${t.name} — ${new Date(t.date).toLocaleDateString("fr-FR")}${t.driver?` · ${t.driver}`:""}\n\n`+splitTrips(t.stops||[]).map(v=>`━━ VOYAGE ${v.n} ━━\n📦 ${v.hub.name} : ${v.hub.action}\n   ${nav(v.hub)}\n`+v.clients.map(p=>`🚗 ${p.name}\n   📞 ${p.phone||"—"}\n   📍 ${p.label}\n   ${nav(p)}`).join("\n")+(v.next?`\n➡️ Ensuite : ${v.next.name}${v.next.legKm?` (${v.next.legKm} km)`:""}`:"")).join("\n\n")+`\n\nItinéraire : ${mapsUrl(t.stops||[])}`;
  const copy=(t:PlanTour)=>navigator.clipboard?.writeText(roadmap(t)).then(()=>setMsg("✅ Feuille de route copiée : collez-la dans WhatsApp pour le livreur."));
+ const demo=()=>run("demo",async()=>{const j=await api({action:"demo"});await load();setMsg(`✅ Simulation chargée : ${j.created} client${j.created>1?"s":""} test ajouté${j.created>1?"s":""}, 20 voitures dans chaque hub. Cliquez sur « 🤖 Proposer automatiquement ».`);});
+ const demoClear=()=>{if(confirm("Supprimer tous les clients TEST ?"))run("demo",async()=>{const j=await api({action:"demo_clear"});await load();setMsg(`✅ ${j.deleted} client${j.deleted>1?"s":""} test supprimé${j.deleted>1?"s":""}.`);});};
  const setFuel=(f:CostParams["fuel"])=>{const d=FUELS.find(x=>x.id===f)!;setParams(p=>({...p,fuel:f,consumption:d.conso,fuelPrice:Math.round((live?.[f]||d.price)*1000)/1000}));};
  const P=(k:keyof CostParams,label:string,step=0.01)=><label className={s.param}><span>{label}</span><input type="number" step={step} value={params[k] as number} onChange={e=>setParams(p=>({...p,[k]:Number(e.target.value)||0}))}/></label>;
 
@@ -86,7 +88,7 @@ export default function Planificateur(){
  const waiting=clients.filter(c=>c.status==="a_planifier").length;
  const drafts=tours.filter(t=>t.status==="brouillon");
  return <main className={s.page}>
-  <header className={s.top}><div><h1>Planificateur de tournées</h1><p>{waiting} client{waiting>1?"s":""} à livrer · stock total {hubs.reduce((a,h)=>a+h.stock,0)} voitures</p></div><div className={s.topBtns}><button onClick={()=>setShowAdd(v=>!v)}>＋ Client</button><button onClick={()=>load()}>↻</button></div></header>
+  <header className={s.top}><div><h1>Planificateur de tournées <small className={s.ver}>v3 · carte</small></h1><p>{waiting} client{waiting>1?"s":""} à livrer · stock total {hubs.reduce((a,h)=>a+h.stock,0)} voitures</p></div><div className={s.topBtns}><button onClick={demo} disabled={!!busy}>{busy==="demo"?"…":"🧪 Simulation"}</button>{clients.some(c=>c.note?.startsWith("TEST")||c.prenom==="TEST")?<button onClick={demoClear} disabled={!!busy}>🧹 Test</button>:null}<button onClick={()=>setShowAdd(v=>!v)}>＋ Client</button><button onClick={()=>load()}>↻</button></div></header>
   {msg?<p className={msg.startsWith("✅")?s.ok:s.err}>{msg}</p>:null}
 
   {/* HUBS */}
