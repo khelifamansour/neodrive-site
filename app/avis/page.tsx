@@ -40,7 +40,7 @@ export default function Avis(){
    {rows===null?<form className="box" onSubmit={e=>{e.preventDefault();load();}}><b>Mes livraisons récentes</b><p>Code ERP pour voir les clients livrés ces 30 derniers jours.</p><div className="row"><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code"/><button>Voir</button></div>{err?<p className="e">{err}</p>:null}</form>
    :<div className="box"><b>Livraisons des 30 derniers jours</b>{!rows.length?<p>Aucune livraison marquée « livrée » dans le stock ce mois-ci. Utilisez l’envoi manuel ci-dessus.</p>:null}
     <ul>{rows.map(r=><li key={r.vehicle_id}><div><b>{r.name}</b><small>{new Date(r.delivered_at).toLocaleDateString("fr-FR")}{r.city?` · ${r.city}`:""}</small></div>{r.requested?<span className="done">✓ Demandé</span>:r.wa?<a className="wa sm" href={r.wa} target="_blank" rel="noreferrer" onClick={()=>mark(r.vehicle_id)}>Demander l’avis</a>:<span className="muted">Pas de téléphone</span>}</li>)}</ul></div>}
-   <p className="note">Chaque jour à 18 h, vous recevez aussi par e-mail la liste des clients livrés récemment, avec le message prêt.</p>
+   <p className="note">Demandez l’avis uniquement aux clients dont vous savez qu’ils sont satisfaits.</p>
   </section>
   <style jsx>{`
    .a{max-width:560px;margin:0 auto;padding:22px 14px 70px;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#111}
