@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { isAuthorized, serviceClient } from "../../../lib/integrations";
-import type { PlanClient, PlanTour } from "../../../lib/planif";
+import { DEFAULT_HUBS, type Hub, type PlanClient, type PlanTour } from "../../../lib/planif";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 const BUCKET = "erp-documents";
-const C = "planificateur/clients", T = "planificateur/tours";
+const C = "planificateur/clients", T = "planificateur/tours", H = "planificateur/hubs.json";
 const clean = (v: unknown, n = 200) => String(v ?? "").trim().slice(0, n);
 
 async function geocode(adresse: string, cp: string, ville: string) {
@@ -32,6 +32,15 @@ async function readAll<X>(sb: any, folder: string): Promise<X[]> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const write = (sb: any, path: string, obj: unknown) => sb.storage.from(BUCKET).upload(path, Buffer.from(JSON.stringify(obj)), { contentType: "application/json", upsert: true });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function readHubs(sb: any): Promise<Hub[]> {
+  const { data } = await sb.storage.from(BUCKET).download(H);
+  if (!data) return DEFAULT_HUBS;
+  try { const h = JSON.parse(await data.text()); return Array.isArray(h) && h.length ? h : DEFAULT_HUBS; } catch { return DEFAULT_HUBS; }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function readJson<X>(sb: any, path: string): Promise<X | null> { const { data } = await sb.storage.from(BUCKET).download(path); if (!data) return null; try { return JSON.parse(await data.text()); } catch { return null; } }
+
 async function buildClient(b: Record<string, unknown>, source: PlanClient["source"]): Promise<PlanClient | { error: string }> {
   const c = { prenom: clean(b.prenom, 80), nom: clean(b.nom, 80), telephone: clean(b.telephone, 30), email: clean(b.email, 120), adresse: clean(b.adresse), code_postal: clean(b.code_postal, 5), ville: clean(b.ville, 80), modele: clean(b.modele, 60), couleur: clean(b.couleur, 40), note: clean(b.note, 500) };
   if (!c.nom || !/^\d{5}$/.test(c.code_postal) || !c.ville) return { error: "Nom, code postal et ville sont obligatoires." };
@@ -57,8 +66,8 @@ export async function POST(req: Request) {
   if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
 
   if (b.action === "list") {
-    const [clients, tours] = await Promise.all([readAll<PlanClient>(sb, C), readAll<PlanTour>(sb, T)]);
-    return NextResponse.json({ ok: true, clients, tours });
+    const [clients, tours, hubs] = await Promise.all([readAll<PlanClient>(sb, C), readAll<PlanTour>(sb, T), readHubs(sb)]);
+    return NextResponse.json({ ok: true, clients, tours, hubs });
   }
   if (b.action === "add") {
     const c = await buildClient(b, "manuel");
@@ -77,30 +86,52 @@ export async function POST(req: Request) {
     await write(sb, `${C}/${id}.json`, c);
     return NextResponse.json({ ok: true });
   }
+  if (b.action === "save_hubs") {
+    const hubs = (Array.isArray(b.hubs) ? b.hubs : []) as Hub[];
+    const okHubs = hubs.filter(h => h && h.id && h.name && Number.isFinite(h.lat) && Number.isFinite(h.lng)).map(h => ({ id: clean(h.id, 60), name: clean(h.name, 80), lat: Number(h.lat), lng: Number(h.lng), stock: Math.max(0, Math.round(Number(h.stock) || 0)) }));
+    if (!okHubs.length) return NextResponse.json({ ok: false, error: "Au moins un hub est nécessaire." }, { status: 400 });
+    await write(sb, H, okHubs);
+    return NextResponse.json({ ok: true, hubs: okHubs });
+  }
+  if (b.action === "add_hub") {
+    const name = clean(b.name, 80);
+    if (name.length < 2) return NextResponse.json({ ok: false, error: "Nom de ville requis" }, { status: 400 });
+    let pos: { lat: number; lng: number } | null = null;
+    try { const f = (await (await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(name)}&type=municipality&limit=1`, { cache: "no-store" })).json())?.features?.[0]; if (f) pos = { lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] }; } catch { /* ignore */ }
+    if (!pos) return NextResponse.json({ ok: false, error: "Ville introuvable" }, { status: 400 });
+    const hubs = await readHubs(sb);
+    hubs.push({ id: `hub-${Date.now()}`, name, stock: Math.max(0, Math.round(Number(b.stock) || 0)), ...pos });
+    await write(sb, H, hubs);
+    return NextResponse.json({ ok: true, hubs });
+  }
   if (b.action === "save_tour") {
     const t = b.tour as PlanTour;
-    if (!t?.id || !Array.isArray(t.stops)) return NextResponse.json({ ok: false, error: "Tournée invalide" }, { status: 400 });
-    await write(sb, `${T}/${t.id}.json`, t);
-    // Les clients de la tournée passent en « planifié »
-    for (const s of t.stops.filter(s => s.kind === "client")) {
-      const { data } = await sb.storage.from(BUCKET).download(`${C}/${s.id}.json`);
-      if (!data) continue;
-      const c = JSON.parse(await data.text()) as PlanClient;
-      if (c.status === "a_planifier") { c.status = "planifie"; c.tour_id = t.id; await write(sb, `${C}/${c.id}.json`, c); }
+    if (!t?.id || !Array.isArray(t.clientIds)) return NextResponse.json({ ok: false, error: "Tournée invalide" }, { status: 400 });
+    const prev = await readJson<PlanTour>(sb, `${T}/${t.id}.json`);
+    const validating = t.status === "valide" && prev?.status !== "valide";
+    if (validating && !t.stops?.length) return NextResponse.json({ ok: false, error: "Calculez la tournée avant de la valider." }, { status: 400 });
+    // Clients : rattachés à la tournée / détachés
+    const ids = new Set(t.clientIds);
+    const all = await readAll<PlanClient>(sb, C);
+    for (const c of all) {
+      if (ids.has(c.id) && c.status !== "livre" && (c.tour_id !== t.id || c.status !== "planifie")) { c.tour_id = t.id; c.status = "planifie"; await write(sb, `${C}/${c.id}.json`, c); }
+      else if (!ids.has(c.id) && c.tour_id === t.id && c.status === "planifie") { c.tour_id = null; c.status = "a_planifier"; await write(sb, `${C}/${c.id}.json`, c); }
     }
-    return NextResponse.json({ ok: true });
+    // Validation : le stock des hubs diminue des voitures chargées
+    if (validating) {
+      const hubs = await readHubs(sb);
+      for (const s of t.stops || []) if (s.kind === "depot" && s.loaded) { const h = hubs.find(x => x.id === s.id); if (h) h.stock = Math.max(0, h.stock - s.loaded); }
+      await write(sb, H, hubs);
+    }
+    await write(sb, `${T}/${t.id}.json`, t);
+    return NextResponse.json({ ok: true, hubs: await readHubs(sb) });
   }
   if (b.action === "delete_tour") {
     const id = clean(b.id, 80);
-    const { data } = await sb.storage.from(BUCKET).download(`${T}/${id}.json`);
-    if (data) {
-      const t = JSON.parse(await data.text()) as PlanTour;
-      for (const s of t.stops.filter(s => s.kind === "client")) {
-        const { data: cd } = await sb.storage.from(BUCKET).download(`${C}/${s.id}.json`);
-        if (!cd) continue;
-        const c = JSON.parse(await cd.text()) as PlanClient;
-        if (c.tour_id === id && c.status === "planifie") { c.status = "a_planifier"; c.tour_id = null; await write(sb, `${C}/${c.id}.json`, c); }
-      }
+    const t = await readJson<PlanTour>(sb, `${T}/${id}.json`);
+    if (t) {
+      for (const cid of t.clientIds || []) { const c = await readJson<PlanClient>(sb, `${C}/${cid}.json`); if (c && c.tour_id === id && c.status === "planifie") { c.status = "a_planifier"; c.tour_id = null; await write(sb, `${C}/${c.id}.json`, c); } }
+      if (t.status === "valide") { const hubs = await readHubs(sb); for (const s of t.stops || []) if (s.kind === "depot" && s.loaded) { const h = hubs.find(x => x.id === s.id); if (h) h.stock += s.loaded; } await write(sb, H, hubs); }
     }
     await sb.storage.from(BUCKET).remove([`${T}/${id}.json`]);
     return NextResponse.json({ ok: true });

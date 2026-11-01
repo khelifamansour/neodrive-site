@@ -1,7 +1,7 @@
-/** Planificateur de tournées NeoDrive : types, dépôts, optimisation et coûts. */
+/** Planificateur de tournées NeoDrive : hubs, tournées, optimisation et coûts. */
 
 export type Point = { lat: number; lng: number };
-export type Depot = Point & { id: string; name: string; label: string };
+export type Hub = Point & { id: string; name: string; stock: number };
 export type PlanClient = Point & {
   id: string; created_at: string; source: "reservation" | "manuel";
   prenom: string; nom: string; telephone: string; email: string;
@@ -9,14 +9,19 @@ export type PlanClient = Point & {
   modele: string; couleur: string; total: number | null;
   status: "a_planifier" | "planifie" | "livre"; tour_id?: string | null; note?: string;
 };
-export type Stop = { kind: "depot" | "client"; id: string; name: string; label: string; lat: number; lng: number; load: number; action: string; phone?: string };
-export type PlanTour = { id: string; created_at: string; date: string; driver: string; depotId: string; trailer: number; stops: Stop[]; km: number; hours: number; costs: Costs; params: CostParams; status: "brouillon" | "valide" | "termine" };
+export type Stop = { kind: "depot" | "client"; id: string; name: string; label: string; lat: number; lng: number; load: number; loaded?: number; action: string; phone?: string };
 export type CostParams = { consumption: number; fuelPrice: number; tollPerKm: number; hourlyRate: number; mealPerDay: number; hotelPerNight: number; hoursPerDay: number; mode: "carte" | "remboursement" };
 export type Costs = { liters: number; fuel: number; tolls: number; driver: number; days: number; meals: number; nights: number; hotel: number; total: number; payDriver: number };
+export type PlanTour = {
+  id: string; name: string; created_at: string; date: string; driver: string;
+  hubId: string; trailer: number; clientIds: string[];
+  status: "brouillon" | "valide" | "termine";
+  stops?: Stop[]; km?: number; hours?: number; precise?: boolean; costs?: Costs; params?: CostParams; warning?: string;
+};
 
-export const DEPOTS: Depot[] = [
-  { id: "lamasquere", name: "Lamasquère", label: "Stock Lamasquère (près de Muret, 31)", lat: 43.4836, lng: 1.2483 },
-  { id: "boran", name: "Boran-sur-Oise", label: "Stock Boran-sur-Oise (60)", lat: 49.1686, lng: 2.3583 },
+export const DEFAULT_HUBS: Hub[] = [
+  { id: "lamasquere", name: "Lamasquère (Muret)", lat: 43.4836, lng: 1.2483, stock: 0 },
+  { id: "boran", name: "Boran-sur-Oise", lat: 49.1686, lng: 2.3583, stock: 0 },
 ];
 export const TRAILERS = [
   { value: 1, label: "Petite remorque (1 voiture)" },
@@ -35,32 +40,42 @@ export function haversineKm(a: Point, b: Point) {
 export const roadKm = (a: Point, b: Point) => haversineKm(a, b) * 1.3;
 
 /**
- * Ordre de tournée : on part du dépôt chargé, on livre le client le plus proche,
- * et quand la remorque est vide on recharge au dépôt le plus proche. Retour au dépôt de départ.
+ * Ordre de tournée avec stock : départ du hub choisi (chargé selon remorque et stock),
+ * livraison du client le plus proche, recharge au hub ayant du stock qui coûte le moins de détour,
+ * retour au hub de départ. Les clients non livrables (plus de stock) sont signalés.
  */
-export function planRoute(start: Depot, trailer: number, clients: PlanClient[]): Stop[] {
+export function planRoute(hubs: Hub[], startId: string, trailer: number, clients: PlanClient[]) {
+  const stock: Record<string, number> = Object.fromEntries(hubs.map(h => [h.id, Math.max(0, h.stock)]));
+  const start = hubs.find(h => h.id === startId) || hubs[0];
   const stops: Stop[] = [];
-  let pos: Point = start, load = trailer;
   const left = [...clients];
-  stops.push({ kind: "depot", id: start.id, name: start.name, label: start.label, lat: start.lat, lng: start.lng, load, action: `Charger ${trailer} voiture${trailer > 1 ? "s" : ""}` });
+  let pos: Point = start, load = 0;
+  const take = (h: Hub) => { const n = Math.min(trailer - load, stock[h.id], left.length); stock[h.id] -= n; load += n; return n; };
+  const first = take(start);
+  stops.push({ kind: "depot", id: start.id, name: start.name, label: start.name, lat: start.lat, lng: start.lng, load, loaded: first, action: first ? `Charger ${first} voiture${first > 1 ? "s" : ""}` : "Départ (aucun stock ici)" });
   while (left.length) {
     if (load === 0) {
-      // recharger au dépôt qui minimise (aller au dépôt + dépôt → client le plus proche)
-      let best = DEPOTS[0], bestCost = Infinity;
-      for (const d of DEPOTS) { const next = Math.min(...left.map(c => roadKm(d, c))); const cost = roadKm(pos, d) + next; if (cost < bestCost) { bestCost = cost; best = d; } }
-      load = Math.min(trailer, left.length);
-      stops.push({ kind: "depot", id: best.id, name: best.name, label: best.label, lat: best.lat, lng: best.lng, load, action: `Recharger ${load} voiture${load > 1 ? "s" : ""}` });
+      let best: Hub | null = null, bestCost = Infinity;
+      for (const h of hubs) {
+        if (stock[h.id] <= 0) continue;
+        const next = Math.min(...left.map(c => roadKm(h, c)));
+        const cost = roadKm(pos, h) + next;
+        if (cost < bestCost) { bestCost = cost; best = h; }
+      }
+      if (!best) break; // plus de stock nulle part
+      const n = take(best);
+      stops.push({ kind: "depot", id: best.id, name: best.name, label: best.name, lat: best.lat, lng: best.lng, load, loaded: n, action: `Recharger ${n} voiture${n > 1 ? "s" : ""}` });
       pos = best;
     }
     let bi = 0;
     for (let i = 1; i < left.length; i++) if (roadKm(pos, left[i]) < roadKm(pos, left[bi])) bi = i;
     const c = left.splice(bi, 1)[0];
     load -= 1;
-    stops.push({ kind: "client", id: c.id, name: `${c.prenom} ${c.nom}`.trim(), label: `${c.adresse}, ${c.code_postal} ${c.ville}`, lat: c.lat, lng: c.lng, load, action: `Livrer ${c.modele || "NeoDrive"}`, phone: c.telephone });
+    stops.push({ kind: "client", id: c.id, name: `${c.prenom} ${c.nom}`.trim(), label: `${c.adresse ? c.adresse + ", " : ""}${c.code_postal} ${c.ville}`, lat: c.lat, lng: c.lng, load, action: `Livrer ${c.modele || "NeoDrive"}`, phone: c.telephone });
     pos = c;
   }
-  stops.push({ kind: "depot", id: start.id, name: start.name, label: start.label, lat: start.lat, lng: start.lng, load, action: "Retour au dépôt" });
-  return stops;
+  stops.push({ kind: "depot", id: start.id, name: start.name, label: start.name, lat: start.lat, lng: start.lng, load, action: "Retour au hub" });
+  return { stops, unserved: left, stockAfter: stock };
 }
 
 export function estimateKm(stops: Stop[]) {
@@ -80,7 +95,6 @@ export function computeCosts(km: number, hours: number, p: CostParams): Costs {
   const nights = days - 1;
   const hotel = nights * p.hotelPerNight;
   const total = fuel + tolls + driver + meals + hotel;
-  // Carte entreprise : carburant et péages payés par NeoDrive. Remboursement : le livreur avance tout sur justificatifs.
   const payDriver = p.mode === "carte" ? driver + meals + hotel : total;
   return { liters, fuel, tolls, driver, days, meals, nights, hotel, total, payDriver };
 }
