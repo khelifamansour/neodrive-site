@@ -28,6 +28,14 @@ export function quoteDelivery(postal:string): DeliveryQuote {
   const zone=Z1.has(dept)?1:Z2.has(dept)?2:Z3.has(dept)?3:4;
   return {status:"estimated",department:dept,zone,price:zone===1?450:zone===2?590:zone===3?690:790};
 }
+/** Tarif de livraison pour un département (même barème que la réservation). null = sur devis. */
+export function deliveryPriceForDepartment(dept: string): number | null {
+  const d = (dept || "").trim().toUpperCase();
+  if (!d) return null;
+  if (d === "2A" || d === "2B" || d === "20" || d.length === 3 || !DEPARTMENTS.has(d)) return null;
+  const zone = Z1.has(d) ? 1 : Z2.has(d) ? 2 : Z3.has(d) ? 3 : 4;
+  return zone === 1 ? 450 : zone === 2 ? 590 : zone === 3 ? 690 : 790;
+}
 export function calculateQuote(vehicle:VehicleKey, postal:string, registration:boolean) {
   const delivery=quoteDelivery(postal);
   const vehiclePrice=VEHICLES[vehicle].price;

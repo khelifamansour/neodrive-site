@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import Script from "next/script";
+import { deliveryPriceForDepartment } from "../../lib/neodrive-pricing";
 
 const versions = {
   essentiel: {
@@ -101,73 +102,8 @@ export default function Facturation() {
   const prixVehicule = versions[version].prix;
   const fraisCarteGriseUnitaire = 150;
 
-  const getTransportPrice = (departement: string) => {
-    const dept = departement.trim();
-
-    if (["31", "81", "82", "32", "09"].includes(dept)) {
-      return 350;
-    }
-
-    if (
-      [
-        "11",
-        "12",
-        "46",
-        "47",
-        "33",
-        "65",
-        "66",
-        "34",
-        "30",
-        "40",
-        "24",
-        "19",
-        "87",
-        "15",
-      ].includes(dept)
-    ) {
-      return 490;
-    }
-
-    if (
-      [
-        "75",
-        "77",
-        "78",
-        "91",
-        "92",
-        "93",
-        "94",
-        "95",
-        "13",
-        "69",
-        "63",
-        "16",
-        "17",
-        "86",
-      ].includes(dept)
-    ) {
-      return 690;
-    }
-
-    if (
-      [
-        "44",
-        "35",
-        "56",
-        "29",
-        "22",
-        "53",
-        "49",
-        "67",
-        "68",
-      ].includes(dept)
-    ) {
-      return 790;
-    }
-
-    return 790;
-  };
+  // Barème commun avec la réservation (lib/neodrive-pricing)
+  const getTransportPrice = (departement: string) => deliveryPriceForDepartment(departement);
 
   const codePostalNormalise = client.code_postal.replace(
     /\s/g,
@@ -194,7 +130,7 @@ export default function Facturation() {
     ? 0
     : transportPersonnalise !== null
       ? transportPersonnalise
-      : tarifTransportAutomatique;
+      : tarifTransportAutomatique ?? 0;
 
   const montantVehicules = prixVehicule * quantity;
 
@@ -493,7 +429,7 @@ export default function Facturation() {
             Sélectionner le département
           </option>
 
-          <optgroup label="Zone 1 — 350 €">
+          <optgroup label="Zone 1 — 450 €">
             <option value="31">Haute-Garonne (31)</option>
             <option value="81">Tarn (81)</option>
             <option value="82">
@@ -503,7 +439,7 @@ export default function Facturation() {
             <option value="09">Ariège (09)</option>
           </optgroup>
 
-          <optgroup label="Zone 2 — 490 €">
+          <optgroup label="Zone 2 — 590 €">
             <option value="11">Aude (11)</option>
             <option value="12">Aveyron (12)</option>
             <option value="46">Lot (46)</option>
@@ -577,6 +513,11 @@ export default function Facturation() {
             <option value="68">Haut-Rhin (68)</option>
           </optgroup>
         </select>
+        {!noDelivery && transportPersonnalise === null && departementCalcule.length >= 2 && tarifTransportAutomatique === null ? (
+          <p style={{ margin: "8px 0 0", padding: "10px 12px", borderRadius: 10, background: "#fff4e4", color: "#8c4c12", fontWeight: 700 }}>
+            Livraison sur devis pour cette destination : saisissez le tarif communiqué par NeoDrive dans « Transport personnalisé ».
+          </p>
+        ) : null}
 
         <p style={label}>Transport personnalisé</p>
 

@@ -33,7 +33,7 @@ export default function PreparerLivraison() {
 
       <ol className={s.timeline}>
         <li><b>1</b><span>Le transporteur vous appelle</span></li>
-        <li><b>2</b><span>Vous préparez le paiement</span></li>
+        <li><b>2</b><span>Vous préparez le paiement et la facture</span></li>
         <li><b>3</b><span>Vous recevez votre NeoDrive</span></li>
         <li><b>4</b><span>Vous faites la carte grise</span></li>
       </ol>
@@ -67,6 +67,15 @@ export default function PreparerLivraison() {
           <article><span>C</span><h3>Prévenez votre banquier</h3><p>Dites-lui que vous allez régler l’achat d’un véhicule à la livraison. Vérifiez avec lui <b>les dates de validité</b> de l’augmentation de plafond : elle est souvent temporaire (quelques jours seulement).</p></article>
         </div>
         <p className={s.ok}>✅ Ainsi, le jour de la livraison, le paiement passe en quelques secondes et vous repartez avec votre NeoDrive.</p>
+      </section>
+
+      {/* FACTURE */}
+      <section className={s.card}>
+        <header className={s.head}><span className={s.num}>🧾</span><div><h2>Téléchargez votre facture</h2><p>Une fois votre plafond de virement augmenté.</p></div></header>
+        <p className={s.text}>Préparez votre facture à l’avance : votre banque peut vous la demander pour valider le virement, et vous l’aurez sous la main le jour de la livraison.</p>
+        <ul className={s.list}><li>Renseignez vos informations, la version de votre NeoDrive et votre code postal de livraison : le montant est calculé avec le même barème que votre réservation.</li><li>Téléchargez le PDF, puis transmettez-le à NeoDrive (WhatsApp ou e-mail) et à votre banque si elle le demande.</li></ul>
+        <p className={s.pc}>💻 À faire de préférence <b>sur ordinateur</b> : le PDF de la facture s’y génère et s’enregistre beaucoup plus facilement que sur téléphone.</p>
+        <a className={s.btnDark} href="/facturation">Télécharger ma facture</a>
       </section>
 
       {/* ÉTAPE 3 — PRISE EN MAIN */}
