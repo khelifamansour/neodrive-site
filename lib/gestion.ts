@@ -18,7 +18,29 @@ export type Params = {
   forecast: number[]; safety: number; oldPerWeek: number; adsDefault: number; truckCost: number; truckCars: number;
   havreSiteRent: number; havreSiteUnload: number; maxPerMonth: number; landedEstimate: number; scenLow: number; scenHigh: number; minCash: number; adsBase: number; salesBase: number; adsElasticity: number;
 };
-export type Gestion = { params: Params; hubs: Hub[]; lots: Lot[]; containers: Container[]; payments: Payment[]; quarters: Quarter[]; updated_at?: string };
+export type Channel = { id: string; name: string; budget: number; cpa: number; max: number; fixed: number; note: string };
+export type Dealers = { count: number; salesPerDealer: number; commission: number; max: number };
+export type Gestion = { params: Params; hubs: Hub[]; lots: Lot[]; containers: Container[]; payments: Payment[]; quarters: Quarter[]; channels?: Channel[]; dealers?: Dealers; organic?: number; updated_at?: string };
+
+/** Canaux de vente : hypothèses de départ à recaler avec les vrais chiffres (fichier Leboncoin, statistiques TikTok/Meta). */
+export const DEFAULT_CHANNELS: Channel[] = [
+  { id: "lbc", name: "Leboncoin (annonces + remontées)", budget: 325, cpa: 27, max: 35, fixed: 0, note: "60 € l’annonce 2 mois, 120 € avec remontée" },
+  { id: "meta", name: "Facebook / Instagram (pubs)", budget: 0, cpa: 180, max: 20, fixed: 0, note: "Parents d’ados, 35-55 ans, rayon 150 km autour des hubs" },
+  { id: "tiktok", name: "TikTok (vidéos + Spark Ads)", budget: 0, cpa: 150, max: 15, fixed: 0, note: "Vidéos de livraison et d’essai, ados 15-18 ans" },
+  { id: "google", name: "Google Ads (recherche)", budget: 0, cpa: 200, max: 12, fixed: 0, note: "« voiture sans permis pas cher », « voiture sans permis neuve »" },
+  { id: "presse", name: "Presse locale / radio", budget: 0, cpa: 400, max: 4, fixed: 0, note: "Articles et encarts autour des hubs" },
+];
+export const DEFAULT_DEALERS: Dealers = { count: 0, salesPerDealer: 1.5, commission: 300, max: 20 };
+
+export function channelSales(c: Channel) { return c.budget <= 0 ? 0 : c.max * (1 - Math.exp(-c.budget / (c.cpa * c.max))); }
+export function salesModel(g: Gestion) {
+  const ch = (g.channels || DEFAULT_CHANNELS).map(c => ({ ...c, sales: channelSales(c), cost: c.budget > 0 ? c.budget + c.fixed : 0 }));
+  const dl = g.dealers || DEFAULT_DEALERS, dealerSales = dl.count * dl.salesPerDealer;
+  const organic = g.organic ?? 5;
+  const total = organic + ch.reduce((a, c) => a + c.sales, 0) + dealerSales;
+  const adsCost = ch.reduce((a, c) => a + c.cost, 0), dealerCost = dealerSales * dl.commission;
+  return { ch, organic, dealerSales, total, adsCost, dealerCost, marketingCost: adsCost + dealerCost };
+}
 
 // ── Dates
 export const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -216,8 +238,8 @@ export function distributionOptions(p: Params, hubs: Hub[]) {
 
 // ── Recommandations : combien de stock injecter sans mettre la trésorerie en danger
 export const MARKET = { newPerYear: 24977, usedPerYear: 42000, leaderPerYear: 7408, leader: "Citroën Ami" };
-export function recommend(g: Gestion, today = iso(new Date()), ads?: number) {
-  const p = g.params, af = ads == null ? 1 : adsFactor(p, ads), low = (p.scenLow || 0.7) * af, high = (p.scenHigh || 1.3) * af, mid = af;
+export function recommend(g: Gestion, today = iso(new Date()), ads?: number, adsModel = true) {
+  const p = g.params, af = ads == null || !adsModel ? 1 : adsFactor(p, ads), low = (p.scenLow || 0.7) * af, high = (p.scenHigh || 1.3) * af, mid = af;
   const prob = project(g, today, true, mid, ads);
   const S = prob.suggestions.map(s => ({ ...s, suggested: false, label: s.label.replace("suggérée", "conseillée") }));
   // on garde le plus de commandes possible tant que le scénario défavorable reste au-dessus du seuil de trésorerie
@@ -250,4 +272,73 @@ export function recommend(g: Gestion, today = iso(new Date()), ads?: number) {
   const unit = (p.priceTtc + p.deliveryTtc) / 1.2 - p.landedEstimate - p.deliveryCost;
   const salesMonth = soldYear / 12, marginMonth = salesMonth * unit - (ads ?? p.adsDefault) - p.fixedMonthly - p.salaryMonthly;
   return { salesMonth, marginMonth, unit, cps, adsFactor: af, plan: kept, dropped, defav, probable, fav, recos, soldYear, share, shareAll, lostFav, k, total: S.length };
+}
+
+// ── Outil de décision : scénarios fret × ventes, canaux marketing, points de vente, résumés et tâches
+export const FREIGHT_SCEN: [string, number, string][] = [["Fret bas", 0.8, "≈ creux 2026 (2 400–2 800 $ spot Shanghai–Rotterdam)"], ["Fret normal", 1, "ton prix actuel tout compris"], ["Fret haut", 1.4, "≈ pic de juillet 2026 (4 900 $ spot) ou crise"]];
+
+export function scenarioGestion(g: Gestion, freightF = 1, salesOverride?: number): Gestion {
+  const sm = salesModel(g), p = g.params;
+  return { ...g, quarters: [], params: { ...p, forecast: Array(12).fill(salesOverride ?? sm.total), freightUsd: { havre: p.freightUsd.havre * freightF, fos: p.freightUsd.fos * freightF }, adsDefault: sm.marketingCost } };
+}
+export function unitMargin(p: Params, freightF = 1) {
+  const extraFreight = (freightF - 1) * p.freightUsd.havre * p.usd / 9 * (1 + p.dutyPct / 100);
+  return (p.priceTtc + p.deliveryTtc) / 1.2 - (p.landedEstimate + extraFreight) - p.deliveryCost;
+}
+
+type Proj = ReturnType<typeof project>;
+function summarize(r: Proj, plan: Container[], real: Container[], p: Params, from: string, to: string, marketingMonthly: number, unit: number, initialCash: number) {
+  const rows = r.rows.filter(x => x.start >= from && x.start < to), before = r.rows.filter(x => x.start < from);
+  const months = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / (30.4 * 864e5)));
+  const all = [...real, ...plan];
+  const orders = all.filter(c => c.orderDate >= from && c.orderDate < to && c.orderDate >= iso(new Date(Date.now() - 864e5)));
+  const enCours = all.filter(c => c.orderDate < to && containerDates(p, c).hub >= to);
+  const sold = rows.reduce((a, x) => a + x.delivered, 0);
+  const tasks: { date: string; text: string; amount?: number }[] = [];
+  for (const x of rows) for (const [k, v] of Object.entries(x.lines)) if (v < 0 && !/Livraisons|Stockage|Publicité|Charges|salaire|TVA à reverser/.test(k)) tasks.push({ date: x.start, text: `Payer : ${k}`, amount: v });
+  for (const o of orders) tasks.push({ date: o.orderDate, text: `Commander ${o.cars} voitures (${o.port === "fos" ? "Fos → Sud" : "Le Havre → Nord"}) — acompte ${Math.round(o.cars * p.deposit)} €` });
+  for (const x of rows) if (x.arrivals) tasks.push({ date: x.start, text: `Réceptionner ${x.arrivals} voitures au hub et prévenir les clients en attente` });
+  tasks.sort((a, b) => a.date.localeCompare(b.date));
+  return {
+    from, to, months, orders, enCours, sold, arrivals: rows.reduce((a, x) => a + x.arrivals, 0), lost: rows.reduce((a, x) => a + x.lost, 0),
+    cashStart: before.length ? before[before.length - 1].cash : initialCash, cashEnd: rows.length ? rows[rows.length - 1].cash : initialCash, cashMin: rows.length ? Math.min(...rows.map(x => x.cash)) : initialCash,
+    marketing: marketingMonthly * months, margin: sold * unit - marketingMonthly * months - (p.fixedMonthly + p.salaryMonthly) * months, tasks,
+  };
+}
+
+export function decide(g: Gestion, today = iso(new Date()), freightF = 1, scen = 1) {
+  const sm = salesModel(g), g2 = scenarioGestion(g, freightF), p = g2.params;
+  const r = recommend(g2, today, sm.marketingCost, false);
+  const sel = [r.defav, r.probable, r.fav][scen], f = [p.scenLow ?? 0.7, 1, p.scenHigh ?? 1.3][scen];
+  const unit = unitMargin(g.params, freightF);
+  const addM = (n: number) => { const d = new Date(today + "T12:00:00"); d.setDate(1); d.setMonth(d.getMonth() + n); return iso(d); };
+  const S = (from: string, to: string) => summarize(sel, r.plan, g.containers, p, from, to, sm.marketingCost, unit, p.bank + p.cashOnHand);
+  return {
+    sm, r, sel, unit, salesMonth: sm.total * f,
+    month: S(addM(0), addM(1)), quarter: S(addM(1), addM(4)), year: S(addM(0), addM(12)),
+    profitMonth: sm.total * f * unit - sm.marketingCost - p.fixedMonthly - p.salaryMonthly,
+  };
+}
+
+/** Cherche la meilleure répartition du budget marketing et le nombre de points de vente, dans la limite du stock que la trésorerie peut financer. */
+export function optimize(g: Gestion, today = iso(new Date()), freightF = 1) {
+  const unit = unitMargin(g.params, freightF);
+  // 1) capacité : ventes mensuelles finançables sans rupture ni passage sous le seuil en vente lente
+  const mk = salesModel(g).marketingCost;
+  const ok = (s: number) => { const r = recommend(scenarioGestion(g, freightF, s), today, mk, false); const sold = r.probable.quarters.reduce((a, q) => a + q.sold, 0), lost = r.probable.quarters.reduce((a, q) => a + q.lost, 0); return lost <= Math.max(6, 0.08 * sold); };
+  let lo = 5, hi = 90; if (!ok(lo)) hi = lo; while (hi - lo > 1) { const m = Math.floor((lo + hi) / 2); if (ok(m)) lo = m; else hi = m; }
+  const cap = lo;
+  // 2) allocation gloutonne : à chaque pas, l'action qui rapporte le plus
+  const ch = (g.channels || DEFAULT_CHANNELS).map(c => ({ ...c, budget: 0 })), dl = { ...(g.dealers || DEFAULT_DEALERS), count: 0 };
+  const organic = g.organic ?? 5, step = 50;
+  const total = () => organic + ch.reduce((a, c) => a + channelSales(c), 0) + dl.count * dl.salesPerDealer;
+  for (let guard = 0; guard < 400; guard++) {
+    if (total() >= cap) break;
+    let best: { gain: number; act: () => void } | null = null;
+    for (const c of ch) { const before = channelSales(c); const after = channelSales({ ...c, budget: c.budget + step }); const gain = (after - before) * unit - step - (c.budget === 0 ? c.fixed : 0); if (!best || gain > best.gain) best = { gain, act: () => { c.budget += step; } }; }
+    if (dl.count < dl.max) { const gain = dl.salesPerDealer * (unit - dl.commission); if (!best || gain > best.gain) best = { gain, act: () => { dl.count += 1; } }; }
+    if (!best || best.gain <= 0) break;
+    best.act();
+  }
+  return { channels: ch, dealers: dl, cap, sales: Math.min(total(), cap) };
 }
