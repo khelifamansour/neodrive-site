@@ -1,21 +1,20 @@
 import { NextResponse } from "next/server";
 import { isAuthorized } from "../../../lib/integrations";
 import { dataClient, readJson, writeJson } from "../../../lib/datastore";
-import { defaultPilotage, type Pilotage } from "../../../lib/pilotage";
+import { defaultGestion, type Gestion } from "../../../lib/gestion";
 
 export const dynamic = "force-dynamic";
-const PATH = "pilotage/pilotage.json";
+const PATH = "pilotage/gestion.json";
 
 export async function POST(req: Request) {
-  const b = await req.json().catch(() => ({})) as { action?: string; passcode?: string; data?: Pilotage };
+  const b = await req.json().catch(() => ({})) as { action?: string; passcode?: string; data?: Gestion };
   if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
   const sb = dataClient();
   if (!sb) return NextResponse.json({ ok: false, error: "Configuration manquante" }, { status: 503 });
   try {
     if (b.action === "load") {
-      const d = await readJson<Pilotage>(sb, PATH);
-      const def = defaultPilotage();
-      return NextResponse.json({ ok: true, data: d ? { ...def, ...d, params: { ...def.params, ...d.params } } : def });
+      const d = await readJson<Gestion>(sb, PATH), def = defaultGestion();
+      return NextResponse.json({ ok: true, data: d ? { ...def, ...d, params: { ...def.params, ...d.params, freightUsd: { ...def.params.freightUsd, ...(d.params?.freightUsd || {}) } } } : def });
     }
     if (b.action === "save" && b.data?.params) {
       const data = { ...b.data, updated_at: new Date().toISOString() };

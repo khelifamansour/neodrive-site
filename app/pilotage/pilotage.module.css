@@ -19,3 +19,4 @@
 .months{display:grid;gap:6px}.month{border:1px solid #eee;border-radius:12px;padding:10px 12px}.month summary{display:grid;grid-template-columns:70px 1fr 1fr auto;gap:8px;align-items:center;cursor:pointer;font-size:14px}
 .month ul{list-style:none;margin:10px 0 6px;padding:0;display:grid;gap:4px}.month li{display:flex;justify-content:space-between;font-size:13.5px}
 @media(max-width:640px){.summary{grid-template-columns:1fr 1fr}.summary b{font-size:17px}.month summary{grid-template-columns:56px 1fr 1fr auto;font-size:12.5px}}
+.chk{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;background:#f3f4f6;border-radius:8px;padding:6px 8px}.chk input{width:18px!important;height:18px;padding:0!important}
