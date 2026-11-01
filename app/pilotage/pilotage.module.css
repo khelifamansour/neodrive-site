@@ -20,3 +20,14 @@
 .month ul{list-style:none;margin:10px 0 6px;padding:0;display:grid;gap:4px}.month li{display:flex;justify-content:space-between;font-size:13.5px}
 @media(max-width:640px){.summary{grid-template-columns:1fr 1fr}.summary b{font-size:17px}.month summary{grid-template-columns:56px 1fr 1fr auto;font-size:12.5px}}
 .chk{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;background:#f3f4f6;border-radius:8px;padding:6px 8px}.chk input{width:18px!important;height:18px;padding:0!important}
+.simIn{display:grid;grid-template-columns:1fr 1fr;gap:12px}.simIn label{display:grid;gap:6px;background:#16202e;color:#fff;border-radius:16px;padding:14px}.simIn span{font-weight:800;font-size:14px;opacity:.85}
+.simIn input{font-size:28px!important;font-weight:900;color:#16202e}.simIn em{display:flex;flex-wrap:wrap;gap:6px;font-style:normal}.simIn em button{padding:8px 12px;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:999px;font-weight:800}
+.simIn em .on{background:#ff7a00;border-color:#ff7a00}
+.big6{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.big6>div{border:1px solid #e5e7eb;border-radius:16px;padding:14px;display:grid;gap:2px;background:#fff}
+.big6 small{color:#5b6573;font-weight:800;font-size:13px}.big6 b{font-size:30px;letter-spacing:-.02em;line-height:1.1}.big6 b i{font-size:15px;font-style:normal;color:#7a8594}.big6 span{color:#7a8594;font-size:12.5px}
+.tl{display:grid;gap:8px}.tlRow{display:grid;grid-template-columns:200px 1fr;gap:10px;align-items:center}.tlLab b{display:block;font-size:13.5px}.tlLab small{color:#5b6573;font-size:12px}
+.tlBar{position:relative;height:22px;background:#f3f4f6;border-radius:8px;overflow:hidden}.tlBar i{position:absolute;top:0;bottom:0}.tlNow{position:absolute;top:2px;transform:translateX(-50%);font-size:12px;color:#dc2626}
+.lgP,.lgW,.lgS,.lgD{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin:0 4px 0 10px}
+.lgP{background:#f59e0b}.lgW{background:#a3a3a3}.lgS{background:#2563eb}.lgD{background:#16a34a}
+@media(max-width:640px){.simIn,.big6{grid-template-columns:1fr 1fr}.simIn{grid-template-columns:1fr}.big6 b{font-size:22px}.tlRow{grid-template-columns:1fr}}
+.tlBar i.lgP,.tlBar i.lgW,.tlBar i.lgS,.tlBar i.lgD{margin:0;height:auto;border-radius:0}

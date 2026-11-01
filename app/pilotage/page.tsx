@@ -6,7 +6,7 @@ import {recommend,MARKET,containerCosts,containerDates,distributionOptions,fr,is
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
 type Tab="reco"|"bord"|"stock"|"conteneurs"|"paiements"|"treso"|"plan"|"distrib"|"reglages";
-const TABS:[Tab,string][]=[["reco","🧭 Recommandations"],["bord","📊 Tableau de bord"],["stock","🚗 Stock"],["conteneurs","🚢 Conteneurs"],["paiements","💳 Paiements"],["treso","🏦 Trésorerie"],["plan","🗓️ Plan trimestriel"],["distrib","🗺️ Hubs & distribution"],["reglages","⚙️ Réglages"]];
+const TABS:[Tab,string][]=[["reco","🎯 Simulateur"],["bord","📊 Tableau de bord"],["stock","🚗 Stock"],["conteneurs","🚢 Conteneurs"],["paiements","💳 Paiements"],["treso","🏦 Trésorerie"],["plan","🗓️ Plan trimestriel"],["distrib","🗺️ Hubs & distribution"],["reglages","⚙️ Réglages"]];
 const LOT:Record<Lot["status"],string>={dispo:"Disponible",vendu:"Vendue, à livrer",ancien:"Ancien stock (à déstocker)"};
 const SCEN0:[string,string][]=[["défavorable","🌧️ Défavorable"],["probable","⛅ Probable"],["favorable","☀️ Favorable"]];
 const uid=()=>`${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
@@ -27,7 +27,8 @@ export default function PilotagePage(){
  const [scen,setScen]=useState(1);
  const SCEN:[string,string,number][]=SCEN0.map((x,i)=>[x[0],x[1],d?[d.params.scenLow??0.7,1,d.params.scenHigh??1.3][i]:1]);
  const projs=useMemo(()=>d?[d.params.scenLow??0.7,1,d.params.scenHigh??1.3].map(f=>project(d,today,true,f)):null,[d,today]);
- const reco=useMemo(()=>d?recommend(d,today):null,[d,today]);
+ const [adsSim,setAdsSim]=useState(325);
+ const reco=useMemo(()=>d?recommend(d,today,adsSim):null,[d,today,adsSim]);
  const proj=projs?projs[scen]:null;
 
  if(!authed||!d||!proj||!projs||!reco)return <main className={s.page}><form className={s.login} onSubmit={e=>{e.preventDefault();load();}}><span className={s.logo}>N</span><h1>Pilotage</h1><p>Code d’accès NeoDrive (le même que l’ERP).</p><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code" autoFocus/><button disabled={busy==="load"}>{busy==="load"?"…":"Entrer"}</button>{msg?<p className={s.err}>{msg}</p>:null}</form></main>;
@@ -49,38 +50,50 @@ export default function PilotagePage(){
  return <main className={s.page}>
   <header className={s.top}><div><h1>Pilotage NeoDrive</h1><p>Stock · conteneurs · trésorerie · plan · distribution</p></div><div className={s.topBtns}><button onClick={save} disabled={!dirty||!!busy} className={dirty?p.saveOn:""}>{busy==="save"?"…":dirty?"💾 Enregistrer":"✓ Enregistré"}</button></div></header>
   {msg?<p className={msg.startsWith("✅")?s.ok:s.err}>{msg}</p>:null}
-  <div className={p.summary}>
+  {tab!=="reco"?<><div className={p.summary}>
    <Box t="Trésorerie aujourd’hui" v={eur(P.bank+P.cashOnHand)} sub={`compte ${eur(P.bank)} · espèces ${eur(P.cashOnHand)}`}/>
    <Box t="Point le plus bas (12 mois)" v={eur(proj.min.cash)} sub={`semaine du ${fr(proj.min.start)}`} cls={proj.min.cash<0?p.bad:proj.min.cash<10000?p.warn:p.good}/>
    <Box t="Stock" v={`${lotsOf("dispo")} dispo`} sub={`${lotsOf("vendu")} à livrer · ${lotsOf("ancien")} ancien · ${inTransit} en route`}/>
    <Box t="À commander sous 15 jours" v={urgent.length?`${urgent.length} conteneur${urgent.length>1?"s":""}`:"Rien"} cls={urgent.length?p.warn:p.good} sub={urgent.map(u=>u.port==="fos"?"Fos":"Le Havre").join(", ")||"stock suffisant"}/>
   </div>
-  <div className={s.seg} style={{marginTop:12}}>{SCEN.map((x,i)=><button key={x[0]} className={scen===i?s.on:""} onClick={()=>setScen(i)}>{x[1]} ({Math.round(x[2]*100)} %)</button>)}</div>
+  <div className={s.seg} style={{marginTop:12}}>{SCEN.map((x,i)=><button key={x[0]} className={scen===i?s.on:""} onClick={()=>setScen(i)}>{x[1]} ({Math.round(x[2]*100)} %)</button>)}</div></>:null}
   {!d.containers.length?<p className={s.tip}>Ton outil est vide. <button className={s.small} onClick={()=>upd(x=>({...x,containers:situationContainers(),lots:situationLots()}))}>Charger ma situation du 1er novembre</button> (conteneurs en route, ancien stock) puis complète et enregistre.</p>:null}
   <nav className={p.tabs}>{TABS.map(([k,l])=><button key={k} className={tab===k?p.on:""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
 
   {tab==="reco"?<section className={s.card}>
-   <h2>🧭 Recommandations</h2>
-   <p className={s.muted}>Calcul : le plan de commandes est fait pour le scénario probable, puis on garde le maximum de conteneurs qui laissent au moins {eur(P.minCash)} de trésorerie même en scénario défavorable ({Math.round((P.scenLow??0.7)*100)} % des ventes prévues).</p>
-   <ul className={p.sugs}>{reco.recos.map((r,i)=><li key={i} className={r.level==="bad"?p.sugNow:p.sug} style={r.level==="ok"?{borderColor:"#bbf7d0",background:"#f0fdf4"}:r.level==="warn"?{borderColor:"#fde68a",background:"#fffbeb"}:undefined}><div>{r.level==="ok"?"✅ ":r.level==="warn"?"⚠️ ":"🔴 "}{r.text}</div></li>)}</ul>
-   <h3>Combien de stock injecter : {reco.k} conteneur{reco.k>1?"s":""} ({reco.k*9} voitures) sur 12 mois</h3>
-   {reco.plan.length?<ul className={s.mini}>{reco.plan.map(o=><li key={o.id}><span><b>{fr(o.orderDate)}</b> · 9 voitures · {o.port==="fos"?"Fos → Sud":"Le Havre → Nord"} · au hub ≈ {fr(containerDates(P,o).hub)}</span><button title="Ajouter à mes conteneurs" onClick={()=>{addC(o);setMsg("✅ Ajouté à tes conteneurs. Pense à enregistrer.");}}>＋</button></li>)}</ul>:<p className={s.muted}>Aucune nouvelle commande conseillée pour l’instant.</p>}
-   {reco.dropped.length?<p className={s.muted}>Commandes en attente de trésorerie : {reco.dropped.map(o=>fr(o.orderDate)).join(", ")}.</p>:null}
-   <h3>Avec ce plan, selon les ventes</h3>
-   <div className={s.tableWrap}><table className={p.table}><thead><tr><th>Scénario</th><th>Livrées 12 mois</th><th>Ventes perdues</th><th>Tréso la plus basse</th><th>Tréso dans 12 mois</th></tr></thead><tbody>
-    {([["🌧️ Défavorable",reco.defav],["⛅ Probable",reco.probable],["☀️ Favorable",reco.fav]] as const).map(([l,r])=><tr key={l}><td><b>{l}</b></td><td>{r.quarters.reduce((a,q)=>a+q.sold,0)}</td><td className={r.quarters.some(q=>q.lost)?p.red:""}>{r.quarters.reduce((a,q)=>a+q.lost,0)||"—"}</td><td className={r.min.cash<P.minCash?p.red:""}>{eur(r.min.cash)} <small>({fr(r.min.start)})</small></td><td><b>{eur(r.rows[r.rows.length-1].cash)}</b></td></tr>)}
-   </tbody></table></div>
-   <h3>Face au marché national</h3>
-   <div className={s.kpis}>
-    <div><small>Tes ventes prévues / an</small><b>{reco.soldYear}</b></div>
-    <div><small>Part du neuf ({MARKET.newPerYear.toLocaleString("fr-FR")} / an)</small><b>{reco.share.toFixed(1)} %</b></div>
-    <div><small>Part neuf + occasion</small><b>{reco.shareAll.toFixed(1)} %</b></div>
-    <div><small>Leader : {MARKET.leader}</small><b>{Math.round(MARKET.leaderPerYear/12)} / mois</b></div>
+   <h2>🎯 Simulateur</h2>
+   <div className={p.simIn}>
+    <label><span>Budget pub par mois</span><input type="number" value={adsSim} onChange={e=>setAdsSim(Number(e.target.value)||0)}/><em>{[325,650,1300,2000].map(v=><button key={v} className={adsSim===v?p.on:""} onClick={()=>setAdsSim(v)}>{v} €</button>)}</em></label>
+    <label><span>Si les ventes sont…</span><em>{SCEN0.map((x,i)=><button key={x[0]} className={scen===i?p.on:""} onClick={()=>setScen(i)}>{x[1]}</button>)}</em></label>
    </div>
-   <p className={s.muted}>Marché 2025 des voitures sans permis neuves : 24 977 ventes (source AAA Data). Occasion estimée à ≈ 42 000 / an. Pour viser 1 % de part de marché en plus, il faut ≈ {Math.round((MARKET.newPerYear)/100/12)} ventes de plus par mois.</p>
-   <div className={s.params}>{N("scenLow","Défavorable (× ventes)",0.05)}{N("scenHigh","Favorable (× ventes)",0.05)}{N("minCash","Trésorerie minimum à garder (€)",500)}</div>
-  </section>:null}
+   {(()=>{const r=[reco.defav,reco.probable,reco.fav][scen];const f=[P.scenLow??0.7,1,P.scenHigh??1.3][scen];const sm=reco.salesMonth*f;const lost=r.quarters.reduce((a,q)=>a+q.lost,0);const fin=r.rows[r.rows.length-1].cash;
+    return <div className={p.big6}>
+     <div><small>Ventes par mois</small><b>{Math.round(sm)}</b><span>avec {eur(adsSim)} de pub · entre {Math.round(reco.salesMonth*(P.scenLow??0.7))} et {Math.round(reco.salesMonth*(P.scenHigh??1.3))}</span></div>
+     <div><small>Coût de la pub par vente</small><b>{eur(adsSim/Math.max(1,sm))}</b><span>{adsSim/Math.max(1,sm)<150?"✅ rentable":"⚠️ à surveiller"}</span></div>
+     <div className={p.good}><small>Gain net par mois</small><b>{eur(sm*reco.unit-adsSim-P.fixedMonthly-P.salaryMonthly)}</b><span>{eur(reco.unit)} par voiture, moins pub et charges</span></div>
+     <div className={r.min.cash<0?p.bad:r.min.cash<P.minCash?p.warn:p.good}><small>Trésorerie la plus basse</small><b>{eur(r.min.cash)}</b><span>semaine du {fr(r.min.start)}</span></div>
+     <div><small>Trésorerie dans 12 mois</small><b>{eur(fin)}</b><span>avant impôts</span></div>
+     <div className={lost?p.warn:""}><small>Conteneurs à commander (12 mois)</small><b>{reco.k} <i>= {reco.k*9} voitures</i></b><span>{lost?`${lost} ventes perdues faute de stock`:"pas de rupture"}</span></div>
+    </div>;})()}
 
+   <h3>📅 Calendrier des arrivages</h3>
+   <p className={s.muted}><i className={p.lgP}/>production {P.prodDays} j <i className={p.lgW}/>jusqu’au port {P.toPortDays} j <i className={p.lgS}/>bateau {P.seaDays} j <i className={p.lgD}/>douane + transfert {P.customsDays+P.transferDays} j · ▲ aujourd’hui</p>
+   {(()=>{const all=[...d.containers.filter(c=>containerDates(P,c).hub>=today),...reco.plan.map(c=>({...c,label:"À commander",suggested:true}))].sort((a,b)=>containerDates(P,a).hub.localeCompare(containerDates(P,b).hub));
+    if(!all.length)return <p className={s.muted}>Aucun conteneur en route.</p>;
+    const t0=Math.min(...all.map(c=>+new Date(c.orderDate))),t1=Math.max(...all.map(c=>+new Date(containerDates(P,c).hub)))+5*864e5,W=(x:string)=>Math.max(0,Math.min(100,(+new Date(x)-t0)/(t1-t0)*100));
+    return <div className={p.tl}>{all.map(c=>{const dd=containerDates(P,c);return <div key={c.id} className={p.tlRow}>
+     <div className={p.tlLab}><b>{c.suggested?"🛒 ":""}{c.label}</b><small>{c.cars} voit. · {c.port==="fos"?"Fos → Sud":"Le Havre → Nord"} · au hub <b>{fr(dd.hub)}</b></small></div>
+     <div className={p.tlBar}><i className={p.lgP} style={{left:`${W(c.orderDate)}%`,width:`${W(dd.prodEnd)-W(c.orderDate)}%`}}/><i className={p.lgW} style={{left:`${W(dd.prodEnd)}%`,width:`${W(dd.departure)-W(dd.prodEnd)}%`}}/><i className={p.lgS} style={{left:`${W(dd.departure)}%`,width:`${W(dd.portArrival)-W(dd.departure)}%`}}/><i className={p.lgD} style={{left:`${W(dd.portArrival)}%`,width:`${W(dd.hub)-W(dd.portArrival)}%`}}/><span className={p.tlNow} style={{left:`${W(today)}%`}}>▲</span></div>
+    </div>;})}</div>;})()}
+
+   <h3>🧭 Ce que je te conseille</h3>
+   <ul className={p.sugs}>{reco.recos.map((r,i)=><li key={i} className={r.level==="bad"?p.sugNow:p.sug} style={r.level==="ok"?{borderColor:"#bbf7d0",background:"#f0fdf4"}:r.level==="warn"?{borderColor:"#fde68a",background:"#fffbeb"}:undefined}><div>{r.level==="ok"?"✅ ":r.level==="warn"?"⚠️ ":"🔴 "}{r.text}</div></li>)}</ul>
+   {reco.plan.length?<><h3>🛒 Commandes à passer</h3><ul className={s.mini}>{reco.plan.map(o=><li key={o.id}><span><b>{fr(o.orderDate)}</b> · 9 voitures · {o.port==="fos"?"Fos → Sud":"Le Havre → Nord"} · au hub ≈ {fr(containerDates(P,o).hub)}</span><button title="Ajouter à mes conteneurs" onClick={()=>{addC(o);setMsg("✅ Ajouté à tes conteneurs. Pense à enregistrer.");}}>＋</button></li>)}</ul></>:null}
+   <details className={p.month}><summary><b>⚙️ Hypothèses du simulateur</b></summary>
+    <p className={s.muted}>Aujourd’hui : {eur(P.adsBase)} de pub par mois → {P.salesBase} ventes par mois. Rendement décroissant : avec 4 fois plus de pub, les ventes sont multipliées par {Math.pow(4,P.adsElasticity??0.5).toFixed(1)}. Marché national : {MARKET.newPerYear.toLocaleString("fr-FR")} voitures sans permis neuves / an ; tu en ferais {reco.share.toFixed(1)} %.</p>
+    <div className={s.params}>{N("adsBase","Pub actuelle / mois (€)",25)}{N("salesBase","Ventes actuelles / mois")}{N("adsElasticity","Effet de la pub (0,3 faible – 0,7 fort)",0.05)}{N("scenLow","Défavorable (× ventes)",0.05)}{N("scenHigh","Favorable (× ventes)",0.05)}{N("minCash","Trésorerie minimum à garder",500)}</div>
+   </details>
+  </section>:null}
   {tab==="bord"?<section className={s.card}>
    <h2>📊 Tableau de bord</h2>
    {proj.min.cash<0?<p className={s.err}>⚠️ La trésorerie passe sous zéro la semaine du {fr(proj.min.start)} ({eur(proj.min.cash)}). Pistes : déstocker l’ancien stock, livrer les voitures vendues, décaler un solde usine.</p>:null}
