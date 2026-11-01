@@ -14,8 +14,8 @@ const nav=(p:Stop)=>`https://www.google.com/maps/dir/?api=1&destination=${p.lat}
 const waze=(p:Stop)=>`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`;
 const billed=(c:PlanClient)=>{const d=departmentFromPostalCode(c.code_postal);return d?deliveryPriceForDepartment(d)||0:0;};
 const carPrice=(m:string)=>Object.values(VEHICLES).find(v=>v.label===m)?.price||VEHICLES.confort.price;
-type Eco={carCost:number};
-const ECO0:Eco={carCost:2800};
+type Eco={carCost:number;storage:number;ads:number;gear:number;sav:number;social:number};
+const ECO0:Eco={carCost:2800,storage:50,ads:150,gear:50,sav:100,social:43};
 const hm=(h:number)=>`${Math.floor(h)} h ${String(Math.round((h%1)*60)).padStart(2,"0")}`;
 
 export default function Planificateur(){
@@ -185,12 +185,14 @@ export default function Planificateur(){
        const n=Math.max(1,rows.length);const tour=t.costs?.total||0;const perCar=tour/n;
        const L=rows.map(c=>{const ttc=carPrice(c.modele);const feeTtc=billed(c);const ht=ttc/1.2;const feeHt=feeTtc/1.2;return {c,ttc,feeTtc,ht,feeHt,carM:ht-eco.carCost,delM:feeHt-perCar,tot:ht-eco.carCost+feeHt-perCar};});
        const S=(k:"ttc"|"feeTtc"|"ht"|"feeHt"|"carM"|"delM"|"tot")=>L.reduce((a,r)=>a+r[k],0);
-       const encTtc=S("ttc")+S("feeTtc"),caHt=S("ht")+S("feeHt"),tva=encTtc-caHt,achat=eco.carCost*L.length,net=S("tot");
+       const encTtc=S("ttc")+S("feeTtc"),caHt=S("ht")+S("feeHt"),tva=encTtc-caHt,achat=eco.carCost*L.length;
+       const social=(t.costs?.driver||0)*eco.social/100,perUnit=eco.storage+eco.ads+eco.gear+eco.sav,fixed=perUnit*L.length;
+       const net=S("tot")-social-fixed;
        const Row=({l,v,cls,b}:{l:string;v:number;cls?:string;b?:boolean})=><div className={`${s.wRow} ${cls||""}`}><span>{b?<b>{l}</b>:l}</span><span>{b?<b>{eur(v)}</b>:eur(v)}</span></div>;
        return <section className={s.dash}>
         <div className={s.rowHead}><h3>📊 Tableau de bord — marge HT</h3><button className={s.small} onClick={()=>setBoss(false)}>Masquer</button></div>
-        <label className={s.field}><span>Coût d’achat d’une voiture (€ HT)</span><input type="number" value={eco.carCost} onChange={e=>saveEco({...eco,carCost:Number(e.target.value)||0})}/></label>
-        <div className={s.big}><small>Marge nette encaissée (HT) sur {L.length} voiture{L.length>1?"s":""}</small><b>{eur(net)}</b><span>soit {eur(net/n)} par voiture · {Math.round(100*net/Math.max(1,caHt))} % du CA HT</span></div>
+        <div className={s.params}>{([["carCost","Achat voiture (€ HT)"],["storage","Stockage / loyer (€/voit.)"],["ads","Publicité (€/voit.)"],["gear","Duster + matériel (€/voit.)"],["sav","Réserve SAV (€/voit.)"],["social","Charges livreur (% du brut)"]] as [keyof Eco,string][]).map(([k,l])=><label key={k} className={s.param}><span>{l}</span><input type="number" value={eco[k]} onChange={e=>saveEco({...eco,[k]:Number(e.target.value)||0})}/></label>)}</div>
+        <div className={s.big}><small>Marge nette avant impôts (HT) sur {L.length} voiture{L.length>1?"s":""}</small><b>{eur(net)}</b><span>soit {eur(net/n)} par voiture · {Math.round(100*net/Math.max(1,caHt))} % du CA HT</span></div>
         <div className={s.waterfall}>
          <Row l={`Encaissé clients TTC (voitures ${eur(S("ttc"))} + livraisons ${eur(S("feeTtc"))})`} v={encTtc}/>
          <Row l="− TVA 20 % reversée" v={-tva} cls={s.minus}/>
@@ -200,9 +202,14 @@ export default function Planificateur(){
          <Row l={`+ Livraisons facturées HT`} v={S("feeHt")}/>
          <Row l="− Coût de la tournée (carburant, péages, livreur, repas, hôtel)" v={-tour} cls={s.minus}/>
          <Row l={`= Marge sur la livraison`} v={S("delM")} cls={S("delM")>=0?s.posT:s.negT} b/>
-         <Row l="= MARGE NETTE ENCAISSÉE (HT)" v={net} cls={s.final} b/>
+         <Row l={`− Charges sociales + congés du livreur (${eco.social} %)`} v={-social} cls={s.minus}/>
+         <Row l={`− Stockage (${L.length} × ${eur(eco.storage)})`} v={-eco.storage*L.length} cls={s.minus}/>
+         <Row l={`− Publicité (${L.length} × ${eur(eco.ads)})`} v={-eco.ads*L.length} cls={s.minus}/>
+         <Row l={`− Duster + matériel (${L.length} × ${eur(eco.gear)})`} v={-eco.gear*L.length} cls={s.minus}/>
+         <Row l={`− Réserve SAV / garantie (${L.length} × ${eur(eco.sav)})`} v={-eco.sav*L.length} cls={s.minus}/>
+         <Row l="= MARGE NETTE AVANT IMPÔTS (HT)" v={net} cls={s.final} b/>
         </div>
-        <h3>Par client</h3>
+        <h3>Par client <small className={s.muted}>(avant charges, stockage, pub, matériel et SAV)</small></h3>
         <ul className={s.perCli}>{L.map(r=><li key={r.c.id}><div><b>{r.c.nom}</b> <small>{r.c.ville}</small><small>Voiture {eur(r.ttc)} TTC → {eur(r.ht)} HT − achat {eur(eco.carCost)} = <b>{eur(r.carM)}</b></small><small>Livraison {eur(r.feeTtc)} TTC → {eur(r.feeHt)} HT − coût {eur(perCar)} = <b className={r.delM>=0?s.posT:s.negT}>{r.delM>=0?"+":""}{eur(r.delM)}</b></small></div><strong>{eur(r.tot)}</strong></li>)}</ul>
         <p className={s.muted}>Prix du site TTC divisés par 1,2. Coût de tournée partagé à parts égales entre les voitures, compté sans récupérer la TVA sur le carburant et les péages (prudent). Hors carte grise.</p>
        </section>;})():<button className={s.ghost} onClick={()=>setBoss(true)}>📊 Afficher le tableau de bord des marges</button>}
