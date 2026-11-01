@@ -71,3 +71,8 @@
 .dtable{width:100%;min-width:640px;border-collapse:collapse;font-size:13.5px}.dtable th{text-align:right;font-size:12px;color:#7a8594;padding:6px 4px;border-bottom:2px solid #16202e}.dtable th:first-child,.dtable td:first-child{text-align:left}
 .dtable td{text-align:right;padding:8px 4px;border-bottom:1px solid #eee;white-space:nowrap}.dtable td small{display:block;color:#7a8594}
 .posT{color:#067647;font-weight:800}.negT{color:#b42318;font-weight:800}
+.big{background:#16202e;color:#fff;border-radius:16px;padding:16px;display:grid;gap:4px}.big small{opacity:.75;font-weight:700}.big b{font-size:34px;letter-spacing:-.02em}.big span{opacity:.85;font-size:14px}
+.waterfall{display:grid;border:1px solid #eee;border-radius:14px;overflow:hidden}
+.wRow{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-top:1px solid #f0f0f0;font-size:14.5px}.wRow:first-child{border-top:0}.wRow span:last-child{white-space:nowrap}
+.minus{color:#b42318}.final{background:#ecfdf3;color:#067647;font-size:16px}
+.perCli{list-style:none;margin:0;padding:0;display:grid;gap:8px}.perCli li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border:1px solid #eee;border-radius:12px}.perCli small{display:block;color:#5b6573;font-size:12.5px;margin-top:2px}.perCli strong{font-size:17px;white-space:nowrap}
