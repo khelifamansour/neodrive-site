@@ -20,7 +20,7 @@ export type Params = {
 };
 export type Channel = { id: string; name: string; budget: number; cpa: number; max: number; fixed: number; note: string };
 export type Dealers = { count: number; salesPerDealer: number; commission: number; max: number };
-export type Gestion = { params: Params; hubs: Hub[]; lots: Lot[]; containers: Container[]; payments: Payment[]; quarters: Quarter[]; channels?: Channel[]; dealers?: Dealers; organic?: number; updated_at?: string };
+export type Gestion = { params: Params; hubs: Hub[]; lots: Lot[]; containers: Container[]; payments: Payment[]; quarters: Quarter[]; channels?: Channel[]; dealers?: Dealers; organic?: number; strategy?: unknown; updated_at?: string };
 
 /** Canaux de vente : hypothèses de départ à recaler avec les vrais chiffres (fichier Leboncoin, statistiques TikTok/Meta). */
 export const DEFAULT_CHANNELS: Channel[] = [
@@ -147,7 +147,7 @@ export function adsFactor(p: Params, adsMonthly: number) {
   if (!p.adsBase || adsMonthly <= 0) return adsMonthly <= 0 ? 0.6 : 1;
   return Math.pow(adsMonthly / p.adsBase, p.adsElasticity ?? 0.5);
 }
-export function project(g: Gestion, today = iso(new Date()), withSuggestions = true, factor = 1, adsOverride?: number) {
+export function project(g: Gestion, today = iso(new Date()), withSuggestions = true, factor = 1, adsOverride?: number | number[], extra?: { demoByMonth?: number[] }) {
   const p = g.params, W = 52, start = mondayOf(today);
   const weeks = Array.from({ length: W }, (_, i) => addDays(start, i * 7));
   const idx = (d: string) => { if (d < start) return 0; const i = Math.floor((new Date(d + "T12:00:00").getTime() - new Date(start + "T12:00:00").getTime()) / (7 * 864e5)); return i < W ? i : -1; };
@@ -203,7 +203,9 @@ export function project(g: Gestion, today = iso(new Date()), withSuggestions = t
       // début de mois : charges, pub, stockage, TVA du mois précédent
       const q = g.quarters.find(x => x.id === periodOf(wk, today));
       lines["Charges fixes"] = -(p.fixedMonthly); if (p.salaryMonthly) lines["Ton salaire"] = -p.salaryMonthly;
-      lines["Publicité"] = -(adsOverride ?? q?.adsMonthly ?? p.adsDefault);
+      const mk = (() => { const a = new Date(start + "T12:00:00"), b = new Date(wk + "T12:00:00"); return Math.max(0, Math.min(11, (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth())); })();
+      lines["Publicité"] = -(Array.isArray(adsOverride) ? adsOverride[mk] ?? 0 : adsOverride ?? q?.adsMonthly ?? p.adsDefault);
+      const demo = extra?.demoByMonth?.[mk] || 0; if (demo) { const dm = Math.min(stock, demo); stock -= dm; }
       lines["Stockage hubs"] = -(g.hubs.reduce((a, h) => a + h.rentMonthly, 0) + stock * (g.hubs.reduce((a, h) => a + h.perCarMonthly, 0) / Math.max(1, g.hubs.length)));
       if (i > 0) { const net = vatMonth - vatCredit; if (net > 0) { lines["TVA collectée sur les ventes, reversée"] = -net; vatCredit = 0; } else vatCredit = -net; vatMonth = 0; }
       prevMonth = month;
@@ -246,8 +248,8 @@ export function distributionOptions(p: Params, hubs: Hub[]) {
 
 // ── Recommandations : combien de stock injecter sans mettre la trésorerie en danger
 export const MARKET = { newPerYear: 24977, usedPerYear: 42000, leaderPerYear: 7408, leader: "Citroën Ami" };
-export function recommend(g: Gestion, today = iso(new Date()), ads?: number, adsModel = true) {
-  const p = g.params, af = ads == null || !adsModel ? 1 : adsFactor(p, ads), low = (p.scenLow || 0.7) * af, high = (p.scenHigh || 1.3) * af, mid = af;
+export function recommend(g: Gestion, today = iso(new Date()), ads?: number | number[], adsModel = true) {
+  const p = g.params, adsAvg = Array.isArray(ads) ? ads.reduce((a, b) => a + b, 0) / Math.max(1, ads.length) : ads, af = adsAvg == null || !adsModel ? 1 : adsFactor(p, adsAvg), low = (p.scenLow || 0.7) * af, high = (p.scenHigh || 1.3) * af, mid = af;
   const prob = project(g, today, true, mid, ads);
   const S = prob.suggestions.map(s => ({ ...s, suggested: false, label: s.label.replace("suggérée", "conseillée") }));
   // on garde le plus de commandes possible tant que le scénario défavorable reste au-dessus du seuil de trésorerie
@@ -271,14 +273,14 @@ export function recommend(g: Gestion, today = iso(new Date()), ads?: number, ads
   if (lostFav > 0) recos.push({ level: "warn", text: `Si les ventes sont bonnes (+${Math.round((high - 1) * 100)} %), tu manqueras environ ${lostFav} voitures sur 12 mois : prends des réservations avec acompte sur les prochains arrivages, ou ajoute un conteneur dès que la trésorerie le permet.` });
   const lostProb = sum(probable, "lost");
   if (lostProb > 0) recos.push({ level: "warn", text: `Scénario probable : ${lostProb} ventes perdues faute de stock (surtout au début, délai de 4 mois). Vends en réservation avec acompte les voitures des conteneurs en route.` });
-  const adsYear = (ads ?? g.quarters.reduce((a, q) => a + q.adsMonthly, 0) / Math.max(1, g.quarters.length)) * 12;
+  const adsYear = (adsAvg ?? g.quarters.reduce((a, q) => a + q.adsMonthly, 0) / Math.max(1, g.quarters.length)) * 12;
   const cps = adsYear / Math.max(1, soldYear);
   recos.push({ level: cps < 150 ? "ok" : "warn", text: cps < 150 ? `La pub coûte ≈ ${Math.round(cps)} € par vente : c’est très bas. Augmente les annonces Leboncoin (avec remontée) tant que ce coût reste sous 150 €.` : `La pub coûte ≈ ${Math.round(cps)} € par vente : vérifie quelles annonces vendent vraiment avant d’augmenter.` });
   const old = g.lots.filter(l => l.status === "ancien").reduce((a, l) => a + l.qty, 0);
   if (old) recos.push({ level: "warn", text: `${old} voitures d’ancien stock : les vendre en 3-4 semaines (4 290–4 490 € TTC, « disponible immédiatement ») apporte ≈ ${Math.round(old * 4300 / 1000)} 000 € au moment le plus tendu.` });
   const share = (soldYear * 12 / 12) / MARKET.newPerYear * 100, shareAll = soldYear / (MARKET.newPerYear + MARKET.usedPerYear) * 100;
   const unit = (p.priceTtc + p.deliveryTtc) / 1.2 - p.landedEstimate - p.deliveryCost;
-  const salesMonth = soldYear / 12, marginMonth = salesMonth * unit - (ads ?? p.adsDefault) - p.fixedMonthly - p.salaryMonthly;
+  const salesMonth = soldYear / 12, marginMonth = salesMonth * unit - (adsAvg ?? p.adsDefault) - p.fixedMonthly - p.salaryMonthly;
   return { salesMonth, marginMonth, unit, cps, adsFactor: af, plan: kept, dropped, defav, probable, fav, recos, soldYear, share, shareAll, lostFav, k, total: S.length };
 }
 

@@ -2,12 +2,13 @@
 import {useEffect,useMemo,useState} from "react";
 import s from "../planificateur/planif.module.css";
 import Decision from "./Decision";
+import Strategie from "./Strategie";
 import p from "./pilotage.module.css";
 import {recommend,MARKET,containerCosts,containerDates,distributionOptions,fr,iso,project,situationContainers,situationLots,type Container,type Gestion,type Hub,type Lot,type Params,type Payment,type Port,type Quarter} from "../../lib/gestion";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
-type Tab="decision"|"reco"|"bord"|"stock"|"conteneurs"|"paiements"|"treso"|"plan"|"distrib"|"reglages";
-const TABS:[Tab,string][]=[["decision","🧠 Décision"],["reco","🎯 Calendrier & conseils"],["bord","📊 Tableau de bord"],["stock","🚗 Stock"],["conteneurs","🚢 Conteneurs"],["paiements","💳 Paiements"],["treso","🏦 Trésorerie"],["plan","🗓️ Plan trimestriel"],["distrib","🗺️ Hubs & distribution"],["reglages","⚙️ Réglages"]];
+type Tab="strategie"|"decision"|"reco"|"bord"|"stock"|"conteneurs"|"paiements"|"treso"|"plan"|"distrib"|"reglages";
+const TABS:[Tab,string][]=[["decision","🧠 Décision"],["strategie","📈 Stratégie"],["reco","🎯 Calendrier & conseils"],["bord","📊 Tableau de bord"],["stock","🚗 Stock"],["conteneurs","🚢 Conteneurs"],["paiements","💳 Paiements"],["treso","🏦 Trésorerie"],["plan","🗓️ Plan trimestriel"],["distrib","🗺️ Hubs & distribution"],["reglages","⚙️ Réglages"]];
 const LOT:Record<Lot["status"],string>={dispo:"Disponible",vendu:"Vendue, à livrer",ancien:"Ancien stock (à déstocker)"};
 const SCEN0:[string,string][]=[["défavorable","🌧️ Défavorable"],["probable","⛅ Probable"],["favorable","☀️ Favorable"]];
 const uid=()=>`${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
@@ -51,7 +52,7 @@ export default function PilotagePage(){
  return <main className={s.page}>
   <header className={s.top}><div><h1>Pilotage NeoDrive</h1><p>Stock · conteneurs · trésorerie · plan · distribution</p></div><div className={s.topBtns}><button onClick={save} disabled={!dirty||!!busy} className={dirty?p.saveOn:""}>{busy==="save"?"…":dirty?"💾 Enregistrer":"✓ Enregistré"}</button></div></header>
   {msg?<p className={msg.startsWith("✅")?s.ok:s.err}>{msg}</p>:null}
-  {tab!=="reco"&&tab!=="decision"?<><div className={p.summary}>
+  {tab!=="reco"&&tab!=="decision"&&tab!=="strategie"?<><div className={p.summary}>
    <Box t="Trésorerie aujourd’hui" v={eur(P.bank+P.cashOnHand)} sub={`compte ${eur(P.bank)} · espèces ${eur(P.cashOnHand)}`}/>
    <Box t="Point le plus bas (12 mois)" v={eur(proj.min.cash)} sub={`semaine du ${fr(proj.min.start)}`} cls={proj.min.cash<0?p.bad:proj.min.cash<10000?p.warn:p.good}/>
    <Box t="Stock" v={`${lotsOf("dispo")} dispo`} sub={`${lotsOf("vendu")} à livrer · ${lotsOf("ancien")} ancien · ${inTransit} en route`}/>
@@ -61,6 +62,7 @@ export default function PilotagePage(){
   {!d.containers.length?<p className={s.tip}>Ton outil est vide. <button className={s.small} onClick={()=>upd(x=>({...x,containers:situationContainers(),lots:situationLots()}))}>Charger ma situation du 1er novembre</button> (conteneurs en route, ancien stock) puis complète et enregistre.</p>:null}
   <nav className={p.tabs}>{TABS.map(([k,l])=><button key={k} className={tab===k?p.on:""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
 
+  {tab==="strategie"?<Strategie d={d} upd={upd} today={today}/>:null}
   {tab==="decision"?<Decision d={d} upd={upd} today={today} addC={c=>{addC(c);setMsg("✅ Ajouté à tes conteneurs. Pense à enregistrer.");}}/>:null}
   {tab==="reco"?<section className={s.card}>
    <h2>🎯 Simulateur</h2>
