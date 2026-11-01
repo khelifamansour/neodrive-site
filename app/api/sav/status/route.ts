@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { SAV_BUCKET, stageOf, timelinePath, type SavTimeline } from "../../../../lib/sav";
+import { stageOf, timelinePath, type SavTimeline } from "../../../../lib/sav";
+import { readJson } from "../../../../lib/datastore";
 
 export const dynamic = "force-dynamic";
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
@@ -17,8 +18,8 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ ok: false, error: "Service momentanément indisponible." }, { status: 500 });
   if (!data) return NextResponse.json({ ok: false, error: "Aucune demande ne correspond à cette référence et cet e-mail." }, { status: 404 });
   let events: SavTimeline["events"] = [];
-  const { data: file } = await sb.storage.from(SAV_BUCKET).download(timelinePath(ref));
-  if (file) { try { events = (JSON.parse(await file.text()) as SavTimeline).events || []; } catch { /* ignore */ } }
+  const tl = await readJson<SavTimeline>(sb, timelinePath(ref));
+  if (tl?.events) events = tl.events;
   if (!events.length) events = [{ at: data.created_at, stage: data.status === "resolved" || data.status === "closed" ? "resolved" : "received", note: data.resolution || undefined }];
   const current = stageOf(events[events.length - 1].stage);
   return NextResponse.json({

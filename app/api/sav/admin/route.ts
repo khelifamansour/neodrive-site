@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { SAV_BUCKET, SAV_STAGES, stageOf, timelinePath, type SavStageKey, type SavTimeline } from "../../../../lib/sav";
+import { readJson, writeJson } from "../../../../lib/datastore";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -10,9 +11,7 @@ type Attachment = { name: string; type?: string; size?: number; path: string; bu
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function readTimeline(sb: any, ref: string): Promise<SavTimeline | null> {
-  const { data } = await sb.storage.from(SAV_BUCKET).download(timelinePath(ref));
-  if (!data) return null;
-  try { return JSON.parse(await data.text()) as SavTimeline; } catch { return null; }
+  return readJson<SavTimeline>(sb, timelinePath(ref));
 }
 
 /** Espace NeoDrive : liste des demandes, médias, mise à jour du suivi. Protégé par le code CRON_SECRET (le même que /erp). */
@@ -54,8 +53,7 @@ export async function POST(req: Request) {
     const tl = (await readTimeline(sb, ref)) || { ref, folder: "", events: [{ at: t.created_at, stage: "received" as SavStageKey }] };
     const note = String(b.note || "").trim().slice(0, 2000), internal = String(b.internal || "").trim().slice(0, 2000);
     tl.events.push({ at: new Date().toISOString(), stage: stage.key, note: note || undefined, internal: internal || undefined });
-    const { error: upErr } = await sb.storage.from(SAV_BUCKET).upload(timelinePath(ref), Buffer.from(JSON.stringify(tl, null, 2)), { contentType: "application/json", upsert: true });
-    if (upErr) return NextResponse.json({ ok: false, error: "Enregistrement impossible : " + upErr.message }, { status: 500 });
+    try { await writeJson(sb, timelinePath(ref), tl); } catch (e) { return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 }); }
     // Statut de la table (compatibilité ERP). Si la base refuse la valeur fine, on garde « open ».
     const patch: Record<string, unknown> = { status: stage.status, updated_at: new Date().toISOString() };
     if (note) patch.resolution = note;

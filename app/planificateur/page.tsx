@@ -1,12 +1,13 @@
 "use client";
 import {useEffect,useState} from "react";
 import s from "./planif.module.css";
-import {TRAILERS,DEFAULT_PARAMS,planRoute,estimateKm,computeCosts,mapsUrl,type Hub,type PlanClient,type PlanTour,type Stop,type CostParams} from "../../lib/planif";
+import {TRAILERS,DEFAULT_PARAMS,FUELS,planRoute,estimateKm,computeCosts,mapsUrl,type Hub,type PlanClient,type PlanTour,type CostParams} from "../../lib/planif";
 import {waNumber} from "../../lib/sav";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
 const STATUS:Record<PlanClient["status"],string>={a_planifier:"À planifier",planifie:"Planifié",livre:"Livré"};
-const PREP="https://www.easydrive-auto.fr/preparer-ma-livraison";
+const SITE="https://www.easydrive-auto.fr";const PREP=SITE+"/preparer-ma-livraison";
+const recLink=(c:PlanClient)=>`${SITE}/reception?id=${encodeURIComponent(c.id)}&t=${c.token||""}`;
 const hm=(h:number)=>`${Math.floor(h)} h ${String(Math.round((h%1)*60)).padStart(2,"0")}`;
 
 export default function Planificateur(){
@@ -19,9 +20,11 @@ export default function Planificateur(){
  const [sel,setSel]=useState<string[]>([]);const [target,setTarget]=useState("");
  const [params,setParams]=useState<CostParams>(DEFAULT_PARAMS);
  const [open,setOpen]=useState<string|null>(null);
+ const [live,setLive]=useState<Record<string,number>|null>(null);
 
  const api=async(body:object,pc=code)=>{const r=await fetch("/api/planificateur",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:pc,...body})});const j=await r.json().catch(()=>({ok:false,error:"Erreur"}));if(r.status===401)setAuthed(false);if(!j.ok)throw new Error(j.error||"Erreur");return j;};
- const load=async(pc=code)=>{setBusy("load");try{const j=await api({action:"list"},pc);setClients(j.clients);setTours(j.tours.sort((a:PlanTour,b:PlanTour)=>a.created_at.localeCompare(b.created_at)));setHubs(j.hubs);setAuthed(true);try{sessionStorage.setItem("nd_pc",pc)}catch{}}catch(e){setMsg((e as Error).message)}finally{setBusy("")}};
+ const loadFuel=async(pc=code)=>{try{const j=await api({action:"fuel"},pc);if(j.prices){setLive(j.prices);setParams(p=>({...p,fuelPrice:Math.round((j.prices[p.fuel]||p.fuelPrice)*1000)/1000}));}}catch{/* prix par défaut */}};
+ const load=async(pc=code)=>{setBusy("load");try{const j=await api({action:"list"},pc);setClients(j.clients);setTours(j.tours.sort((a:PlanTour,b:PlanTour)=>a.created_at.localeCompare(b.created_at)));setHubs(j.hubs);setAuthed(true);if(!live)loadFuel(pc);try{sessionStorage.setItem("nd_pc",pc)}catch{}}catch(e){setMsg((e as Error).message)}finally{setBusy("")}};
  useEffect(()=>{try{const pc=sessionStorage.getItem("nd_pc");if(pc){setCode(pc);load(pc);}}catch{}
   // eslint-disable-next-line react-hooks/exhaustive-deps
  },[]);
@@ -42,7 +45,7 @@ export default function Planificateur(){
  const assign=()=>{const t=tours.find(x=>x.id===target);if(!t||!sel.length)return;saveTour({...t,clientIds:[...new Set([...t.clientIds,...sel])],stops:undefined,costs:undefined},`✅ ${sel.length} client${sel.length>1?"s":""} ajouté${sel.length>1?"s":""} à ${t.name}.`);setSel([]);setOpen(t.id);};
  const patch=(t:PlanTour,p:Partial<PlanTour>)=>setTours(v=>v.map(x=>x.id===t.id?{...x,...p}:x));
  const unassign=(t:PlanTour,cid:string)=>saveTour({...t,clientIds:t.clientIds.filter(x=>x!==cid),stops:undefined,costs:undefined});
- const calculate=(t:PlanTour)=>run("calc-"+t.id,async()=>{
+ const compute=async(t:PlanTour):Promise<Partial<PlanTour>>=>{
   const chosen=clients.filter(c=>t.clientIds.includes(c.id)&&c.status!=="livre");if(!chosen.length)throw new Error("Ajoutez des clients à la tournée.");
   // stock disponible = stock actuel (les tournées déjà validées l'ont déjà déduit)
   const {stops,unserved}=planRoute(hubs,t.hubId,t.trailer,chosen);
@@ -51,12 +54,23 @@ export default function Planificateur(){
   hours+=(stops.length-1)*0.5;
   const costs=computeCosts(km,hours,params);
   const warning=unserved.length?`Stock insuffisant : ${unserved.length} client${unserved.length>1?"s":""} non livrable${unserved.length>1?"s":""} (${unserved.map(c=>c.nom).join(", ")}). Ajoutez du stock dans un hub.`:"";
-  patch(t,{stops,km:Math.round(km),hours:Math.round(hours*10)/10,precise,costs,params,warning});
+  return {stops,km:Math.round(km),hours:Math.round(hours*10)/10,precise,costs,params,warning};
+ };
+ const calculate=(t:PlanTour)=>run("calc-"+t.id,async()=>{patch(t,await compute(t));});
+ /** Proposition automatique : tous les clients à planifier, une remorque de 2, départ Lamasquère, recharges au hub le plus avantageux. */
+ const propose=()=>run("auto",async()=>{
+  const ids=clients.filter(c=>c.status==="a_planifier").map(c=>c.id);if(!ids.length)throw new Error("Aucun client à planifier.");
+  const start=hubs.find(h=>h.id==="lamasquere")||hubs[0];
+  const base:PlanTour={id:`T-${Date.now()}`,name:`Proposition auto ${new Date().toLocaleDateString("fr-FR")}`,created_at:new Date().toISOString(),date:new Date(Date.now()+3*86400000).toISOString().slice(0,10),driver:"",hubId:start.id,trailer:2,clientIds:ids,status:"brouillon"};
+  const t={...base,...await compute(base)};
+  const j=await api({action:"save_tour",tour:t});if(j.hubs)setHubs(j.hubs);await load();setOpen(t.id);
+  setMsg(`✅ Tournée proposée : ${ids.length} clients, ${t.km} km, ${eur(t.costs?.total||0)}. Vérifiez puis validez.`);
  });
  const validate=(t:PlanTour)=>{if(!t.stops)return;saveTour({...t,status:"valide"},`✅ ${t.name} validée : le stock des hubs est mis à jour.`);};
  const removeTour=(t:PlanTour)=>{if(confirm(`Supprimer ${t.name} ? Ses clients repassent « à planifier »${t.status==="valide"?" et le stock est restitué":""}.`))run("del",async()=>{await api({action:"delete_tour",id:t.id});await load();});};
  const roadmap=(t:PlanTour)=>`${t.name} — ${new Date(t.date).toLocaleDateString("fr-FR")}${t.driver?` · ${t.driver}`:""}\n\n`+(t.stops||[]).map((p,i)=>`${i+1}. ${p.kind==="depot"?"📦":"🚗"} ${p.name} — ${p.action}${p.kind==="client"?`\n   ${p.label}${p.phone?` · ${p.phone}`:""}`:""}`).join("\n")+`\n\nItinéraire : ${mapsUrl(t.stops||[])}`;
  const copy=(t:PlanTour)=>navigator.clipboard?.writeText(roadmap(t)).then(()=>setMsg("✅ Feuille de route copiée : collez-la dans WhatsApp pour le livreur."));
+ const setFuel=(f:CostParams["fuel"])=>{const d=FUELS.find(x=>x.id===f)!;setParams(p=>({...p,fuel:f,consumption:d.conso,fuelPrice:Math.round((live?.[f]||d.price)*1000)/1000}));};
  const P=(k:keyof CostParams,label:string,step=0.01)=><label className={s.param}><span>{label}</span><input type="number" step={step} value={params[k] as number} onChange={e=>setParams(p=>({...p,[k]:Number(e.target.value)||0}))}/></label>;
 
  if(!authed)return <main className={s.page}><form className={s.login} onSubmit={e=>{e.preventDefault();load();}}><span className={s.logo}>N</span><h1>Tournées</h1><p>Code d’accès NeoDrive (le même que l’ERP).</p><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code" autoFocus/><button disabled={busy==="load"}>{busy==="load"?"…":"Entrer"}</button>{msg?<p className={s.err}>{msg}</p>:null}</form></main>;
@@ -88,15 +102,16 @@ export default function Planificateur(){
    {!visible.length?<p className={s.muted}>Aucun client {filter==="a_planifier"?"à planifier":""}. Les réservations du site arrivent ici automatiquement.</p>:null}
    <ul className={s.clients}>{visible.map(c=>{const t=tours.find(x=>x.id===c.tour_id);return <li key={c.id} className={sel.includes(c.id)?s.selected:""}>
     {c.status==="a_planifier"?<input type="checkbox" checked={sel.includes(c.id)} onChange={()=>setSel(v=>v.includes(c.id)?v.filter(x=>x!==c.id):[...v,c.id])}/>:<span className={s.badge}>{t?t.name:STATUS[c.status]}</span>}
-    <div className={s.cinfo}><b>{c.prenom} {c.nom}</b><small>{c.code_postal} {c.ville} · {c.modele||"NeoDrive"}{c.total?` · ${eur(c.total)}`:""}{c.telephone?` · ${c.telephone}`:""}</small>{c.note?<small>📝 {c.note}</small>:null}</div>
-    <div className={s.cact}>{c.telephone?<a href={`https://wa.me/${waNumber(c.telephone)}?text=${encodeURIComponent(`Bonjour ${c.prenom}, votre NeoDrive arrive bientôt 🚗 Voici comment préparer la livraison (paiement, prise en main, carte grise) : ${PREP}`)}`} target="_blank" rel="noreferrer" title="Envoyer le lien de préparation">📲</a>:null}{c.status==="planifie"?<button onClick={()=>setStatus(c.id,"livre")} title="Marquer livré">✓</button>:null}<button onClick={()=>removeClient(c.id)} title="Supprimer">🗑</button></div>
+    <div className={s.cinfo}><b>{c.prenom} {c.nom}</b><small>{c.code_postal} {c.ville} · {c.modele||"NeoDrive"}{c.total?` · ${eur(c.total)}`:""}{c.telephone?` · ${c.telephone}`:""}</small>{c.note?<small>📝 {c.note}</small>:null}{c.received_at?<small className={s.okTxt}>✅ Réception signée par {c.received_by} le {new Date(c.received_at).toLocaleDateString("fr-FR")}{c.reception_note?` · « ${c.reception_note} »`:""}</small>:null}</div>
+    <div className={s.cact}>{c.telephone?<a href={`https://wa.me/${waNumber(c.telephone)}?text=${encodeURIComponent(`Bonjour ${c.prenom}, votre NeoDrive arrive bientôt 🚗 Voici comment préparer la livraison (paiement, prise en main, carte grise) : ${PREP}`)}`} target="_blank" rel="noreferrer" title="Envoyer le lien de préparation">📲</a>:null}{c.telephone&&c.status!=="a_planifier"&&!c.received_at?<a href={`https://wa.me/${waNumber(c.telephone)}?text=${encodeURIComponent(`Bonjour ${c.prenom}, merci d’avoir reçu votre NeoDrive ! Pouvez-vous confirmer la réception ici (1 minute) : ${recLink(c)}`)}`} target="_blank" rel="noreferrer" title="Envoyer l’accusé de réception">🧾</a>:null}<button onClick={()=>navigator.clipboard?.writeText(recLink(c)).then(()=>setMsg("✅ Lien d’accusé de réception copié."))} title="Copier le lien d’accusé de réception">🔗</button>{c.status==="planifie"?<button onClick={()=>setStatus(c.id,"livre")} title="Marquer livré">✓</button>:null}<button onClick={()=>removeClient(c.id)} title="Supprimer">🗑</button></div>
    </li>})}</ul>
    {sel.length?<div className={s.assign}><span>{sel.length} sélectionné{sel.length>1?"s":""} →</span><select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Choisir une tournée…</option>{drafts.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><button disabled={!target||!!busy} onClick={assign}>Ajouter</button><button onClick={newTour} disabled={!!busy}>＋ Nouvelle tournée</button></div>:null}
   </section>
 
   {/* TOURNÉES */}
   <section className={s.card}>
-   <div className={s.rowHead}><h2>🚚 Tournées</h2><button className={s.small} onClick={newTour} disabled={!!busy}>＋ Nouvelle tournée</button></div>
+   <div className={s.rowHead}><h2>🚚 Tournées</h2><div className={s.topBtns}><button className={s.small} onClick={propose} disabled={!!busy||!waiting}>{busy==="auto"?"Calcul…":"🤖 Proposer automatiquement"}</button><button className={s.small} onClick={newTour} disabled={!!busy}>＋ Manuelle</button></div></div>
+   <p className={s.muted}>Automatique : le logiciel prend tous les clients à planifier, part de Lamasquère avec la remorque 2 voitures et choisit à chaque fois le hub de recharge le plus avantageux (retour Lamasquère ou montée vers Boran-sur-Oise). Vous vérifiez, modifiez si besoin, puis validez.</p>
    {!tours.length?<p className={s.muted}>Créez une tournée, puis cochez des clients et ajoutez-les.</p>:null}
    {tours.map(t=>{const tc=clients.filter(c=>t.clientIds.includes(c.id));const isOpen=open===t.id;const locked=t.status!=="brouillon";return <article key={t.id} className={`${s.tour} ${locked?s.locked:""}`}>
     <button className={s.tourHead} onClick={()=>setOpen(isOpen?null:t.id)}><b>{t.name}</b><span className={s.badge}>{t.status==="brouillon"?"Brouillon":"Validée"}</span><small>{new Date(t.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})} · {tc.length} client{tc.length>1?"s":""}{t.km?` · ${t.km} km · ${eur(t.costs?.total||0)}`:""}</small></button>
@@ -116,6 +131,8 @@ export default function Planificateur(){
       <p className={s.muted}>{t.precise?"Distances routières réelles, durée majorée de 20 % (remorque, pauses) + 30 min par arrêt.":"Distances estimées : le calcul routier n’a pas répondu."}</p>
       <ol className={s.stops}>{t.stops.map((p,i)=><li key={i} className={p.kind==="depot"?s.depot:""}><b>{i+1}</b><div><strong>{p.kind==="depot"?"📦 ":"🚗 "}{p.name}</strong><small>{p.action}{p.kind==="client"?` · ${p.label}`:""}</small><small>Voitures à bord après l’arrêt : {p.load}</small></div></li>)}</ol>
       {!locked?<><div className={s.seg}><button className={params.mode==="carte"?s.on:""} onClick={()=>setParams(p=>({...p,mode:"carte"}))}>Carte NeoDrive</button><button className={params.mode==="remboursement"?s.on:""} onClick={()=>setParams(p=>({...p,mode:"remboursement"}))}>Remboursement sur tickets</button></div>
+      <label className={s.field}><span>Véhicule tracteur : Dacia Duster — carburant</span><select value={params.fuel} onChange={e=>setFuel(e.target.value as CostParams["fuel"])}>{FUELS.map(f=><option key={f.id} value={f.id}>{f.label}{live?.[f.id]?` · ${live[f.id].toFixed(3)} €/L aujourd’hui`:""}</option>)}</select></label>
+      <p className={s.muted}>{live?"Prix moyen national du jour (données officielles prix-carburants.gouv.fr). ":"Prix du jour indisponible : prix par défaut. "}Consommation majorée pour la remorque chargée.</p>
       <div className={s.params}>{P("consumption","Conso (L/100 km)",0.5)}{P("fuelPrice","Prix du litre (€)")}{P("tollPerKm","Péage moyen (€/km)")}{P("hourlyRate","Livreur (€/heure)",0.5)}{P("mealPerDay","Repas (€/jour)",1)}{P("hotelPerNight","Hôtel (€/nuit)",1)}</div>
       <p className={s.muted}>Après avoir changé un tarif, recliquez sur « Calculer ».</p></>:null}
       <table className={s.costs}><tbody>

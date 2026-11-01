@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { readJson, writeJson, dataClient } from "./datastore";
 
 /**
  * Accès (jetons) enregistrés depuis la page privée /connexions.
@@ -23,25 +24,21 @@ export function serviceClient() {
 export async function readIntegrations(force = false): Promise<StoredIntegrations> {
   if (!force && cache && Date.now() - cache.at < 5 * 60 * 1000) return cache.data;
   const empty: StoredIntegrations = { values: {}, meta: {} };
-  const sb = serviceClient();
+  const sb = dataClient();
   if (!sb) return empty;
-  try {
-    const { data } = await sb.storage.from(INTEGRATIONS_BUCKET).download(INTEGRATIONS_PATH);
-    const parsed = data ? (JSON.parse(await data.text()) as StoredIntegrations) : empty;
-    cache = { at: Date.now(), data: { values: parsed.values || {}, meta: parsed.meta || {}, updated_at: parsed.updated_at } };
-  } catch { cache = { at: Date.now(), data: empty }; }
+  const parsed = await readJson<StoredIntegrations>(sb, INTEGRATIONS_PATH).catch(() => null);
+  cache = { at: Date.now(), data: parsed ? { values: parsed.values || {}, meta: parsed.meta || {}, updated_at: parsed.updated_at } : empty };
   return cache.data;
 }
 
 export async function writeIntegrations(patch: Partial<Record<ManagedKey, string | null>>, meta: Record<string, unknown> = {}) {
-  const sb = serviceClient();
+  const sb = dataClient();
   if (!sb) throw new Error("Configuration serveur incomplète");
   const cur = await readIntegrations(true);
   const values = { ...cur.values };
   for (const [k, v] of Object.entries(patch)) { if (v === null || v === "") delete values[k as ManagedKey]; else values[k as ManagedKey] = v as string; }
   const next: StoredIntegrations = { values, meta: { ...cur.meta, ...meta }, updated_at: new Date().toISOString() };
-  const { error } = await sb.storage.from(INTEGRATIONS_BUCKET).upload(INTEGRATIONS_PATH, Buffer.from(JSON.stringify(next)), { contentType: "application/json", upsert: true });
-  if (error) throw new Error("Enregistrement impossible : " + error.message);
+  await writeJson(sb, INTEGRATIONS_PATH, next);
   cache = { at: Date.now(), data: next };
   await applyStoredSecrets(true);
   return next;

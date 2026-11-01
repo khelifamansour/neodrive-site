@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { FINANCE_DOCS } from "../../../../lib/neodrive-finance";
+import { writeJson } from "../../../../lib/datastore";
 
 export const dynamic = "force-dynamic";
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
@@ -34,6 +35,6 @@ export async function POST(req: Request) {
     if (data?.signedUrl) links.push({ label: doc?.label || f.name, url: data.signedUrl });
   }
   const dossier = { ref, folder, created_at: new Date().toISOString(), applicant: a, simulation: body.simulation || {}, files: files.map(f => f.name), consent: true };
-  await sb.storage.from(BUCKET).upload(`financement/${folder}/dossier.json`, Buffer.from(JSON.stringify(dossier, null, 2)), { contentType: "application/json", upsert: true });
+  await writeJson(sb, `financement/${folder}.json`, dossier).catch(e => console.error("[FIN] dossier", e));
   return NextResponse.json({ ok: true, ref, links });
 }

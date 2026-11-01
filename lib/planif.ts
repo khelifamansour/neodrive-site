@@ -8,9 +8,18 @@ export type PlanClient = Point & {
   adresse: string; code_postal: string; ville: string;
   modele: string; couleur: string; total: number | null;
   status: "a_planifier" | "planifie" | "livre"; tour_id?: string | null; note?: string;
+  token?: string; received_at?: string; received_by?: string; reception_note?: string;
 };
 export type Stop = { kind: "depot" | "client"; id: string; name: string; label: string; lat: number; lng: number; load: number; loaded?: number; action: string; phone?: string };
-export type CostParams = { consumption: number; fuelPrice: number; tollPerKm: number; hourlyRate: number; mealPerDay: number; hotelPerNight: number; hoursPerDay: number; mode: "carte" | "remboursement" };
+export type Fuel = "gazole" | "e10" | "sp95" | "e85" | "gpl";
+export const FUELS: { id: Fuel; label: string; conso: number; price: number }[] = [
+  { id: "gazole", label: "Gazole (Duster dCi)", conso: 13, price: 1.65 },
+  { id: "e10", label: "Essence SP95-E10", conso: 15, price: 1.75 },
+  { id: "sp95", label: "Essence SP95", conso: 15, price: 1.8 },
+  { id: "e85", label: "Éthanol E85", conso: 19, price: 0.85 },
+  { id: "gpl", label: "GPL (Duster Eco-G)", conso: 18, price: 1.0 },
+];
+export type CostParams = { fuel: Fuel; consumption: number; fuelPrice: number; tollPerKm: number; hourlyRate: number; mealPerDay: number; hotelPerNight: number; hoursPerDay: number; mode: "carte" | "remboursement" };
 export type Costs = { liters: number; fuel: number; tolls: number; driver: number; days: number; meals: number; nights: number; hotel: number; total: number; payDriver: number };
 export type PlanTour = {
   id: string; name: string; created_at: string; date: string; driver: string;
@@ -28,7 +37,7 @@ export const TRAILERS = [
   { value: 2, label: "Grande remorque (2 voitures)" },
   { value: 3, label: "Les deux remorques (3 voitures)" },
 ];
-export const DEFAULT_PARAMS: CostParams = { consumption: 11, fuelPrice: 1.75, tollPerKm: 0.09, hourlyRate: 15, mealPerDay: 25, hotelPerNight: 70, hoursPerDay: 9, mode: "carte" };
+export const DEFAULT_PARAMS: CostParams = { fuel: "gazole", consumption: 13, fuelPrice: 1.65, tollPerKm: 0.09, hourlyRate: 15, mealPerDay: 25, hotelPerNight: 70, hoursPerDay: 9, mode: "carte" };
 
 export function haversineKm(a: Point, b: Point) {
   const R = 6371, toRad = (x: number) => (x * Math.PI) / 180;
@@ -75,7 +84,27 @@ export function planRoute(hubs: Hub[], startId: string, trailer: number, clients
     pos = c;
   }
   stops.push({ kind: "depot", id: start.id, name: start.name, label: start.name, lat: start.lat, lng: start.lng, load, action: "Retour au hub" });
-  return { stops, unserved: left, stockAfter: stock };
+  return { stops: improveRoute(stops), unserved: left, stockAfter: stock };
+}
+
+/** Améliore l'ordre des clients entre deux passages en hub (2-opt), sans changer les chargements. */
+export function improveRoute(stops: Stop[]): Stop[] {
+  const out = [...stops];
+  let i = 0;
+  while (i < out.length) {
+    if (out[i].kind !== "depot") { i++; continue; }
+    let j = i + 1; while (j < out.length && out[j].kind === "client") j++;
+    // segment de clients : out[i+1 .. j-1], bornes out[i] et out[j]
+    if (j < out.length && j - i - 1 >= 2) {
+      let seg = out.slice(i + 1, j), better = true;
+      const len = (s: Stop[]) => { let k = roadKm(out[i], s[0]) + roadKm(s[s.length - 1], out[j]); for (let q = 1; q < s.length; q++) k += roadKm(s[q - 1], s[q]); return k; };
+      while (better) { better = false; for (let a = 0; a < seg.length - 1; a++) for (let z = a + 1; z < seg.length; z++) { const cand = [...seg.slice(0, a), ...seg.slice(a, z + 1).reverse(), ...seg.slice(z + 1)]; if (len(cand) < len(seg) - 0.5) { seg = cand; better = true; } } }
+      let load = out[i].load; seg = seg.map(s => ({ ...s, load: --load }));
+      out.splice(i + 1, seg.length, ...seg);
+    }
+    i = j;
+  }
+  return out;
 }
 
 export function estimateKm(stops: Stop[]) {

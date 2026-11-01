@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { isAuthorized, serviceClient } from "../../../lib/integrations";
 import { ALERT_ENDPOINT, waNumber } from "../../../lib/sav";
 import { reviewMessage } from "../../../lib/reviews";
+import { readJson, writeJson } from "../../../lib/datastore";
 
 export const dynamic = "force-dynamic";
 const SITE = "https://www.easydrive-auto.fr";
-const BUCKET = "erp-documents", PATH = "avis/demandes.json";
+const PATH = "avis/demandes.json";
 
 type Row = { vehicle_id: string; name: string; phone: string; email: string; delivered_at: string; city: string; requested: boolean; wa: string };
 
@@ -15,9 +16,7 @@ async function load(sb: any, days: number) {
   const { data: vehicles } = await sb.from("vehicles").select("id,delivered_at,location_label,current_customer_id").eq("status", "delivered").gte("delivered_at", since).order("delivered_at", { ascending: false }).limit(50);
   const ids = [...new Set((vehicles || []).map((v: { current_customer_id: string | null }) => v.current_customer_id).filter(Boolean))];
   const { data: customers } = ids.length ? await sb.from("customers").select("id,first_name,last_name,phone,email,city").in("id", ids) : { data: [] };
-  let sent: Record<string, string> = {};
-  const { data: f } = await sb.storage.from(BUCKET).download(PATH);
-  if (f) { try { sent = JSON.parse(await f.text()); } catch { /* ignore */ } }
+  const sent: Record<string, string> = (await readJson<Record<string, string>>(sb, PATH)) || {};
   const rows: Row[] = (vehicles || []).map((v: { id: string; delivered_at: string; location_label: string | null; current_customer_id: string | null }) => {
     const c = (customers || []).find((x: { id: string }) => x.id === v.current_customer_id) || {};
     const first = String(c.first_name || "").trim();
@@ -35,7 +34,7 @@ export async function POST(req: Request) {
   if (b.action === "mark" && b.vehicleId) {
     const { sent } = await load(sb, 1);
     sent[String(b.vehicleId)] = new Date().toISOString();
-    await sb.storage.from(BUCKET).upload(PATH, Buffer.from(JSON.stringify(sent)), { contentType: "application/json", upsert: true });
+    await writeJson(sb, PATH, sent);
     return NextResponse.json({ ok: true });
   }
   const { rows } = await load(sb, 30);

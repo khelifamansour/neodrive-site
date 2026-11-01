@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
-import { ALERT_ENDPOINT, SAV_BUCKET, SAV_MEDIA_BUCKET, timelinePath, waNumber, type SavTimeline } from "../../../../lib/sav";
+import { ALERT_ENDPOINT, SAV_MEDIA_BUCKET, timelinePath, waNumber, type SavTimeline } from "../../../../lib/sav";
+import { writeJson } from "../../../../lib/datastore";
 
 export const dynamic="force-dynamic";
 export const maxDuration=60;
@@ -54,7 +55,7 @@ export async function POST(req:Request){
 
  // Historique de suivi
  const timeline:SavTimeline={ref,folder,events:[{at:new Date().toISOString(),stage:"received",note:"Votre demande est bien enregistrée. Un technicien NeoDrive revient vers vous."}]};
- await sb.storage.from(SAV_BUCKET).upload(timelinePath(ref),Buffer.from(JSON.stringify(timeline,null,2)),{contentType:"application/json",upsert:true});
+ await writeJson(sb,timelinePath(ref),timeline).catch(e=>console.error("[SAV] timeline",e));
 
  // Alerte NeoDrive
  const links:string[]=[];

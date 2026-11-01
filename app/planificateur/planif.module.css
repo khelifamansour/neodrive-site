@@ -49,3 +49,4 @@
 .tourBody{padding:14px;display:grid;gap:12px}
 .mini{list-style:none;margin:0;padding:0;display:grid;gap:6px}.mini li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;background:#f6f7f8;border-radius:10px;font-size:14px}.mini button{border:0;background:none;font-size:16px;color:#b42318}
 .danger{border:0;background:none;color:#b42318;font-weight:800;padding:8px}
+.okTxt{color:#067647;font-weight:700}
