@@ -188,7 +188,7 @@ function contextTags(asset: SocialAssetLike) {
   if (/recharg|prise|220|batter/.test(text)) tags.add("recharge");
   if (/répar|repar|panne|sav|pi[eè]ce|atelier|contr[oô]leur|moteur|carross/.test(text)) tags.add("sav");
   if (/acier|ch[aâ]ssis|choc|bosse|aile/.test(text)) tags.add("reparabilite");
-  if (/prix|tarif|3990|4990|promo/.test(text)) tags.add("prix");
+  if (/prix|tarif|3990|4990|5490|6490|promo/.test(text)) tags.add("prix");
   if (/int[eé]rieur|si[eè]ge|tableau|habitacle/.test(text)) tags.add("produit");
   if (/route|essai|roul|trajet/.test(text)) tags.add("usage");
   return tags;

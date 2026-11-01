@@ -57,7 +57,7 @@ const models = [
   },
   {
     name: "Confort",
-    price: "4 990 €",
+    price: "5 490 €",
     label: "La plus choisie",
     image: "/neodrive-switch/photos/front-burgerking-a.webp",
     text: "La version la plus choisie, avec les équipements utiles au quotidien.",
@@ -66,7 +66,7 @@ const models = [
   },
   {
     name: "Confort Plus",
-    price: "5 990 €",
+    price: "6 490 €",
     label: "Plus d’autonomie",
     image: "/neodrive-switch/photos/front-close.webp",
     text: "Le pack Confort avec autonomie renforcée et davantage de polyvalence.",

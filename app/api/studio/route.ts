@@ -5,7 +5,7 @@ import { isAuthorized } from "../../../lib/integrations";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-const FACTS = `NeoDrive : voiture sans permis 100 % électrique, neuve, marque toulousaine (Muret). Carrosserie en acier. Prix : Essentielle 3 990 € TTC, Confort 4 990 € TTC (caméra de recul, chauffage, Bluetooth, alarme), Confort Plus 5 990 € TTC (charge rapide, autonomie renforcée). Ne jamais mentionner le type de batterie. 45 km/h, 2 places, dès 14 ans avec le permis AM, autonomie indicative 50 à 70 km, recharge sur prise 220 V. Livraison à domicile partout en France, 0 € d'acompte, paiement à la livraison, carte grise gérée (150 €), garantie 2 ans. Site : easydrive-auto.fr`;
+const FACTS = `NeoDrive : voiture sans permis 100 % électrique, neuve, marque toulousaine (Muret). Carrosserie en acier. Prix : Essentielle 3 990 € TTC, Confort 5 490 € TTC (caméra de recul, chauffage, Bluetooth, alarme), Confort Plus 6 490 € TTC (charge rapide, autonomie renforcée). Ne jamais mentionner le type de batterie. 45 km/h, 2 places, dès 14 ans avec le permis AM, autonomie indicative 50 à 70 km, recharge sur prise 220 V. Livraison à domicile partout en France, 0 € d'acompte, paiement à la livraison, carte grise gérée (150 €), garantie 2 ans. Site : easydrive-auto.fr`;
 
 const TYPES: Record<string, string> = {
   livraison: "une vidéo de livraison chez un client",

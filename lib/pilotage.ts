@@ -33,7 +33,7 @@ export function defaultPilotage(now = new Date()): Pilotage {
       usd: 0.86, factory: 1500, perContainer: 9, dutyPct: 10, customs: 200,
       freightUsd: { havre: 5000, fos: 6000 },
       storage: 50, delivery: 390, ads: 150, gear: 50, sav: 100,
-      priceTtc: 4990, deliveryTtc: 690,
+      priceTtc: 5490, deliveryTtc: 690,
       supplierDepositPct: 30, leadMonths: 4, shipAfterMonths: 1,
       fixedMonthly: 1500, cash: 50000, safety: 4,
       stock: { lamasquere: 10, boran: 8 }, sudPct: 55,

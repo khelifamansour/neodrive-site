@@ -74,7 +74,7 @@ export default function Home() {
           <article className="card featured">
             <span className="tag orange">LA PLUS CHOISIE</span>
             <h3>Confort</h3>
-            <p className="cardPrice">4 990 € TTC</p>
+            <p className="cardPrice">5 490 € TTC</p>
             <p className="cardText">Le meilleur équilibre entre prix, équipement, délai et tranquillité.</p>
             <div className="infoBox darkInfo"><strong>✅ Disponibilité</strong><span>En stock — disponible immédiatement</span></div>
             <div className="warranty">
@@ -94,7 +94,7 @@ export default function Home() {
           <article className="card premium">
             <span className="tag purple">CONFORT PLUS+</span>
             <h3>Confort Plus+</h3>
-            <p className="cardPrice">5 990 € TTC</p>
+            <p className="cardPrice">6 490 € TTC</p>
             <p className="cardText">Pour ceux qui veulent plus d’autonomie et une expérience plus complète.</p>
             <div className="infoBox"><strong>⚡ Plus+</strong><span>Charge rapide et autonomie renforcée</span></div>
             <ul>
@@ -115,7 +115,7 @@ export default function Home() {
         </div>
         <div className="whyGrid">
           <article><b>01</b><h3>Carrosserie acier</h3><p>Une structure et des panneaux en acier, là où beaucoup de voitures sans permis sont en plastique.</p></article>
-          <article><b>02</b><h3>3 200 € de moins</h3><p>NeoDrive Confort à 4 990 € TTC, contre 8 190 € pour une Citroën Ami de base.*</p></article>
+          <article><b>02</b><h3>2 700 € de moins</h3><p>NeoDrive Confort à 5 490 € TTC, contre 8 190 € pour une Citroën Ami de base.*</p></article>
           <article><b>03</b><h3>Vraiment équipée</h3><p>Chauffage, caméra de recul, Bluetooth / USB et alarme antivol sur la version Confort.</p></article>
           <article><b>04</b><h3>0 € d’acompte</h3><p>Livraison jusqu’à votre domicile. Vous payez tout le jour de la livraison.</p></article>
           <article><b>05</b><h3>Un vrai service, réactif</h3><p>Partout en France, un ingénieur échange directement avec vous. Pièces détachées disponibles sous 48 h et assistance technique dédiée.</p></article>

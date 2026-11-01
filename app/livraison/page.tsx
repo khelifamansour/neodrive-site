@@ -13,9 +13,9 @@ type Simulation = {
 };
 
 const MODELS: Model[] = [
-  { id: "confort", name: "NeoDrive Confort", price: 4990 },
+  { id: "confort", name: "NeoDrive Confort", price: 5490 },
   { id: "essentielle", name: "NeoDrive Essentielle", price: 3990 },
-  { id: "lithium", name: "NeoDrive Confort Plus", price: 5990 },
+  { id: "lithium", name: "NeoDrive Confort Plus", price: 6490 },
 ];
 
 const REGISTRATION_PACKAGE_PRICE = 150;

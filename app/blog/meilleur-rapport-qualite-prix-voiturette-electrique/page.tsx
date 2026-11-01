@@ -84,7 +84,7 @@ export default function Page() {
           Deux annonces peuvent sembler proches alors qu’elles ne couvrent pas la même chose. Demandez toujours un prix TTC correspondant à une version précise et vérifiez ce qui est inclus : équipements, préparation, documents, livraison éventuelle et services associés.
         </p>
         <p>
-          Au 30 août 2026, NeoDrive affiche publiquement une gamme neuve à partir de 3 990 € TTC pour la version Essentiel. Les autres versions affichées sont Confort à 4 990 € TTC et Confort Plus+ à 5 990 € TTC. Ces informations commerciales peuvent évoluer : vérifiez la page produit avant toute décision.
+          Au 1er novembre 2026, NeoDrive affiche publiquement une gamme neuve à partir de 3 990 € TTC pour la version Essentiel. Les autres versions affichées sont Confort à 5 490 € TTC et Confort Plus+ à 6 490 € TTC. Ces informations commerciales peuvent évoluer : vérifiez la page produit avant toute décision.
         </p>
         <p><a href="/produit">Voir les versions et tarifs NeoDrive actuellement affichés →</a></p>
 

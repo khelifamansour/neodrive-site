@@ -85,7 +85,7 @@ export async function POST(req: Request) {
       let created = 0;
       for (const [i, [nom, prenom, adresse, code_postal, ville]] of DEMO.entries()) {
         if (existing.some(c => c.nom === nom && c.prenom === prenom && c.note?.startsWith("TEST"))) continue;
-        const c = await buildClient({ nom, prenom, adresse, code_postal, ville, telephone: `06 12 34 56 ${String(10 + i)}`, email: `test${i + 1}@example.com`, modele: "NeoDrive Confort", total: 4990 + (deliveryPriceForDepartment(code_postal.slice(0, 2)) || 0), note: "TEST simulation — à supprimer" }, "reservation");
+        const c = await buildClient({ nom, prenom, adresse, code_postal, ville, telephone: `06 12 34 56 ${String(10 + i)}`, email: `test${i + 1}@example.com`, modele: "NeoDrive Confort", total: 5490 + (deliveryPriceForDepartment(code_postal.slice(0, 2)) || 0), note: "TEST simulation — à supprimer" }, "reservation");
         if (!("error" in c)) { await writeJson(sb, `${C}/${c.id}.json`, c); created++; }
       }
       const hubs = (await readHubs(sb)).map(h => ({ ...h, stock: h.id === "lamasquere" || h.id === "boran" ? 20 : h.stock }));

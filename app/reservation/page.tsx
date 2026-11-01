@@ -15,11 +15,11 @@ const versions = {
   },
   confort: {
     label: "VSP Version Confort",
-    prix: 4990,
+    prix: 5490,
   },
   confortPlus: {
     label: " VSP Version Confort Plus+",
-    prix: 5990,
+    prix: 6490,
   },
 };
 
@@ -162,8 +162,8 @@ const totalTTC =
   required
 >
   <option value="essentiel">Version Essentiel — 3 990 € TTC</option>
-  <option value="confort">Version Confort — 4 990 € TTC</option>
-  <option value="confortPlus">Version Confort Plus+ — 5 990 € TTC</option>
+  <option value="confort">Version Confort — 5 490 € TTC</option>
+  <option value="confortPlus">Version Confort Plus+ — 6 490 € TTC</option>
 </select>
 
           <input name="nom" placeholder="Nom" style={input} onChange={handleChange} required />
