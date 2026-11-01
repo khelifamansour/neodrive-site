@@ -12,7 +12,7 @@ export type StratData = { strat: Strat; lbc: LbcModel; dealer: DealerModel; pric
 
 export const DEFAULT_STRAT: StratData = {
   strat: { adsStart: 70, adsEnd: 120, rampMonths: 6, remonteePct: 0.3, dealersStart: 0, dealersPerMonth: 1, dealersMax: 8, commission: 400, priceUp: false, organic: 2 },
-  // calé sur ta réalité : ≈ 70 annonces publiées par an (60 € / 2 mois) → ≈ 18 ventes / mois
+  // calé sur ta réalité : 70 annonces en ligne (60 € pour 2 mois chacune) → ≈ 18 ventes / mois
   lbc: { adCost2m: 60, remonteeCost2m: 60, refAds: 70, refSales: 16, max: 40, remonteeBoost: 1.25 },
   dealer: { baseSales: 1.5, refCommission: 300, motivation: 0.5, firstMonthFactor: 0.4, priceSensitivity: 0.5 },
   price: { increase: 500, directDrop: 0.12 },
@@ -24,8 +24,8 @@ export function lbcSales(m: LbcModel, ads: number, remPct: number) {
   const eff = ads * (1 + (m.remonteeBoost - 1) * remPct);
   return m.max * (1 - Math.exp(-eff / k));
 }
-/** Coût mensuel : « ads » = annonces publiées par an, chacune 60 € (+60 € avec remontée). */
-export const lbcCost = (m: LbcModel, ads: number, remPct: number) => (ads / 12) * (m.adCost2m + remPct * m.remonteeCost2m);
+/** Coût mensuel : « ads » = annonces en ligne en même temps ; chacune 60 € pour 2 mois (120 € avec remontée hebdo). */
+export const lbcCost = (m: LbcModel, ads: number, remPct: number) => ads * (m.adCost2m + remPct * m.remonteeCost2m) / 2;
 /** Ventes par point de vente selon la commission (plus elle est haute, plus ils poussent). */
 export const dealerRate = (d: DealerModel, commission: number) => d.baseSales * Math.pow(Math.max(50, commission) / d.refCommission, d.motivation);
 

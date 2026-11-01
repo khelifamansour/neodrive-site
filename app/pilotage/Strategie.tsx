@@ -25,7 +25,7 @@ export default function Strategie({d,upd,today}:{d:Gestion;upd:(f:(x:Gestion)=>G
  const sto=storageTable({transferPerCar:hub?.transferPerCar??150,warehouseTransfer:P.warehouseTransfer,unload:P.unload,siteRent:st.siteRent,siteUnloadPerContainer:st.siteUnloadPerContainer,extraKm:st.extraKm,costPerKm:P.costPerKm,carsPerTrip:P.carsPerTrip,boranPerCarMonth:hub?.perCarMonthly??25});
  const [northPct,setNorthPct]=useState(45);
  const north=Math.round(tot("total")/12*northPct/100);
- const best=()=>{setBusy(true);setTimeout(()=>{const o=optimizeStrategy(d,sd,today);if(o.best){const b=o.best;upd(x=>({...x,strategy:b.sd}));setNote(`✅ ${o.tried} combinaisons testées. Meilleure : ${b.sd.strat.adsEnd} annonces/an, ${b.sd.strat.dealersMax} points de vente à ${b.sd.strat.commission} €, prix ${b.sd.strat.priceUp?"+500 €":"inchangé"} → ${eur(b.end)} de trésorerie dans 12 mois, jamais sous ${eur(b.minLow)} même en vente lente. Pense à enregistrer.`);}else setNote("Aucune combinaison ne garde la trésorerie positive en vente lente : il faut plus de trésorerie de départ.");setBusy(false);},30);};
+ const best=()=>{setBusy(true);setTimeout(()=>{const o=optimizeStrategy(d,sd,today);if(o.best){const b=o.best;upd(x=>({...x,strategy:b.sd}));setNote(`✅ ${o.tried} combinaisons testées. Meilleure : ${b.sd.strat.adsEnd} annonces en ligne, ${b.sd.strat.dealersMax} points de vente à ${b.sd.strat.commission} €, prix ${b.sd.strat.priceUp?"+500 €":"inchangé"} → ${eur(b.end)} de trésorerie dans 12 mois, jamais sous ${eur(b.minLow)} même en vente lente. Pense à enregistrer.`);}else setNote("Aucune combinaison ne garde la trésorerie positive en vente lente : il faut plus de trésorerie de départ.");setBusy(false);},30);};
 
  return <section className={s.card}>
   <h2>📈 Stratégie commerciale</h2>
@@ -41,11 +41,11 @@ export default function Strategie({d,upd,today}:{d:Gestion;upd:(f:(x:Gestion)=>G
   </div>
 
   <h3>1️⃣ Leboncoin : combien d’annonces ?</h3>
-  <p className={s.muted}>Calé sur ta réalité : ≈ {sd.lbc.refAds} annonces publiées par an (60 € pour 2 mois) → ≈ {sd.lbc.refSales + S.organic} ventes par mois. Chaque annonce en plus rapporte un peu moins que la précédente.</p>
-  <div className={s.tableWrap}><table className={p.table}><thead><tr><th>Annonces / an</th><th>Ventes / mois</th><th>Coût / mois</th><th>Coût par vente</th><th>Ventes en plus vs aujourd’hui</th></tr></thead><tbody>
+  <p className={s.muted}>Calé sur ta réalité : ≈ {sd.lbc.refAds} annonces en ligne en même temps (60 € pour 2 mois chacune, 120 € avec remontée) → ≈ {sd.lbc.refSales + S.organic} ventes par mois. Chaque annonce en plus rapporte un peu moins que la précédente.</p>
+  <div className={s.tableWrap}><table className={p.table}><thead><tr><th>Annonces en ligne</th><th>Ventes / mois</th><th>Coût / mois</th><th>Coût par vente</th><th>Ventes en plus vs aujourd’hui</th></tr></thead><tbody>
    {[40,70,100,150,200,250].map(n=>{const v=lbcSales(sd.lbc,n,S.remonteePct)+S.organic,c=lbcCost(sd.lbc,n,S.remonteePct),v0=lbcSales(sd.lbc,70,S.remonteePct)+S.organic;return <tr key={n} style={n===S.adsEnd?{background:"#fff8f2"}:undefined}><td><b>{n}</b></td><td>{v.toFixed(1)}</td><td>{eur(c)}</td><td>{eur(c/v)}</td><td className={v-v0>0?s.okTxt:""}>{v-v0>0?"+":""}{(v-v0).toFixed(1)}</td></tr>;})}
   </tbody></table></div>
-  <div className={s.params}><Num label="Annonces / an au départ" value={S.adsStart} onChange={v=>setS({adsStart:v})}/><Num label="Annonces / an visées" value={S.adsEnd} onChange={v=>setS({adsEnd:v})}/><Num label="Montée en (mois)" value={S.rampMonths} onChange={v=>setS({rampMonths:v})}/><Num label="Part avec remontée (0 à 1)" value={S.remonteePct} step={0.1} onChange={v=>setS({remonteePct:v})}/></div>
+  <div className={s.params}><Num label="Annonces en ligne au départ" value={S.adsStart} onChange={v=>setS({adsStart:v})}/><Num label="Annonces en ligne visées" value={S.adsEnd} onChange={v=>setS({adsEnd:v})}/><Num label="Montée en (mois)" value={S.rampMonths} onChange={v=>setS({rampMonths:v})}/><Num label="Part avec remontée (0 à 1)" value={S.remonteePct} step={0.1} onChange={v=>setS({remonteePct:v})}/></div>
 
   <h3>2️⃣ Points de vente : combien et à quelle commission ?</h3>
   <p className={s.muted}>Chaque point de vente reçoit 1 voiture de démonstration (qui reste à toi) et une commission par voiture vendue. Plus la commission est haute, plus il pousse tes voitures (hypothèse : {sd.dealer.baseSales} ventes/mois à {sd.dealer.refCommission} €).</p>
@@ -61,7 +61,7 @@ export default function Strategie({d,upd,today}:{d:Gestion;upd:(f:(x:Gestion)=>G
   <div className={s.params}><Num label="Hausse (€ TTC)" value={sd.price.increase} step={100} onChange={v=>setM("price",{increase:v})}/><Num label="Ventes directes perdues (0 à 1)" value={sd.price.directDrop} step={0.02} onChange={v=>setM("price",{directDrop:v})}/></div>
 
   <h3>4️⃣ Le plan mois par mois</h3>
-  <div className={s.tableWrap}><table className={p.table}><thead><tr><th>Mois</th><th>Annonces / an</th><th>Points de vente</th><th>Démos à placer</th><th>Ventes directes</th><th>Ventes points</th><th>Total</th><th>Marketing</th></tr></thead><tbody>
+  <div className={s.tableWrap}><table className={p.table}><thead><tr><th>Mois</th><th>Annonces en ligne</th><th>Points de vente</th><th>Démos à placer</th><th>Ventes directes</th><th>Ventes points</th><th>Total</th><th>Marketing</th></tr></thead><tbody>
    {months.map(x=><tr key={x.m}><td><b>{x.label}</b></td><td>{x.ads}</td><td>{x.dealers}</td><td>{x.newDealers||"—"}</td><td>{x.direct.toFixed(0)}</td><td>{x.viaDealers.toFixed(1)}</td><td><b>{x.total.toFixed(0)}</b></td><td>{eur(x.marketing)}</td></tr>)}
   </tbody></table></div>
   <p className={s.muted}>Point le plus bas : {eur(sc.pr.min.cash)} la semaine du {fr(sc.pr.min.start)}. Les commandes de conteneurs nécessaires sont calculées dans 🧠 Décision.</p>

@@ -38,7 +38,7 @@ export default function Nonante({d,today}:{d:Gestion;today:string}){
  const lbc=(n:number)=>lbcCost(sd.lbc,n,S.remonteePct);
 
  const marketing=[
-  {poste:"Leboncoin",detail:`${S.adsStart} → ${sc.plan[2].ads} annonces/an · ${Math.round(S.remonteePct*100)} % avec remontée hebdo (120 € / 2 mois)`,m:[lbc(sc.plan[0].ads),lbc(sc.plan[1].ads),lbc(sc.plan[2].ads)],why:"Ton canal n°1 : < 40 € par vente"},
+  {poste:"Leboncoin",detail:`${S.adsStart} → ${sc.plan[2].ads} annonces en ligne · ${Math.round(S.remonteePct*100)} % avec remontée hebdo (120 € / 2 mois)`,m:[lbc(sc.plan[0].ads),lbc(sc.plan[1].ads),lbc(sc.plan[2].ads)],why:"Ton canal n°1 : < 40 € par vente"},
   {poste:"TikTok",detail:"3 vidéos/semaine (livraisons, essais) + boost des meilleures",m:[200,300,300],why:"Test : garder si < 150 € par vente"},
   {poste:"Facebook / Instagram",detail:"Pub parents 35-55 ans, 150 km autour des hubs et des points de vente",m:[200,300,300],why:"Test : garder si < 150 € par vente"},
   {poste:"Points de vente (soutien local)",detail:"Kit PLV + flyers à l’ouverture (≈ 150 €) + pub locale autour du point",m:[0,1,2].map(i=>sc.plan[i].newDealers*150+sc.plan[i].dealers*50),why:"Faire venir les clients chez eux"},
@@ -49,7 +49,7 @@ export default function Nonante({d,today}:{d:Gestion;today:string}){
 
  const decisions:{when:string;what:string;why:string;level:"go"|"wait"|"warn"}[]=[];
  for(const o of orders)decisions.push({when:fr(o.orderDate),what:`Commander ${o.cars} voitures — ${o.port==="fos"?"Fos → Sud":"Le Havre → Nord"} (au hub ≈ ${fr(containerDates(P,o).hub)})`,why:`Acompte ${eur(o.cars*P.deposit)}`,level:"go"});
- decisions.push({when:"maintenant",what:`Leboncoin : passer de ${S.adsStart} à ${sc.plan[2].ads} annonces/an d’ici 3 mois, ${Math.round(S.remonteePct*100)} % avec remontée`,why:`≈ ${eur(lbc(sc.plan[2].ads))}/mois pour ≈ ${Math.round(sc.plan[2].direct)} ventes directes/mois`,level:"go"});
+ decisions.push({when:"maintenant",what:`Leboncoin : passer de ${S.adsStart} à ${sc.plan[2].ads} annonces en ligne d’ici 3 mois, ${Math.round(S.remonteePct*100)} % avec remontée`,why:`≈ ${eur(lbc(sc.plan[2].ads))}/mois pour ≈ ${Math.round(sc.plan[2].direct)} ventes directes/mois`,level:"go"});
  if(firstMonthDealers>=0&&firstMonthDealers<3)decisions.push({when:sc.plan[firstMonthDealers].label,what:`Ouvrir ${sc.plan.slice(0,3).reduce((a,x)=>a+x.newDealers,0)} point(s) de vente : ${DEALER_SPOTS.slice(0,sc.plan.slice(0,3).reduce((a,x)=>a+x.newDealers,0)).map(x=>x.zone).join(", ")}`,why:`1 voiture de démo chacun (sort du stock), commission ${eur(S.commission)} par vente`,level:"go"});
  else decisions.push({when:"plus tard",what:"Points de vente : pas encore dans ton plan",why:"Active-les dans 📈 Stratégie (ou bouton « Trouver la stratégie »)",level:"wait"});
  decisions.push({when:S.priceUp?"au changement de gamme":"à décider",what:S.priceUp?`Hausse de prix +${sd.price.increase} € appliquée dans le plan`:"Hausse de prix +500 € : non appliquée",why:S.priceUp?"Plus de marge par voiture pour financer le stock":"À tester dans 📈 Stratégie",level:S.priceUp?"go":"wait"});
