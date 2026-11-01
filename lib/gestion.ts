@@ -16,7 +16,7 @@ export type Params = {
   prodDays: number; toPortDays: number; seaDays: number; customsDays: number; transferDays: number;
   priceTtc: number; deliveryTtc: number; deliveryCost: number; costPerKm: number; carsPerTrip: number;
   forecast: number[]; safety: number; oldPerWeek: number; adsDefault: number; truckCost: number; truckCars: number;
-  havreSiteRent: number; havreSiteUnload: number; maxPerMonth: number; landedEstimate: number; scenLow: number; scenHigh: number; minCash: number; adsBase: number; salesBase: number; adsElasticity: number;
+  havreSiteRent: number; havreSiteUnload: number; maxPerMonth: number; landedEstimate: number; scenLow: number; scenHigh: number; minCash: number; adsBase: number; salesBase: number; adsElasticity: number; freightInlandUsd: number;
 };
 export type Channel = { id: string; name: string; budget: number; cpa: number; max: number; fixed: number; note: string };
 export type Dealers = { count: number; salesPerDealer: number; commission: number; max: number };
@@ -95,7 +95,7 @@ export function defaultGestion(today = iso(new Date())): Gestion {
       prodDays: 45, toPortDays: 10, seaDays: 54, customsDays: 2, transferDays: 10,
       priceTtc: 4990, deliveryTtc: 690, deliveryCost: 390, costPerKm: 0.65, carsPerTrip: 2,
       forecast: Array(12).fill(17), safety: 6, oldPerWeek: 3, adsDefault: 325, truckCost: 1800, truckCars: 13,
-      havreSiteRent: 600, havreSiteUnload: 300, maxPerMonth: 3, landedEstimate: 2500, scenLow: 0.7, scenHigh: 1.3, minCash: 10000, adsBase: 325, salesBase: 17, adsElasticity: 0.5,
+      havreSiteRent: 600, havreSiteUnload: 300, maxPerMonth: 3, landedEstimate: 2500, scenLow: 0.7, scenHigh: 1.3, minCash: 10000, adsBase: 325, salesBase: 17, adsElasticity: 0.5, freightInlandUsd: 800,
     },
     hubs: [
       { id: "boran", name: "Boran-sur-Oise (Nord)", rentMonthly: 0, perCarMonthly: 25, capacity: 20, transferPerCar: 150, avgDeliveryKm: 250 },
@@ -118,6 +118,12 @@ export function containerDates(p: Params, c: Container) {
   if (c.etaHub) { hub = c.etaHub; portArrival = addDays(hub, -(p.customsDays + p.transferDays)); }
   return { prodEnd, departure, portArrival, freightDue: addDays(portArrival, -30), arrivalPay: addDays(portArrival, p.customsDays), hub, vatBack: addDays(portArrival, 35) };
 }
+/** Détail des frais d'arrivée d'un conteneur (hors douane). */
+export function logisticsDetail(p: Params, hubs: Hub[], c: { cars: number; port: Port; hubId: string }): [string, number][] {
+  if (c.port === "fos") return [["Transport du conteneur Fos → Muret", p.fosToMuret], ["Dépotage", p.unload]];
+  const h = hubs.find(x => x.id === c.hubId);
+  return [["Transfert du conteneur vers l’entrepôt de dépotage", p.warehouseTransfer], ["Dépotage", p.unload], [`Transfert des voitures vers ${h?.name.split(" (")[0] || "le hub"}`, c.cars * (h?.transferPerCar ?? 150)]];
+}
 export function logistics(p: Params, hubs: Hub[], c: { cars: number; port: Port; hubId: string }) {
   if (c.port === "fos") return p.fosToMuret + p.unload;
   const h = hubs.find(x => x.id === c.hubId);
@@ -127,7 +133,7 @@ export function containerCosts(p: Params, hubs: Hub[], c: Container) {
   const goods = c.cars * p.factory, freight = p.freightUsd[c.port] * p.usd, duty = (goods + freight) * p.dutyPct / 100;
   const vat = (goods + freight + duty) * 0.2, log = logistics(p, hubs, c);
   const landedPerCar = (goods + freight + duty + p.agent + log) / Math.max(1, c.cars);
-  return { goods, freight, duty, vat, log, landedPerCar, deposit: c.cars * p.deposit, balance: c.cars * (p.factory - p.deposit), arrival: duty + p.agent + vat + log };
+  return { goods, freight, duty, vat, log, landedPerCar, deposit: c.cars * p.deposit, balance: c.cars * (p.factory - p.deposit), arrival: duty + p.agent + log };
 }
 
 // ── Projection hebdomadaire (52 semaines)
@@ -176,8 +182,9 @@ export function project(g: Gestion, today = iso(new Date()), withSuggestions = t
     if (!c.balancePaid) add(d.prodEnd, "Soldes usine" + tag, -k.balance);
     if (!c.freightPaid) add(d.freightDue, "Fret maritime" + tag, -k.freight);
     if (!c.arrivalPaid) {
-      add(d.arrivalPay, "Douane + agent", -(k.duty + p.agent)); add(d.arrivalPay, "TVA import (avancée)", -k.vat); add(d.arrivalPay, "Dépotage + transferts", -k.log);
-      const i = idx(d.arrivalPay); if (i >= 0) importVat[i] += k.vat;
+      // TVA à l'importation : autoliquidée (déclarée et déduite sur la même déclaration) → aucun décaissement
+      add(d.arrivalPay, "Droits de douane (10 %)", -k.duty); add(d.arrivalPay, "Agent en douane", -p.agent);
+      for (const [lab, v] of logisticsDetail(p, g.hubs, c)) add(d.arrivalPay, lab, -v);
     }
   }
   for (const x of g.payments) if (!x.done) add(x.date, x.label, x.amount);
@@ -197,7 +204,7 @@ export function project(g: Gestion, today = iso(new Date()), withSuggestions = t
       lines["Charges fixes"] = -(p.fixedMonthly); if (p.salaryMonthly) lines["Ton salaire"] = -p.salaryMonthly;
       lines["Publicité"] = -(adsOverride ?? q?.adsMonthly ?? p.adsDefault);
       lines["Stockage hubs"] = -(g.hubs.reduce((a, h) => a + h.rentMonthly, 0) + stock * (g.hubs.reduce((a, h) => a + h.perCarMonthly, 0) / Math.max(1, g.hubs.length)));
-      if (i > 0) { const net = vatMonth - vatCredit; if (net > 0) { lines["TVA à reverser"] = -net; vatCredit = 0; } else vatCredit = -net; vatMonth = 0; }
+      if (i > 0) { const net = vatMonth - vatCredit; if (net > 0) { lines["TVA collectée sur les ventes, reversée"] = -net; vatCredit = 0; } else vatCredit = -net; vatMonth = 0; }
       prevMonth = month;
     }
     stock += arr[i];
@@ -275,14 +282,14 @@ export function recommend(g: Gestion, today = iso(new Date()), ads?: number, ads
 }
 
 // ── Outil de décision : scénarios fret × ventes, canaux marketing, points de vente, résumés et tâches
-export const FREIGHT_SCEN: [string, number, string][] = [["Fret bas", 0.8, "≈ creux 2026 (2 400–2 800 $ spot Shanghai–Rotterdam)"], ["Fret normal", 1, "ton prix actuel tout compris"], ["Fret haut", 1.4, "≈ pic de juillet 2026 (4 900 $ spot) ou crise"]];
+export const FREIGHT_SCEN: [string, number, string][] = [["Fret bas", 0.75, "partie maritime −25 % (creux 2026 : 2 400–2 800 $ spot Shanghai–Rotterdam) · usine → port Chine inchangé"], ["Fret normal", 1, "ton prix actuel : usine → port Chine ≈ 800 $ + maritime ≈ 4 200 $"], ["Fret haut", 1.5, "partie maritime +50 % (pic de juillet 2026 : 4 900 $ spot) · usine → port Chine inchangé"]];
 
 export function scenarioGestion(g: Gestion, freightF = 1, salesOverride?: number): Gestion {
   const sm = salesModel(g), p = g.params;
-  return { ...g, quarters: [], params: { ...p, forecast: Array(12).fill(salesOverride ?? sm.total), freightUsd: { havre: p.freightUsd.havre * freightF, fos: p.freightUsd.fos * freightF }, adsDefault: sm.marketingCost } };
+  return { ...g, quarters: [], params: { ...p, forecast: Array(12).fill(salesOverride ?? sm.total), freightUsd: { havre: (p.freightInlandUsd ?? 800) + (p.freightUsd.havre - (p.freightInlandUsd ?? 800)) * freightF, fos: (p.freightInlandUsd ?? 800) + (p.freightUsd.fos - (p.freightInlandUsd ?? 800)) * freightF }, adsDefault: sm.marketingCost } };
 }
 export function unitMargin(p: Params, freightF = 1) {
-  const extraFreight = (freightF - 1) * p.freightUsd.havre * p.usd / 9 * (1 + p.dutyPct / 100);
+  const extraFreight = (freightF - 1) * (p.freightUsd.havre - (p.freightInlandUsd ?? 800)) * p.usd / 9 * (1 + p.dutyPct / 100);
   return (p.priceTtc + p.deliveryTtc) / 1.2 - (p.landedEstimate + extraFreight) - p.deliveryCost;
 }
 
@@ -295,7 +302,7 @@ function summarize(r: Proj, plan: Container[], real: Container[], p: Params, fro
   const enCours = all.filter(c => c.orderDate < to && containerDates(p, c).hub >= to);
   const sold = rows.reduce((a, x) => a + x.delivered, 0);
   const tasks: { date: string; text: string; amount?: number }[] = [];
-  for (const x of rows) for (const [k, v] of Object.entries(x.lines)) if (v < 0 && !/Livraisons|Stockage|Publicité|Charges|salaire|TVA à reverser/.test(k)) tasks.push({ date: x.start, text: `Payer : ${k}`, amount: v });
+  for (const x of rows) for (const [k, v] of Object.entries(x.lines)) if (v < 0 && !/Livraisons|Stockage|Publicité|Charges|salaire|TVA collectée/.test(k)) tasks.push({ date: x.start, text: `Payer : ${k}`, amount: v });
   for (const o of orders) tasks.push({ date: o.orderDate, text: `Commander ${o.cars} voitures (${o.port === "fos" ? "Fos → Sud" : "Le Havre → Nord"}) — acompte ${Math.round(o.cars * p.deposit)} €` });
   for (const x of rows) if (x.arrivals) tasks.push({ date: x.start, text: `Réceptionner ${x.arrivals} voitures au hub et prévenir les clients en attente` });
   tasks.sort((a, b) => a.date.localeCompare(b.date));

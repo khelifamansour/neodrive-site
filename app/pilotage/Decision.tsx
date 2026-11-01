@@ -21,7 +21,7 @@ export default function Decision({d,upd,today,addC}:{d:Gestion;upd:(f:(x:Gestion
  return <section className={s.card}>
   <h2>🧠 Outil de décision</h2>
   <div className={p.simIn}>
-   <label><span>Prix du transport maritime</span><em>{FREIGHT_SCEN.map((x,i)=><button key={x[0]} className={ff===i?p.on:""} onClick={()=>setFf(i)}>{x[0]} · {Math.round(P.freightUsd.havre*x[1]).toLocaleString("fr-FR")} $</button>)}</em><span style={{fontWeight:600,fontSize:12}}>{FREIGHT_SCEN[ff][2]}</span></label>
+   <label><span>Prix du transport maritime</span><em>{FREIGHT_SCEN.map((x,i)=><button key={x[0]} className={ff===i?p.on:""} onClick={()=>setFf(i)}>{x[0]} · {Math.round((P.freightInlandUsd??800)+(P.freightUsd.havre-(P.freightInlandUsd??800))*x[1]).toLocaleString("fr-FR")} $</button>)}</em><span style={{fontWeight:600,fontSize:12}}>{FREIGHT_SCEN[ff][2]}</span></label>
    <label><span>Si les ventes sont…</span><em>{SALES.map((x,i)=><button key={x[0]} className={sc===i?p.on:""} onClick={()=>setSc(i)}>{x[1]}</button>)}</em><button className={p.bestBtn} disabled={busy} onClick={best}>{busy?"Calcul…":"🔎 Trouver la meilleure stratégie"}</button></label>
   </div>
   {note?<p className={s.ok}>{note}</p>:null}
