@@ -2,12 +2,13 @@
 import {useEffect,useMemo,useState} from "react";
 import s from "../planificateur/planif.module.css";
 import p from "./pilotage.module.css";
-import {containerCosts,containerDates,distributionOptions,fr,iso,project,quarterOf,type Container,type Gestion,type Hub,type Lot,type Params,type Payment,type Port} from "../../lib/gestion";
+import {containerCosts,containerDates,distributionOptions,fr,iso,project,situationContainers,situationLots,type Container,type Gestion,type Hub,type Lot,type Params,type Payment,type Port,type Quarter} from "../../lib/gestion";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
 type Tab="bord"|"stock"|"conteneurs"|"paiements"|"treso"|"plan"|"distrib"|"reglages";
 const TABS:[Tab,string][]=[["bord","📊 Tableau de bord"],["stock","🚗 Stock"],["conteneurs","🚢 Conteneurs"],["paiements","💳 Paiements"],["treso","🏦 Trésorerie"],["plan","🗓️ Plan trimestriel"],["distrib","🗺️ Hubs & distribution"],["reglages","⚙️ Réglages"]];
 const LOT:Record<Lot["status"],string>={dispo:"Disponible",vendu:"Vendue, à livrer",ancien:"Ancien stock (à déstocker)"};
+const SCEN:[string,string,number][]=[["lente","🐢 Vente lente",0.7],["inter","🚗 Intermédiaire",1],["rapide","🚀 Vente rapide",1.3]];
 const uid=()=>`${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
 
 export default function PilotagePage(){
@@ -23,9 +24,11 @@ export default function PilotagePage(){
  },[]);
  const upd=(f:(x:Gestion)=>Gestion)=>{setD(x=>x?f(x):x);setDirty(true);setMsg("");};
  const setP=(k:keyof Params,v:unknown)=>upd(x=>({...x,params:{...x.params,[k]:v}}));
- const proj=useMemo(()=>d?project(d,today):null,[d,today]);
+ const [scen,setScen]=useState(1);
+ const projs=useMemo(()=>d?SCEN.map(x=>project(d,today,true,x[2])):null,[d,today]);
+ const proj=projs?projs[scen]:null;
 
- if(!authed||!d||!proj)return <main className={s.page}><form className={s.login} onSubmit={e=>{e.preventDefault();load();}}><span className={s.logo}>N</span><h1>Pilotage</h1><p>Code d’accès NeoDrive (le même que l’ERP).</p><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code" autoFocus/><button disabled={busy==="load"}>{busy==="load"?"…":"Entrer"}</button>{msg?<p className={s.err}>{msg}</p>:null}</form></main>;
+ if(!authed||!d||!proj||!projs)return <main className={s.page}><form className={s.login} onSubmit={e=>{e.preventDefault();load();}}><span className={s.logo}>N</span><h1>Pilotage</h1><p>Code d’accès NeoDrive (le même que l’ERP).</p><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code" autoFocus/><button disabled={busy==="load"}>{busy==="load"?"…":"Entrer"}</button>{msg?<p className={s.err}>{msg}</p>:null}</form></main>;
 
  const P=d.params;
  const N=(k:keyof Params,label:string,step=1)=><label className={s.param}><span>{label}</span><input type="number" step={step} value={P[k] as number} onChange={e=>setP(k,Number(e.target.value)||0)}/></label>;
@@ -50,12 +53,18 @@ export default function PilotagePage(){
    <Box t="Stock" v={`${lotsOf("dispo")} dispo`} sub={`${lotsOf("vendu")} à livrer · ${lotsOf("ancien")} ancien · ${inTransit} en route`}/>
    <Box t="À commander sous 15 jours" v={urgent.length?`${urgent.length} conteneur${urgent.length>1?"s":""}`:"Rien"} cls={urgent.length?p.warn:p.good} sub={urgent.map(u=>u.port==="fos"?"Fos":"Le Havre").join(", ")||"stock suffisant"}/>
   </div>
+  <div className={s.seg} style={{marginTop:12}}>{SCEN.map((x,i)=><button key={x[0]} className={scen===i?s.on:""} onClick={()=>setScen(i)}>{x[1]} ({Math.round(x[2]*100)} %)</button>)}</div>
+  {!d.containers.length?<p className={s.tip}>Ton outil est vide. <button className={s.small} onClick={()=>upd(x=>({...x,containers:situationContainers(),lots:situationLots()}))}>Charger ma situation du 1er novembre</button> (conteneurs en route, ancien stock) puis complète et enregistre.</p>:null}
   <nav className={p.tabs}>{TABS.map(([k,l])=><button key={k} className={tab===k?p.on:""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
 
   {tab==="bord"?<section className={s.card}>
    <h2>📊 Tableau de bord</h2>
    {proj.min.cash<0?<p className={s.err}>⚠️ La trésorerie passe sous zéro la semaine du {fr(proj.min.start)} ({eur(proj.min.cash)}). Pistes : déstocker l’ancien stock, livrer les voitures vendues, décaler un solde usine.</p>:null}
-   <h3>Par trimestre</h3>
+   <h3>Les 3 scénarios de vente</h3>
+   <div className={s.tableWrap}><table className={p.table}><thead><tr><th>Scénario</th><th>Ventes / mois</th><th>Livrées 12 mois</th><th>Perdues</th><th>Commandes proposées</th><th>Tréso la plus basse</th><th>Tréso dans 12 mois</th></tr></thead><tbody>
+    {SCEN.map((x,i)=>{const r=projs[i];return <tr key={x[0]} style={i===scen?{background:"#fff8f2"}:undefined}><td><b>{x[1]}</b></td><td>≈ {Math.round(P.forecast[0]*x[2])}</td><td>{r.quarters.reduce((a,q)=>a+q.sold,0)}</td><td className={r.quarters.some(q=>q.lost)?p.red:""}>{r.quarters.reduce((a,q)=>a+q.lost,0)||"—"}</td><td>{r.suggestions.length} conteneurs</td><td className={r.min.cash<0?p.red:""}>{eur(r.min.cash)} <small>({fr(r.min.start)})</small></td><td><b>{eur(r.rows[r.rows.length-1].cash)}</b></td></tr>;})}
+   </tbody></table></div>
+   <h3>Par période de 3 mois — scénario {SCEN[scen][1]}</h3>
    <div className={s.tableWrap}><table className={p.table}><thead><tr><th>Trimestre</th><th>Arrivées</th><th>Livrées</th><th>Perdues</th><th>Entrées</th><th>Sorties</th><th>Tréso fin</th><th>Tréso mini</th></tr></thead><tbody>
     {proj.quarters.map(q=><tr key={q.id}><td><b>{q.id}</b></td><td>{q.arrivals}</td><td>{q.sold}</td><td className={q.lost?p.red:""}>{q.lost||"—"}</td><td>{eur(q.inflow)}</td><td>{eur(q.outflow)}</td><td><b>{eur(q.endCash)}</b></td><td className={q.minCash<0?p.red:""}>{eur(q.minCash)}</td></tr>)}
    </tbody></table></div>
@@ -125,19 +134,30 @@ export default function PilotagePage(){
   </section>:null}
 
   {tab==="plan"?<section className={s.card}>
-   <h2>🗓️ Plan trimestriel</h2>
-   <p className={s.muted}>Au début de chaque trimestre : fixe l’objectif de ventes et le budget pub, passe les commandes proposées. À la fin : note les ventes réelles.</p>
-   {d.quarters.map(q=>{const pq=proj.quarters.find(x=>x.id===q.id);return <article key={q.id} className={p.route}>
-    <div className={s.rowHead}><b>{q.label}</b>{pq?<span className={p.tag}>Prévu : {pq.sold} livrées · tréso fin {eur(pq.endCash)}</span>:null}</div>
-    <div className={s.params}>
-     <label className={s.param}><span>Objectif ventes</span><input type="number" value={q.salesTarget} onChange={e=>upd(x=>({...x,quarters:x.quarters.map(y=>y.id===q.id?{...y,salesTarget:Number(e.target.value)||0}:y)}))}/></label>
-     <label className={s.param}><span>Budget pub / mois (€)</span><input type="number" value={q.adsMonthly} onChange={e=>upd(x=>({...x,quarters:x.quarters.map(y=>y.id===q.id?{...y,adsMonthly:Number(e.target.value)||0}:y)}))}/></label>
-     <label className={s.param}><span>Ventes réelles</span><input type="number" value={q.actualSales} onChange={e=>upd(x=>({...x,quarters:x.quarters.map(y=>y.id===q.id?{...y,actualSales:Number(e.target.value)||0}:y)}))}/></label>
+   <h2>🗓️ Planning par période de 3 mois</h2>
+   <p className={s.muted}>Au début de chaque période : passe les commandes listées et fixe le budget pub. À la fin : note les ventes réelles. Marge estimée ≈ {eur((P.priceTtc+P.deliveryTtc)/1.2-P.landedEstimate-P.deliveryCost)} par voiture (prix HT − voiture rendue au hub {eur(P.landedEstimate)} − livraison), avant pub et charges.</p>
+   {proj.quarters.map((pq,qi)=>{const q:Quarter=d.quarters.find(x=>x.id===pq.id)||{id:pq.id,label:pq.id,salesTarget:pq.sold,adsMonthly:P.adsDefault,actualSales:0};
+    const setQ=(v:Partial<Quarter>)=>upd(x=>({...x,quarters:x.quarters.some(y=>y.id===q.id)?x.quarters.map(y=>y.id===q.id?{...y,...v}:y):[...x.quarters,{...q,...v}]}));
+    const unit=(P.priceTtc+P.deliveryTtc)/1.2-P.landedEstimate-P.deliveryCost;
+    return <article key={pq.id} className={p.route}>
+    <div className={s.rowHead}><b>{pq.id}</b><span className={p.tag}>Tréso fin : {SCEN.map((x,i)=>`${x[0]} ${eur(projs[i].quarters[qi]?.endCash||0)}`).join(" · ")}</span></div>
+    <div className={s.kpis}>
+     <div><small>Conteneurs à commander</small><b>{pq.orders}</b></div>
+     <div><small>Voitures qui arrivent</small><b>{pq.arrivals}</b></div>
+     <div><small>Ventes prévues (lente / inter / rapide)</small><b>{SCEN.map((_,i)=>projs[i].quarters[qi]?.sold||0).join(" / ")}</b></div>
+     <div><small>Marge estimée ({SCEN[scen][0]})</small><b>{eur(pq.sold*unit-q.adsMonthly*3)}</b></div>
     </div>
-    <small className={s.muted}>Pub par vente : {eur(q.adsMonthly*3/Math.max(1,q.actualSales||q.salesTarget))} · {Math.round(q.adsMonthly*3/120)} annonces Leboncoin avec remontée par trimestre (≈ 120 € pour 2 mois) · {q.actualSales?`réel ${q.actualSales} / objectif ${q.salesTarget} (${Math.round(100*q.actualSales/Math.max(1,q.salesTarget))} %)`:"ventes réelles à saisir en fin de trimestre"}</small>
+    {pq.orderList.length?<ul className={s.mini}>{pq.orderList.map(o=><li key={o.id}><span>{fr(o.orderDate)} · {o.cars} voitures · {o.port==="fos"?"Fos → Sud":"Le Havre → Nord"} · au hub ≈ {fr(containerDates(P,o).hub)}</span>{o.suggested?<button title="Ajouter à mes conteneurs" onClick={()=>{addC(o);setMsg("✅ Ajouté à tes conteneurs. Pense à enregistrer.");}}>＋</button>:<span>✔︎</span>}</li>)}</ul>:<p className={s.muted}>Pas de commande à passer sur cette période.</p>}
+    <div className={s.params}>
+     <label className={s.param}><span>Budget pub / mois (€)</span><input type="number" value={q.adsMonthly} onChange={e=>setQ({adsMonthly:Number(e.target.value)||0})}/></label>
+     <label className={s.param}><span>Objectif ventes</span><input type="number" value={q.salesTarget} onChange={e=>setQ({salesTarget:Number(e.target.value)||0})}/></label>
+     <label className={s.param}><span>Ventes réelles</span><input type="number" value={q.actualSales} onChange={e=>setQ({actualSales:Number(e.target.value)||0})}/></label>
+    </div>
+    <small className={s.muted}>📣 {Math.floor(q.adsMonthly*3/120)} annonces Leboncoin avec remontée (≈ 120 € / 2 mois) ou {Math.floor(q.adsMonthly*3/60)} sans remontée · pub par vente ≈ {eur(q.adsMonthly*3/Math.max(1,q.actualSales||pq.sold))}{q.actualSales?` · réel ${q.actualSales} / prévu ${pq.sold} (${Math.round(100*q.actualSales/Math.max(1,pq.sold))} %)`:""}</small>
    </article>;})}
-   <h3>Ventes prévues par mois</h3>
-   <div className={s.params}>{P.forecast.map((v,i)=>{const dt=new Date();dt.setMonth(dt.getMonth()+i);return <label key={i} className={s.param}><span>{dt.toLocaleDateString("fr-FR",{month:"short",year:"2-digit"})} · {quarterOf(iso(dt))}</span><input type="number" value={v} onChange={e=>setP("forecast",P.forecast.map((x,k)=>k===i?Number(e.target.value)||0:x))}/></label>;})}</div>
+   <h3>Ventes prévues par mois (scénario intermédiaire)</h3>
+   <div className={s.params}>{P.forecast.map((v,i)=>{const dt=new Date();dt.setMonth(dt.getMonth()+i);return <label key={i} className={s.param}><span>{dt.toLocaleDateString("fr-FR",{month:"short",year:"2-digit"})}</span><input type="number" value={v} onChange={e=>setP("forecast",P.forecast.map((x,k)=>k===i?Number(e.target.value)||0:x))}/></label>;})}</div>
+   <p className={s.muted}>Lente = 70 % de ces chiffres, rapide = 130 %. Commandes limitées à {P.maxPerMonth} conteneurs par mois (modifiable dans Réglages).</p>
   </section>:null}
 
   {tab==="distrib"?<section className={s.card}>
@@ -165,7 +185,7 @@ export default function PilotagePage(){
    <h3>Trésorerie</h3><div className={s.params}>{N("bank","Sur le compte (€)",100)}{N("cashOnHand","Espèces (€)",100)}{N("fixedMonthly","Charges fixes / mois",50)}{N("salaryMonthly","Ton salaire / mois",50)}</div>
    <h3>Achat et import</h3><div className={s.params}>{N("factory","Prix usine / voiture (€)")}{N("deposit","Acompte / voiture (€)")}{N("usd","Dollar en €",0.01)}<label className={s.param}><span>Fret Le Havre (USD)</span><input type="number" value={P.freightUsd.havre} onChange={e=>setP("freightUsd",{...P.freightUsd,havre:Number(e.target.value)||0})}/></label><label className={s.param}><span>Fret Fos (USD)</span><input type="number" value={P.freightUsd.fos} onChange={e=>setP("freightUsd",{...P.freightUsd,fos:Number(e.target.value)||0})}/></label>{N("dutyPct","Douane (%)")}{N("agent","Agent en douane (€)")}{N("warehouseTransfer","Transfert vers entrepôt (€)")}{N("unload","Dépotage (€ / conteneur)")}{N("fosToMuret","Fos → Muret (€ / conteneur)")}</div>
    <h3>Délais (jours)</h3><div className={s.params}>{N("prodDays","Production")}{N("toPortDays","Jusqu’au port")}{N("seaDays","Traversée")}{N("customsDays","Douane")}{N("transferDays","Transfert au hub")}</div>
-   <h3>Ventes</h3><div className={s.params}>{N("priceTtc","Prix moyen voiture TTC")}{N("deliveryTtc","Livraison facturée TTC moyenne")}{N("deliveryCost","Coût d’une livraison (€)")}{N("safety","Stock de sécurité")}{N("oldPerWeek","Ancien stock vendu / semaine")}</div>
+   <h3>Ventes</h3><div className={s.params}>{N("priceTtc","Prix moyen voiture TTC")}{N("deliveryTtc","Livraison facturée TTC moyenne")}{N("deliveryCost","Coût d’une livraison (€)")}{N("safety","Stock de sécurité")}{N("maxPerMonth","Conteneurs max / mois")}{N("landedEstimate","Coût voiture rendue au hub (€)")}{N("oldPerWeek","Ancien stock vendu / semaine")}</div>
    <p className={s.muted}>Pense à cliquer sur « 💾 Enregistrer » en haut.</p>
   </section>:null}
  </main>;

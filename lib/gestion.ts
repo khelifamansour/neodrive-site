@@ -16,7 +16,7 @@ export type Params = {
   prodDays: number; toPortDays: number; seaDays: number; customsDays: number; transferDays: number;
   priceTtc: number; deliveryTtc: number; deliveryCost: number; costPerKm: number; carsPerTrip: number;
   forecast: number[]; safety: number; oldPerWeek: number; adsDefault: number; truckCost: number; truckCars: number;
-  havreSiteRent: number; havreSiteUnload: number;
+  havreSiteRent: number; havreSiteUnload: number; maxPerMonth: number; landedEstimate: number;
 };
 export type Gestion = { params: Params; hubs: Hub[]; lots: Lot[]; containers: Container[]; payments: Payment[]; quarters: Quarter[]; updated_at?: string };
 
@@ -26,10 +26,45 @@ export const addDays = (s: string, n: number) => { const d = new Date(s + "T12:0
 export const mondayOf = (s: string) => { const d = new Date(s + "T12:00:00"); const k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return iso(d); };
 export const fr = (s: string) => new Date(s + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 export const monthOf = (s: string) => s.slice(0, 7);
-export const quarterOf = (s: string) => { const [y, m] = s.split("-").map(Number); return `T${Math.floor((m - 1) / 3) + 1} ${y}`; };
+const MOIS = ["janv", "févr", "mars", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"];
+/** Périodes de 3 mois glissantes à partir du mois en cours (P1 = ce mois + 2 suivants). */
+export function periodOf(s: string, today = iso(new Date())) {
+  const [y0, m0] = today.split("-").map(Number), [y, m] = s.split("-").map(Number);
+  const k = Math.max(0, Math.floor(((y - y0) * 12 + (m - m0)) / 3));
+  const a = (m0 - 1 + 3 * k) % 12, b = (a + 2) % 12, ya = y0 + Math.floor((m0 - 1 + 3 * k) / 12);
+  return `P${k + 1} · ${MOIS[a]} → ${MOIS[b]} ${String(ya + (b < a ? 1 : 0)).slice(2)}`;
+}
+export const quarterOf = (s: string) => periodOf(s);
+
+/** Situation transmise le 1er novembre 2026 (modifiable dans l'outil). */
+export function situationContainers(): Container[] {
+  const C = (id: string, label: string, cars: number, port: Port, hubId: string, orderDate: string, etaHub: string | undefined, dp: boolean, bp: boolean, fp: boolean): Container =>
+    ({ id, label, cars, port, hubId, orderDate, etaHub, depositPaid: dp, balancePaid: bp, freightPaid: fp, arrivalPaid: false });
+  return [
+    C("nov-h1", "Novembre · Le Havre 1", 9, "havre", "boran", "2026-07-01", "2026-11-20", true, true, true),
+    C("nov-h2", "Novembre · Le Havre 2", 9, "havre", "boran", "2026-07-01", "2026-11-20", true, true, true),
+    C("nov-f1", "Novembre · Fos", 9, "fos", "lamasquere", "2026-07-01", "2026-11-25", true, true, true),
+    C("dec-h1", "Décembre · Le Havre 1", 9, "havre", "boran", "2026-08-01", "2026-12-15", true, true, false),
+    C("dec-h2", "Décembre · Le Havre 2", 9, "havre", "boran", "2026-08-01", "2026-12-15", true, true, false),
+    C("prod24-1", "Production 24 · lot 1 (+ 3 tricycles, 2 scooters)", 8, "havre", "boran", "2026-09-25", undefined, true, false, false),
+    C("prod24-2", "Production 24 · lot 2", 8, "havre", "boran", "2026-09-25", undefined, true, false, false),
+    C("prod24-3", "Production 24 · lot 3", 8, "fos", "lamasquere", "2026-09-25", undefined, true, false, false),
+    C("prod9", "Production 9 (prêtes courant novembre)", 9, "havre", "boran", "2026-10-01", undefined, true, false, false),
+    C("prod27-1", "Production 27 · lot 1", 9, "havre", "boran", "2026-10-20", undefined, true, false, false),
+    C("prod27-2", "Production 27 · lot 2", 9, "havre", "boran", "2026-10-20", undefined, true, false, false),
+    C("prod27-3", "Production 27 · lot 3", 9, "fos", "lamasquere", "2026-10-20", undefined, true, false, false),
+  ];
+}
+export function situationLots(): Lot[] {
+  return [
+    { id: "ancien", label: "Ancien stock (à déstocker)", qty: 10, hubId: "lamasquere", status: "ancien", priceTtc: 4290 },
+    { id: "vendues", label: "Vendues, pas encore livrées (mets le nombre)", qty: 0, hubId: "lamasquere", status: "vendu", priceTtc: 4990, deliveryDate: addDays(iso(new Date()), 7) },
+    { id: "dispo", label: "Disponibles en stock (mets le nombre)", qty: 0, hubId: "boran", status: "dispo", priceTtc: 4990 },
+  ];
+}
 
 export function defaultGestion(today = iso(new Date())): Gestion {
-  const q = (n: number) => { const d = new Date(today + "T12:00:00"); d.setMonth(d.getMonth() + 3 * n); return quarterOf(iso(d)); };
+  const q = (n: number) => { const d = new Date(today + "T12:00:00"); d.setMonth(d.getMonth() + 3 * n); return periodOf(iso(d), today); };
   return {
     params: {
       bank: 18000, cashOnHand: 25000, fixedMonthly: 2000, salaryMonthly: 0,
@@ -38,14 +73,16 @@ export function defaultGestion(today = iso(new Date())): Gestion {
       prodDays: 45, toPortDays: 10, seaDays: 54, customsDays: 2, transferDays: 10,
       priceTtc: 4990, deliveryTtc: 690, deliveryCost: 390, costPerKm: 0.65, carsPerTrip: 2,
       forecast: Array(12).fill(17), safety: 6, oldPerWeek: 3, adsDefault: 325, truckCost: 1800, truckCars: 13,
-      havreSiteRent: 600, havreSiteUnload: 300,
+      havreSiteRent: 600, havreSiteUnload: 300, maxPerMonth: 3, landedEstimate: 2500,
     },
     hubs: [
       { id: "boran", name: "Boran-sur-Oise (Nord)", rentMonthly: 0, perCarMonthly: 25, capacity: 20, transferPerCar: 150, avgDeliveryKm: 250 },
       { id: "lamasquere", name: "Lamasquère (Sud)", rentMonthly: 200, perCarMonthly: 0, capacity: 18, transferPerCar: 300, avgDeliveryKm: 300 },
     ],
-    lots: [], containers: [], payments: [],
-    quarters: [0, 1, 2, 3].map(i => ({ id: q(i), label: q(i), salesTarget: 51 + i * 6, adsMonthly: [800, 1300, 1300, 1600][i], actualSales: 0 })),
+    lots: situationLots(), containers: situationContainers(), payments: [
+      { id: "camions", label: "Solde petits camions (montant à compléter)", date: addDays(today, 14), amount: 0, done: false },
+    ],
+    quarters: [0, 1, 2, 3].map(i => ({ id: q(i), label: q(i), salesTarget: [51, 54, 60, 66][i], adsMonthly: [800, 1300, 1300, 1600][i], actualSales: 0 })),
     updated_at: new Date().toISOString(),
   };
 }
@@ -76,26 +113,29 @@ export type Week = {
   start: string; month: string; quarter: string; arrivals: number; soldForecast: number; soldOld: number; delivered: number; lost: number; stock: number;
   inflow: number; outflow: number; cash: number; lines: Record<string, number>;
 };
-export function project(g: Gestion, today = iso(new Date()), withSuggestions = true) {
+export function project(g: Gestion, today = iso(new Date()), withSuggestions = true, factor = 1) {
   const p = g.params, W = 52, start = mondayOf(today);
   const weeks = Array.from({ length: W }, (_, i) => addDays(start, i * 7));
   const idx = (d: string) => { if (d < start) return 0; const i = Math.floor((new Date(d + "T12:00:00").getTime() - new Date(start + "T12:00:00").getTime()) / (7 * 864e5)); return i < W ? i : -1; };
   const suggestions: Container[] = [];
   const leadDays = p.prodDays + p.toPortDays + p.seaDays + p.customsDays + p.transferDays;
   const dispo0 = g.lots.filter(l => l.status === "dispo").reduce((a, l) => a + l.qty, 0);
-  const forecastWeek = (i: number) => { const m = new Date(weeks[i] + "T12:00:00"); const k = (m.getFullYear() - new Date(start).getFullYear()) * 12 + m.getMonth() - new Date(start + "T12:00:00").getMonth(); return (p.forecast[Math.max(0, Math.min(11, k))] || 0) * 12 / 52; };
-  const arrivalsOf = (list: Container[]) => { const a = Array(W).fill(0); for (const c of list) { const i = idx(containerDates(p, c).hub); if (i >= 0) a[i] += c.cars; } return a; };
+  const forecastWeek = (i: number) => { const m = new Date(weeks[i] + "T12:00:00"); const k = (m.getFullYear() - new Date(start).getFullYear()) * 12 + m.getMonth() - new Date(start + "T12:00:00").getMonth(); return (p.forecast[Math.max(0, Math.min(11, k))] || 0) * factor * 12 / 52; };
+  const arrivalsOf = (list: Container[]) => { const a = Array(W).fill(0); for (const c of list) { const i = idx(c.suggested ? addDays(c.orderDate, leadDays) : containerDates(p, c).hub); if (i >= 0) a[i] += c.cars; } return a; };
 
   // Commandes suggérées : maintenir le stock de sécurité au-delà du délai d'approvisionnement
   if (withSuggestions) {
     const leadW = Math.ceil(leadDays / 7);
     for (let guard = 0; guard < 30; guard++) {
       const arr = arrivalsOf([...g.containers, ...suggestions]); let st = dispo0, carry = 0, need = -1;
-      for (let i = 0; i < W; i++) { st += arr[i]; carry += forecastWeek(i); const s = Math.min(st, Math.floor(carry)); carry -= s; st -= s; if (i >= leadW && st < p.safety) { need = i; break; } }
+      for (let i = 0; i < W; i++) { st += arr[i]; carry += forecastWeek(i); const want = Math.floor(carry); const s = Math.min(st, want); carry -= want; st -= s; if (i >= leadW && st < p.safety) { need = i; break; } }
       if (need < 0) break;
       const sud = g.hubs.find(h => h.id === "lamasquere"), port: Port = suggestions.length % 2 === 1 && sud ? "fos" : "havre";
-      const order = addDays(weeks[need], -leadDays);
-      suggestions.push({ id: `S${guard}`, label: `Commande suggérée ${guard + 1}`, cars: 9, port, hubId: port === "fos" ? "lamasquere" : "boran", orderDate: order < today ? today : order, depositPaid: false, balancePaid: false, freightPaid: false, arrivalPaid: false, suggested: true });
+      let order = addDays(weeks[need], -leadDays); if (order < today) order = today;
+      // pas plus de N conteneurs commandés le même mois
+      while (suggestions.filter(x => monthOf(x.orderDate) === monthOf(order)).length >= p.maxPerMonth) order = addDays(order.slice(0, 7) + "-01", 32).slice(0, 7) + "-01";
+      if (idx(addDays(order, leadDays)) < 0) break;
+      suggestions.push({ id: `S${guard}`, label: `Commande suggérée ${guard + 1}`, cars: 9, port, hubId: port === "fos" ? "lamasquere" : "boran", orderDate: order, depositPaid: false, balancePaid: false, freightPaid: false, arrivalPaid: false, suggested: true });
     }
   }
 
@@ -126,7 +166,7 @@ export function project(g: Gestion, today = iso(new Date()), withSuggestions = t
     const wk = weeks[i], month = monthOf(wk), lines = { ...ev[i] };
     if (month !== prevMonth || i === 0) {
       // début de mois : charges, pub, stockage, TVA du mois précédent
-      const q = g.quarters.find(x => x.id === quarterOf(wk));
+      const q = g.quarters.find(x => x.id === periodOf(wk, today));
       lines["Charges fixes"] = -(p.fixedMonthly); if (p.salaryMonthly) lines["Ton salaire"] = -p.salaryMonthly;
       lines["Publicité"] = -(q?.adsMonthly ?? p.adsDefault);
       lines["Stockage hubs"] = -(g.hubs.reduce((a, h) => a + h.rentMonthly, 0) + stock * (g.hubs.reduce((a, h) => a + h.perCarMonthly, 0) / Math.max(1, g.hubs.length)));
@@ -144,12 +184,12 @@ export function project(g: Gestion, today = iso(new Date()), withSuggestions = t
     vatMonth += salesTtc / 6 - importVat[i];
     const inflow = Object.values(lines).filter(v => v > 0).reduce((a, v) => a + v, 0), outflow = Object.values(lines).filter(v => v < 0).reduce((a, v) => a + v, 0);
     cash += inflow + outflow;
-    rows.push({ start: wk, month, quarter: quarterOf(wk), arrivals: arr[i], soldForecast: s, soldOld: so, delivered, lost, stock, inflow, outflow, cash, lines });
+    rows.push({ start: wk, month, quarter: periodOf(wk, today), arrivals: arr[i], soldForecast: s, soldOld: so, delivered, lost, stock, inflow, outflow, cash, lines });
   }
   const min = rows.reduce((a, r) => r.cash < a.cash ? r : a, rows[0]);
   const quarters = Array.from(new Set(rows.map(r => r.quarter))).map(qid => {
     const rr = rows.filter(r => r.quarter === qid);
-    return { id: qid, sold: rr.reduce((a, r) => a + r.delivered, 0), arrivals: rr.reduce((a, r) => a + r.arrivals, 0), inflow: rr.reduce((a, r) => a + r.inflow, 0), outflow: rr.reduce((a, r) => a + r.outflow, 0), endCash: rr[rr.length - 1].cash, minCash: Math.min(...rr.map(r => r.cash)), lost: rr.reduce((a, r) => a + r.lost, 0), orders: suggestions.filter(s => quarterOf(s.orderDate) === qid).length + g.containers.filter(c => quarterOf(c.orderDate) === qid && c.orderDate >= today).length };
+    return { id: qid, sold: rr.reduce((a, r) => a + r.delivered, 0), arrivals: rr.reduce((a, r) => a + r.arrivals, 0), inflow: rr.reduce((a, r) => a + r.inflow, 0), outflow: rr.reduce((a, r) => a + r.outflow, 0), endCash: rr[rr.length - 1].cash, minCash: Math.min(...rr.map(r => r.cash)), lost: rr.reduce((a, r) => a + r.lost, 0), orders: suggestions.filter(s => periodOf(s.orderDate, today) === qid).length + g.containers.filter(c => periodOf(c.orderDate, today) === qid && c.orderDate >= today).length, orderList: [...suggestions, ...g.containers.filter(c => c.orderDate >= today)].filter(s => periodOf(s.orderDate, today) === qid) };
   });
   return { rows, min, quarters, suggestions, leadDays };
 }
