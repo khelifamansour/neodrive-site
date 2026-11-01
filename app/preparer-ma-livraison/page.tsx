@@ -1,5 +1,8 @@
 "use client";
+import { useState } from "react";
 import s from "./livraison.module.css";
+
+const RIB: [string, string][] = [["Bénéficiaire", "MK HOLDING"], ["IBAN", "FR76 2823 3000 0142 1307 1051 008"], ["BIC", "REVOFRP2"]];
 
 const WHATSAPP = "https://wa.me/33628261446?text=" + encodeURIComponent("Bonjour, j’ai une question sur la livraison de ma NeoDrive.");
 
@@ -13,6 +16,8 @@ const DRIVE = [
 ];
 
 export default function PreparerLivraison() {
+  const [copied, setCopied] = useState("");
+  const copy = async (k: string, v: string) => { try { await navigator.clipboard.writeText(v.replace(/ /g, k === "IBAN" ? "" : " ")); setCopied(k); setTimeout(() => setCopied(""), 1500); } catch { /* ignore */ } };
   return (
     <main className={s.page}>
       {/* HERO */}
@@ -53,7 +58,11 @@ export default function PreparerLivraison() {
           <p>Le règlement se fait <b>par virement instantané le jour de la livraison</b>. Pour éviter que votre banque ne bloque le paiement (beaucoup de banques déclenchent une sécurité sur les virements importants), faites ces 3 choses <b>avant</b> le jour J :</p>
         </div>
         <div className={s.payGrid}>
-          <article><span>A</span><h3>Enregistrez notre RIB</h3><p>Ajoutez le RIB de NeoDrive comme bénéficiaire dans votre application bancaire. L’ajout d’un bénéficiaire peut prendre jusqu’à 24 à 72 h selon les banques : faites-le dès maintenant.</p><small>🔒 Le titulaire du compte est <b>MK HOLDING SAS (NeoDrive)</b>. En cas de doute sur un RIB, appelez-nous avant de payer.</small></article>
+          <article><span>A</span><h3>Enregistrez notre RIB</h3><p>Ajoutez NeoDrive comme bénéficiaire dans votre application bancaire. L’ajout d’un bénéficiaire peut prendre jusqu’à 24 à 72 h selon les banques : faites-le dès maintenant.</p>
+            <div className={s.rib}>
+              {RIB.map(([label, value]) => <div key={label}><small>{label}</small><b>{value}</b><button type="button" onClick={() => copy(label, value)}>{copied === label ? "✓ Copié" : "Copier"}</button></div>)}
+            </div>
+            <small>🔒 Ce sont nos seules coordonnées bancaires. Nous ne vous enverrons jamais un autre RIB par SMS ou e-mail : en cas de doute, appelez-nous avant de payer.</small></article>
           <article><span>B</span><h3>Augmentez votre plafond de virement instantané</h3><p>Montez-le <b>au moins au prix total de votre véhicule</b>, idéalement un peu au-dessus, pour être tranquille.</p></article>
           <article><span>C</span><h3>Prévenez votre banquier</h3><p>Dites-lui que vous allez régler l’achat d’un véhicule à la livraison. Vérifiez avec lui <b>les dates de validité</b> de l’augmentation de plafond : elle est souvent temporaire (quelques jours seulement).</p></article>
         </div>
