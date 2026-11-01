@@ -110,8 +110,17 @@ export default function PreparerLivraison() {
       {/* ÉTAPE 4 — CARTE GRISE */}
       <section className={s.card}>
         <header className={s.head}><span className={s.num}>4</span><div><h2>La carte grise</h2><p>Juste après la livraison.</p></div></header>
-        <p className={s.text}>Le livreur vous remet le <b>certificat de conformité (COC)</b> du véhicule. Rendez-vous ensuite dans la section <b>Carte grise / contrat</b> de notre site pour faire votre demande. Préparez :</p>
-        <div className={s.docs}><span>🪪 Carte d’identité</span><span>🏠 Justificatif de domicile (moins de 6 mois)</span><span>📄 Certificat de conformité (COC)</span><span>🎓 Permis AM ou BSR si vous en avez un</span></div>
+        <p className={s.text}>À la livraison, le livreur vous remet le <b>COC</b> de votre NeoDrive. Gardez-le précieusement : c’est grâce à lui que vous ferez votre carte grise.</p>
+        <div className={s.coc}>
+          <span>📄</span>
+          <div>
+            <strong>Le COC, c’est quoi ?</strong>
+            <p>C’est <b>la « carte d’identité » de votre véhicule</b>, délivrée à sa production. Ce document <b>original</b> indique notamment son <b>numéro de châssis</b> et ses caractéristiques. Son nom officiel est « certificat de conformité ».</p>
+            <p>👉 C’est le document indispensable pour faire la carte grise : sans lui, la demande n’est pas possible.</p>
+          </div>
+        </div>
+        <p className={s.text}>Rendez-vous ensuite dans la section <b>Carte grise / contrat</b> de notre site pour faire votre demande. Préparez :</p>
+        <div className={s.docs}><span>🪪 Votre pièce d’identité</span><span>🏠 Justificatif de domicile (moins de 6 mois)</span><span>📄 Le COC original (la carte d’identité du véhicule)</span><span>🎓 Permis AM ou BSR si vous en avez un</span></div>
         <a className={s.btnDark} href="/reservation">Faire ma demande de carte grise</a>
       </section>
 
