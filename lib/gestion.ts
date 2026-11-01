@@ -178,18 +178,18 @@ export function project(g: Gestion, today = iso(new Date()), withSuggestions = t
   const add = (d: string, k: string, v: number) => { const i = idx(d); if (i >= 0 && v) ev[i][k] = (ev[i][k] || 0) + v; };
   const importVat = Array(W).fill(0);
   for (const c of all) {
-    const d = containerDates(p, c), k = containerCosts(p, g.hubs, c), tag = c.suggested ? " (suggérées)" : "";
-    if (!c.depositPaid) add(c.orderDate, "Acomptes usine" + tag, -k.deposit);
-    if (!c.balancePaid) add(d.prodEnd, "Soldes usine" + tag, -k.balance);
-    if (!c.freightPaid) add(d.freightDue, "Fret maritime" + tag, -k.freight);
+    const d = containerDates(p, c), k = containerCosts(p, g.hubs, c), name = c.suggested ? "nouvelle commande conseillée" : c.label.replace(/\s*\(.*\)$/, "");
+    if (!c.depositPaid) add(c.orderDate, `Acompte usine · ${name}`, -k.deposit);
+    if (!c.balancePaid) add(d.prodEnd, `Solde usine · ${name}`, -k.balance);
+    if (!c.freightPaid) add(d.freightDue, `Fret maritime · ${name}`, -k.freight);
     if (!c.arrivalPaid) {
       // TVA à l'importation : autoliquidée (déclarée et déduite sur la même déclaration) → aucun décaissement
-      add(d.arrivalPay, "Droits de douane (10 %)", -k.duty); add(d.arrivalPay, "Agent en douane", -p.agent);
-      for (const [lab, v] of logisticsDetail(p, g.hubs, c)) add(d.arrivalPay, lab, -v);
+      add(d.arrivalPay, `Douane + agent · ${name}`, -(k.duty + p.agent));
+      add(d.arrivalPay, `Dépotage + transport routier · ${name}`, -k.log);
     }
   }
   for (const x of g.payments) if (!x.done) add(x.date, x.label, x.amount);
-  for (const l of g.lots) if (l.status === "vendu" && !l.paid) add(l.deliveryDate || addDays(today, 7), "Voitures vendues, livrées et encaissées", l.qty * (l.priceTtc + p.deliveryTtc));
+  for (const l of g.lots) if (l.status === "vendu" && !l.paid) add(l.deliveryDate || addDays(today, 7), `Livraison et encaissement · ${l.qty} voiture${l.qty > 1 ? "s" : ""}${l.client ? " (" + l.client + ")" : ""}`, l.qty * (l.priceTtc + p.deliveryTtc));
 
   const arr = arrivalsOf(all);
   let stock = dispo0, old = g.lots.filter(l => l.status === "ancien").reduce((a, l) => a + l.qty, 0);
@@ -215,7 +215,7 @@ export function project(g: Gestion, today = iso(new Date()), withSuggestions = t
     if (so) lines["Déstockage ancien stock"] = so * (oldPrice + p.deliveryTtc);
     const delivered = s + so + soldDelivered(i);
     if (delivered) lines["Livraisons clients"] = -delivered * p.deliveryCost;
-    const salesTtc = Object.entries(lines).filter(([k, v]) => v > 0 && /Ventes|Déstockage|vendues/.test(k)).reduce((a, [, v]) => a + v, 0);
+    const salesTtc = Object.entries(lines).filter(([k, v]) => v > 0 && /Ventes|Déstockage|encaissement/.test(k)).reduce((a, [, v]) => a + v, 0);
     vatMonth += salesTtc / 6 - importVat[i];
     const inflow = Object.values(lines).filter(v => v > 0).reduce((a, v) => a + v, 0), outflow = Object.values(lines).filter(v => v < 0).reduce((a, v) => a + v, 0);
     cash += inflow + outflow;
@@ -302,10 +302,15 @@ function summarize(r: Proj, plan: Container[], real: Container[], p: Params, fro
   const orders = all.filter(c => c.orderDate >= from && c.orderDate < to && c.orderDate >= iso(new Date(Date.now() - 864e5)));
   const enCours = all.filter(c => c.orderDate < to && containerDates(p, c).hub >= to);
   const sold = rows.reduce((a, x) => a + x.delivered, 0);
-  const tasks: { date: string; text: string; amount?: number }[] = [];
-  for (const x of rows) for (const [k, v] of Object.entries(x.lines)) if (v < 0 && !/Livraisons|Stockage|Publicité|Charges|salaire|TVA collectée/.test(k)) tasks.push({ date: x.start, text: `Payer : ${k}`, amount: v });
-  for (const o of orders) tasks.push({ date: o.orderDate, text: `Commander ${o.cars} voitures (${o.port === "fos" ? "Fos → Sud" : "Le Havre → Nord"}) — acompte ${Math.round(o.cars * p.deposit)} €` });
-  for (const x of rows) if (x.arrivals) tasks.push({ date: x.start, text: `Réceptionner ${x.arrivals} voitures au hub et prévenir les clients en attente` });
+  type Task = { date: string; kind: "payer" | "recevoir" | "livrer" | "commander" | "vendre"; text: string; amount?: number };
+  const tasks: Task[] = [];
+  for (const x of rows) for (const [k, v] of Object.entries(x.lines)) {
+    if (v < 0 && /usine|Fret|Douane|Dépotage/.test(k) && !/conseillée/.test(k)) tasks.push({ date: x.start, kind: "payer", text: k, amount: v });
+    if (v > 0 && /encaissement/.test(k)) tasks.push({ date: x.start, kind: "livrer", text: k, amount: v });
+    if (v > 0 && /Déstockage/.test(k)) tasks.push({ date: x.start, kind: "vendre", text: "Vendre l’ancien stock (déstockage)", amount: v });
+  }
+  for (const o of orders) tasks.push({ date: o.orderDate, kind: "commander", text: `Commander ${o.cars} voitures — ${o.port === "fos" ? "port de Fos, pour le Sud" : "port du Havre, pour le Nord"}`, amount: -o.cars * p.deposit });
+  for (const c of all) { const h = containerDates(p, c).hub; if (h >= from && h < to) tasks.push({ date: h, kind: "recevoir", text: `Arrivée au hub : ${c.suggested ? "commande conseillée" : c.label.replace(/\s*\(.*\)$/, "")} (${c.cars} voitures) — prévenir les clients en attente` }); }
   tasks.sort((a, b) => a.date.localeCompare(b.date));
   return {
     from, to, months, orders, enCours, sold, arrivals: rows.reduce((a, x) => a + x.arrivals, 0), lost: rows.reduce((a, x) => a + x.lost, 0),

@@ -2,7 +2,7 @@
 import {useMemo,useState} from "react";
 import s from "../planificateur/planif.module.css";
 import p from "./pilotage.module.css";
-import {DEFAULT_CHANNELS,DEFAULT_DEALERS,FREIGHT_SCEN,MARKET,channelSales,containerDates,decide,fr,optimize,type Container,type Gestion} from "../../lib/gestion";
+import {DEFAULT_CHANNELS,DEFAULT_DEALERS,FREIGHT_SCEN,MARKET,channelSales,containerCosts,containerDates,decide,fr,optimize,type Container,type Gestion} from "../../lib/gestion";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
 const SALES:[string,string][]=[["défavorable","🌧️ Défavorable"],["probable","⛅ Probable"],["favorable","☀️ Favorable"]];
@@ -47,12 +47,27 @@ export default function Decision({d,upd,today,addC}:{d:Gestion;upd:(f:(x:Gestion
   </div>
   {S.orders.length?<ul className={s.mini}>{S.orders.map(o=><li key={o.id}><span><b>{fr(o.orderDate)}</b> · {o.cars} voitures · {o.port==="fos"?"Fos → Sud":"Le Havre → Nord"} · au hub ≈ {fr(containerDates(P,o).hub)}</span>{d.containers.some(c=>c.id===o.id)?<span>✔︎</span>:<button title="Ajouter à mes conteneurs" onClick={()=>addC(o)}>＋</button>}</li>)}</ul>:null}
 
-  {view!=="year"?<><h3>✅ Tâches {view==="month"?"du mois":"des 3 prochains mois"}</h3>
-   <ul className={p.tasks}>{S.tasks.slice(0,view==="month"?20:40).map((t,i)=><li key={i}><span>{fr(t.date)}</span><div>{t.text}</div>{t.amount?<b className={p.red}>{eur(t.amount)}</b>:null}</li>)}
-    {ch.filter(c=>c.budget>0).map(c=><li key={c.id}><span>chaque mois</span><div>📣 {c.name} : {eur(c.budget)}{c.id==="lbc"?` (≈ ${Math.round(c.budget*2/120)} annonces avec remontée en ligne)`:""}</div></li>)}
-    {dl.count?<li><span>ce mois</span><div>🤝 Animer {dl.count} points de vente : stock de démonstration, commission {eur(dl.commission)} par vente</div></li>:null}
-   </ul></>:null}
+  <h3>💳 Ce qu’il reste à payer, conteneur par conteneur</h3>
+  <p className={s.muted}>Seulement ce qui n’est pas encore payé (cases cochées dans 🚢 Conteneurs). La TVA d’import n’est pas comptée : elle est autoliquidée.</p>
+  <div className={s.tableWrap}><table className={p.table}><thead><tr><th>Conteneur</th><th>Usine</th><th>Fret maritime</th><th>Douane + agent</th><th>Dépotage + routier</th><th>Total</th><th>Arrivée hub</th></tr></thead><tbody>
+   {(()=>{const rows=d.containers.filter(c=>containerDates(P,c).hub>=today||!c.arrivalPaid).map(c=>{const k=containerCosts(P,d.hubs,c);const u=(c.depositPaid?0:k.deposit)+(c.balancePaid?0:k.balance),f=c.freightPaid?0:k.freight,du=c.arrivalPaid?0:k.duty+P.agent,lo=c.arrivalPaid?0:k.log;return {c,u,f,du,lo,tot:u+f+du+lo};}).filter(x=>x.tot>0);
+    const T=(k:"u"|"f"|"du"|"lo"|"tot")=>rows.reduce((a,x)=>a+x[k],0);
+    return <>{rows.map(x=><tr key={x.c.id}><td><b>{x.c.label.replace(/\s*\(.*\)$/,"")}</b><small> · {x.c.cars} voit.</small></td><td>{x.u?eur(x.u):"✔︎ payé"}</td><td>{x.f?eur(x.f):"✔︎ payé"}</td><td>{eur(x.du)}</td><td>{eur(x.lo)}</td><td><b>{eur(x.tot)}</b></td><td>{fr(containerDates(P,x.c).hub)}</td></tr>)}
+     <tr className={s.tot}><td>Total</td><td>{eur(T("u"))}</td><td>{eur(T("f"))}</td><td>{eur(T("du"))}</td><td>{eur(T("lo"))}</td><td>{eur(T("tot"))}</td><td></td></tr></>;})()}
+  </tbody></table></div>
 
+  {view!=="year"?<><h3>✅ À faire {view==="month"?"ce mois-ci":"les 3 prochains mois"}, semaine par semaine</h3>
+   {(()=>{const ICON:Record<string,string>={payer:"💳",recevoir:"🚢",livrer:"🚗",commander:"🛒",vendre:"🏷️"};const wk=(x:string)=>{const dt=new Date(x+"T12:00:00");dt.setDate(dt.getDate()-((dt.getDay()+6)%7));return dt.toISOString().slice(0,10);};
+    const groups=new Map<string,typeof S.tasks>();for(const t of S.tasks){const k=wk(t.date);groups.set(k,[...(groups.get(k)||[]),t]);}
+    return [...groups.entries()].map(([w,ts])=>{const out=ts.filter(t=>(t.amount||0)<0).reduce((a,t)=>a+(t.amount||0),0),inn=ts.filter(t=>(t.amount||0)>0).reduce((a,t)=>a+(t.amount||0),0);return <div key={w} className={p.week}>
+     <div className={p.weekHead}><b>Semaine du {fr(w)}</b><span>{inn?<span className={s.okTxt}>+{eur(inn)} </span>:null}{out?<span className={p.red}>{eur(out)}</span>:null}</span></div>
+     <ul className={p.tasks}>{ts.map((t,i)=><li key={i}><span>{ICON[t.kind]}</span><div>{t.text}</div>{t.amount?<b className={t.amount<0?p.red:s.okTxt}>{t.amount>0?"+":""}{eur(t.amount)}</b>:null}</li>)}</ul>
+    </div>;});})()}
+   <div className={p.week}><div className={p.weekHead}><b>Chaque mois</b></div><ul className={p.tasks}>
+    {ch.filter(c=>c.budget>0).map(c=><li key={c.id}><span>📣</span><div>{c.name} : {eur(c.budget)}{c.id==="lbc"?` (≈ ${Math.round(c.budget*2/120)} annonces avec remontée en ligne)`:""}</div></li>)}
+    {dl.count?<li><span>🤝</span><div>Animer {dl.count} points de vente : voiture de démonstration, commission {eur(dl.commission)} par vente</div></li>:null}
+    <li><span>📊</span><div>Mettre à jour le stock, les conteneurs payés et les ventes réelles dans l’outil</div></li>
+   </ul></div></>:null}
   <h3>📣 Marketing : où mettre l’argent</h3>
   <div className={s.tableWrap}><table className={p.table}><thead><tr><th>Canal</th><th>Budget / mois</th><th>Ventes / mois</th><th>Coût par vente</th></tr></thead><tbody>
    <tr><td><b>Bouche-à-oreille, site, Google naturel</b><small> base sans pub</small></td><td>—</td><td>{Math.round(r.sm.organic)}</td><td>0 €</td></tr>
