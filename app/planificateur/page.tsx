@@ -1,13 +1,18 @@
 "use client";
 import {useEffect,useState} from "react";
 import s from "./planif.module.css";
-import {TRAILERS,DEFAULT_PARAMS,FUELS,planRoute,estimateKm,computeCosts,mapsUrl,type Hub,type PlanClient,type PlanTour,type CostParams} from "../../lib/planif";
+import TourMap from "./TourMap";
+import {departmentFromPostalCode,deliveryPriceForDepartment} from "../../lib/neodrive-pricing";
+import {TRAILERS,DEFAULT_PARAMS,FUELS,splitTrips,type Stop,planRoute,estimateKm,computeCosts,mapsUrl,type Hub,type PlanClient,type PlanTour,type CostParams} from "../../lib/planif";
 import {waNumber} from "../../lib/sav";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
 const STATUS:Record<PlanClient["status"],string>={a_planifier:"À planifier",planifie:"Planifié",livre:"Livré"};
 const SITE="https://www.easydrive-auto.fr";const PREP=SITE+"/preparer-ma-livraison";
 const recLink=(c:PlanClient)=>`${SITE}/reception?id=${encodeURIComponent(c.id)}&t=${c.token||""}`;
+const nav=(p:Stop)=>`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving`;
+const waze=(p:Stop)=>`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`;
+const billed=(c:PlanClient)=>{const d=departmentFromPostalCode(c.code_postal);return d?deliveryPriceForDepartment(d)||0:0;};
 const hm=(h:number)=>`${Math.floor(h)} h ${String(Math.round((h%1)*60)).padStart(2,"0")}`;
 
 export default function Planificateur(){
@@ -49,12 +54,14 @@ export default function Planificateur(){
   const chosen=clients.filter(c=>t.clientIds.includes(c.id)&&c.status!=="livre");if(!chosen.length)throw new Error("Ajoutez des clients à la tournée.");
   // stock disponible = stock actuel (les tournées déjà validées l'ont déjà déduit)
   const {stops,unserved}=planRoute(hubs,t.hubId,t.trailer,chosen);
-  let km=estimateKm(stops),hours=km/72,precise=false;
-  try{const coords=stops.map(p=>`${p.lng.toFixed(5)},${p.lat.toFixed(5)}`).join(";");const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`).then(x=>x.json());if(r?.routes?.[0]){km=r.routes[0].distance/1000;hours=(r.routes[0].duration/3600)*1.2;precise=true;}}catch{/* estimation */}
+  let km=estimateKm(stops),hours=km/72,precise=false;let path:[number,number][]|undefined;
+  try{const coords=stops.map(p=>`${p.lng.toFixed(5)},${p.lat.toFixed(5)}`).join(";");const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=simplified&geometries=geojson`).then(x=>x.json());const rt=r?.routes?.[0];if(rt){km=rt.distance/1000;hours=(rt.duration/3600)*1.2;precise=true;
+   rt.legs?.forEach((l:{distance:number;duration:number},i:number)=>{stops[i+1].legKm=Math.round(l.distance/1000);stops[i+1].legH=Math.round(l.duration/360*1.2)/10;});
+   const g:[number,number][]=(rt.geometry?.coordinates||[]).map((c:number[])=>[+c[1].toFixed(4),+c[0].toFixed(4)]);const step=Math.max(1,Math.ceil(g.length/400));path=g.filter((_,k)=>k%step===0||k===g.length-1);}}catch{/* estimation */}
   hours+=(stops.length-1)*0.5;
   const costs=computeCosts(km,hours,params);
   const warning=unserved.length?`Stock insuffisant : ${unserved.length} client${unserved.length>1?"s":""} non livrable${unserved.length>1?"s":""} (${unserved.map(c=>c.nom).join(", ")}). Ajoutez du stock dans un hub.`:"";
-  return {stops,km:Math.round(km),hours:Math.round(hours*10)/10,precise,costs,params,warning};
+  return {stops,path,km:Math.round(km),hours:Math.round(hours*10)/10,precise,costs,params,warning};
  };
  const calculate=(t:PlanTour)=>run("calc-"+t.id,async()=>{patch(t,await compute(t));});
  /** Proposition automatique : tous les clients à planifier, une remorque de 2, départ Lamasquère, recharges au hub le plus avantageux. */
@@ -68,7 +75,7 @@ export default function Planificateur(){
  });
  const validate=(t:PlanTour)=>{if(!t.stops)return;saveTour({...t,status:"valide"},`✅ ${t.name} validée : le stock des hubs est mis à jour.`);};
  const removeTour=(t:PlanTour)=>{if(confirm(`Supprimer ${t.name} ? Ses clients repassent « à planifier »${t.status==="valide"?" et le stock est restitué":""}.`))run("del",async()=>{await api({action:"delete_tour",id:t.id});await load();});};
- const roadmap=(t:PlanTour)=>`${t.name} — ${new Date(t.date).toLocaleDateString("fr-FR")}${t.driver?` · ${t.driver}`:""}\n\n`+(t.stops||[]).map((p,i)=>`${i+1}. ${p.kind==="depot"?"📦":"🚗"} ${p.name} — ${p.action}${p.kind==="client"?`\n   ${p.label}${p.phone?` · ${p.phone}`:""}`:""}`).join("\n")+`\n\nItinéraire : ${mapsUrl(t.stops||[])}`;
+ const roadmap=(t:PlanTour)=>`${t.name} — ${new Date(t.date).toLocaleDateString("fr-FR")}${t.driver?` · ${t.driver}`:""}\n\n`+splitTrips(t.stops||[]).map(v=>`━━ VOYAGE ${v.n} ━━\n📦 ${v.hub.name} : ${v.hub.action}\n   ${nav(v.hub)}\n`+v.clients.map(p=>`🚗 ${p.name}\n   📞 ${p.phone||"—"}\n   📍 ${p.label}\n   ${nav(p)}`).join("\n")+(v.next?`\n➡️ Ensuite : ${v.next.name}${v.next.legKm?` (${v.next.legKm} km)`:""}`:"")).join("\n\n")+`\n\nItinéraire : ${mapsUrl(t.stops||[])}`;
  const copy=(t:PlanTour)=>navigator.clipboard?.writeText(roadmap(t)).then(()=>setMsg("✅ Feuille de route copiée : collez-la dans WhatsApp pour le livreur."));
  const setFuel=(f:CostParams["fuel"])=>{const d=FUELS.find(x=>x.id===f)!;setParams(p=>({...p,fuel:f,consumption:d.conso,fuelPrice:Math.round((live?.[f]||d.price)*1000)/1000}));};
  const P=(k:keyof CostParams,label:string,step=0.01)=><label className={s.param}><span>{label}</span><input type="number" step={step} value={params[k] as number} onChange={e=>setParams(p=>({...p,[k]:Number(e.target.value)||0}))}/></label>;
@@ -129,7 +136,21 @@ export default function Planificateur(){
      {t.stops&&t.costs?<>
       <div className={s.kpis}><div><small>Distance</small><b>{t.km} km</b></div><div><small>Durée</small><b>{hm(t.hours||0)}</b></div><div><small>Jours</small><b>{t.costs.days}</b></div><div><small>Coût total</small><b>{eur(t.costs.total)}</b></div></div>
       <p className={s.muted}>{t.precise?"Distances routières réelles, durée majorée de 20 % (remorque, pauses) + 30 min par arrêt.":"Distances estimées : le calcul routier n’a pas répondu."}</p>
-      <ol className={s.stops}>{t.stops.map((p,i)=><li key={i} className={p.kind==="depot"?s.depot:""}><b>{i+1}</b><div><strong>{p.kind==="depot"?"📦 ":"🚗 "}{p.name}</strong><small>{p.action}{p.kind==="client"?` · ${p.label}`:""}</small><small>Voitures à bord après l’arrêt : {p.load}</small></div></li>)}</ol>
+      <TourMap stops={t.stops} path={t.path}/>
+      <p className={s.muted}>Trait plein : livraisons avec voitures à bord · pointillés : trajet remorque vide vers le hub suivant · chiffres : ordre des clients.</p>
+      {(()=>{let n=0;const trips=splitTrips(t.stops);return <div className={s.trips}>{trips.map(v=><section key={v.n} className={s.trip} style={{borderColor:v.color}}>
+       <header style={{background:v.color}}><b>Voyage {v.n}</b><span>{Math.round(v.km)} km</span></header>
+       <div className={s.hubStop}><span>📦</span><div><strong>{v.hub.name}</strong><small>{v.hub.action}</small></div><a href={nav(v.hub)} target="_blank" rel="noreferrer">🧭 Y aller</a></div>
+       {v.clients.map(p=>{n++;const c=clients.find(x=>x.id===p.id);return <div key={p.id} className={s.stopCard}>
+        <div className={s.stopTop}><b className={s.num} style={{background:v.color}}>{n}</b><div><h3>{p.name}</h3>{p.legKm?<small>{p.legKm} km depuis l’arrêt précédent{p.legH?` · ${hm(p.legH)}`:""}</small>:null}</div></div>
+        {p.phone?<a className={s.phone} href={`tel:${p.phone.replace(/\s/g,"")}`}>📞 {p.phone}</a>:<p className={s.muted}>Pas de téléphone</p>}
+        <p className={s.addr}>📍 {p.label}</p>
+        <p className={s.muted}>{p.action}{c?.note?` · 📝 ${c.note}`:""}</p>
+        <div className={s.navBtns}><a href={nav(p)} target="_blank" rel="noreferrer">🧭 Google Maps</a><a href={waze(p)} target="_blank" rel="noreferrer">🚙 Waze</a>{c?.telephone&&!c.received_at?<a href={`https://wa.me/${waNumber(c.telephone)}?text=${encodeURIComponent(`Bonjour ${c.prenom}, merci d’avoir reçu votre NeoDrive ! Pouvez-vous confirmer la réception ici (1 minute) : ${recLink(c)}`)}`} target="_blank" rel="noreferrer">🧾 Accusé</a>:null}</div>
+        {c?.received_at?<p className={s.okTxt}>✅ Réception signée</p>:null}
+       </div>})}
+       {v.next?<p className={s.after}>➡️ Ensuite : <b>{v.next.id===v.hub.id?"retour à ":""}{v.next.name}</b>{v.next.legKm?` · ${v.next.legKm} km remorque vide`:""}{v.next.action==="Retour au hub"?" (fin de tournée)":` pour ${v.next.action.toLowerCase()}`}</p>:null}
+      </section>)}</div>;})()}
       {!locked?<><div className={s.seg}><button className={params.mode==="carte"?s.on:""} onClick={()=>setParams(p=>({...p,mode:"carte"}))}>Carte NeoDrive</button><button className={params.mode==="remboursement"?s.on:""} onClick={()=>setParams(p=>({...p,mode:"remboursement"}))}>Remboursement sur tickets</button></div>
       <label className={s.field}><span>Véhicule tracteur : Dacia Duster — carburant</span><select value={params.fuel} onChange={e=>setFuel(e.target.value as CostParams["fuel"])}>{FUELS.map(f=><option key={f.id} value={f.id}>{f.label}{live?.[f.id]?` · ${live[f.id].toFixed(3)} €/L aujourd’hui`:""}</option>)}</select></label>
       <p className={s.muted}>{live?"Prix moyen national du jour (données officielles prix-carburants.gouv.fr). ":"Prix du jour indisponible : prix par défaut. "}Consommation majorée pour la remorque chargée.</p>
@@ -144,6 +165,14 @@ export default function Planificateur(){
        <tr className={s.tot}><td>Coût total</td><td>{eur(t.costs.total)}</td></tr>
        <tr className={s.pay}><td>À verser au livreur {t.params?.mode==="remboursement"?"(tout, sur justificatifs)":"(carburant et péages payés par la carte)"}</td><td>{eur(t.costs.payDriver)}</td></tr>
       </tbody></table>
+      {(()=>{const tc2=clients.filter(c=>t.clientIds.includes(c.id));const fac=tc2.reduce((a,c)=>a+billed(c),0);const trips=splitTrips(t.stops);const empty=trips.reduce((a,v)=>a+v.emptyKm,0);const cars=t.stops.filter(x=>x.kind==="client").length;const res=fac-(t.costs?.total||0);return <div className={s.biz}>
+       <div><small>Livraison facturée aux clients</small><b>{eur(fac)}</b></div>
+       <div><small>Coût de la tournée</small><b>{eur(t.costs?.total||0)}</b></div>
+       <div className={res>=0?s.pos:s.neg}><small>Résultat transport</small><b>{res>=0?"+":""}{eur(res)}</b></div>
+       <div><small>Coût par voiture livrée</small><b>{eur((t.costs?.total||0)/Math.max(1,cars))}</b></div>
+       <div><small>Km remorque vide</small><b>{Math.round(empty)} km · {Math.round(100*empty/Math.max(1,t.km||1))} %</b></div>
+       <div><small>Voyages (chargements)</small><b>{trips.length}</b></div>
+      </div>;})()}
       <p className={s.tip}>🛡️ Carburant attendu : environ <b>{Math.round(t.costs.liters)} L</b>. Un écart de plus de 15 % avec les tickets ou la carte mérite une explication.</p>
       <div className={s.btns}><a className={s.ghost} href={mapsUrl(t.stops)} target="_blank" rel="noreferrer">🗺️ Google Maps</a><button className={s.ghost} onClick={()=>copy(t)}>📋 Feuille de route</button></div>
       {!locked?<button className={s.primary} disabled={!!busy||!!t.warning} onClick={()=>validate(t)}>Valider la tournée (déduit le stock)</button>:null}

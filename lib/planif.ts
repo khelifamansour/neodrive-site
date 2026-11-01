@@ -10,7 +10,7 @@ export type PlanClient = Point & {
   status: "a_planifier" | "planifie" | "livre"; tour_id?: string | null; note?: string;
   token?: string; received_at?: string; received_by?: string; reception_note?: string;
 };
-export type Stop = { kind: "depot" | "client"; id: string; name: string; label: string; lat: number; lng: number; load: number; loaded?: number; action: string; phone?: string };
+export type Stop = { kind: "depot" | "client"; id: string; name: string; label: string; lat: number; lng: number; load: number; loaded?: number; action: string; phone?: string; address?: string; legKm?: number; legH?: number };
 export type Fuel = "gazole" | "e10" | "sp95" | "e85" | "gpl";
 export const FUELS: { id: Fuel; label: string; conso: number; price: number }[] = [
   { id: "gazole", label: "Gazole (Duster dCi)", conso: 13, price: 1.65 },
@@ -25,7 +25,7 @@ export type PlanTour = {
   id: string; name: string; created_at: string; date: string; driver: string;
   hubId: string; trailer: number; clientIds: string[];
   status: "brouillon" | "valide" | "termine";
-  stops?: Stop[]; km?: number; hours?: number; precise?: boolean; costs?: Costs; params?: CostParams; warning?: string;
+  stops?: Stop[]; path?: [number, number][]; km?: number; hours?: number; precise?: boolean; costs?: Costs; params?: CostParams; warning?: string;
 };
 
 export const DEFAULT_HUBS: Hub[] = [
@@ -66,7 +66,7 @@ function decode(hubs: Hub[], start: Hub, trailer: number, seq: PlanClient[]) {
       stops.push({ kind: "depot", id: best.id, name: best.name, label: best.name, lat: best.lat, lng: best.lng, load, loaded: n, action: `Recharger ${n} voiture${n > 1 ? "s" : ""}` });
     }
     load -= 1; km += roadKm(pos, c); pos = c; i++;
-    stops.push({ kind: "client", id: c.id, name: `${c.prenom} ${c.nom}`.trim(), label: `${c.adresse ? c.adresse + ", " : ""}${c.code_postal} ${c.ville}`, lat: c.lat, lng: c.lng, load, action: `Livrer ${c.modele || "NeoDrive"}`, phone: c.telephone });
+    stops.push({ kind: "client", id: c.id, name: `${c.prenom} ${c.nom}`.trim(), label: `${c.adresse ? c.adresse + ", " : ""}${c.code_postal} ${c.ville}`, address: `${c.adresse ? c.adresse + ", " : ""}${c.code_postal} ${c.ville}`, lat: c.lat, lng: c.lng, load, action: `Livrer ${c.modele || "NeoDrive"}${c.couleur ? " " + c.couleur : ""}`, phone: c.telephone });
   }
   km += roadKm(pos, start);
   stops.push({ kind: "depot", id: start.id, name: start.name, label: start.name, lat: start.lat, lng: start.lng, load, action: "Retour au hub" });
@@ -93,8 +93,34 @@ export function planRoute(hubs: Hub[], startId: string, trailer: number, clients
       const sm = score(mv); if (sm < best - 0.5) { seq = mv; best = sm; improved = true; }
     }
   }
+  // quelques départs différents pour éviter un mauvais choix local
+  if (seq.length >= 4 && seq.length <= 30) {
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let r = 0; r < 12; r++) {
+      let s = [...seq].sort(() => rnd() - 0.5), sb = score(s), imp = true, g = 0;
+      while (imp && g++ < 100) { imp = false; for (let a = 0; a < s.length - 1; a++) for (let z = a + 1; z < s.length; z++) {
+        const rev = [...s.slice(0, a), ...s.slice(a, z + 1).reverse(), ...s.slice(z + 1)]; const sr = score(rev); if (sr < sb - 0.5) { s = rev; sb = sr; imp = true; continue; }
+        const mv = [...s]; const [x] = mv.splice(a, 1); mv.splice(z, 0, x); const sm = score(mv); if (sm < sb - 0.5) { s = mv; sb = sm; imp = true; } } }
+      if (sb < best - 0.5) { seq = s; best = sb; }
+    }
+  }
   const d = decode(hubs, start, trailer, seq);
   return { stops: d.stops, unserved: d.unserved, stockAfter: d.stock };
+}
+
+/** Découpe la tournée en voyages : un chargement au hub puis les livraisons qui suivent. */
+export type Trip = { n: number; color: string; hub: Stop; clients: Stop[]; next: Stop | null; km: number; emptyKm: number };
+export const TRIP_COLORS = ["#e8592a", "#2563eb", "#16a34a", "#9333ea", "#db2777", "#0891b2", "#ca8a04", "#4b5563"];
+export function splitTrips(stops: Stop[]): Trip[] {
+  const trips: Trip[] = [];
+  stops.forEach((s, i) => {
+    const leg = i > 0 ? (s.legKm ?? roadKm(stops[i - 1], s)) : 0;
+    const cur = trips[trips.length - 1];
+    if (s.kind === "client") { if (cur) { cur.clients.push(s); cur.km += leg; } return; }
+    if (cur) { cur.next = s; cur.km += leg; cur.emptyKm += leg; }
+    if (i < stops.length - 1) trips.push({ n: trips.length + 1, color: TRIP_COLORS[trips.length % TRIP_COLORS.length], hub: s, clients: [], next: null, km: 0, emptyKm: 0 });
+  });
+  return trips;
 }
 
 export function estimateKm(stops: Stop[]) {
