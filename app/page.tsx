@@ -96,7 +96,7 @@ export default function Home() {
             <h3>Confort Plus+</h3>
             <p className="cardPrice">5 990 € TTC</p>
             <p className="cardText">Pour ceux qui veulent plus d’autonomie et une expérience plus complète.</p>
-            <div className="infoBox"><strong>⚡ Plus+</strong><span>Lithium, charge rapide et autonomie renforcée</span></div>
+            <div className="infoBox"><strong>⚡ Plus+</strong><span>Charge rapide et autonomie renforcée</span></div>
             <ul>
               <li>Pack Confort inclus</li>
               <li>Charge rapide</li>
