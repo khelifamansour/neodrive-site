@@ -137,7 +137,7 @@ export default function Produit() {
         <div className={styles.heading}><span className={styles.eyebrow}>CHOISISSEZ VOTRE VERSION</span><h2>Un prix clair. Des équipements selon vos besoins.</h2></div>
         <div className={styles.versionGrid}>
           <article><span>VERSION ESSENTIELLE</span><h3>3 990 € TTC</h3><p>Pour aller à l’essentiel avec une voiture électrique neuve.</p><ul><li>Véhicule électrique neuf</li><li>Batterie incluse</li><li>Chargeur 220 V inclus</li><li>Deux places</li></ul></article>
-          <article className={styles.comfort}><span>VERSION CONFORT</span><h3>5 490 € TTC</h3><p>Davantage d’équipements pour une utilisation quotidienne plus agréable.</p><ul><li>Caméra et aide au stationnement</li><li>Chauffage et ventilation de toit</li><li>Autoradio, Bluetooth et USB</li><li>Alarme antivol et assistance en côte</li></ul></article>
+          <article className={styles.comfort}><span>VERSION CONFORT</span><h3>4 990 € TTC</h3><p>Davantage d’équipements pour une utilisation quotidienne plus agréable.</p><ul><li>Caméra et aide au stationnement</li><li>Chauffage et ventilation de toit</li><li>Autoradio, Bluetooth et USB</li><li>Alarme antivol et assistance en côte</li></ul></article>
         </div>
       </section>
 

@@ -29,7 +29,7 @@ export default function GuideVoitureSansPermis() {
       </p>
 
       <p>
-        Avec une version Essentiel dès 3 990 € TTC et une version Confort à 5 490 € TTC, NeoDrive se positionne
+        Avec une version Essentiel dès 3 990 € TTC et une version Confort à 4 990 € TTC, NeoDrive se positionne
         comme une solution très compétitive pour les clients qui veulent devenir propriétaires sans payer le prix
         habituel d’une voiture sans permis neuve.
       </p>
@@ -147,7 +147,7 @@ export default function GuideVoitureSansPermis() {
       <p>
         Notre positionnement est volontairement agressif : rendre la voiture sans permis électrique accessible
         au plus grand nombre. C’est pour cela que nous proposons une version Essentiel dès 3 990 € TTC et une
-        version Confort à 5 490 € TTC.
+        version Confort à 4 990 € TTC.
       </p>
 
       <h2>À qui s’adresse NeoDrive ?</h2>

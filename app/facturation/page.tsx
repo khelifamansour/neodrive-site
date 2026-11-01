@@ -11,11 +11,11 @@ const versions = {
   },
   confort: {
     label: "VSP Version Confort",
-    prix: 5490,
+    prix: 4990,
   },
   confortPlus: {
     label: "VSP Version Confort Plus+",
-    prix: 6490,
+    prix: 5990,
   },
 } as const;
 
@@ -299,11 +299,11 @@ export default function Facturation() {
           </option>
 
           <option value="confort">
-            Version Confort — 5 490 € TTC
+            Version Confort — 4 990 € TTC
           </option>
 
           <option value="confortPlus">
-            Version Confort Plus+ — 6 490 € TTC
+            Version Confort Plus+ — 5 990 € TTC
           </option>
         </select>
 

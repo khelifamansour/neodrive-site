@@ -84,7 +84,7 @@ export default function Page() {
           Commencez par demander un prix TTC clair et la liste de ce qui est inclus. Le bon comparatif n’est pas seulement « véhicule A contre véhicule B » : il faut regarder la préparation, les équipements, la livraison éventuelle, les documents fournis et les services associés.
         </p>
         <p>
-          Au 1er novembre 2026, NeoDrive affiche publiquement trois versions à 3 990 € TTC, 5 490 € TTC et 6 490 € TTC. Ces tarifs pouvant évoluer, vérifiez toujours la page produit au moment de votre achat.
+          Au 22 août 2026, NeoDrive affiche publiquement trois versions à 3 990 € TTC, 4 990 € TTC et 5 990 € TTC. Ces tarifs pouvant évoluer, vérifiez toujours la page produit au moment de votre achat.
         </p>
         <p><a href="/produit">Voir les versions et tarifs NeoDrive actuels →</a></p>
 

@@ -1,8 +1,8 @@
 /** Barème central NeoDrive : ne jamais inventer un prix pour un code postal non vérifié. */
 export const VEHICLES = {
   essentielle: { label: "NeoDrive Essentielle", price: 3990 },
-  confort: { label: "NeoDrive Confort", price: 5490 },
-  confortPlus: { label: "NeoDrive Confort Plus", price: 6490 },
+  confort: { label: "NeoDrive Confort", price: 4990 },
+  confortPlus: { label: "NeoDrive Confort Plus", price: 5990 },
 } as const;
 export type VehicleKey = keyof typeof VEHICLES;
 export const REGISTRATION_PRICE = 150;
