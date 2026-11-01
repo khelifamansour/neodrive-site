@@ -114,6 +114,7 @@ export default function PilotagePage(){
   </section>:null}
 
   {tab==="stock"?<section className={s.card}>
+   <p className={s.tip}>Situation du 1er novembre : 7 voitures à livrer (≈ 5 500 € TTC), 10 d’ancien stock, 12 conteneurs (fret déjà payé pour novembre, à payer pour décembre), 18 000 € sur le compte + 27 000 € à l’extérieur. <button className={s.small} onClick={()=>{if(confirm("Remplacer le stock, les conteneurs et la trésorerie par la situation du 1er novembre ?"))upd(x=>({...x,containers:situationContainers(),lots:situationLots(),params:{...x.params,bank:18000,cashOnHand:27000}}));}}>Recharger cette situation</button></p>
    <div className={s.rowHead}><h2>🚗 Stock</h2><button className={s.small} onClick={()=>upd(x=>({...x,lots:[...x.lots,{id:uid(),label:"NeoDrive Confort",qty:1,hubId:x.hubs[0]?.id||"",status:"dispo",priceTtc:P.priceTtc}]}))}>＋ Ajouter</button></div>
    <p className={s.muted}>Une ligne = un lot de voitures identiques au même endroit. « Vendue, à livrer » : l’argent rentre à la date de livraison (sauf si déjà encaissé). « Ancien stock » : vendu au rythme de {P.oldPerWeek}/semaine au prix indiqué.</p>
    {d.lots.map(l=><article key={l.id} className={p.route}>

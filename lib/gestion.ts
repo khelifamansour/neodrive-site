@@ -63,11 +63,11 @@ export function situationContainers(): Container[] {
   const C = (id: string, label: string, cars: number, port: Port, hubId: string, orderDate: string, etaHub: string | undefined, dp: boolean, bp: boolean, fp: boolean): Container =>
     ({ id, label, cars, port, hubId, orderDate, etaHub, depositPaid: dp, balancePaid: bp, freightPaid: fp, arrivalPaid: false });
   return [
-    C("nov-h1", "Novembre · Le Havre 1", 9, "havre", "boran", "2026-07-01", "2026-11-20", true, true, true),
-    C("nov-h2", "Novembre · Le Havre 2", 9, "havre", "boran", "2026-07-01", "2026-11-20", true, true, true),
-    C("nov-f1", "Novembre · Fos", 9, "fos", "lamasquere", "2026-07-01", "2026-11-25", true, true, true),
-    C("dec-h1", "Décembre · Le Havre 1", 9, "havre", "boran", "2026-08-01", "2026-12-15", true, true, false),
-    C("dec-h2", "Décembre · Le Havre 2", 9, "havre", "boran", "2026-08-01", "2026-12-15", true, true, false),
+    C("nov-h1", "Novembre · Le Havre 1 (fret payé, reste douane + dépotage + transferts)", 9, "havre", "boran", "2026-07-01", "2026-11-14", true, true, true),
+    C("nov-h2", "Novembre · Le Havre 2 (fret payé, reste douane + dépotage + transferts)", 9, "havre", "boran", "2026-07-01", "2026-11-24", true, true, true),
+    C("nov-f1", "Novembre · Fos (fret payé, reste douane + dépotage + transport)", 9, "fos", "lamasquere", "2026-07-01", "2026-11-28", true, true, true),
+    C("dec-h1", "Décembre · Le Havre 1 (voitures payées, reste fret + douane + dépotage)", 9, "havre", "boran", "2026-08-01", "2026-12-08", true, true, false),
+    C("dec-h2", "Décembre · Le Havre 2 (voitures payées, reste fret + douane + dépotage)", 9, "havre", "boran", "2026-08-01", "2026-12-20", true, true, false),
     C("prod24-1", "Production 24 · lot 1 (+ 3 tricycles, 2 scooters)", 8, "havre", "boran", "2026-09-25", undefined, true, false, false),
     C("prod24-2", "Production 24 · lot 2", 8, "havre", "boran", "2026-09-25", undefined, true, false, false),
     C("prod24-3", "Production 24 · lot 3", 8, "fos", "lamasquere", "2026-09-25", undefined, true, false, false),
@@ -80,7 +80,8 @@ export function situationContainers(): Container[] {
 export function situationLots(): Lot[] {
   return [
     { id: "ancien", label: "Ancien stock (à déstocker)", qty: 10, hubId: "lamasquere", status: "ancien", priceTtc: 4290 },
-    { id: "vendues", label: "Vendues, pas encore livrées (mets le nombre)", qty: 0, hubId: "lamasquere", status: "vendu", priceTtc: 4990, deliveryDate: addDays(iso(new Date()), 7) },
+    { id: "stock7a", label: "En stock, à livrer (≈ 5 500 € TTC livrée) — 1re vague", qty: 4, hubId: "lamasquere", status: "vendu", priceTtc: 4810, deliveryDate: "2026-11-09" },
+    { id: "stock7b", label: "En stock, à livrer (≈ 5 500 € TTC livrée) — 2e vague", qty: 3, hubId: "boran", status: "vendu", priceTtc: 4810, deliveryDate: "2026-11-16" },
     { id: "dispo", label: "Disponibles en stock (mets le nombre)", qty: 0, hubId: "boran", status: "dispo", priceTtc: 4990 },
   ];
 }
@@ -89,7 +90,7 @@ export function defaultGestion(today = iso(new Date())): Gestion {
   const q = (n: number) => { const d = new Date(today + "T12:00:00"); d.setMonth(d.getMonth() + 3 * n); return periodOf(iso(d), today); };
   return {
     params: {
-      bank: 18000, cashOnHand: 25000, fixedMonthly: 2000, salaryMonthly: 0,
+      bank: 18000, cashOnHand: 27000, fixedMonthly: 2000, salaryMonthly: 0,
       factory: 1540, deposit: 500, usd: 0.86, dutyPct: 10, agent: 200, freightUsd: { havre: 5000, fos: 6000 },
       warehouseTransfer: 400, unload: 830, fosToMuret: 1350,
       prodDays: 45, toPortDays: 10, seaDays: 54, customsDays: 2, transferDays: 10,
