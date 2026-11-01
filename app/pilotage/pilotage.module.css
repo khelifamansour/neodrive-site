@@ -1,0 +1,21 @@
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.summary>div{background:#fff;border:1px solid #ece6dd;border-radius:16px;padding:12px;display:grid;gap:2px}
+.summary small{color:#7a8594;font-weight:700;font-size:12px}.summary b{font-size:20px}.summary span{color:#7a8594;font-size:12.5px}
+.good{border-color:#bbf7d0!important;background:#f0fdf4!important}.warn{border-color:#fde68a!important;background:#fffbeb!important}.bad{border-color:#fecaca!important;background:#fef2f2!important}.bad b{color:#b42318}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-top:14px;padding-bottom:2px}.tabs button{flex:none;padding:10px 14px;border:1px solid #ddd;background:#fff;border-radius:999px;font-weight:800;font-size:14px}.tabs .on{background:#16202e;color:#fff;border-color:#16202e}
+.saveOn{background:#e8592a!important;color:#fff!important;border-color:#e8592a!important}
+.route{border:1px solid #e5e7eb;border-radius:16px;padding:14px;display:grid;gap:10px}.best{border:2px solid #16a34a;background:#f7fef9}
+.tag{font-size:12px;font-weight:900;color:#067647;background:#dcfce7;padding:4px 9px;border-radius:999px}
+.costLine{display:flex;flex-wrap:wrap;gap:6px}.costLine span{background:#f3f4f6;border-radius:8px;padding:5px 8px;font-size:13px;font-weight:700}
+.bigLine{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}.bigLine b{font-size:22px;text-align:right}.bigLine span{color:#435063;font-weight:700}
+.red{color:#b42318!important;font-weight:800}
+.water{border:1px solid #eee;border-radius:14px;overflow:hidden}.water>div{display:flex;justify-content:space-between;padding:9px 12px;border-top:1px solid #f1f1f1;font-size:14.5px}.water>div:first-child{border-top:0}.total{background:#ecfdf3;color:#067647;font-weight:900}
+.sugs{display:grid;gap:8px}.sug,.sugNow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;border-radius:14px;border:1px solid #e5e7eb}.sugNow{border:2px solid #dc2626;background:#fef2f2}
+.sug small,.sugNow small{display:block;color:#5b6573;font-size:13px;margin-top:2px}
+.table{width:100%;min-width:560px;border-collapse:collapse;font-size:14px}.table th{font-size:12px;color:#7a8594;text-align:center;padding:6px;border-bottom:2px solid #16202e}.table td{text-align:center;padding:6px;border-bottom:1px solid #eee}.table td:first-child,.table th:first-child{text-align:left}
+.mini{width:64px!important;padding:6px!important;text-align:center}
+.bars{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;align-items:end;height:150px}.barCol{display:grid;grid-template-rows:1fr auto;height:100%;gap:4px;text-align:center}.barCol small{font-size:10px;color:#7a8594}
+.barBox{display:flex;align-items:flex-end;justify-content:center;height:100%}.barBox i{display:block;width:70%;border-radius:6px 6px 0 0}
+.months{display:grid;gap:6px}.month{border:1px solid #eee;border-radius:12px;padding:10px 12px}.month summary{display:grid;grid-template-columns:70px 1fr 1fr auto;gap:8px;align-items:center;cursor:pointer;font-size:14px}
+.month ul{list-style:none;margin:10px 0 6px;padding:0;display:grid;gap:4px}.month li{display:flex;justify-content:space-between;font-size:13.5px}
+@media(max-width:640px){.summary{grid-template-columns:1fr 1fr}.summary b{font-size:17px}.month summary{grid-template-columns:56px 1fr 1fr auto;font-size:12.5px}}
