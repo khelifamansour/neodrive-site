@@ -92,9 +92,9 @@ export default function PreparerLivraison() {
       {/* ÉTAPE 4 — CARTE GRISE */}
       <section className={s.card}>
         <header className={s.head}><span className={s.num}>4</span><div><h2>La carte grise</h2><p>Juste après la livraison.</p></div></header>
-        <p className={s.text}>Le livreur vous remet le <b>certificat de conformité (COC)</b> du véhicule. Rendez-vous ensuite dans la section <b>Carte grise</b> de notre site pour faire votre demande. Préparez :</p>
+        <p className={s.text}>Le livreur vous remet le <b>certificat de conformité (COC)</b> du véhicule. Rendez-vous ensuite dans la section <b>Carte grise / contrat</b> de notre site pour faire votre demande. Préparez :</p>
         <div className={s.docs}><span>🪪 Carte d’identité</span><span>🏠 Justificatif de domicile (moins de 6 mois)</span><span>📄 Certificat de conformité (COC)</span><span>🎓 Permis AM ou BSR si vous en avez un</span></div>
-        <a className={s.btnDark} href="/carte-grise">Faire ma demande de carte grise</a>
+        <a className={s.btnDark} href="/reservation">Faire ma demande de carte grise</a>
       </section>
 
       {/* AIDE */}
