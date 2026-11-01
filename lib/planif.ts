@@ -48,63 +48,53 @@ export function haversineKm(a: Point, b: Point) {
 /** Distance routière approximative (vol d'oiseau × 1,3). */
 export const roadKm = (a: Point, b: Point) => haversineKm(a, b) * 1.3;
 
-/**
- * Ordre de tournée avec stock : départ du hub choisi (chargé selon remorque et stock),
- * livraison du client le plus proche, recharge au hub ayant du stock qui coûte le moins de détour,
- * retour au hub de départ. Les clients non livrables (plus de stock) sont signalés.
- */
-export function planRoute(hubs: Hub[], startId: string, trailer: number, clients: PlanClient[]) {
+/** Transforme un ordre de clients en tournée : recharge au hub le plus avantageux quand la remorque est vide. */
+function decode(hubs: Hub[], start: Hub, trailer: number, seq: PlanClient[]) {
   const stock: Record<string, number> = Object.fromEntries(hubs.map(h => [h.id, Math.max(0, h.stock)]));
-  const start = hubs.find(h => h.id === startId) || hubs[0];
   const stops: Stop[] = [];
-  const left = [...clients];
-  let pos: Point = start, load = 0;
-  const take = (h: Hub) => { const n = Math.min(trailer - load, stock[h.id], left.length); stock[h.id] -= n; load += n; return n; };
+  let pos: Point = start, load = 0, km = 0, i = 0;
+  const take = (h: Hub) => { const n = Math.min(trailer - load, stock[h.id], seq.length - i); stock[h.id] -= n; load += n; return n; };
   const first = take(start);
   stops.push({ kind: "depot", id: start.id, name: start.name, label: start.name, lat: start.lat, lng: start.lng, load, loaded: first, action: first ? `Charger ${first} voiture${first > 1 ? "s" : ""}` : "Départ (aucun stock ici)" });
-  while (left.length) {
+  while (i < seq.length) {
+    const c = seq[i];
     if (load === 0) {
       let best: Hub | null = null, bestCost = Infinity;
-      for (const h of hubs) {
-        if (stock[h.id] <= 0) continue;
-        const next = Math.min(...left.map(c => roadKm(h, c)));
-        const cost = roadKm(pos, h) + next;
-        if (cost < bestCost) { bestCost = cost; best = h; }
-      }
-      if (!best) break; // plus de stock nulle part
-      const n = take(best);
+      for (const h of hubs) { if (stock[h.id] <= 0) continue; const cost = roadKm(pos, h) + roadKm(h, c); if (cost < bestCost) { bestCost = cost; best = h; } }
+      if (!best) break;
+      const n = take(best); km += roadKm(pos, best); pos = best;
       stops.push({ kind: "depot", id: best.id, name: best.name, label: best.name, lat: best.lat, lng: best.lng, load, loaded: n, action: `Recharger ${n} voiture${n > 1 ? "s" : ""}` });
-      pos = best;
     }
-    let bi = 0;
-    for (let i = 1; i < left.length; i++) if (roadKm(pos, left[i]) < roadKm(pos, left[bi])) bi = i;
-    const c = left.splice(bi, 1)[0];
-    load -= 1;
+    load -= 1; km += roadKm(pos, c); pos = c; i++;
     stops.push({ kind: "client", id: c.id, name: `${c.prenom} ${c.nom}`.trim(), label: `${c.adresse ? c.adresse + ", " : ""}${c.code_postal} ${c.ville}`, lat: c.lat, lng: c.lng, load, action: `Livrer ${c.modele || "NeoDrive"}`, phone: c.telephone });
-    pos = c;
   }
+  km += roadKm(pos, start);
   stops.push({ kind: "depot", id: start.id, name: start.name, label: start.name, lat: start.lat, lng: start.lng, load, action: "Retour au hub" });
-  return { stops: improveRoute(stops), unserved: left, stockAfter: stock };
+  return { stops, km, unserved: seq.slice(i), stock };
 }
 
-/** Améliore l'ordre des clients entre deux passages en hub (2-opt), sans changer les chargements. */
-export function improveRoute(stops: Stop[]): Stop[] {
-  const out = [...stops];
-  let i = 0;
-  while (i < out.length) {
-    if (out[i].kind !== "depot") { i++; continue; }
-    let j = i + 1; while (j < out.length && out[j].kind === "client") j++;
-    // segment de clients : out[i+1 .. j-1], bornes out[i] et out[j]
-    if (j < out.length && j - i - 1 >= 2) {
-      let seg = out.slice(i + 1, j), better = true;
-      const len = (s: Stop[]) => { let k = roadKm(out[i], s[0]) + roadKm(s[s.length - 1], out[j]); for (let q = 1; q < s.length; q++) k += roadKm(s[q - 1], s[q]); return k; };
-      while (better) { better = false; for (let a = 0; a < seg.length - 1; a++) for (let z = a + 1; z < seg.length; z++) { const cand = [...seg.slice(0, a), ...seg.slice(a, z + 1).reverse(), ...seg.slice(z + 1)]; if (len(cand) < len(seg) - 0.5) { seg = cand; better = true; } } }
-      let load = out[i].load; seg = seg.map(s => ({ ...s, load: --load }));
-      out.splice(i + 1, seg.length, ...seg);
+/**
+ * Tournée optimisée avec stock : départ du hub choisi, recharges au hub le plus avantageux
+ * (retour au hub ou autre hub), retour au départ. Teste de nombreux ordres (inversions + déplacements)
+ * et garde le plus court. Les clients non livrables (plus de stock) sont signalés.
+ */
+export function planRoute(hubs: Hub[], startId: string, trailer: number, clients: PlanClient[]) {
+  const start = hubs.find(h => h.id === startId) || hubs[0];
+  const left = [...clients]; let seq: PlanClient[] = []; let pos: Point = start;
+  while (left.length) { let bi = 0; for (let k = 1; k < left.length; k++) if (roadKm(pos, left[k]) < roadKm(pos, left[bi])) bi = k; pos = left[bi]; seq.push(left.splice(bi, 1)[0]); }
+  const score = (s: PlanClient[]) => { const d = decode(hubs, start, trailer, s); return d.km + d.unserved.length * 1e6; };
+  let best = score(seq), improved = true, guard = 0;
+  while (improved && guard++ < 200) {
+    improved = false;
+    for (let a = 0; a < seq.length - 1; a++) for (let z = a + 1; z < seq.length; z++) {
+      const rev = [...seq.slice(0, a), ...seq.slice(a, z + 1).reverse(), ...seq.slice(z + 1)];
+      const sr = score(rev); if (sr < best - 0.5) { seq = rev; best = sr; improved = true; continue; }
+      const mv = [...seq]; const [x] = mv.splice(a, 1); mv.splice(z, 0, x);
+      const sm = score(mv); if (sm < best - 0.5) { seq = mv; best = sm; improved = true; }
     }
-    i = j;
   }
-  return out;
+  const d = decode(hubs, start, trailer, seq);
+  return { stops: d.stops, unserved: d.unserved, stockAfter: d.stock };
 }
 
 export function estimateKm(stops: Stop[]) {
