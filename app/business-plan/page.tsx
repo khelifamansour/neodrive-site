@@ -6,18 +6,19 @@ import type {Params} from "../../lib/gestion";
 import {CATS,businessPlan,type Product,type Sourcing} from "../../lib/sourcing";
 import Simulateur,{type Slot} from "./Simulateur";
 import Marches from "./Marches";
+import Decisions,{type OppState} from "./Decisions";
 import type {SimCfg} from "../../lib/simulator";
 import {DEFAULT_PLAN,FILLERS,FILLER_RULES,MOATS,fillerMargin,fillerTotals,moatScore,runPlan,type PlanCfg} from "../../lib/businessplan";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
-type Tab="simu"|"marches"|"plan"|"pourquoi"|"remplir"|"produits";
+type Tab="decider"|"simu"|"marches"|"plan"|"pourquoi"|"remplir"|"produits";
 const TOOLS:[string,string][]=[["/pilotage","🧠 Pilotage (trésorerie, conteneurs)"],["/tournee","🚚 Tournées"],["/sourcing","🔎 Sourcing"]];
 function Dots({n}:{n:number}){return <span style={{letterSpacing:2}}>{"●".repeat(n)}<span style={{opacity:.2}}>{"●".repeat(5-n)}</span></span>;}
 
 export default function BusinessPlanPage(){
  const [code,setCode]=useState("");const [authed,setAuthed]=useState(false);
  const [d,setD]=useState<Sourcing|null>(null);const [P,setP]=useState<Params|null>(null);
- const [tab,setTab]=useState<Tab>("simu");const [busy,setBusy]=useState("");const [msg,setMsg]=useState("");const [dirty,setDirty]=useState(false);
+ const [tab,setTab]=useState<Tab>("decider");const [busy,setBusy]=useState("");const [msg,setMsg]=useState("");const [dirty,setDirty]=useState(false);
  const api=async(body:object,pc=code)=>{const r=await fetch("/api/sourcing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:pc,...body})});const j=await r.json().catch(()=>({ok:false,error:"Erreur"}));if(r.status===401)setAuthed(false);if(!j.ok)throw new Error(j.error||"Erreur");return j;};
  const load=async(pc=code)=>{setBusy("load");setMsg("");try{const j=await api({action:"load"},pc);setD(j.data);setP(j.params);setAuthed(true);try{sessionStorage.setItem("nd_pc",pc)}catch{}}catch(e){setMsg((e as Error).message)}finally{setBusy("")}};
  const save=async()=>{if(!d)return;setBusy("save");try{const j=await api({action:"save",data:d});setD(j.data);setDirty(false);setMsg("✅ Enregistré.");}catch(e){setMsg((e as Error).message)}finally{setBusy("")}};
@@ -45,8 +46,9 @@ export default function BusinessPlanPage(){
   <header className={s.top}><div><h1>Business plan NeoDrive</h1><p>Stratégie sur 3 ans · relie Pilotage, Tournées et Sourcing</p></div><div className={s.topBtns}><button onClick={save} disabled={!dirty||!!busy}>{busy==="save"?"…":dirty?"💾 Enregistrer":"✓ Enregistré"}</button></div></header>
   <div className={c.filters} style={{marginTop:10}}>{TOOLS.map(([h,l])=><a key={h} href={h} className={c.chip} style={{textDecoration:"none",padding:"8px 12px"}}>{l}</a>)}</div>
   {msg?<p className={msg.startsWith("✅")?s.ok:s.err}>{msg}</p>:null}
-  <nav className={c.tabs}>{([["simu","🎲 Simulateur"],["marches","🌍 Marchés"],["plan","📘 Business plan"],["pourquoi","🧱 Pourquoi ça marche"],["remplir","📦 Remplir les conteneurs"],["produits","➕ Produits du plan"]] as [Tab,string][]).map(([k,l])=><button key={k} className={tab===k?c.on:""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
+  <nav className={c.tabs}>{([["decider","🏁 Décider"],["simu","🎲 Simulateur"],["marches","🌍 Marchés"],["plan","📘 Business plan"],["pourquoi","🧱 Pourquoi ça marche"],["remplir","📦 Remplir les conteneurs"],["produits","➕ Produits du plan"]] as [Tab,string][]).map(([k,l])=><button key={k} className={tab===k?c.on:""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
 
+  {tab==="decider"?<Decisions state={((d.plan as {opp?:OppState})?.opp)||{}} onChange={opp=>{setD(x=>x?{...x,plan:{...((x.plan as object)||{}),opp}}:x);setDirty(true);setMsg("");}}/>:null}
   {tab==="simu"?<Simulateur P={P} sim={((d.plan as {sim?:Partial<SimCfg>})?.sim)||{}} slots={((d.plan as {slots?:Slot[]})?.slots)||[]} onChange={(sim,slots)=>{setD(x=>x?{...x,plan:{...cfg,...((x.plan as object)||{}),sim,slots}}:x);setDirty(true);setMsg("");}}/>:null}
   {tab==="marches"?<Marches/>:null}
   {tab==="plan"?<section className={s.card}>
