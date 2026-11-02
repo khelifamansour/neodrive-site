@@ -56,7 +56,7 @@ export const CRITS: [CritKey, string, string][] = [
 export const DEFAULT_WEIGHTS: Weights = { arbitrage: 3, marge: 3, remorque: 2, leboncoin: 2, homolog: 3, permis: 1, sav: 2, treso: 2, rotation: 2, recurrent: 1 };
 export type Hyp = { port: Port; marketingPerSale: number; storagePerUnit: number; transporteur: number };
 export const DEFAULT_HYP: Hyp = { port: "havre", marketingPerSale: 150, storagePerUnit: 50, transporteur: 350 };
-export type Sourcing = { suppliers: Supplier[]; products: Product[]; weights: Weights; hyp: Hyp; removed: string[]; updated_at?: string };
+export type Sourcing = { suppliers: Supplier[]; products: Product[]; weights: Weights; hyp: Hyp; removed: string[]; plan?: unknown; updated_at?: string };
 
 const S = (id: string, name: string, city: string, stand: string, cats: Cat[], o: Partial<Supplier> = {}): Supplier =>
   ({ id, name, city, fair: "EICMA 2026 (Milan)", stand, website: "", email: "", whatsapp: "", phone: "", contact: "", cats, status: "etudier", notes: "", nextDate: "", sources: "", verified: false, ...o });
@@ -202,7 +202,7 @@ export function mergeSeed(d: Partial<Sourcing> | null): Sourcing {
     // Une fiche que tu n'as jamais modifiée est remplacée par la version la plus récente de la recherche.
     suppliers: [...sup.map(x => x.touched ? x : seed.suppliers.find(y => y.id === x.id) || x), ...seed.suppliers.filter(x => !removed.includes(x.id) && !sup.some(y => y.id === x.id))],
     products: [...prod.map(x => x.touched ? x : seed.products.find(y => y.id === x.id) || x), ...seed.products.filter(x => !removed.includes(x.id) && !prod.some(y => y.id === x.id))],
-    weights: { ...DEFAULT_WEIGHTS, ...(d.weights || {}) }, hyp: { ...DEFAULT_HYP, ...(d.hyp || {}) }, removed, updated_at: d.updated_at,
+    weights: { ...DEFAULT_WEIGHTS, ...(d.weights || {}) }, hyp: { ...DEFAULT_HYP, ...(d.hyp || {}) }, removed, plan: d.plan, updated_at: d.updated_at,
   };
 }
 
