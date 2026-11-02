@@ -113,6 +113,18 @@ export const TREE_OPPS: TreeOpp[] = [
     price: 10500, cost: 8500, fixedMonth: 300, fullInvest: 50000, testInvest: 20000, pOk: 0.85,
     demand: { low: L(0.55, 0.0003), mid: L(0.35, 0.001), high: L(0.1, 0.002) }, pWar: 0.3, warCut: 0.2, salvage: 0.8, signal: 0.7, delayMonths: 6,
     evidence: ["Solis 21 % des espaces verts ; ≈ 8 900 € HT contre 16 800 € pour Kubota", "Marques déjà représentées → marge distributeur plus faible"] },
+  { id: "foodtruck", pAD: 0.05, name: "🍔 Remorques food-truck homologuées", marketUnits: 800, marketSrc: "≈ 800 remorques/an (ESTIMATION : 600–700 food-trucks actifs + snacks de marché/événementiel ; ventes annuelles non publiées)",
+    price: 14500, cost: 8500, fixedMonth: 200, fullInvest: 40000, testInvest: 9000, pOk: 0.5,
+    demand: { low: L(0.5, 0.01), mid: L(0.35, 0.03), high: L(0.15, 0.06) }, pWar: 0.2, warCut: 0.15, salvage: 0.7, signal: 0.75, delayMonths: 6,
+    evidence: ["France : remorque neuve 3–4 m 15 000–25 000 €, équipée jusqu’à 50 000 € (HelloPro)", "Chine : 1 500–5 900 $ FOB (CE annoncé à vérifier) ; remorque basique avec COC revendue 4 800 € en Europe", "Barrière = COC ou réception à titre isolé en DREAL + carte grise VASP « magasin » : TON métier", "Beau Comme Un Camion : 3,5 M€ de CA, > 500 véhicules livrés"] },
+  { id: "padel", pAD: 0.05, name: "🎾 Structures de terrains de padel (clubs, campings)", marketUnits: 828, marketSrc: "≈ 828 terrains construits en 2024 (estimation de blog) ; 3 200 terrains en France en 2025, +311 % depuis 2020 (FFT)",
+    price: 22000, cost: 16000, fixedMonth: 300, fullInvest: 50000, testInvest: 20000, pOk: 0.6,
+    demand: { low: L(0.5, 0.005), mid: L(0.35, 0.015), high: L(0.15, 0.03) }, pWar: 0.3, warCut: 0.2, salvage: 0.75, signal: 0.7, delayMonths: 6,
+    evidence: ["France : piste seule 18 000–30 000 € ; clé en main 60–70 k€", "Chine : panoramique 6 300–9 800 $ le set (affiché)", "Prêt à taux zéro FFT « Boost padel » : projets de 4 terrains minimum, cahier des charges + note de calcul", "Pose sous-traitée + garantie décennale probable (inclus dans le coût)"] },
+  { id: "minipelle", pAD: 0.1, name: "🦺 Mini-pelles 1–2 t « conformes 2027 »", marketUnits: 12000, marketSrc: "≈ 12 000 mini-pelles/an en France (Environnement Magazine, non daté)",
+    price: 5500, cost: 4000, fixedMonth: 200, fullInvest: 30000, testInvest: 9000, pOk: 0.55,
+    demand: { low: L(0.55, 0.001), mid: L(0.35, 0.003), high: L(0.1, 0.006) }, pWar: 0.5, warCut: 0.3, salvage: 0.75, signal: 0.7, delayMonths: 6,
+    evidence: ["Kubota U10-3 ≈ 14 500 € HT ; chinoise Kingway 11 008 € HT en Allemagne ; 1 t ≈ 1 850–1 900 $ FOB", "Marché déjà encombré (IMX, CZN, Pelle-Import) : guerre des prix", "Règlement machines 2023/1230 au 20/01/2027 + Stage V : avantage aux importateurs conformes"] },
 ];
 
 /** Calibration tirée des cas réels (recherche du 2 novembre 2026). */
