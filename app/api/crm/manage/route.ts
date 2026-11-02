@@ -33,7 +33,7 @@ function csvRecord(headers: string[], values: string[]) {
   headers.forEach((header, index) => { record[header.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "")] = values[index] || ""; });
   const pick = (...keys: string[]) => keys.map(key => record[key]).find(Boolean) || "";
   const consent = pick("consentementwhatsapp", "whatsappoptin", "optin", "consentement");
-  return { nom: pick("nom", "name", "prenom", "contact", "acheteur", "fullname"), telephone: pick("telephone", "phone", "tel", "mobile", "numero", "phonenumber"), email: pick("email", "mail", "courriel"), ville: pick("ville", "city", "localite"), annonce: pick("annonce", "ad", "titre", "title", "objet"), commentaire: pick("message", "commentaire", "notes", "demande", "description"), modele_interesse: pick("modele", "vehicule", "produit"), source: "leboncoin", whatsapp_opt_in: consent ? /^(oui|yes|true|1|ok)$/i.test(consent) : true };
+  return { nom: pick("nom", "name", "prenom", "contact", "acheteur", "fullname"), telephone: pick("telephone", "phone", "tel", "mobile", "numero", "phonenumber"), email: pick("email", "mail", "courriel"), ville: pick("ville", "city", "localite"), annonce: pick("annonce", "ad", "titre", "title", "objet"), commentaire: pick("message", "commentaire", "notes", "demande", "description"), modele_interesse: pick("modele", "vehicule", "produit"), source: "leboncoin", whatsapp_opt_in: consent ? /^(oui|yes|true|1|ok)$/i.test(consent) : false };
 }
 
 export async function POST(request: Request) {
@@ -49,6 +49,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, leads: data || [], whatsappConfigured: whatsappConfigured(), aiConfigured: Boolean(process.env.OPENAI_API_KEY), templateConfigured: Boolean(process.env.WHATSAPP_TEMPLATE_NAME), webhookConfigured: Boolean(process.env.WHATSAPP_VERIFY_TOKEN && process.env.WHATSAPP_APP_SECRET), automationReady: Boolean(whatsappConfigured() && process.env.WHATSAPP_TEMPLATE_NAME) });
   }
 
+  if (action === "preview-import") {
+    const csv = String(body.csv || "").replace(/^\\uFEFF/, "");
+    if (!csv || csv.length > 2_000_000) return NextResponse.json({ ok: false, error: "CSV manquant ou trop volumineux" }, { status: 400 });
+    const rows = splitCsv(csv);
+    if (rows.length < 2) return NextResponse.json({ ok: false, error: "Aucun contact" }, { status: 400 });
+    const records = rows.slice(1, 1001).map(values => csvRecord(rows[0], values));
+    const phones = new Set<string>(); const emails = new Set<string>();
+    let duplicates = 0, invalid = 0, eligible = 0;
+    for (const lead of records) {
+      const phone = normalizePhone(lead.telephone);
+      const email = lead.email.trim().toLowerCase();
+      if (!phone && !email) { invalid++; continue; }
+      if ((phone && phones.has(phone)) || (email && emails.has(email))) duplicates++;
+      else { if (phone) phones.add(phone); if (email) emails.add(email); }
+      if (lead.whatsapp_opt_in && phone) eligible++;
+    }
+    return NextResponse.json({ ok: true, total: records.length, duplicatesInFile: duplicates, invalid, phones: records.filter(x => normalizePhone(x.telephone)).length, explicitOptInClaims: eligible, warning: "Aucun message envoyé ; consentement à vérifier avant campagne WhatsApp." });
+  }
+
   if (action === "import") {
     const text = String(body.csv || "").replace(/^\uFEFF/, "");
     if (!text || text.length > 2_000_000) return NextResponse.json({ ok: false, error: "Fichier CSV manquant ou trop volumineux" }, { status: 400 });
@@ -62,10 +81,10 @@ export async function POST(request: Request) {
       if (!phone && !email) { invalid++; continue; }
       if ((phone && phones.has(phone)) || (email && emails.has(email))) { duplicates++; continue; }
       if (phone) phones.add(phone); if (email) emails.add(email);
-      inserts.push({ ...lead, telephone: phone || lead.telephone, statut: "Nouveau", phase: "À contacter", lead_score: leadScore(lead), ai_enabled: true, next_followup_at: new Date().toISOString(), history: [{ type: "import", source: "leboncoin", imported_at: new Date().toISOString(), whatsapp_consent: lead.whatsapp_opt_in, consent_basis: lead.whatsapp_opt_in ? "owner_confirmed_import" : "explicit_refusal" }] });
+      inserts.push({ ...lead, telephone: phone || lead.telephone, statut: "Nouveau", phase: "À contacter", lead_score: leadScore(lead), ai_enabled: true, next_followup_at: null, history: [{ type: "import", source: "leboncoin", imported_at: new Date().toISOString(), whatsapp_consent: lead.whatsapp_opt_in, consent_basis: lead.whatsapp_opt_in ? "imported_opt_in_claim_requires_verification" : "not_provided" }] });
     }
     if (inserts.length) { const { error } = await db.from("leads").insert(inserts); if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 }); }
-    return NextResponse.json({ ok: true, imported: inserts.length, duplicates, invalid, automaticSending: whatsappConfigured() && Boolean(process.env.WHATSAPP_TEMPLATE_NAME), consentRecorded: true });
+    return NextResponse.json({ ok: true, imported: inserts.length, duplicates, invalid, automaticSending: false, consentRecorded: true });
   }
 
   if (action === "create") {
