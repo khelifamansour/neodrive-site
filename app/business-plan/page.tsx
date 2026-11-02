@@ -7,13 +7,14 @@ import {CATS,businessPlan,type Product,type Sourcing} from "../../lib/sourcing";
 import Simulateur,{type Slot} from "./Simulateur";
 import Marches from "./Marches";
 import Explorer from "./Explorer";
+import Produits,{type MixState} from "./Produits";
 import Arbre,{type TreeState} from "./Arbre";
 import Decisions,{type OppState} from "./Decisions";
 import type {SimCfg} from "../../lib/simulator";
 import {DEFAULT_PLAN,FILLERS,FILLER_RULES,MOATS,fillerMargin,fillerTotals,moatScore,runPlan,type PlanCfg} from "../../lib/businessplan";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
-type Tab="arbre"|"explorer"|"decider"|"simu"|"marches"|"plan"|"pourquoi"|"remplir"|"produits";
+type Tab="arbre"|"produits2"|"explorer"|"decider"|"simu"|"marches"|"plan"|"pourquoi"|"remplir"|"produits";
 const TOOLS:[string,string][]=[["/pilotage","🧠 Pilotage (trésorerie, conteneurs)"],["/tournee","🚚 Tournées"],["/sourcing","🔎 Sourcing"]];
 function Dots({n}:{n:number}){return <span style={{letterSpacing:2}}>{"●".repeat(n)}<span style={{opacity:.2}}>{"●".repeat(5-n)}</span></span>;}
 
@@ -48,9 +49,10 @@ export default function BusinessPlanPage(){
   <header className={s.top}><div><h1>Business plan NeoDrive</h1><p>Stratégie sur 3 ans · relie Pilotage, Tournées et Sourcing</p></div><div className={s.topBtns}><button onClick={save} disabled={!dirty||!!busy}>{busy==="save"?"…":dirty?"💾 Enregistrer":"✓ Enregistré"}</button></div></header>
   <div className={c.filters} style={{marginTop:10}}>{TOOLS.map(([h,l])=><a key={h} href={h} className={c.chip} style={{textDecoration:"none",padding:"8px 12px"}}>{l}</a>)}</div>
   {msg?<p className={msg.startsWith("✅")?s.ok:s.err}>{msg}</p>:null}
-  <nav className={c.tabs}>{([["arbre","🌳 Arbre de décision"],["explorer","🔭 Explorer"],["decider","🏁 Décider"],["simu","🎲 Simulateur"],["marches","🌍 Marchés"],["plan","📘 Business plan"],["pourquoi","🧱 Pourquoi ça marche"],["remplir","📦 Remplir les conteneurs"],["produits","➕ Produits du plan"]] as [Tab,string][]).map(([k,l])=><button key={k} className={tab===k?c.on:""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
+  <nav className={c.tabs}>{([["arbre","🌳 Arbre de décision"],["produits2","🛍️ Autres produits"],["explorer","🔭 Explorer"],["decider","🏁 Décider"],["simu","🎲 Simulateur"],["marches","🌍 Marchés"],["plan","📘 Business plan"],["pourquoi","🧱 Pourquoi ça marche"],["remplir","📦 Remplir les conteneurs"],["produits","➕ Produits du plan"]] as [Tab,string][]).map(([k,l])=><button key={k} className={tab===k?c.on:""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
 
   {tab==="arbre"?<Arbre state={((d.plan as {tree?:TreeState})?.tree)||{}} onChange={tree=>{setD(x=>x?{...x,plan:{...((x.plan as object)||{}),tree}}:x);setDirty(true);setMsg("");}}/>:null}
+  {tab==="produits2"?<Produits mix={((d.plan as {mix?:MixState})?.mix)||{}} onMix={mix=>{setD(x=>x?{...x,plan:{...((x.plan as object)||{}),mix}}:x);setDirty(true);setMsg("");}}/>:null}
   {tab==="explorer"?<Explorer/>:null}
   {tab==="decider"?<Decisions state={((d.plan as {opp?:OppState})?.opp)||{}} onChange={opp=>{setD(x=>x?{...x,plan:{...((x.plan as object)||{}),opp}}:x);setDirty(true);setMsg("");}}/>:null}
   {tab==="simu"?<Simulateur P={P} sim={((d.plan as {sim?:Partial<SimCfg>})?.sim)||{}} slots={((d.plan as {slots?:Slot[]})?.slots)||[]} onChange={(sim,slots)=>{setD(x=>x?{...x,plan:{...cfg,...((x.plan as object)||{}),sim,slots}}:x);setDirty(true);setMsg("");}}/>:null}
