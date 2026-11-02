@@ -179,7 +179,8 @@ export const MODELS: { name: string; what: string; money: string; you: string }[
 export const SALONS: { name: string; where: string; when: string; what: string; for: string }[] = [
   { name: "EICMA", where: "Milan", when: "3–8 novembre 2026", what: "Deux-roues, microvoitures, UTV", for: "Voitures sans permis, utilitaires L6e/L7e" },
   { name: "EIMA", where: "Bologne", when: "10–14 novembre 2026", what: "Tracteurs, motoculture, 27 exposants en robotique agricole", for: "Motoculture, robots agricoles" },
-  { name: "Foire de Canton", where: "Canton (Chine)", when: "avril et octobre, chaque année", what: "Tout : véhicules, machines, outillage", for: "Prix usine, nouvelles usines" },
+  { name: "Foire de Canton", where: "Canton (Chine)", when: "printemps 2027 ≈ 15 avril – 5 mai (3 phases) ; automne en octobre", what: "Phase 1 véhicules et pièces auto, phase 2 maison/jardin/outillage, phase 3 loisirs", for: "Prix usine, accessoires, nouvelles usines" },
+  { name: "Marché de Yiwu (Futian)", where: "Yiwu (Chine)", when: "toute l’année (fermé ≈ 2 semaines au Nouvel An chinois, février)", what: "75 000 stands de petits articles en gros", for: "Accessoires — via un agent de consolidation" },
   { name: "Interclean", where: "Amsterdam", when: "tous les 2 ans (édition 2026 passée)", what: "Nettoyage pro, robots", for: "Robots de nettoyage" },
   { name: "LogiMAT", where: "Stuttgart", when: "chaque année au printemps", what: "Logistique, chariots, robots d’entrepôt", for: "Chariots, robots logistiques" },
   { name: "GaLaBau", where: "Nuremberg", when: "tous les 2 ans, en septembre", what: "Paysage, espaces verts", for: "Tondeuses pros, débroussailleuses" },

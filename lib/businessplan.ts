@@ -16,14 +16,32 @@ export type PlanCfg = {
   freeM3: number;                          // espace libre estimé par conteneur (dans et sous les voitures)
 };
 export const DEFAULT_PLAN: PlanCfg = {
-  vspPerMonth: [22, 30, 38], accAttach: 0.5, accPrice: 290, accMargin: 120, fillers: [], picks: [],
+  vspPerMonth: [22, 30, 38], accAttach: 0.5, accPrice: 149, accMargin: 80, fillers: [], picks: [],
   driverAt: 30, driverCost: 2900, salesHireCost: 3800, freeM3: 12,
 };
 
 /** Produits de remplissage : à glisser dans les voitures et autour, dans les conteneurs déjà payés.
  *  Prix = fourchettes trouvées en ligne (à confirmer par devis). */
 export type FillerItem = { id: string; name: string; group: "A" | "B" | "C"; fobUsd: number; priceTtc: number; volM3: number; dutyPct: number; perCar: number; note: string; risk: string };
-export const FILLERS: FillerItem[] = [];
+export const FILLERS: FillerItem[] = [
+  { id: "housse", name: "Bâche / housse extérieure taillée au modèle", group: "A", fobUsd: 7, priceTtc: 29, volM3: 0.008, dutyPct: 6.3, perCar: 40, note: "Upsell naturel à la livraison (voiture garée dehors). FOB 5–9 $ (Accio).", risk: "Générique à 14,99 € chez Action : seule la version sur mesure se vend." },
+  { id: "tapis", name: "Jeu de tapis sur mesure (fait par l’usine)", group: "A", fobUsd: 13, priceTtc: 49, volM3: 0.016, dutyPct: 4, perCar: 25, note: "Référence France : ≈ 49 € le jeu Aixam (Rakuten). Se range à plat au plancher.", risk: "Droit selon la matière (à vérifier TARIC)." },
+  { id: "housses-sieges", name: "Housses de sièges sur mesure", group: "A", fobUsd: 20, priceTtc: 39, volM3: 0.006, dutyPct: 6.3, perCar: 60, note: "Seulement dans un pack confort sur mesure.", risk: "Génériques à 8–15 € en France : marge faible." },
+  { id: "dashcam", name: "Dashcam sans lithium (supercondensateur)", group: "A", fobUsd: 26, priceTtc: 49, volM3: 0.001, dutyPct: 0, perCar: 200, note: "Option à la livraison, en petit nombre.", risk: "Électronique : adhésion DEEE obligatoire, CE. Lithium = marchandise dangereuse." },
+  { id: "chariot-pliable", name: "Chariot de plage / camping pliable", group: "B", fobUsd: 17, priceTtc: 69, volM3: 0.095, dutyPct: 1.7, perCar: 6, note: "Autour des voitures plutôt que dedans. Leboncoin au printemps (Decathlon 50–135 €).", risk: "Saisonnier (avril–août), Vevor ≈ 87 €." },
+  { id: "chaise", name: "Chaise de camping « moon chair » alu", group: "B", fobUsd: 5, priceTtc: 24, volM3: 0.02, dutyPct: 0, perCar: 30, note: "Revente en lots sur Leboncoin.", risk: "Quechua à 12 € : viser le milieu de gamme." },
+  { id: "lampes", name: "Lampes solaires de jardin (exemple à ÉVITER)", group: "B", fobUsd: 2.7, priceTtc: 3.5, volM3: 0.001, dutyPct: 0, perCar: 300, note: "Action les vend ≈ 2 € : aucune marge.", risk: "DEEE + lithium." },
+];
+/** Règles pour charger des produits dans un conteneur de voitures (recherche du 2 novembre 2026). */
+export const FILLER_RULES: string[] = [
+  "Tout doit être sur la liste de colisage, la facture, le connaissement et la déclaration en douane (Chine ET France, une ligne par code douanier). Un écart bloque le dédouanement.",
+  "Ton conteneur est DÉJÀ classé « marchandise dangereuse » (voitures électriques, UN3171). Ajouter du lithium non déclaré = fausse déclaration, pénalités de 15 000 à 35 000 $ par conteneur chez les armateurs, et risque d’incendie.",
+  "Le plus simple : acheter les accessoires À L’USINE de la voiture (ou ses fournisseurs), sur la même facture et la même déclaration export. Yiwu = agent de consolidation (3–10 %) + camion jusqu’à l’usine.",
+  "Caler et sangler les cartons dans l’habitacle, protéger les sièges, inclure la marchandise dans la valeur assurée.",
+  "Tu deviens « importateur » : ton nom et ton adresse sur le produit (règlement sécurité des produits GPSR), et adhésion à un éco-organisme pour toute électronique (DEEE).",
+  "À ÉVITER : pneus chinois (antidumping jusqu’à 45,3 % depuis juillet 2026), jantes acier, vaisselle céramique (≈ 79 %), vélos électriques, tout lithium, le « bazar » de Yiwu (trop de références à rendre conformes).",
+  "Pièces SAV de tes voitures (feux, rétroviseurs, coques, essuie-glaces, homologués E) : pas pour la marge, mais pour ne plus immobiliser un client des semaines. Demande la liste et les prix à ton usine.",
+];
 
 export function fillerMargin(p: Params, f: FillerItem) {
   const cost = f.fobUsd * p.usd * (1 + f.dutyPct / 100);

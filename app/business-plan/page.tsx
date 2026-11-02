@@ -4,7 +4,7 @@ import s from "../planificateur/planif.module.css";
 import c from "../sourcing/sourcing.module.css";
 import type {Params} from "../../lib/gestion";
 import {CATS,businessPlan,type Product,type Sourcing} from "../../lib/sourcing";
-import {DEFAULT_PLAN,FILLERS,MOATS,fillerMargin,fillerTotals,moatScore,runPlan,type PlanCfg} from "../../lib/businessplan";
+import {DEFAULT_PLAN,FILLERS,FILLER_RULES,MOATS,fillerMargin,fillerTotals,moatScore,runPlan,type PlanCfg} from "../../lib/businessplan";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
 type Tab="plan"|"pourquoi"|"remplir"|"produits";
@@ -94,6 +94,8 @@ export default function BusinessPlanPage(){
     <div><small>Achat à avancer / conteneur</small><b>{eur(fill.invest)}</b></div>
     <div><small>Par an ({Math.round(res.years[0].cars/9)} conteneurs)</small><b>{eur(fill.margin*res.years[0].cars/9)}</b></div>
    </div>
+   <details open><summary style={{cursor:"pointer",fontWeight:800}}>📜 Les règles à respecter</summary><ul className={c.ul}>{FILLER_RULES.map(r=><li key={r}>{r}</li>)}</ul></details>
+   <p className={s.muted}>Les produits A servent aussi au <b>pack accessoires</b> (déjà compté dans le business plan avec le % de clients). Indique ici seulement ce que tu charges <b>en plus</b>, par conteneur, pour le revendre.</p>
    {FILLERS.length?<div className={c.list}>{(["A","B","C"] as const).map(g=><div key={g}><h3>{g==="A"?"🧰 A · Accessoires pour tes clients":g==="B"?"🛒 B · À vendre sur Leboncoin":"🏪 C · Gros (bazars, solderies)"}</h3>
     {FILLERS.filter(f=>f.group===g).map(f=><div key={f.id} className={c.w}><div><b>{f.name}</b><small>{eur(f.fobUsd*P.usd)} achat · {eur(f.priceTtc)} vente · marge {eur(fillerMargin(P,f))} · {f.volM3} m³ · ≈ {f.perCar}/voiture</small><small>{f.note}{f.risk?` ⚠️ ${f.risk}`:""}</small></div><input type="number" min={0} value={qty(f.id)} onChange={e=>setQty(f.id,Number(e.target.value)||0)}/></div>)}</div>)}</div>:<p className={s.muted}>Recherche des produits en cours…</p>}
   </section>:null}
