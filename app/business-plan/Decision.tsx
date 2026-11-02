@@ -3,6 +3,7 @@ import {useMemo,useState} from "react";
 import s from "../planificateur/planif.module.css";
 import c from "../sourcing/sourcing.module.css";
 import {DOSSIERS,cashCurve,numbers,planFor,score,verdictOf,type Dossier} from "../../lib/dossiers";
+import {FILL_AVOID,FILL_PLAN,FREE_SPACE} from "../../lib/fill-plan";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
 const k=(n:number)=>`${n<0?"−":""}${Math.abs(Math.round(n/1000)).toLocaleString("fr-FR")} k€`;
@@ -49,6 +50,16 @@ export default function Decision(){
    <span>Reste {eur(plan.left)} de sécurité · si les tests marchent : ≈ <b>{k(planProfit)} de marge par an</b> à la part de marché visée.</span>
    <small className={s.muted}>Règle : on prend les dossiers les mieux notés (argent, écart de prix, solidité des données) tant que la 1re commande rentre dans le budget. Rien n’est commandé avant devis + certificats.</small>
   </div>
+
+  <h3>📦 Remplir le conteneur : le 2e business dans les cartons</h3>
+  <p className={s.tip}>Conteneur 40&apos; HC ≈ {FREE_SPACE.containerM3} m³ − 9 VSP ≈ {FREE_SPACE.carsM3} m³ → ≈ {FREE_SPACE.aroundM3} m³ autour et sous les voitures + {FREE_SPACE.insideCarsM3} m³ dans les habitacles, et ≈ {FREE_SPACE.freeTonnes} t de charge libre. Tout doit être déclaré (liste de colisage, douane).</p>
+  <div className={s.tableWrap}><table className={s.dtable} style={{minWidth:1000}}><thead><tr><th>Lot</th><th>Quantité</th><th>m³</th><th>Achat rendu</th><th>Vente HT</th><th>Marge</th><th>Prix France / Chine</th><th>Ventes / mois</th></tr></thead><tbody>
+   {FILL_PLAN.map(l=><tr key={l.id}><td style={{whiteSpace:"normal",minWidth:220}}><b>{l.verdict} {l.name}</b><small>{l.suppliers.map(x=>x.url?<a key={x.name} href={x.url} target="_blank" rel="noreferrer">{x.name} </a>:<span key={x.name}>{x.name} </span>)}</small></td>
+    <td>{l.qty}</td><td>{l.m3}</td><td>{eur(l.cost)}</td><td>{eur(l.sales)}</td><td><b>{eur(l.margin)}</b><small>×{(l.sales/l.cost).toFixed(1)}</small></td>
+    <td style={{whiteSpace:"normal",minWidth:200}}>{l.priceFr}<small>usine : {l.fob}</small></td><td style={{whiteSpace:"normal"}}>{l.perMonth}<small>{l.sell}</small></td></tr>)}
+   <tr><td><b>Total</b></td><td/><td><b>{FILL_PLAN.reduce((a,l)=>a+l.m3,0).toFixed(1)}</b></td><td><b>{eur(FILL_PLAN.reduce((a,l)=>a+l.cost,0))}</b></td><td><b>{eur(FILL_PLAN.reduce((a,l)=>a+l.sales,0))}</b></td><td><b>{eur(FILL_PLAN.reduce((a,l)=>a+l.margin,0))}</b></td><td colSpan={2}>écoulé en 6–9 mois (estimation)</td></tr>
+  </tbody></table></div>
+  <details><summary style={{cursor:"pointer",fontWeight:800}}>📄 Documents à exiger · ❌ ce qu’on écarte</summary><ul className={c.ul}>{FILL_PLAN.map(l=><li key={l.id}><b>{l.name}</b> : {l.docs}</li>)}{FILL_AVOID.map(x=><li key={x}>{x}</li>)}</ul></details>
 
   <h3>🏆 Le classement</h3>
   <div className={s.tableWrap}><table className={s.dtable} style={{minWidth:1000}}><thead><tr><th>#</th><th>Produit</th><th>Marché France / an</th><th>Part visée</th><th>Ventes / an</th><th>Achat → vente</th><th>Marge / unité</th><th>Marge / an</th><th>Chance</th><th>1re commande</th><th>Décision</th></tr></thead><tbody>
