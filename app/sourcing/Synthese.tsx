@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 import s from "../planificateur/planif.module.css";
 import c from "./sourcing.module.css";
 import {CATS,THEMES,type Cat,type Product} from "../../lib/sourcing";
@@ -23,6 +24,7 @@ export default function Synthese({ranked,onCat}:{ranked:Row[];onCat:(k:Cat)=>voi
   <h3>🏆 Classement des familles</h3>
   <div className={c.list}>{sorted.map(a=>{const b=best(a.cat);const [gl,gc]=GO[a.go];return <div key={a.cat} className={c.sup}>
    <div className={c.supTop}><div><b>#{a.rank} · {catName(a.cat)}</b><small style={{color:gc,fontWeight:800}}>{gl}</small></div><button className={s.small} onClick={()=>onCat(a.cat)}>Voir les produits</button></div>
+   {(()=>{const ph=ranked.filter(r=>r.x.cat===a.cat&&r.x.photo).slice(0,3);return ph.length?<div className={c.gallery}>{ph.map(r=><figure key={r.x.id}><img src={r.x.photo} alt={r.x.name} referrerPolicy="no-referrer" loading="lazy"/><figcaption>{r.x.name}</figcaption></figure>)}</div>:null;})()}
    <p style={{margin:0,fontWeight:700}}>{a.verdict}</p>
    <div className={s.biz}>
     <div><small>Prix neuf en France</small><b style={{fontSize:14}}>{a.priceFr}</b></div>
