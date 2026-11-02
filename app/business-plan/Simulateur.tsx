@@ -7,7 +7,7 @@ import {DEFAULT_SIM,LEVERS,contributions,optimizeLevers,simulate,type Lever,type
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
 const k=(n:number)=>`${Math.round(n/1000)} k€`;
-const GROUPS:[Lever["group"],string][]=[["ventes","📈 Vendre plus"],["marge","💶 Gagner plus par vente"],["capacite","🚚 Livrer plus"],["argent","🏦 Financer la croissance"],["produit","🧩 Nouvelles activités"]];
+const GROUPS:[Lever["group"],string][]=[["ventes","📈 Vendre plus"],["marge","💶 Gagner plus par vente"],["capacite","🚚 Livrer plus"],["argent","🏦 Financer la croissance"],["produit","🧩 Nouvelles activités"],["risque","⚠️ Risques à tester"]];
 export type Slot={name:string;levers:string[]};
 
 /** Graphique en bande : zone entre le scénario prudent (P10) et optimiste (P90), ligne = médiane. */
