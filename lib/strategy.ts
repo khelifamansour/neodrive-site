@@ -11,7 +11,7 @@ export type PriceModel = { increase: number; directDrop: number };
 export type StratData = { strat: Strat; lbc: LbcModel; dealer: DealerModel; price: PriceModel };
 
 export const DEFAULT_STRAT: StratData = {
-  strat: { adsStart: 70, adsEnd: 120, rampMonths: 6, remonteePct: 0.3, dealersStart: 0, dealersPerMonth: 1, dealersMax: 8, commission: 400, priceUp: false, organic: 2 },
+  strat: { adsStart: 70, adsEnd: 120, rampMonths: 6, remonteePct: 0.3, dealersStart: 0, dealersPerMonth: 1, dealersMax: 8, commission: 300, priceUp: false, organic: 2 },
   // calé sur ta réalité : 70 annonces en ligne (60 € pour 2 mois chacune) → ≈ 18 ventes / mois
   lbc: { adCost2m: 60, remonteeCost2m: 60, refAds: 70, refSales: 16, max: 40, remonteeBoost: 1.25 },
   dealer: { baseSales: 1.5, refCommission: 300, motivation: 0.5, firstMonthFactor: 0.4, priceSensitivity: 0.5 },
