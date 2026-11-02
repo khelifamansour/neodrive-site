@@ -70,7 +70,51 @@ export const ANALYSIS: CatAnalysis[] = [
     sources: "neyer.de, seekingalpha.com, fwi.co.uk",
   },
   {
-    cat: "chariot", rank: 6, go: "later",
+    cat: "robot_nettoyage", rank: 6, go: "later",
+    verdict: "Le plus intéressant des robots pour un revenu RÉCURRENT (vente + contrat de maintenance ou location mensuelle). Mais c’est de la vente B2B : démonstrations sur site, cartographie, assistance. À démarrer comme agent/revendeur d’UNE marque, pas en important du stock.",
+    market: "Supermarchés, parkings, entrepôts, centres commerciaux, hôtels, hôpitaux : ils paient des agents d’entretien la nuit. Les fabricants (Gausium, Pudu, LionsBot) cherchent des revendeurs locaux.",
+    buyers: "Grandes surfaces, sociétés de nettoyage, logisticiens, hôtels, cliniques, collectivités.",
+    priceFr: "Prix publics et prix revendeur à demander (souvent vendus en location mensuelle)",
+    fobRange: "À demander",
+    competition: "Réseaux de distribution déjà en place dans plusieurs pays européens ; en France, à vérifier zone par zone.",
+    risks: "Cycle de vente long, démos, SAV logiciel, intégration (ascenseurs, portes). Toi seul aujourd’hui : pas le temps. Il faudrait un commercial ou un associé.",
+    plan: { invest: "≈ 0 € au départ (statut d’agent) puis 1 machine de démo", unitsMonth: "1–2 contrats / mois", marginUnit: "marge revendeur + contrat mensuel (à négocier)", first: "Demander à Gausium et Pudu : zones libres en Occitanie / Île-de-France, marge revendeur, prix de la machine démo, formation SAV." },
+    sources: "gausium.com, pudurobotics.com, intercleanshow.com",
+  },
+  {
+    cat: "robot_tonte", rank: 9, go: "no",
+    verdict: "Pas en import direct : les robots tondeuses chinois (Navimow, Mammotion, Sunseeker…) sont visés par une enquête antidumping UE, avec des droits rétroactifs possibles. Les tondeuses autonomes PROS (terrains de sport, collectivités) sont une piste plus tard, en revendeur installateur.",
+    market: "Du robot grand public à < 1 000 € jusqu’aux tondeuses autonomes pros à plusieurs dizaines de milliers d’euros (Kress). Réseau de revendeurs très dense.",
+    buyers: "Particuliers (saturé), golfs, stades, collectivités, campings, sites industriels.",
+    priceFr: "< 1 000 € à > 30 000 €",
+    fobRange: "—",
+    risks: "Antidumping AD745, saisonnalité forte, concurrence des jardineries.",
+    season: "Mars–juin.",
+    plan: { invest: "—", unitsMonth: "—", marginUnit: "—", first: "Surveiller la décision antidumping AD745." },
+  },
+  {
+    cat: "robot_agri", rank: 10, go: "later",
+    verdict: "Marché d’avenir, mais c’est de l’agronomie et de la haute technologie (réglages, logiciels, saisons de culture). Les marques sont européennes (FarmDroid, Naïo, AgXeed) avec des concessionnaires. Ta carte à jouer : Naïo est à Toulouse, près de Lamasquère → partenariat transport / démo / SAV de proximité.",
+    market: "Maraîchage, vigne, pépinières, grandes cultures. 27 exposants en robotique à l’EIMA 2026.",
+    buyers: "Maraîchers bio, viticulteurs, coopératives, lycées agricoles.",
+    priceFr: "Plusieurs dizaines de milliers d’euros par robot (à confirmer)",
+    fobRange: "—",
+    risks: "Compétence agronomique, démonstrations en saison, SAV au champ, financement des clients.",
+    plan: { invest: "0 € (rencontre)", unitsMonth: "—", marginUnit: "commission / prestation", first: "Si tu vas à l’EIMA : rencontrer Naïo (Hall 32 A16) et FJDynamics (Hall 37 C38bis), seulement pour comprendre leur modèle revendeur." },
+    sources: "eima.it, naio-technologies.com, farmdroid.com",
+  },
+  {
+    cat: "robot_logistique", rank: 12, go: "no",
+    verdict: "Projets d’intégration en entrepôt (dizaines de milliers d’euros, études, logiciels) : ce n’est pas un métier d’importateur seul. Plus tard, via un partenaire intégrateur.",
+    market: "Entrepôts, e-commerce, industrie. Repère : igus ReBeLMove Pro dès 39 800 €.",
+    buyers: "Logisticiens, industriels.",
+    priceFr: "≥ 40 000 €",
+    fobRange: "—",
+    risks: "Intégration, sécurité machines, cycle de vente très long.",
+    plan: { invest: "—", unitsMonth: "—", marginUnit: "—", first: "Rien pour l’instant." },
+  },
+  {
+    cat: "chariot", rank: 7, go: "later",
     verdict: "Le chariot frontal lithium a un vrai écart (4 000–7 000 $ contre 19 000–25 000 € HT) mais il est trop lourd pour ta remorque, demande un dossier CE solide, du SAV et des clients pros. Plus tard, quand tu as un chauffeur et un plateau.",
     market: "Frontal lithium 1,5–1,8 t : 19 000–25 000 € HT. Gerbeur 3 000–4 000 € HT. Transpalette électrique 700–1 500 € HT (banalisé).",
     buyers: "TPE/PME, négoces, entrepôts, agriculteurs, garages, menuiseries.",
@@ -82,7 +126,7 @@ export const ANALYSIS: CatAnalysis[] = [
     sources: "pallit.com, europe-forklift.com, conseils.hellopro.fr",
   },
   {
-    cat: "tricycle", rank: 7, go: "later",
+    cat: "tricycle", rank: 8, go: "later",
     verdict: "Bon produit pour les fermes et campings, mais ticket trop bas (2 000–4 500 €) pour ta méthode. À glisser en complément dans un conteneur.",
     market: "Scot-e 2 190 € HT, Schot-Mob 2 650–4 390 € HT, Cobrane 8 726 € TTC.",
     buyers: "Agriculteurs, maraîchers, campings, services techniques, seniors.",
@@ -92,7 +136,7 @@ export const ANALYSIS: CatAnalysis[] = [
     plan: { invest: "≈ 3 000 € pour 2–3 unités", unitsMonth: "1–2 / mois", marginUnit: "≈ 1 500–2 000 € HT", first: "Tu en as déjà 3 en production : mesure combien de temps ils mettent à se vendre." },
   },
   {
-    cat: "chantier", rank: 8, go: "no",
+    cat: "chantier", rank: 11, go: "no",
     verdict: "Mini-pelle : marché déjà saturé d’importateurs chinois (4 000–7 000 € TTC livrée) et d’enchères de machines neuves. Plus d’arbitrage. Seule niche : mini chargeuse électrique, plus tard.",
     market: "Mini-pelle chinoise 1 t : 4 000–7 000 € TTC (Maxitrack, Pelle-Import, minipelles-import.fr, Leroy Merlin). Marque UE/JP : 15 000–18 000 € HT. Mini-dumper 2 500–4 500 € en magasin.",
     buyers: "Particuliers, paysagistes, artisans BTP, agriculteurs.",
@@ -103,7 +147,7 @@ export const ANALYSIS: CatAnalysis[] = [
     plan: { invest: "—", unitsMonth: "—", marginUnit: "≈ 1 000 € HT (et baisse)", first: "Ne pas y aller maintenant." },
   },
   {
-    cat: "scooter", rank: 9, go: "no",
+    cat: "scooter", rank: 13, go: "no",
     verdict: "Écart trop faible (2 000–3 000 € face à 500–800 € de revient) et marques à réseau (Yadea, Segway, NIU). Complément de conteneur seulement, avec un COC L1e vérifié.",
     market: "Scooter électrique 50 cm³ : 1 300–6 000 €, modèles 2026 de 2–4 kW : 2 900–4 500 €.",
     buyers: "Jeunes 14 ans et plus, urbains, livreurs.",
@@ -113,7 +157,7 @@ export const ANALYSIS: CatAnalysis[] = [
     plan: { invest: "—", unitsMonth: "—", marginUnit: "faible", first: "Vendre les 2 scooters déjà commandés et voir." },
   },
   {
-    cat: "agricole", rank: 10, go: "no",
+    cat: "agricole", rank: 14, go: "no",
     verdict: "Micro-tracteurs : les modèles homologués (Lovol M254) se vendent déjà 16–18 k€ comme un Kubota ; les chinois à 3 000 $ n’ont pas de COC → pas de carte grise. Pas d’arbitrage.",
     market: "Kubota B1241 15 900 €, LS XJ25 17 900 €, Lovol M254 17 880 €. Occasion japonaise 6 000–10 000 €.",
     buyers: "Particuliers avec terrain ou chevaux, maraîchers, paysagistes.",
@@ -125,6 +169,22 @@ export const ANALYSIS: CatAnalysis[] = [
   },
 ];
 
+/** Les 3 métiers possibles de NeoDrive. */
+export const MODELS: { name: string; what: string; money: string; you: string }[] = [
+  { name: "🚗 1. Véhicules pour particuliers", what: "Voitures sans permis, golfettes privées, débroussailleuses, UTV loisirs.", money: "Marge à la vente (arbitrage de prix).", you: "✅ Ton métier aujourd’hui : Leboncoin, remorque, livraison." },
+  { name: "🏢 2. Équipements pour les pros", what: "Utilitaires sans permis, golfettes de camping, UTV agricoles, chariots.", money: "Marge à la vente + un peu de SAV et de pièces.", you: "🟡 Même logistique, mais vente aux entreprises et collectivités (devis, marchés publics)." },
+  { name: "🤖 3. Machines autonomes + contrat", what: "Robots de nettoyage, tondeuses autonomes pros, robots agricoles.", money: "Vente + installation + maintenance mensuelle / location → revenu qui revient chaque mois.", you: "⏳ Demande un commercial, des démos et un technicien : à préparer pour 2028, en commençant comme agent d’une marque." },
+];
+/** Salons à suivre (vérifier les dates exactes sur le site de chaque salon). */
+export const SALONS: { name: string; where: string; when: string; what: string; for: string }[] = [
+  { name: "EICMA", where: "Milan", when: "3–8 novembre 2026", what: "Deux-roues, microvoitures, UTV", for: "Voitures sans permis, utilitaires L6e/L7e" },
+  { name: "EIMA", where: "Bologne", when: "10–14 novembre 2026", what: "Tracteurs, motoculture, 27 exposants en robotique agricole", for: "Motoculture, robots agricoles" },
+  { name: "Foire de Canton", where: "Canton (Chine)", when: "avril et octobre, chaque année", what: "Tout : véhicules, machines, outillage", for: "Prix usine, nouvelles usines" },
+  { name: "Interclean", where: "Amsterdam", when: "tous les 2 ans (édition 2026 passée)", what: "Nettoyage pro, robots", for: "Robots de nettoyage" },
+  { name: "LogiMAT", where: "Stuttgart", when: "chaque année au printemps", what: "Logistique, chariots, robots d’entrepôt", for: "Chariots, robots logistiques" },
+  { name: "GaLaBau", where: "Nuremberg", when: "tous les 2 ans, en septembre", what: "Paysage, espaces verts", for: "Tondeuses pros, débroussailleuses" },
+  { name: "Agritechnica", where: "Hanovre", when: "novembre 2027", what: "Agriculture mécanisée", for: "Grands équipements" },
+];
 export const ROADMAP: { when: string; title: string; steps: string[] }[] = [
   { when: "Novembre – mi-décembre 2026", title: "Demander les preuves (0 € dépensé)", steps: [
     "Envoyer 6 mails : Entu (COC voiture), Yunlong (utilitaire L6e), Lvtong + Excar (golfettes lithium), Vigorun (débroussailleuse + exclusivité), Bontu (BTE03), Hisun (UTV).",

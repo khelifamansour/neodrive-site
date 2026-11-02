@@ -2,10 +2,11 @@
  *  Même méthode que le pilotage : prix usine → arrivée au hub (fret, douane, dépotage) → livraison remorque → marge. */
 import type { Params, Port } from "./gestion";
 
-export type Cat = "vsp" | "golfette" | "utilitaire" | "tricycle" | "quad" | "chariot" | "chantier" | "agricole" | "motoculture" | "scooter" | "autre";
+export type Cat = "vsp" | "golfette" | "utilitaire" | "tricycle" | "quad" | "chariot" | "chantier" | "agricole" | "motoculture" | "scooter" | "robot_nettoyage" | "robot_tonte" | "robot_agri" | "robot_logistique" | "autre";
 export const CATS: [Cat, string][] = [
   ["vsp", "🚗 Voiture sans permis"], ["golfette", "⛳ Golfette / navette"], ["utilitaire", "🛻 Petit utilitaire"], ["tricycle", "🛺 Tricycle cargo"],
-  ["quad", "🏍️ Quad / UTV"], ["chariot", "🏗️ Manutention (chariot, gerbeur)"], ["chantier", "🚜 Engin de chantier"], ["agricole", "🌾 Micro-tracteur"], ["motoculture", "🌱 Motoculture"], ["scooter", "🛵 Scooter"], ["autre", "📦 Autre"],
+  ["quad", "🏍️ Quad / UTV"], ["chariot", "🏗️ Manutention (chariot, gerbeur)"], ["chantier", "🚜 Engin de chantier"], ["agricole", "🌾 Micro-tracteur"], ["motoculture", "🌱 Motoculture"], ["scooter", "🛵 Scooter"],
+  ["robot_nettoyage", "🧽 Robot de nettoyage"], ["robot_tonte", "🤖 Robot tondeuse"], ["robot_agri", "🛰️ Robot agricole"], ["robot_logistique", "📦 Robot logistique"], ["autre", "📦 Autre"],
 ];
 /** Thématiques : grandes familles de « matériel roulant » où NeoDrive peut appliquer sa méthode. */
 export const THEMES: { id: string; name: string; cats: Cat[]; idea: string }[] = [
@@ -13,6 +14,7 @@ export const THEMES: { id: string; name: string; cats: Cat[]; idea: string }[] =
   { id: "marchandises", name: "📦 Transporter des objets", cats: ["utilitaire", "tricycle"], idea: "Artisans, communes, campings, agriculteurs : petits utilitaires électriques." },
   { id: "manutention", name: "🏗️ Charger / décharger", cats: ["chariot"], idea: "Chariots et gerbeurs électriques : PME, entrepôts, et toi-même pour le dépotage." },
   { id: "chantier", name: "🚜 Chantier", cats: ["chantier"], idea: "Mini-pelles, mini-dumpers, mini-chargeuses : artisans et particuliers." },
+  { id: "autonome", name: "🤖 Machines autonomes (vente + contrat)", cats: ["robot_nettoyage", "robot_tonte", "robot_agri", "robot_logistique"], idea: "Le client économise de la main-d’œuvre ; toi tu gagnes à la vente PUIS chaque mois (installation, maintenance, pièces, abonnement)." },
   { id: "terre", name: "🌾 Agriculture & jardin", cats: ["agricole", "motoculture"], idea: "Micro-tracteurs, tondeuses, débroussailleuses télécommandées : saison au printemps." },
 ];
 export type Status = "etudier" | "contacter" | "mail" | "devis" | "echantillon" | "partenaire" | "ecarte";
@@ -34,9 +36,11 @@ export type Product = {
   priceTtc: number; frPriceTtc: number; frSource: string; salesMonth: number;
   trailerFit: number; otherDelivery: number; homolog: Homolog; permis: Permis; lbc: number; sav: number; savCost: number;
   verified: boolean; notes: string; touched?: boolean;
+  /** Contrat de service : ce que tu gagnes (HT) par machine et par mois après la vente (maintenance, abonnement). */
+  serviceMonth?: number;
 };
 export type Weights = Record<CritKey, number>;
-export type CritKey = "arbitrage" | "marge" | "remorque" | "leboncoin" | "homolog" | "permis" | "sav" | "treso" | "rotation";
+export type CritKey = "arbitrage" | "marge" | "remorque" | "leboncoin" | "homolog" | "permis" | "sav" | "treso" | "rotation" | "recurrent";
 export const CRITS: [CritKey, string, string][] = [
   ["arbitrage", "💶 Arbitrage de prix", "Écart entre le prix du neuf en France et ton prix"],
   ["marge", "📈 Marge par unité", "Marge HT après tous les frais, en % du prix HT"],
@@ -47,8 +51,9 @@ export const CRITS: [CritKey, string, string][] = [
   ["sav", "🔧 SAV / fiabilité", "Pièces, fiabilité, peu de retours"],
   ["treso", "🏦 Trésorerie", "Argent bloqué par conteneur, par rapport à ta trésorerie"],
   ["rotation", "🔁 Rotation", "Temps pour vendre un conteneur"],
+  ["recurrent", "🔄 Revenu récurrent", "Contrat de maintenance / abonnement après la vente"],
 ];
-export const DEFAULT_WEIGHTS: Weights = { arbitrage: 3, marge: 3, remorque: 2, leboncoin: 2, homolog: 3, permis: 1, sav: 2, treso: 2, rotation: 2 };
+export const DEFAULT_WEIGHTS: Weights = { arbitrage: 3, marge: 3, remorque: 2, leboncoin: 2, homolog: 3, permis: 1, sav: 2, treso: 2, rotation: 2, recurrent: 1 };
 export type Hyp = { port: Port; marketingPerSale: number; storagePerUnit: number; transporteur: number };
 export const DEFAULT_HYP: Hyp = { port: "havre", marketingPerSale: 150, storagePerUnit: 50, transporteur: 350 };
 export type Sourcing = { suppliers: Supplier[]; products: Product[]; weights: Weights; hyp: Hyp; removed: string[]; updated_at?: string };
@@ -78,7 +83,7 @@ export function seedSourcing(): Sourcing {
       S("saige", "SAIGE", "Chine", "EICMA 2024 : Hall 10 I81", ["tricycle", "scooter"], { notes: "Scooters et tricycles électriques.", sources: "chinamotorworld.com (EICMA 2024)" }),
       S("timy", "TIM / TIMY", "Chine", "EICMA 2024 : Hall 14", ["golfette", "tricycle", "scooter"], { notes: "Golfettes, tricycles, scooters (et fauteuils électriques).", sources: "chinamotorworld.com, soymotero.net" }),
       S("qianxin", "QIANXIN", "Chine", "EICMA 2024", ["golfette"], { notes: "Spécialiste golfettes selon l’avant-première EICMA 2024.", sources: "chinamotorworld.com (EICMA 2024)" }),
-      S("lvtong", "Guangdong Lvtong New Energy EV (LVTONG)", "Dongguan, Guangdong", "pas vu à l’EICMA (se dit fournisseur de la Foire de Canton)", ["golfette", "utilitaire"], { website: "https://kr.made-in-china.com/co_lvtong", email: "eason@lvtong.com", contact: "Eason Lau (commercial) — mail à confirmer", status: "contacter", notes: "Fondée en 2004. Golfettes 2 à 6 places, navettes, utilitaires. Déjà en Europe : la LVTONG S4 « homologuée route » est vendue en France par TR Conseil → ils savent fournir un dossier UE. Demander le COC L6e/L7e par modèle.", sources: "kr.made-in-china.com/co_lvtong, trconseil.com (fiche S4), autoline.com, china.org.ru/product/60585606184" }),
+      S("lvtong", "Guangdong Lvtong New Energy EV (LVTONG)", "Dongguan, Guangdong", "EICMA 2026 (catalogue officiel, stand à confirmer)", ["golfette", "utilitaire", "robot_nettoyage"], { website: "https://en.lvtong.com.cn/Utility-Vehicle", email: "mike@lvtong.com.cn", phone: "+86 769 2277 3916", contact: "Mike (site officiel) · autre contact : eason@lvtong.com", status: "contacter", notes: "Fondée en 2004. Golfettes 2 à 6 places, navettes, véhicules de service et de NETTOYAGE (voirie), utilitaires. Déjà en Europe : la LVTONG S4 « homologuée route » est vendue en France par TR Conseil → ils savent fournir un dossier UE. Demander le COC L6e/L7e par modèle.", sources: "kr.made-in-china.com/co_lvtong, trconseil.com (fiche S4), autoline.com, china.org.ru/product/60585606184" }),
       S("jinpeng", "Jiangsu Jinpeng Group", "Xuzhou, Jiangsu", "pas vu à l’EICMA", ["tricycle", "vsp"], { notes: "Très grosse gamme de tricycles cargo (JB150Z, ZJ150…) annoncés EEC sans catégorie L2e/L5e. Quadricycle XY lancé au Royaume-Uni dès 10 000 £. Commande minimum élevée (≈ 1 000 unités pour le XD, à négocier). Desner (Milan) l’importe déjà.", sources: "b2brazil.com/hotsite/jiangsujinpeng, motor1.com (Jinpeng XY)" }),
       S("yoki", "Taizhou Yoki Carts", "Taizhou, Zhejiang", "pas vu à l’EICMA", ["quad"], { notes: "Quads et UTV. Pas sûr que ce soit le bon « Yoki ».", sources: "made-in-china.com" }),
       S("luobei", "Jiangsu Luobei Electric Vehicle (LOBOEV)", "Jiangsu", "pas vu à l’EICMA", ["vsp", "scooter"], { notes: "Marque LOBOEV déposée en 2024 (voitures électriques). Pas de site ni contact trouvé.", sources: "trademark.justia.com" }),
@@ -116,6 +121,24 @@ export function seedSourcing(): Sourcing {
       S("chongqing", "Fabricants de motoculteurs de Chongqing", "Chongqing", "Made-in-China", ["motoculture"], { website: "https://fr.made-in-china.com/co_arrora", notes: "Motoculteurs 7 ch à moteurs Loncin/Zongshen, 158–168 $ (MOQ 20). Marché français déjà inondé : complément de conteneur seulement.", sources: "fr.made-in-china.com/co_arrora, b2usa.com (Chongqing Banbu)" }),
       S("fendeuses", "Fabricants de fendeuses de bûches", "Zhejiang / Shandong", "Made-in-China", ["motoculture"], { website: "https://fr.made-in-china.com/co_forestforce/", notes: "Fendeuses 24–26 t essence 700–760 $ (70–88 par 40HQ). Vérifier Stage V (et pas seulement « Euro V/EPA »).", sources: "made-in-china.com, globalsources.com" }),
       S("zeroturn", "Fabricants de tondeuses zero-turn", "Shandong / Zhejiang", "Alibaba", ["motoculture"], { status: "ecarte", notes: "3 000–5 000 $ FOB : pas compétitif face aux autoportées grand public (Husqvarna TS 114 dès 2 849 €). Robots de tonte chinois : enquête antidumping UE en cours (AD745) → à éviter.", sources: "alibaba.com, jingsourcing.com" }),
+      // ── Élargissement « tout ce qui roule » : EICMA, EIMA, Interclean, LogiMAT (recherche du 2 novembre 2026) ──
+      S("powerland", "Powerland Agro Tractor Vehicles", "Inde", "EICMA 2026 (catalogue)", ["quad", "utilitaire"], { notes: "Indien : véhicules tout-terrain, petits utilitaires (ex. Tachyon). Site et contact à vérifier.", sources: "catalogue EICMA 2026" }),
+      S("shengwo", "Shandong Shengwo New Energy", "Shandong", "EICMA 2026 (catalogue)", ["vsp", "utilitaire"], { notes: "Gamme à qualifier (2e vague).", sources: "catalogue EICMA 2026" }),
+      S("silence", "Silence (Acciona) — repère", "Barcelone, Espagne", "EICMA", ["vsp", "scooter"], { website: "https://www.silence.eco", status: "ecarte", notes: "Fabricant ESPAGNOL (pas chinois) : quadricycle S04 ≈ 9 870 € avec batterie amovible « trolley ». Intéressant comme modèle (batterie échangeable, flottes), pas comme source d’arbitrage.", sources: "silence.eco" }),
+      S("gausium", "Gausium", "Shanghai", "Interclean Amsterdam 2026", ["robot_nettoyage"], { website: "https://gausium.com", notes: "Balayeuses et autolaveuses autonomes (Beetle 2.0, MAX-SW) pour supermarchés, parkings, entrepôts. A déjà des distributeurs en Europe (Autriche…) : vérifier si la France est libre et la marge distributeur.", sources: "gausium.com, intercleanshow.com" }),
+      S("pudu", "Pudu Robotics", "Shenzhen", "Interclean / salons hôtellerie", ["robot_nettoyage", "robot_logistique"], { website: "https://www.pudurobotics.com/fr", notes: "Robots de nettoyage (CC1), de service en salle et de livraison. Hôtels, restaurants, hôpitaux, grandes surfaces. Réseau européen existant : demander les zones libres.", sources: "pudurobotics.com" }),
+      S("lionsbot", "LionsBot", "Singapour", "Interclean", ["robot_nettoyage"], { website: "https://www.lionsbot.com", notes: "Robots de lavage pros (R3 Scrub…), modèle location / abonnement.", sources: "lionsbot.com" }),
+      S("interclean2", "Autres exposants Interclean (2e vague)", "Europe / Chine", "Interclean Amsterdam 2026", ["robot_nettoyage"], { website: "https://www.intercleanshow.com/amsterdam", notes: "Adlatus Robotics, Sparkoz, Allybot, Cleanfix, Ecovacs (pro), Shenzhen Yunjie Technology.", sources: "intercleanshow.com" }),
+      S("farmdroid", "FarmDroid", "Danemark", "EIMA 2026 · Hall 37 B25", ["robot_agri"], { website: "https://farmdroid.com/fr/", notes: "Robot solaire qui sème et désherbe seul. Plus de 500 clients annoncés. Distribution par concessionnaires : vérifier si une zone France est libre.", sources: "farmdroid.com, eima.it (catalogue robotique)" }),
+      S("naio", "Naïo Technologies", "Toulouse, France", "EIMA 2026 · Hall 32 A16", ["robot_agri"], { website: "https://www.naio-technologies.com", notes: "Français, à côté de ton hub de Lamasquère. Robots maraîchage, vigne, pépinière. A son réseau de concessionnaires : piste de partenariat (SAV, transport, démo) plutôt qu’import.", sources: "naio-technologies.com, eima.it" }),
+      S("agxeed", "AgXeed", "Pays-Bas", "EIMA 2026 · Hall 32 A20bis", ["robot_agri"], { website: "https://www.agxeed.com/fr/", notes: "Tracteurs autonomes. Très forte valeur unitaire, très forte exigence technique : hors de portée pour l’instant.", sources: "agxeed.com, eima.it" }),
+      S("carbon", "Carbon Robotics", "États-Unis", "EIMA 2026 · Hall 32 A20", ["robot_agri"], { website: "https://carbonrobotics.com", notes: "Désherbage laser. Technologie, pas un véhicule à arbitrer.", sources: "carbonrobotics.com" }),
+      S("fjd", "FJDynamics", "Shenzhen", "EIMA 2026 · Hall 37 C38bis", ["robot_agri", "robot_tonte"], { website: "https://www.fjdynamics.com", notes: "Chinois : guidage GPS de tracteurs, automatisation, et aussi robots tondeuses. Le plus proche de ta méthode (usine chinoise) dans la robotique agricole.", sources: "fjdynamics.com, eima.it" }),
+      S("eima2", "Autres robots agricoles EIMA (2e vague)", "Europe", "EIMA 2026 (27 exposants robotique)", ["robot_agri"], { notes: "Ecorobotix, Vitibot, Agribots, Agripass Robotics, FieldRobotics, Terra Robotics.", sources: "eima.it (catalogue robotique agricole)" }),
+      S("kress", "Kress (repère tondeuses)", "Chine / Europe", "GaLaBau", ["robot_tonte", "motoculture"], { website: "https://www.kress.com/fr-fr/", status: "ecarte", notes: "Gamme du robot à moins de 1 000 € jusqu’aux tondeuses autonomes pros (Voyager) à plusieurs dizaines de milliers d’euros. Prix publics, réseau de revendeurs en place.", sources: "kress.com" }),
+      S("robotstonte", "Navimow (Segway), Mammotion, Sunseeker", "Chine", "salons jardin", ["robot_tonte"], { status: "ecarte", notes: "⚠️ Robots tondeuses CHINOIS : enquête antidumping UE en cours (AD745, importations enregistrées depuis janvier 2026) → droits rétroactifs possibles. Ne pas importer en direct tant que la décision n’est pas tombée. Possible comme revendeur/installateur d’une marque qui supporte le risque.", sources: "trade.ec.europa.eu (AD745)" }),
+      S("geekplus", "Geek+", "Pékin", "LogiMAT", ["robot_logistique"], { website: "https://www.geekplus.com/fr", status: "ecarte", notes: "Robots d’entrepôt (palettes, préparation de commandes). Projets d’intégration lourds : pas pour maintenant.", sources: "geekplus.com" }),
+      S("igus", "igus (ReBeLMove Pro) — repère", "Cologne, Allemagne", "LogiMAT", ["robot_logistique"], { website: "https://www.igus.fr", status: "ecarte", notes: "Plateforme robotique mobile annoncée dès 39 800 €. Repère de prix pour la robotique logistique.", sources: "logimat-messe.de" }),
       S("huangbao", "Nanjing Huangbao Electric Vehicle", "Nanjing, Jiangsu", "—", ["tricycle"], { notes: "Tricycles utilitaires, pas de site export trouvé. Secondaire." }),
     ],
     products: [
@@ -193,14 +216,17 @@ export function businessPlan(p: Params, h: Hyp, x: Product, cashNow: number) {
   const costs = lines.reduce((a, l) => a + l[1], 0), margin = ht - costs, marginPct = ht > 0 ? margin / ht : 0;
   const arbitrage = x.priceTtc > 0 ? x.frPriceTtc / x.priceTtc : 0, months = n / Math.max(0.1, x.salesMonth);
   const yearUnits = x.salesMonth * 12, yearMargin = margin * yearUnits;
+  // Revenu récurrent : base installée qui grandit → ½ année la 1re année, pleine année ensuite.
+  const service = x.serviceMonth || 0, serviceYear1 = yearUnits * service * 12 / 2, serviceYear2 = yearUnits * service * 12;
   const c: Record<CritKey, number> = {
     arbitrage: clamp((arbitrage - 1) / 1.5), marge: clamp(marginPct / 0.4),
     remorque: x.trailerFit >= 3 ? 1 : x.trailerFit === 2 ? 0.8 : x.trailerFit === 1 ? 0.5 : 0.15,
     leboncoin: clamp(x.lbc / 5), homolog: { coc: 1, eec: 0.4, aucune: 0, inutile: 0.8 }[x.homolog],
     permis: { aucun: 1, AM: 0.9, B96: 0.5, B: 0.5, CACES: 0.6 }[x.permis], sav: clamp(x.sav / 5),
     treso: clamp(1 - (cash / Math.max(1, cashNow) - 0.2) / 0.6), rotation: clamp(1 - (months - 1) / 5),
+    recurrent: clamp(service * 12 / Math.max(1, ht * 0.15)),
   };
-  return { n, goods, freight, duty, log, cash, landed, delivery, ht, lines, costs, margin, marginPct, arbitrage, months, yearUnits, yearMargin, containerMargin: margin * n, roi: cash > 0 ? yearMargin / cash : 0, crit: c, known };
+  return { n, goods, freight, duty, log, cash, landed, delivery, ht, lines, costs, margin, marginPct, arbitrage, months, yearUnits, yearMargin, containerMargin: margin * n, roi: cash > 0 ? yearMargin / cash : 0, crit: c, known, service, serviceYear1, serviceYear2 };
 }
 export function scoreOf(w: Weights, crit: Record<CritKey, number>) {
   const tot = CRITS.reduce((a, [k]) => a + (w[k] || 0), 0) || 1;

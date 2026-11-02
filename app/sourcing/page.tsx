@@ -45,6 +45,7 @@ function ProductCard({x,sup,bp,score,open,toggle,patch,remove}:{x:Product;sup?:S
     <div><small>Rendement de l’argent / an</small><b>{Math.round(bp.roi*100)} %</b></div>
     <div><small>Unités vendues / an</small><b>{Math.round(bp.yearUnits)}</b></div>
    </div>
+   {bp.service?<p className={s.tip}>🔄 <b>Contrat de service</b> : {eur(bp.service)} / mois par machine → ≈ {eur(bp.serviceYear1)} la 1re année, puis ≈ {eur(bp.serviceYear2)} / an (si tu gardes {Math.round(bp.yearUnits)} clients par an).</p>:null}
    <h3>🎯 Score par critère</h3>
    <div className={c.bars}>{CRITS.map(([k,l])=><div key={k} className={c.bar}><span>{l}</span><i><span style={{width:`${bp.crit[k]*100}%`}}/></i><b>{Math.round(bp.crit[k]*10)}</b></div>)}</div>
    <h3>✏️ Modifier</h3>
@@ -61,6 +62,7 @@ function ProductCard({x,sup,bp,score,open,toggle,patch,remove}:{x:Product;sup?:S
     <Num label="Unités par remorque (0 = non)" v={x.trailerFit} on={n=>patch({trailerFit:n})}/>
     <Num label="Sinon, transporteur / unité" v={x.otherDelivery} on={n=>patch({otherDelivery:n})}/>
     <Num label="Provision SAV / unité" v={x.savCost} on={n=>patch({savCost:n})}/>
+    <Num label="Contrat service HT / mois" v={x.serviceMonth||0} on={n=>patch({serviceMonth:n})}/>
     <label><span>Homologation</span><select value={x.homolog} onChange={e=>patch({homolog:e.target.value as Product["homolog"]})}>{HOMOLOG.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></label>
     <label><span>Permis</span><select value={x.permis} onChange={e=>patch({permis:e.target.value as Product["permis"]})}>{["aucun","AM","B","B96","CACES"].map(k=><option key={k} value={k}>{k==="aucun"?"Sans permis":k}</option>)}</select></label>
     <label><span>Demande Leboncoin (1–5)</span><input type="number" min={0} max={5} value={x.lbc} onChange={e=>patch({lbc:Number(e.target.value)||0})}/></label>
