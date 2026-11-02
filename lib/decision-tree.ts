@@ -14,6 +14,8 @@ export type TreeOpp = {
   pOk: number;                                                   // probabilité d'avoir un produit conforme et homologué qui tient
   demand: { low: Level; mid: Level; high: Level };
   pWar: number; warCut: number;                                  // probabilité que les leaders baissent leurs prix, baisse de marge
+  pAD?: number;                                                  // probabilité de droits antidumping dans les 3 ans (défense commerciale)
+  adCut?: number;                                                // part de la marge perdue après les droits (sur la moitié de la période)
   salvage: number;                                               // part du stock récupérée si on arrête (revente à prix cassé)
   salvageFail?: number;                                          // part récupérée si le produit est NON conforme (bloqué) — 0,3 par défaut
   signal: number;                                                // fiabilité du test (0,5 = n'apprend rien, 1 = parfait)
@@ -40,7 +42,8 @@ function launched(o: TreeOpp, monthsLost: number, levels: (typeof lv)[number][] 
   const tot = levels.reduce((a, k) => a + o.demand[k].p, 0) || 1;
   const kids = levels.map(k => {
     const d = o.demand[k], p = d.p / tot;
-    const peace = profitIfOk(o, d.share, false, monthsLost), war = profitIfOk(o, d.share, true, monthsLost);
+    const ad = 1 - (o.pAD ?? 0) * (o.adCut ?? 0.6) * 0.5; // droits antidumping éventuels en milieu de période
+    const peace = profitIfOk(o, d.share, false, monthsLost) * (profitIfOk(o, d.share, false, monthsLost) > 0 ? ad : 1), war = profitIfOk(o, d.share, true, monthsLost) * (profitIfOk(o, d.share, true, monthsLost) > 0 ? ad : 1);
     const stockLoss = k === "low" ? o.fullInvest * 0.2 : 0; // stock qui tourne mal
     const v = (1 - o.pWar) * peace + o.pWar * war - stockLoss;
     return { label: `Demande ${k === "low" ? "faible" : k === "mid" ? "moyenne" : "forte"} (part ${(d.share * 100).toFixed(2)} %)`, p, value: v,
@@ -86,28 +89,55 @@ export type { Node };
 const L = (p: number, share: number): Level => ({ p, share });
 /** Opportunités chiffrées (première calibration ; à affiner avec la recherche et tes devis). */
 export const TREE_OPPS: TreeOpp[] = [
-  { id: "utility", name: "🛻 Utilitaire électrique L7e « anti-Goupil »", marketUnits: 2000, marketSrc: "≈ 2 000 / an en France (Goupil ≈ 750, Aixam Pro ≈ 500, Ligier Pro ≈ 300, autres) — estimation",
-    price: 14500, cost: 9500, fixedMonth: 300, fullInvest: 45000, testInvest: 16000, pOk: 0.65,
-    demand: { low: L(0.35, 0.005), mid: L(0.45, 0.015), high: L(0.2, 0.03) }, pWar: 0.3, warCut: 0.25, salvage: 0.7, signal: 0.75, delayMonths: 6,
+  { id: "utility", pAD: 0.1, name: "🛻 Utilitaire électrique L7e « anti-Goupil »", marketUnits: 2000, marketSrc: "≈ 2 000 / an en France (Goupil ≈ 750, Aixam Pro ≈ 500, Ligier Pro ≈ 300, autres) — estimation",
+    price: 14500, cost: 9500, fixedMonth: 300, fullInvest: 45000, testInvest: 16000, pOk: 0.6,
+    demand: { low: L(0.5, 0.005), mid: L(0.35, 0.015), high: L(0.15, 0.03) }, pWar: 0.3, warCut: 0.25, salvage: 0.7, signal: 0.75, delayMonths: 6,
     evidence: ["Goupil : ≈ 93 M€ de CA, ≈ 3 000 véhicules/an à ≈ 30 k€ (Pappers, presse)", "UGAP verrouillé (Ligier + Goupil) → clients privés et petites communes", "pOk 65 % : COC L7e-CU de la version cargo souvent mal documenté"] },
-  { id: "autoportee", name: "🚜 Tondeuse autoportée sur batterie", marketUnits: 135000, marketSrc: "≈ 135 000 autoportées / an (estimation NielsenIQ-GfK)",
-    price: 2100, cost: 1500, fixedMonth: 200, fullInvest: 35000, testInvest: 9000, pOk: 0.8,
-    demand: { low: L(0.35, 0.0005), mid: L(0.45, 0.0015), high: L(0.2, 0.004) }, pWar: 0.4, warCut: 0.3, salvage: 0.75, signal: 0.7, delayMonths: 12,
+  { id: "autoportee", pAD: 0.15, name: "🚜 Tondeuse autoportée sur batterie", marketUnits: 135000, marketSrc: "≈ 135 000 autoportées / an (estimation NielsenIQ-GfK)",
+    price: 2100, cost: 1500, fixedMonth: 200, fullInvest: 35000, testInvest: 9000, pOk: 0.75,
+    demand: { low: L(0.5, 0.0005), mid: L(0.35, 0.0015), high: L(0.15, 0.004) }, pWar: 0.4, warCut: 0.3, salvage: 0.75, signal: 0.7, delayMonths: 12,
     evidence: ["Marques électriques 3 400–5 800 € ; usine ≈ 1 450 $", "CE machines + bruit + batterie : conformité accessible", "Saison mars–juillet : un test raté coûte une saison (12 mois de retard)"] },
-  { id: "remorques", name: "🛞 Remorques légères homologuées", marketUnits: 95000, marketSrc: "≈ 95 000 / an (estimation SDES)",
-    price: 1500, cost: 1150, fixedMonth: 100, fullInvest: 25000, testInvest: 8000, pOk: 0.6,
-    demand: { low: L(0.4, 0.0005), mid: L(0.45, 0.0015), high: L(0.15, 0.003) }, pWar: 0.3, warCut: 0.25, salvage: 0.8, signal: 0.7, delayMonths: 6,
+  { id: "remorques", pAD: 0.05, name: "🛞 Remorques légères homologuées", marketUnits: 95000, marketSrc: "≈ 95 000 / an (estimation SDES)",
+    price: 1500, cost: 1150, fixedMonth: 100, fullInvest: 25000, testInvest: 8000, pOk: 0.45,
+    demand: { low: L(0.55, 0.0005), mid: L(0.35, 0.0015), high: L(0.1, 0.003) }, pWar: 0.3, warCut: 0.25, salvage: 0.8, signal: 0.7, delayMonths: 6,
     evidence: ["Homologation O1/O2 obligatoire (coût du service technique à chiffrer)", "Écart ×1,8 seulement face aux Polonais"] },
-  { id: "golf", name: "⛳ Golfettes (campings, domaines)", marketUnits: 4300, marketSrc: "≈ 4 300 / an (estimation golfs + campings)",
+  { id: "golf", pAD: 0.3, name: "⛳ Golfettes (campings, domaines)", marketUnits: 4300, marketSrc: "≈ 4 300 / an (estimation golfs + campings)",
     price: 7000, cost: 5000, fixedMonth: 150, fullInvest: 30000, testInvest: 10000, pOk: 0.85,
-    demand: { low: L(0.3, 0.004), mid: L(0.5, 0.012), high: L(0.2, 0.025) }, pWar: 0.25, warCut: 0.2, salvage: 0.75, signal: 0.75, delayMonths: 9,
+    demand: { low: L(0.45, 0.004), mid: L(0.4, 0.012), high: L(0.15, 0.025) }, pWar: 0.25, warCut: 0.2, salvage: 0.75, signal: 0.75, delayMonths: 9,
     evidence: ["Antidumping US → usines chinoises en surplus, prix négociables", "Usage privé : pas d’homologation route nécessaire"] },
-  { id: "mower", name: "🌱 Débroussailleuses radiocommandées", marketUnits: 1050, marketSrc: "≈ 1 050 / an (estimation)",
-    price: 5000, cost: 3550, fixedMonth: 150, fullInvest: 25000, testInvest: 6000, pOk: 0.7,
-    demand: { low: L(0.35, 0.01), mid: L(0.45, 0.025), high: L(0.2, 0.05) }, pWar: 0.2, warCut: 0.2, salvage: 0.75, signal: 0.75, delayMonths: 12,
+  { id: "mower", pAD: 0.1, name: "🌱 Débroussailleuses radiocommandées", marketUnits: 1050, marketSrc: "≈ 1 050 / an (estimation)",
+    price: 5000, cost: 3550, fixedMonth: 150, fullInvest: 25000, testInvest: 6000, pOk: 0.65,
+    demand: { low: L(0.5, 0.01), mid: L(0.35, 0.025), high: L(0.15, 0.05) }, pWar: 0.2, warCut: 0.2, salvage: 0.75, signal: 0.75, delayMonths: 12,
     evidence: ["Marques UE 9 800–40 000 € ; Vigorun ≈ 2 850 $", "Stage V moteur + bruit à prouver (pOk 70 %)"] },
-  { id: "tracteur", name: "🚜 Tracteurs compacts indiens", marketUnits: 39200, marketSrc: "≈ 39 200 tracteurs / an (Axema 2024)",
-    price: 10500, cost: 8500, fixedMonth: 300, fullInvest: 50000, testInvest: 20000, pOk: 0.75,
-    demand: { low: L(0.4, 0.0003), mid: L(0.45, 0.001), high: L(0.15, 0.002) }, pWar: 0.3, warCut: 0.2, salvage: 0.8, signal: 0.7, delayMonths: 6,
+  { id: "tracteur", pAD: 0.05, name: "🚜 Tracteurs compacts indiens", marketUnits: 39200, marketSrc: "≈ 39 200 tracteurs / an (Axema 2024)",
+    price: 10500, cost: 8500, fixedMonth: 300, fullInvest: 50000, testInvest: 20000, pOk: 0.85,
+    demand: { low: L(0.55, 0.0003), mid: L(0.35, 0.001), high: L(0.1, 0.002) }, pWar: 0.3, warCut: 0.2, salvage: 0.8, signal: 0.7, delayMonths: 6,
     evidence: ["Solis 21 % des espaces verts ; ≈ 8 900 € HT contre 16 800 € pour Kubota", "Marques déjà représentées → marge distributeur plus faible"] },
 ];
+
+/** Calibration tirée des cas réels (recherche du 2 novembre 2026). */
+export const CALIBRATION = {
+  rules: [
+    "Chance d’être conforme : 75–90 % si le produit a DÉJÀ une réception UE vérifiée (COC, dossier CE) ; 35–55 % si c’est toi qui dois porter l’homologation.",
+    "Succès commercial durable d’un petit importateur : 15–30 % (survie à 5 ans des intermédiaires du commerce de gros : 51 %, INSEE).",
+    "Rabais nécessaire : 20–40 % sous les leaders (viser ≥ 30 % pour les pros).",
+    "Part d’un importateur seul sans marque : < 1–2 % du segment.",
+    "Défense commerciale : quand la part chinoise devient visible, les leaders portent plainte → droits de 20–50 % (souvent plus) en 2–4 ans, parfois rétroactifs.",
+  ],
+  cases: [
+    "Voitures : marques chinoises 2,7 % → 5,1 % en Europe (S1 2024 → S1 2025), puis droits compensateurs 7,8–35,3 % sur les électriques. Aiways (petit entrant) : ≈ 1 000 voitures/an puis arrêt.",
+    "Chariots élévateurs : 8 % → 15 % en EMEA (2020–2022), rabais 20–40 %, pas d’antidumping.",
+    "Nacelles : forte hausse chinoise → droits antidumping 22–49 % (janvier 2025) + 0–14 % anti-subvention.",
+    "Golfettes aux USA : 99 % des importations chinoises → droits 119–478 % (2025).",
+    "Vélos électriques UE : droits 18,8–79,3 % → importations chinoises −84 % en 1 an.",
+    "Robots tondeuses : décision antidumping UE au plus tard le 19/01/2027, importations enregistrées (rétroactif possible).",
+    "VSP : Kaiyun ≈ 30 ventes en Europe (échec) ; XEV ≈ 10 000 en cumul (déclaration) ; marché −21 % en 2025.",
+  ],
+  base: [
+    "Survie à 5 ans : 69 % (toutes entreprises), 64 % (commerce), 51 % (intermédiaires du commerce de gros) — INSEE.",
+    "Safety Gate 2024 : 40 % des alertes visent des produits chinois (61 % hors cosmétiques).",
+    "Non-conformité technique en contrôle douanier : 22 % (2017, toutes origines).",
+    "Voitures électriques chinoises : décote ≈ 2× plus rapide (Allemagne).",
+  ],
+  sources: "jato.com, carscoops.com, internationalrentalnews.com, eur-lex.europa.eu (2025/45, 2024/2754, 2026/142), powertraininternationalweb.com, usitc.gov, cyclingindustry.news, insee.fr, banque-france.fr, sgs.com (Safety Gate), lemoci.com, journalauto.com",
+};

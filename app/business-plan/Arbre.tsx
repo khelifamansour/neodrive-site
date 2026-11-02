@@ -2,7 +2,7 @@
 import {useMemo,useState} from "react";
 import s from "../planificateur/planif.module.css";
 import c from "../sourcing/sourcing.module.css";
-import {TREE_OPPS,evaluate,type Node,type TreeOpp} from "../../lib/decision-tree";
+import {CALIBRATION,TREE_OPPS,evaluate,type Node,type TreeOpp} from "../../lib/decision-tree";
 
 const k=(n:number)=>`${n<0?"−":""}${Math.abs(Math.round(n/1000)).toLocaleString("fr-FR")} k€`;
 const pc=(x:number)=>`${Math.round(x*100)} %`;
@@ -64,11 +64,15 @@ export default function Arbre({state,onChange}:{state:TreeState;onChange:(s:Tree
     <label><span>Mise « test »</span><input type="number" value={o.testInvest} onChange={x=>set(o.id,{testInvest:Number(x.target.value)||0})}/></label>
     <label><span>Chance que ce soit conforme (%)</span><input type="number" value={Math.round(o.pOk*100)} onChange={x=>set(o.id,{pOk:(Number(x.target.value)||0)/100})}/></label>
     {(["low","mid","high"] as const).map(l=><label key={l}><span>Demande {l==="low"?"faible":l==="mid"?"moyenne":"forte"} : chance % / part %</span><span style={{display:"flex",gap:4}}><input type="number" value={Math.round(o.demand[l].p*100)} onChange={x=>set(o.id,{demand:{...o.demand,[l]:{...o.demand[l],p:(Number(x.target.value)||0)/100}}})}/><input type="number" step={0.01} value={Number((o.demand[l].share*100).toFixed(3))} onChange={x=>set(o.id,{demand:{...o.demand,[l]:{...o.demand[l],share:(Number(x.target.value)||0)/100}}})}/></span></label>)}
+    <label><span>Chance d’antidumping en 3 ans (%)</span><input type="number" value={Math.round((o.pAD??0)*100)} onChange={x=>set(o.id,{pAD:(Number(x.target.value)||0)/100})}/></label>
     <label><span>Chance de guerre des prix (%)</span><input type="number" value={Math.round(o.pWar*100)} onChange={x=>set(o.id,{pWar:(Number(x.target.value)||0)/100})}/></label>
    </div>
    <ul className={c.ul}>{o.evidence.map(x=><li key={x}><small>📎 {x}</small></li>)}</ul>
    <p className={s.muted}>Valeur de l’information du test : {k(e.voi)} {e.voi>0?"(le test vaut le coup)":"(tester coûte plus que ce qu’il apprend : il retarde les ventes)"}.</p>
   </div>)}
+  <details><summary style={{cursor:"pointer",fontWeight:800}}>📚 D’où viennent les probabilités (cas réels)</summary><ul className={c.ul}>
+   {CALIBRATION.rules.map(x=><li key={x}><b>{x}</b></li>)}{CALIBRATION.cases.map(x=><li key={x}>{x}</li>)}{CALIBRATION.base.map(x=><li key={x}><small>{x}</small></li>)}<li><small>Sources : {CALIBRATION.sources}</small></li>
+  </ul></details>
   <p className={s.muted}>Lecture : « moyenne » = ce que tu gagnes en moyenne si tu refaisais le pari 100 fois. « Prudente » = la valeur sûre équivalente compte tenu du risque : c’est elle qui décide. Clique sur une ligne pour voir l’arbre et changer les chiffres.</p>
  </section>;
 }
