@@ -2,7 +2,7 @@
 import {Fragment,useMemo,useState} from "react";
 import s from "../planificateur/planif.module.css";
 import c from "../sourcing/sourcing.module.css";
-import {ALGERIA,EXPLORE,EXPLORE_VERDICT,SIGNALS,patternScore,potential,type Cand} from "../../lib/explore-data";
+import {ALGERIA,CHAMPIONS,EXPLORE,EXPLORE_VERDICT,SIGNALS,patternScore,potential,type Cand} from "../../lib/explore-data";
 
 const k=(n:number)=>`${Math.round(n/1000).toLocaleString("fr-FR")} k€`;
 const REG:Record<Cand["regulated"],string>={none:"✅ libre",soft:"🟡 compétence à avoir",hard:"⛔ métier fermé"};
@@ -51,6 +51,10 @@ export default function Explorer(){
   <details><summary style={{cursor:"pointer",fontWeight:800}}>❌ Ne passent pas ({fail.length}) — trop petits, pas répétables ou métier fermé</summary>
    <div className={s.tableWrap}><table className={s.dtable} style={{minWidth:1100}}>{head}<tbody>{fail.map(r=><Row key={r.x.id} {...r} dim/>)}</tbody></table></div>
   </details>
+  <h3>🏆 Les « Goupil » : qui gagne beaucoup sur une niche, et la faille chinoise</h3>
+  <div className={s.tableWrap}><table className={s.dtable} style={{minWidth:900}}><thead><tr><th>Entreprise</th><th>Chiffre d’affaires</th><th>Volumes</th><th>Alternative chinoise</th><th>Antidumping</th><th>Pour toi</th></tr></thead><tbody>
+   {[...CHAMPIONS].sort((a,b)=>b.opp-a.opp).map(x=><tr key={x.name}><td style={{whiteSpace:"normal",minWidth:160}}><b>{x.name}</b><small>{x.country} · {x.segment}</small></td><td style={{whiteSpace:"normal"}}>{x.ca}</td><td style={{whiteSpace:"normal"}}>{x.units}</td><td style={{whiteSpace:"normal",minWidth:150}}>{x.chinese}</td><td style={{whiteSpace:"normal"}}>{x.ad}</td><td style={{whiteSpace:"normal",minWidth:200}}><b>{"★".repeat(x.opp)}{"☆".repeat(5-x.opp)}</b><small>{x.why} — {x.src}</small></td></tr>)}
+  </tbody></table></div>
   <h3>📡 Ce que la Chine exporte le plus vers l’Europe (2025–2026)</h3>
   <div className={c.bars}>{SIGNALS.map(x=><div key={x.cat} className={c.w} style={{gridTemplateColumns:"1fr auto"}}><div><b>{x.cat}</b><small>{x.evidence}</small></div><b>{x.growth}</b></div>)}</div>
   {EXPLORE_VERDICT?<><h3>🧠 Ce que j’en retiens</h3><p className={s.tip} style={{whiteSpace:"pre-line"}}>{EXPLORE_VERDICT}</p></>:null}
