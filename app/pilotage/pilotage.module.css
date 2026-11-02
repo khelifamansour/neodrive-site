@@ -37,3 +37,8 @@
 @media(max-width:640px){.sumGrid{grid-template-columns:1fr 1fr}.sumGrid b{font-size:16px}}
 .week{border:1px solid #e5e7eb;border-radius:14px;padding:10px;display:grid;gap:8px;margin-top:8px}.weekHead{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:15px}
 .tasks li>span:first-child{font-size:18px;color:inherit}
+.rGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.rCol{background:#16202e;color:#fff;border-radius:16px;padding:14px;display:grid;gap:4px}.rCol small{font-weight:900;letter-spacing:.06em;opacity:.7;font-size:11.5px}.rCol b{font-size:26px}.rCol span{font-size:14px;opacity:.9}
+.rList{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rList>div{border:1px solid #e5e7eb;border-radius:14px;padding:12px;display:grid;gap:2px}.rList span{font-weight:800;color:#435063;font-size:13px}.rList b{font-size:22px}.rList small{color:#7a8594;font-size:12.5px}
+.rDo{list-style:none;margin:0;padding:0;display:grid;gap:6px}.rDo li{padding:11px 12px;border-radius:12px;background:#f8fafc;border:1px solid #eef2f7;font-size:15px;line-height:1.4}
+.rFoot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;color:#435063;font-size:14px}
+@media(max-width:640px){.rGrid{grid-template-columns:1fr}.rList{grid-template-columns:1fr 1fr}.rCol b{font-size:22px}}
