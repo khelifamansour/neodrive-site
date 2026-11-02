@@ -3,7 +3,7 @@ import {useMemo,useState} from "react";
 import s from "../planificateur/planif.module.css";
 import c from "../sourcing/sourcing.module.css";
 import {DOSSIERS,cashCurve,numbers,planFor,score,verdictOf,type Dossier} from "../../lib/dossiers";
-import {FILL_AVOID,FILL_PLAN,FREE_SPACE} from "../../lib/fill-plan";
+import {FILL_AVOID,FILL_PLAN,FREE_SPACE,WORKSHOP,WORKSHOP_FIRST} from "../../lib/fill-plan";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
 const k=(n:number)=>`${n<0?"−":""}${Math.abs(Math.round(n/1000)).toLocaleString("fr-FR")} k€`;
@@ -60,6 +60,14 @@ export default function Decision(){
    <tr><td><b>Total</b></td><td/><td><b>{FILL_PLAN.reduce((a,l)=>a+l.m3,0).toFixed(1)}</b></td><td><b>{eur(FILL_PLAN.reduce((a,l)=>a+l.cost,0))}</b></td><td><b>{eur(FILL_PLAN.reduce((a,l)=>a+l.sales,0))}</b></td><td><b>{eur(FILL_PLAN.reduce((a,l)=>a+l.margin,0))}</b></td><td colSpan={2}>écoulé en 6–9 mois (estimation)</td></tr>
   </tbody></table></div>
   <details><summary style={{cursor:"pointer",fontWeight:800}}>📄 Documents à exiger · ❌ ce qu’on écarte</summary><ul className={c.ul}>{FILL_PLAN.map(l=><li key={l.id}><b>{l.name}</b> : {l.docs}</li>)}{FILL_AVOID.map(x=><li key={x}>{x}</li>)}</ul></details>
+
+  <h3>🔧 Gamme « Atelier &amp; Chantier » (modèle PRP-Machines vu sur Leboncoin)</h3>
+  <p className={s.tip}>PRP-Machines : 1–2 salariés, un dépôt, des machines chinoises sous sa marque, vendues sur Leboncoin dans toute la France. Le même modèle, avec tes conteneurs, ton dépôt et ta remorque.</p>
+  <div className={s.tableWrap}><table className={s.dtable} style={{minWidth:1000}}><thead><tr><th>#</th><th>Produit</th><th>Usine</th><th>Arrivé</th><th>Prix France</th><th>Ventes / mois</th><th>Marge / u</th><th>Marge / mois</th><th>m³</th></tr></thead><tbody>
+   {WORKSHOP.map(w=><tr key={w.rank}><td>{w.rank}</td><td style={{whiteSpace:"normal",minWidth:200}}><b>{w.verdict} {w.name}</b>{w.note?<small>{w.note}</small>:null}</td><td style={{whiteSpace:"normal"}}>{w.fob}</td><td>{eur(w.landed)}</td><td style={{whiteSpace:"normal",minWidth:170}}>{w.priceFr}</td><td>{w.perMonth}</td><td>{eur(w.marginUnit)}</td><td><b>{eur(w.perMonth*w.marginUnit)}</b></td><td>{w.m3}</td></tr>)}
+  </tbody></table></div>
+  <div className={s.dash}><b>1er conteneur atelier (estimation) : {eur(WORKSHOP_FIRST.landedEur)} rendus → ≈ {eur(WORKSHOP_FIRST.marginEur)} de marge, ≈ {eur(WORKSHOP_FIRST.perMonthEur)} / mois</b>
+   <ul className={c.ul}>{WORKSHOP_FIRST.lines.map(l=><li key={l.name}>{l.qty} × {l.name} — {l.m3} m³ — {l.fobUsd.toLocaleString("fr-FR")} $ FOB</li>)}</ul><small className={s.muted}>{WORKSHOP_FIRST.note}</small></div>
 
   <h3>🏆 Le classement</h3>
   <div className={s.tableWrap}><table className={s.dtable} style={{minWidth:1000}}><thead><tr><th>#</th><th>Produit</th><th>Marché France / an</th><th>Part visée</th><th>Ventes / an</th><th>Achat → vente</th><th>Marge / unité</th><th>Marge / an</th><th>Chance</th><th>1re commande</th><th>Décision</th></tr></thead><tbody>
