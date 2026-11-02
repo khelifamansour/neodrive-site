@@ -2,7 +2,7 @@
 import {Fragment,useMemo,useState} from "react";
 import s from "../planificateur/planif.module.css";
 import c from "../sourcing/sourcing.module.css";
-import {ALGERIA,EXPLORE,EXPLORE_VERDICT,patternScore,potential,type Cand} from "../../lib/explore-data";
+import {ALGERIA,EXPLORE,EXPLORE_VERDICT,SIGNALS,patternScore,potential,type Cand} from "../../lib/explore-data";
 
 const k=(n:number)=>`${Math.round(n/1000).toLocaleString("fr-FR")} k€`;
 const REG:Record<Cand["regulated"],string>={none:"✅ libre",soft:"🟡 compétence à avoir",hard:"⛔ métier fermé"};
@@ -39,7 +39,7 @@ export default function Explorer(){
  return <section className={s.card}>
   <h2>🔭 Explorer : trouver le prochain « voiture sans permis »</h2>
   <p className={s.tip}>Ton schéma gagnant : <b>un vieux marché</b> tenu par des marques européennes chères, protégé par une technologie (le moteur diesel) — puis <b>une mutation</b> (l’électrique) qui permet aux usines chinoises de faire la même chose 2–3× moins cher. La note <b>« schéma VSP »</b> mesure à quel point chaque marché ressemble à ça : taille, écart de prix, mutation en cours, peu d’importateurs, barrière technique (pas un métier fermé), répétable, adapté à toi.</p>
-  {EXPLORE.length?null:<p className={s.muted}>Recherche en cours…</p>}
+  {EXPLORE_VERDICT?<details open><summary style={{cursor:"pointer",fontWeight:900}}>🏆 Le résultat en bref</summary><p className={s.tip} style={{whiteSpace:"pre-line"}}>{EXPLORE_VERDICT}</p></details>:null}
   <div className={c.edit}>
    <label><span>Ventes neuves minimum / an</span><input type="number" step={5000} value={minUnits} onChange={e=>setMinUnits(Number(e.target.value)||0)}/></label>
    <label><span>Part de marché visée (%)</span><input type="number" step={0.1} value={share} onChange={e=>setShare(Number(e.target.value)||0)}/></label>
@@ -51,6 +51,8 @@ export default function Explorer(){
   <details><summary style={{cursor:"pointer",fontWeight:800}}>❌ Ne passent pas ({fail.length}) — trop petits, pas répétables ou métier fermé</summary>
    <div className={s.tableWrap}><table className={s.dtable} style={{minWidth:1100}}>{head}<tbody>{fail.map(r=><Row key={r.x.id} {...r} dim/>)}</tbody></table></div>
   </details>
+  <h3>📡 Ce que la Chine exporte le plus vers l’Europe (2025–2026)</h3>
+  <div className={c.bars}>{SIGNALS.map(x=><div key={x.cat} className={c.w} style={{gridTemplateColumns:"1fr auto"}}><div><b>{x.cat}</b><small>{x.evidence}</small></div><b>{x.growth}</b></div>)}</div>
   {EXPLORE_VERDICT?<><h3>🧠 Ce que j’en retiens</h3><p className={s.tip} style={{whiteSpace:"pre-line"}}>{EXPLORE_VERDICT}</p></>:null}
 
   {ALGERIA.opps.length?<><h3>🇩🇿 Algérie</h3>
