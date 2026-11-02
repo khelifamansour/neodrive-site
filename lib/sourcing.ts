@@ -2,10 +2,18 @@
  *  Même méthode que le pilotage : prix usine → arrivée au hub (fret, douane, dépotage) → livraison remorque → marge. */
 import type { Params, Port } from "./gestion";
 
-export type Cat = "vsp" | "golfette" | "utilitaire" | "tricycle" | "quad" | "chariot" | "scooter" | "autre";
+export type Cat = "vsp" | "golfette" | "utilitaire" | "tricycle" | "quad" | "chariot" | "chantier" | "agricole" | "motoculture" | "scooter" | "autre";
 export const CATS: [Cat, string][] = [
   ["vsp", "🚗 Voiture sans permis"], ["golfette", "⛳ Golfette / navette"], ["utilitaire", "🛻 Petit utilitaire"], ["tricycle", "🛺 Tricycle cargo"],
-  ["quad", "🏍️ Quad / UTV"], ["chariot", "🏗️ Chariot élévateur"], ["scooter", "🛵 Scooter"], ["autre", "📦 Autre"],
+  ["quad", "🏍️ Quad / UTV"], ["chariot", "🏗️ Manutention (chariot, gerbeur)"], ["chantier", "🚜 Engin de chantier"], ["agricole", "🌾 Micro-tracteur"], ["motoculture", "🌱 Motoculture"], ["scooter", "🛵 Scooter"], ["autre", "📦 Autre"],
+];
+/** Thématiques : grandes familles de « matériel roulant » où NeoDrive peut appliquer sa méthode. */
+export const THEMES: { id: string; name: string; cats: Cat[]; idea: string }[] = [
+  { id: "personnes", name: "🚗 Transporter des personnes", cats: ["vsp", "golfette", "quad", "scooter"], idea: "Ton métier actuel : même clients, même Leboncoin, même remorque." },
+  { id: "marchandises", name: "📦 Transporter des objets", cats: ["utilitaire", "tricycle"], idea: "Artisans, communes, campings, agriculteurs : petits utilitaires électriques." },
+  { id: "manutention", name: "🏗️ Charger / décharger", cats: ["chariot"], idea: "Chariots et gerbeurs électriques : PME, entrepôts, et toi-même pour le dépotage." },
+  { id: "chantier", name: "🚜 Chantier", cats: ["chantier"], idea: "Mini-pelles, mini-dumpers, mini-chargeuses : artisans et particuliers." },
+  { id: "terre", name: "🌾 Agriculture & jardin", cats: ["agricole", "motoculture"], idea: "Micro-tracteurs, tondeuses, débroussailleuses télécommandées : saison au printemps." },
 ];
 export type Status = "etudier" | "contacter" | "mail" | "devis" | "echantillon" | "partenaire" | "ecarte";
 export const STATUS: [Status, string][] = [
@@ -18,14 +26,14 @@ export type Permis = "aucun" | "AM" | "B" | "B96" | "CACES";
 
 export type Supplier = {
   id: string; name: string; city: string; fair: string; stand: string; website: string; email: string; whatsapp: string; phone: string; contact: string;
-  cats: Cat[]; status: Status; notes: string; nextDate: string; sources: string; verified: boolean;
+  cats: Cat[]; status: Status; notes: string; nextDate: string; sources: string; verified: boolean; touched?: boolean;
 };
 export type Product = {
   id: string; supplierId: string; name: string; cat: Cat; specs: string; photo: string; link: string;
   fobUsd: number; perContainer: number; dutyPct: number; transferUnit: number;
   priceTtc: number; frPriceTtc: number; frSource: string; salesMonth: number;
   trailerFit: number; otherDelivery: number; homolog: Homolog; permis: Permis; lbc: number; sav: number; savCost: number;
-  verified: boolean; notes: string;
+  verified: boolean; notes: string; touched?: boolean;
 };
 export type Weights = Record<CritKey, number>;
 export type CritKey = "arbitrage" | "marge" | "remorque" | "leboncoin" | "homolog" | "permis" | "sav" | "treso" | "rotation";
@@ -102,8 +110,9 @@ export function mergeSeed(d: Partial<Sourcing> | null): Sourcing {
   if (!d) return seed;
   const removed = d.removed || [], sup = d.suppliers || [], prod = d.products || [];
   return {
-    suppliers: [...sup, ...seed.suppliers.filter(x => !removed.includes(x.id) && !sup.some(y => y.id === x.id))],
-    products: [...prod, ...seed.products.filter(x => !removed.includes(x.id) && !prod.some(y => y.id === x.id))],
+    // Une fiche que tu n'as jamais modifiée est remplacée par la version la plus récente de la recherche.
+    suppliers: [...sup.map(x => x.touched ? x : seed.suppliers.find(y => y.id === x.id) || x), ...seed.suppliers.filter(x => !removed.includes(x.id) && !sup.some(y => y.id === x.id))],
+    products: [...prod.map(x => x.touched ? x : seed.products.find(y => y.id === x.id) || x), ...seed.products.filter(x => !removed.includes(x.id) && !prod.some(y => y.id === x.id))],
     weights: { ...DEFAULT_WEIGHTS, ...(d.weights || {}) }, hyp: { ...DEFAULT_HYP, ...(d.hyp || {}) }, removed, updated_at: d.updated_at,
   };
 }

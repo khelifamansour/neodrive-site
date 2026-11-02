@@ -3,13 +3,14 @@ import {useEffect,useMemo,useState} from "react";
 import s from "../planificateur/planif.module.css";
 import c from "./sourcing.module.css";
 import type {Params} from "../../lib/gestion";
+import Synthese from "./Synthese";
 import {CATS,CRITS,HOMOLOG,STATUS,businessPlan,scoreOf,verdict,type Cat,type Hyp,type Product,type Sourcing,type Supplier,type Weights} from "../../lib/sourcing";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Math.round(n||0));
 const uid=()=>`${Date.now().toString(36)}${Math.random().toString(36).slice(2,5)}`;
 const catIcon=(k:Cat)=>(CATS.find(x=>x[0]===k)?.[1]||"📦").split(" ")[0];
 const catName=(k:Cat)=>(CATS.find(x=>x[0]===k)?.[1]||"").replace(/^\S+\s/,"");
-type Tab="classement"|"fournisseurs"|"criteres";
+type Tab="synthese"|"classement"|"fournisseurs"|"criteres";
 type BP=ReturnType<typeof businessPlan>;
 
 function Num({label,v,on,step=1}:{label:string;v:number;on:(n:number)=>void;step?:number}){return <label><span>{label}</span><input type="number" step={step} value={v} onChange={e=>on(Number(e.target.value)||0)}/></label>;}
@@ -109,7 +110,7 @@ function SupplierCard({x,n,patch,remove,addProduct}:{x:Supplier;n:number;patch:(
 export default function SourcingPage(){
  const [code,setCode]=useState("");const [authed,setAuthed]=useState(false);
  const [d,setD]=useState<Sourcing|null>(null);const [P,setP]=useState<Params|null>(null);
- const [tab,setTab]=useState<Tab>("classement");const [cat,setCat]=useState<Cat|"all">("all");const [open,setOpen]=useState("");
+ const [tab,setTab]=useState<Tab>("synthese");const [cat,setCat]=useState<Cat|"all">("all");const [open,setOpen]=useState("");
  const [busy,setBusy]=useState("");const [msg,setMsg]=useState("");const [dirty,setDirty]=useState(false);
  const api=async(body:object,pc=code)=>{const r=await fetch("/api/sourcing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:pc,...body})});const j=await r.json().catch(()=>({ok:false,error:"Erreur"}));if(r.status===401)setAuthed(false);if(!j.ok)throw new Error(j.error||"Erreur");return j;};
  const load=async(pc=code)=>{setBusy("load");setMsg("");try{const j=await api({action:"load"},pc);setD(j.data);setP(j.params);setAuthed(true);try{sessionStorage.setItem("nd_pc",pc)}catch{}}catch(e){setMsg((e as Error).message)}finally{setBusy("")}};
@@ -123,8 +124,8 @@ export default function SourcingPage(){
 
  if(!authed||!d||!P)return <main className={s.page}><form className={s.login} onSubmit={e=>{e.preventDefault();load();}}><span className={s.logo}>N</span><h1>Sourcing</h1><p>Code d’accès NeoDrive (le même que l’ERP).</p><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code" autoFocus/><button disabled={busy==="load"}>{busy==="load"?"…":"Entrer"}</button>{msg?<p className={s.err}>{msg}</p>:null}</form></main>;
 
- const patchP=(id:string,v:Partial<Product>)=>upd(x=>({...x,products:x.products.map(p=>p.id===id?{...p,...v}:p)}));
- const patchS=(id:string,v:Partial<Supplier>)=>upd(x=>({...x,suppliers:x.suppliers.map(p=>p.id===id?{...p,...v}:p)}));
+ const patchP=(id:string,v:Partial<Product>)=>upd(x=>({...x,products:x.products.map(p=>p.id===id?{...p,...v,touched:true}:p)}));
+ const patchS=(id:string,v:Partial<Supplier>)=>upd(x=>({...x,suppliers:x.suppliers.map(p=>p.id===id?{...p,...v,touched:true}:p)}));
  const rmP=(id:string)=>upd(x=>({...x,products:x.products.filter(p=>p.id!==id),removed:[...x.removed,id]}));
  const rmS=(id:string)=>upd(x=>({...x,suppliers:x.suppliers.filter(p=>p.id!==id),products:x.products.filter(p=>p.supplierId!==id),removed:[...x.removed,id,...x.products.filter(p=>p.supplierId===id).map(p=>p.id)]}));
  const addP=(sup:Supplier)=>{const id=uid();const k=sup.cats[0]||"vsp";upd(x=>({...x,products:[...x.products,{id,supplierId:sup.id,name:"Nouveau produit",cat:k,specs:"",photo:"",link:"",fobUsd:0,perContainer:k==="scooter"?80:k==="tricycle"?18:9,dutyPct:10,transferUnit:150,priceTtc:5990,frPriceTtc:12000,frSource:"",salesMonth:3,trailerFit:2,otherDelivery:350,homolog:"eec",permis:"aucun",lbc:3,sav:3,savCost:100,verified:false,notes:""}]}));setTab("classement");setCat("all");setOpen(id);};
@@ -139,8 +140,9 @@ export default function SourcingPage(){
  return <main className={s.page}>
   <header className={s.top}><div><h1>Sourcing NeoDrive</h1><p>Fournisseurs · produits · opportunités</p></div><div className={s.topBtns}><button onClick={save} disabled={!dirty||!!busy}>{busy==="save"?"…":dirty?"💾 Enregistrer":"✓ Enregistré"}</button></div></header>
   {msg?<p className={msg.startsWith("✅")?s.ok:s.err}>{msg}</p>:null}
-  <nav className={c.tabs}>{([["classement","🏆 Classement"],["fournisseurs",`🏭 Fournisseurs (${d.suppliers.length})`],["criteres","⚖️ Critères & coûts"]] as [Tab,string][]).map(([k,l])=><button key={k} className={tab===k?c.on:""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
+  <nav className={c.tabs}>{([["synthese","🧭 Synthèse"],["classement","🏆 Classement"],["fournisseurs",`🏭 Fournisseurs (${d.suppliers.length})`],["criteres","⚖️ Critères & coûts"]] as [Tab,string][]).map(([k,l])=><button key={k} className={tab===k?c.on:""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
 
+  {tab==="synthese"?<Synthese ranked={ranked} onCat={k=>{setCat(k);setTab("classement");}}/>:null}
   {tab==="classement"?<section className={s.card}>
    <h2>🏆 Meilleures opportunités</h2>
    {top.length?<div className={c.top3}>{top.map((r,i)=><div key={r.x.id}><small>#{i+1} · score {r.score}</small><b>{r.x.name}</b><span>{eur(r.bp.margin)} / unité · {eur(r.bp.yearMargin)} / an</span></div>)}</div>:<p className={s.muted}>Pas encore assez de prix usine connus.</p>}
