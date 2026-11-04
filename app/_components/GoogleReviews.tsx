@@ -1,7 +1,7 @@
 "use client";
 
 /** Avis Google réels de clients NeoDrive (recopiés depuis la fiche Google, prénoms + initiale). */
-import { GOOGLE_PROFILE_URL } from "../../lib/reviews";
+import { GOOGLE_PROFILE_URL, SHOW_GOOGLE_REVIEWS_LINK } from "../../lib/reviews";
 
 const REVIEWS = [
   { name: "Jessica A.", when: "Octobre 2026", text: "Achat sans aucun regret… Ma fille de 16 ans l’utilise tous les jours, très pratique surtout lorsqu’elle a des coupures au lycée. Très bon investissement et personnel très réactif et disponible. Je recommande sincèrement." },
@@ -24,7 +24,7 @@ export default function GoogleReviews({ compact = false }: { compact?: boolean }
           <h2>Ils roulent en NeoDrive.</h2>
           <p>De vrais avis, publiés par nos clients sur Google.</p>
         </div>
-        <a className="all" href={GOOGLE_PROFILE_URL} target="_blank" rel="noreferrer"><span className="g">G</span><span><b>★★★★★</b><small>Voir tous les avis sur Google →</small></span></a>
+        {SHOW_GOOGLE_REVIEWS_LINK ? <a className="all" href={GOOGLE_PROFILE_URL} target="_blank" rel="noreferrer"><span className="g">G</span><span><b>★★★★★</b><small>Voir tous les avis sur Google →</small></span></a> : null}
       </div>
       <div className="rail" tabIndex={0}>
         {REVIEWS.map(r => (
