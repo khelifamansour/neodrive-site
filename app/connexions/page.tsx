@@ -11,7 +11,7 @@ export default function Connexions(){
  const [msg,setMsg]=useState<{t:"ok"|"err";m:string}|null>(null);
  const [metaToken,setMetaToken]=useState("");
  const [waToken,setWaToken]=useState("");
- const [waPhone,setWaPhone]=useState("");
+ const [waPhone,setWaPhone]=useState("");const [waWaba,setWaWaba]=useState("");
  const [open,setOpen]=useState<string|null>(null);
 
  const api=async(body:object)=>{const r=await fetch("/api/connexions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:code,...body})});const j=await r.json().catch(()=>({ok:false,error:"Réponse invalide"}));if(!r.ok||!j.ok)throw new Error(j.error||"Erreur");return j;};
@@ -21,7 +21,7 @@ export default function Connexions(){
  },[]);
 
  const saveMeta=async()=>{setBusy("meta");setMsg(null);try{const j=await api({action:"save_meta",token:metaToken});setChecks(j.checks);setMetaToken("");setMsg({t:"ok",m:`✅ Page « ${j.page} » connectée${j.instagram?` · Instagram @${j.instagram}`:" · Instagram pas encore relié à la Page"}${j.whatsapp?" · WhatsApp connecté":""}.`});}catch(e){setMsg({t:"err",m:(e as Error).message})}finally{setBusy("")}};
- const saveWa=async()=>{setBusy("wa");setMsg(null);try{const j=await api({action:"save_whatsapp",token:waToken,phoneId:waPhone||undefined});setChecks(j.checks);setWaToken("");setMsg({t:"ok",m:`✅ WhatsApp connecté (${j.number}). Les relances repartent dans l’heure.`});}catch(e){setMsg({t:"err",m:(e as Error).message})}finally{setBusy("")}};
+ const saveWa=async()=>{setBusy("wa");setMsg(null);try{const j=await api({action:"save_whatsapp",token:waToken,phoneId:waPhone||undefined,wabaId:waWaba||undefined});setChecks(j.checks);setWaToken("");setMsg({t:"ok",m:`✅ WhatsApp connecté (${j.number}). Les relances repartent dans l’heure.`});}catch(e){setMsg({t:"err",m:(e as Error).message})}finally{setBusy("")}};
  const tiktok=async()=>{setBusy("tt");setMsg(null);try{const r=await fetch("/api/tiktok/connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:code})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||"Erreur");window.location.href=j.authorizationUrl;}catch(e){setMsg({t:"err",m:(e as Error).message});setBusy("")}};
  const report=async()=>{setBusy("report");setMsg(null);try{const r=await fetch("/api/health",{headers:{Authorization:"Bearer "+code}});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||"Erreur");setChecks(j.checks);setMsg(j.sent?{t:"ok",m:"📧 Rapport envoyé sur votre e-mail."}:{t:"err",m:"Le rapport n’a pas pu partir (Formspree)."});}catch(e){setMsg({t:"err",m:(e as Error).message})}finally{setBusy("")}};
 
@@ -55,7 +55,8 @@ export default function Connexions(){
     <p className="lead">Si l’étape 1 a affiché « WhatsApp connecté », il n’y a rien à faire ici.</p>
     <ol><li>Dans <a href="https://business.facebook.com/settings/system-users" target="_blank" rel="noreferrer">Utilisateurs système</a>, générez un token avec <code>whatsapp_business_messaging</code> et <code>whatsapp_business_management</code>, expiration « Jamais ».</li><li>L’identifiant du numéro se trouve dans <a href="https://business.facebook.com/wa/manage/phone-numbers/" target="_blank" rel="noreferrer">WhatsApp Manager → Numéros de téléphone</a> (laissez vide pour garder l’actuel).</li></ol>
     <textarea value={waToken} onChange={e=>setWaToken(e.target.value)} rows={3} placeholder="Collez ici l’accès WhatsApp" autoComplete="off" spellCheck={false}/>
-    <input value={waPhone} onChange={e=>setWaPhone(e.target.value.replace(/\D/g,""))} placeholder="Identifiant du numéro (facultatif)"/>
+    <input value={waPhone} onChange={e=>setWaPhone(e.target.value.replace(/\D/g,""))} placeholder="Identifiant du numéro (nouveau numéro de Hana)"/>
+    <input value={waWaba} onChange={e=>setWaWaba(e.target.value.replace(/\D/g,""))} placeholder="Identifiant du compte WhatsApp Business (WABA)"/>
     <button className="go" onClick={saveWa} disabled={!!busy||waToken.trim().length<30}>{busy==="wa"?"Vérification…":"Vérifier et enregistrer"}</button>
    </div>:null}
   </section>

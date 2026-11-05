@@ -36,7 +36,7 @@ export function packageParams(lead: any): [string, string] {
 
 /** Lit (et crée si demandé) le modèle du package chez Meta. */
 export async function packageTemplateStatus(create: boolean) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN; const waba = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
+  const token = process.env.WHATSAPP_ACCESS_TOKEN; const waba = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "364388790101381";
   if (!token || !waba) throw new Error("Accès WhatsApp du nouveau numéro manquant : jeton + identifiant du compte WhatsApp Business (page /connexions)");
   const r = await fetch(`https://graph.facebook.com/${V()}/${waba}/message_templates?name=${PACKAGE_TEMPLATE}&fields=name,status,rejected_reason`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
   const j = await r.json().catch(() => ({}));

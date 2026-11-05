@@ -36,7 +36,8 @@ export async function POST(req: Request) {
     if (token.length < 30) return NextResponse.json({ ok: false, error: "Collez l’accès WhatsApp complet." }, { status: 400 });
     try {
       const w = await checkWhatsApp(token, phoneId);
-      await writeIntegrations({ WHATSAPP_ACCESS_TOKEN: token, WHATSAPP_PHONE_NUMBER_ID: phoneId }, { whatsapp_saved_at: new Date().toISOString() });
+      const wabaId = String(b.wabaId || "").replace(/\D/g, "");
+      await writeIntegrations({ WHATSAPP_ACCESS_TOKEN: token, WHATSAPP_PHONE_NUMBER_ID: phoneId, ...(wabaId ? { WHATSAPP_BUSINESS_ACCOUNT_ID: wabaId } : {}) }, { whatsapp_saved_at: new Date().toISOString() });
       return NextResponse.json({ ok: true, number: w.display_phone_number, checks: await runHealthChecks() });
     } catch (e) { return NextResponse.json({ ok: false, error: "WhatsApp refuse cet accès : " + (e as Error).message }, { status: 400 }); }
   }
