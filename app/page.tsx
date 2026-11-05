@@ -166,7 +166,7 @@ export default function Home() {
         <p>Posez-nous vos questions, demandez les disponibilités ou une vidéo personnalisée du véhicule.</p>
         <div className="ctaActions">
           <a href="/reservation-devis" className="reserveBtn">Réserver ma NeoDrive</a>
-          <a href="https://wa.me/33628261446" target="_blank" rel="noreferrer" className="primaryBtn">💬 WhatsApp</a>
+          <a href="https://wa.me/33676192234" target="_blank" rel="noreferrer" className="primaryBtn">💬 WhatsApp</a>
         </div>
       </section>
 

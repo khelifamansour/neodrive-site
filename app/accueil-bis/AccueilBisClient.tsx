@@ -4,7 +4,7 @@ import { useState } from "react";
 import styles from "./AccueilBis.module.css";
 
 const whatsapp =
-  "https://wa.me/33628261446?text=Bonjour%20NeoDrive%2C%20je%20souhaite%20des%20informations%20sur%20vos%20voitures%20sans%20permis%20%C3%A9lectriques.";
+  "https://wa.me/33676192234?text=Bonjour%20NeoDrive%2C%20je%20souhaite%20des%20informations%20sur%20vos%20voitures%20sans%20permis%20%C3%A9lectriques.";
 
 type IconName =
   | "wheel" | "plug" | "truck" | "shield" | "speed" | "home"

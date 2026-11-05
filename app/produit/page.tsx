@@ -52,7 +52,7 @@ export default function Produit() {
             <strong>3 990 € TTC</strong>
           </div>
           <div className={styles.actions}>
-            <a href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20recevoir%20une%20vid%C3%A9o%20de%20la%20NeoDrive%20SWITCH" target="_blank" rel="noreferrer">Recevoir une vidéo</a>
+            <a href="https://wa.me/33676192234?text=Bonjour%2C%20je%20souhaite%20recevoir%20une%20vid%C3%A9o%20de%20la%20NeoDrive%20SWITCH" target="_blank" rel="noreferrer">Recevoir une vidéo</a>
             <a className={styles.secondary} href="#galerie">Voir les photos réelles</a>
           </div>
           <small>Prix selon version, équipement et disponibilité.</small>
@@ -153,7 +153,7 @@ export default function Produit() {
           <span className={styles.eyebrow}>DE NOTRE STOCK JUSQU’À CHEZ VOUS</span>
           <h2>Une livraison organisée par NeoDrive.</h2>
           <p>Nous restons votre interlocuteur pour la préparation, le transport et la livraison de votre voiture.</p>
-          <a href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20conna%C3%AEtre%20les%20NeoDrive%20disponibles" target="_blank" rel="noreferrer">Voir les disponibilités</a>
+          <a href="https://wa.me/33676192234?text=Bonjour%2C%20je%20souhaite%20conna%C3%AEtre%20les%20NeoDrive%20disponibles" target="_blank" rel="noreferrer">Voir les disponibilités</a>
         </div>
       </section>
 
