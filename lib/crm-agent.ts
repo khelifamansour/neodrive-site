@@ -209,7 +209,7 @@ export const templateName = (k: TemplateKey) => process.env[TEMPLATES[k].env] ||
 
 /** Crée les modèles manquants sur le compte WhatsApp Business et renvoie leur statut d'approbation. */
 export async function syncTemplates(create: boolean) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN; const waba = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
+  const token = process.env.WHATSAPP_ACCESS_TOKEN; const waba = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "364388790101381";
   if (!token || !waba) throw new Error("Jeton WhatsApp ou identifiant du compte WhatsApp Business manquant (page /connexions)");
   const v = process.env.WHATSAPP_API_VERSION || "v22.0";
   const list = await fetch(`https://graph.facebook.com/${v}/${waba}/message_templates?fields=name,status,category,language&limit=200`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
