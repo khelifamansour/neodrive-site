@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { crmDatabase, firstMessage, generateCommercialReply, leadScore, normalizePhone, sendWhatsApp, whatsappConfigured } from "@/lib/crm-agent";
 import { applyStoredSecrets } from "../../../../lib/integrations";
+import { packageTemplateStatus, sendDailyPackages } from "../../../../lib/package-sender";
+import { buildDailyReport } from "../../../../lib/daily-report";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -68,6 +70,21 @@ export async function POST(request: Request) {
     }
     if (inserts.length) { const { error } = await db.from("leads").insert(inserts); if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 }); }
     return NextResponse.json({ ok: true, imported: inserts.length, duplicates, invalid, automaticSending: whatsappConfigured() && Boolean(process.env.WHATSAPP_TEMPLATE_NAME), consentRecorded: true });
+  }
+
+  if (action === "report") {
+    try { return NextResponse.json({ ok: true, report: await buildDailyReport() }); }
+    catch (error) { return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Rapport indisponible" }, { status: 500 }); }
+  }
+
+  if (action === "package-template") {
+    try { return NextResponse.json({ ok: true, template: await packageTemplateStatus(Boolean(body.create)) }); }
+    catch (error) { return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Modèle indisponible" }, { status: 502 }); }
+  }
+
+  if (action === "send-packages") {
+    try { return NextResponse.json({ ok: true, ...(await sendDailyPackages(Math.min(50, Number(body.limit) || 20))) }); }
+    catch (error) { return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Envoi impossible" }, { status: 502 }); }
   }
 
   if (action === "create") {

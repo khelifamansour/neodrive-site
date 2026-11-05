@@ -165,6 +165,28 @@ export default function CRMPage() {
     await markContacted(lead);
   }
 
+  async function showReport() {
+    setWorking(true);
+    try { const { report: r } = await api("report"); setMessage(`📊 Aujourd'hui : ${r.imported} importé(s) · ${r.packages} package(s) envoyé(s) · ${r.replies} client(s) ont répondu · ${r.outbound} message(s) envoyé(s) · ${r.stops} STOP · ${r.waiting} nouveau(x) pas encore contacté(s)${r.hot.length ? ` · 🔥 à rappeler : ${r.hot.map((h: any) => h.nom).join(", ")}` : ""}`); }
+    catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Rapport indisponible"}`); }
+    setWorking(false);
+  }
+
+  async function autoSendPackages() {
+    if (!confirm("Envoyer maintenant le package WhatsApp aux nouveaux clients (20 au maximum) ?")) return;
+    setWorking(true);
+    try { const r = await api("send-packages", { limit: 20 }); setMessage(r.stopped ? `❌ Envoi arrêté : ${r.stopped}` : `✅ ${r.sent} package(s) envoyé(s) par WhatsApp${r.failed ? `, ${r.failed} échec(s)` : ""}. Il en reste ${r.remaining} à envoyer.`); await loadLeads(); }
+    catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Envoi impossible"}`); }
+    setWorking(false);
+  }
+
+  async function packageTemplate(create: boolean) {
+    setWorking(true);
+    try { const r = await api("package-template", { create }); const s = r.template?.status; setMessage(`Modèle WhatsApp du package : ${s === "APPROVED" ? "✅ approuvé, l'envoi automatique est prêt" : s === "PENDING" ? "⏳ en validation chez Meta (quelques minutes à 24 h)" : s === "REJECTED" ? `❌ refusé${r.template?.reason ? ` (${r.template.reason})` : ""}` : "⚪ pas encore créé"}`); }
+    catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Modèle indisponible"}`); }
+    setWorking(false);
+  }
+
   function exportPackages() {
     const todo = leads.filter(l => (l.statut || "Nouveau") === "Nouveau" && normalizePhone(l.telephone) && !l.opted_out_at && !isOffTopic(l));
     if (!todo.length) { setMessage("Aucun nouveau client à contacter."); return; }
@@ -242,6 +264,9 @@ export default function CRMPage() {
           <button style={styles.secondary} onClick={exportCSV}>Exporter CSV</button>
           <label style={{ ...styles.secondary, cursor: "pointer" }}>{working ? "Traitement…" : "Importer Leboncoin CSV"}<input type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={event => { importFile(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
           <button style={{ ...styles.secondary, borderColor: "#16a34a", color: "#166534" }} onClick={exportPackages}>📦 Packages du jour</button>
+          <button style={{ ...styles.primary, background: "#16a34a" }} onClick={autoSendPackages} disabled={working}>🚀 Envoyer les packages</button>
+          <button style={styles.secondary} onClick={showReport} disabled={working}>📊 Rapport du jour</button>
+          <button style={styles.secondary} onClick={() => packageTemplate(!confirm("Vérifier seulement le statut ?\n\nOK = vérifier · Annuler = créer le modèle chez Meta"))} disabled={working}>Modèle WhatsApp</button>
           <button style={styles.primary} onClick={() => setNewLeadOpen(true)}>+ Nouveau lead</button>
         </div>
       </div>
