@@ -19,7 +19,7 @@ export default function Home() {
             <span>✓ SAV & accompagnement</span>
           </div>
           <div className="heroActions">
-            <a href="https://wa.me/33628261446" target="_blank" rel="noreferrer" className="primaryBtn">Parler avec nous</a>
+            <a href="https://wa.me/33676192234" target="_blank" rel="noreferrer" className="primaryBtn">Parler avec nous</a>
             <a href="/videos" className="secondaryBtn">▶ Voir les vidéos</a>
           </div>
         </div>
@@ -68,7 +68,7 @@ export default function Home() {
               <li>Grand coffre</li>
               <li>Batterie incluse</li>
             </ul>
-            <a className="chooseBtn darkBtn" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">Demander l’Essentiel</a>
+            <a className="chooseBtn darkBtn" href="https://wa.me/33676192234" target="_blank" rel="noreferrer">Demander l’Essentiel</a>
           </article>
 
           <article className="card featured">
@@ -88,7 +88,7 @@ export default function Home() {
               <li>Bluetooth / USB</li>
               <li>Alarme antivol</li>
             </ul>
-            <a className="chooseBtn orangeBtn" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">Demander la Confort</a>
+            <a className="chooseBtn orangeBtn" href="https://wa.me/33676192234" target="_blank" rel="noreferrer">Demander la Confort</a>
           </article>
 
           <article className="card premium">
@@ -103,7 +103,7 @@ export default function Home() {
               <li>Plus d’autonomie</li>
               <li>Accompagnement renforcé</li>
             </ul>
-            <a className="chooseBtn darkBtn" href="https://wa.me/33628261446" target="_blank" rel="noreferrer">Demander la Plus+</a>
+            <a className="chooseBtn darkBtn" href="https://wa.me/33676192234" target="_blank" rel="noreferrer">Demander la Plus+</a>
           </article>
         </div>
       </section>
@@ -149,7 +149,7 @@ export default function Home() {
         <h2>Votre prochaine voiture peut être simple, accessible et rassurante.</h2>
         <p>Posez-nous vos questions, demandez les disponibilités ou une vidéo personnalisée du véhicule.</p>
         <div className="ctaActions">
-          <a href="https://wa.me/33628261446" target="_blank" rel="noreferrer" className="primaryBtn">💬 WhatsApp</a>
+          <a href="https://wa.me/33676192234" target="_blank" rel="noreferrer" className="primaryBtn">💬 WhatsApp</a>
           <a href="/videos" className="secondaryDark">Voir les vidéos</a>
         </div>
       </section>
