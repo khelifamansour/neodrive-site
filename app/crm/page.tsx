@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { isOffTopic, welcomePackage } from "../../lib/welcome-package";
 
 type Lead = {
   id: number;
@@ -158,6 +159,22 @@ export default function CRMPage() {
     setWorking(false);
   }
 
+  async function sendPackage(lead: Lead) {
+    const phone = normalizePhone(lead.telephone); if (!phone) return;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(welcomePackage(lead))}`, "_blank");
+    await markContacted(lead);
+  }
+
+  function exportPackages() {
+    const todo = leads.filter(l => (l.statut || "Nouveau") === "Nouveau" && normalizePhone(l.telephone) && !l.opted_out_at && !isOffTopic(l));
+    if (!todo.length) { setMessage("Aucun nouveau client à contacter."); return; }
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = [["telephone", "prenom", "ville", "message", "lien_whatsapp"], ...todo.map(l => { const m = welcomePackage(l); return [`+${normalizePhone(l.telephone)}`, String(l.nom || "").split(/\s+/)[0], l.ville || "", m, `https://wa.me/${normalizePhone(l.telephone)}?text=${encodeURIComponent(m)}`]; })];
+    const blob = new Blob(["\uFEFF" + rows.map(r => r.map(esc).join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `packages-neodrive-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    setMessage(`✅ ${todo.length} package(s) prêt(s) : fichier téléchargé (à importer dans Hana ou à envoyer un par un avec le bouton 📦).`);
+  }
+
   async function sendPresentation(lead: Lead) {
     if (!lead.whatsapp_opt_in) { setMessage("❌ Consentement WhatsApp requis pour ce prospect."); return; }
     setWorking(true);
@@ -224,6 +241,7 @@ export default function CRMPage() {
           <button style={styles.secondary} onClick={() => loadLeads()}>↻ Actualiser</button>
           <button style={styles.secondary} onClick={exportCSV}>Exporter CSV</button>
           <label style={{ ...styles.secondary, cursor: "pointer" }}>{working ? "Traitement…" : "Importer Leboncoin CSV"}<input type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={event => { importFile(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
+          <button style={{ ...styles.secondary, borderColor: "#16a34a", color: "#166534" }} onClick={exportPackages}>📦 Packages du jour</button>
           <button style={styles.primary} onClick={() => setNewLeadOpen(true)}>+ Nouveau lead</button>
         </div>
       </div>
@@ -273,6 +291,7 @@ export default function CRMPage() {
               <td style={styles.td}><textarea style={styles.note} value={lead.commentaire || ""} placeholder="Note commerciale…" onBlur={e => patchLead(lead.id,{commentaire:e.target.value})} onChange={e => setLeads(prev=>prev.map(l=>l.id===lead.id?{...l,commentaire:e.target.value}:l))} /></td>
               <td style={styles.td}><div style={{display:"grid",gap:6}}>
                 {phone && lead.statut === "Nouveau" && <button style={{ ...styles.action, border: 0, cursor: "pointer", background: "#dcfce7", color: "#166534" }} onClick={() => sendPresentation(lead)} disabled={working || !whatsappReady || !templateReady}>Envoyer présentation</button>}
+                {phone && !isOffTopic(lead) && <button style={{ ...styles.action, border: 0, cursor: "pointer", background: "#ecfdf5", color: "#065f46" }} onClick={() => sendPackage(lead)}>📦 Package</button>}
                 {phone && <button style={{ ...styles.action, border: 0, cursor: "pointer" }} onClick={() => prepareReply(lead)}>Réponse IA</button>}
                 {phone && <a style={styles.action} href={`https://wa.me/${phone}`} target="_blank" onClick={() => markContacted(lead)}>WhatsApp</a>}
                 {phone && <label style={{ ...styles.sub, display: "flex", gap: 4, alignItems: "center" }}><input type="checkbox" checked={Boolean(lead.whatsapp_opt_in)} onChange={event => patchLead(lead.id, { whatsapp_opt_in: event.target.checked })} /> Consentement</label>}
