@@ -20,12 +20,12 @@ export function isOffTopic(lead: LeadLike) {
 export function personalLine(lead: LeadLike) {
   const t = norm(String(lead.commentaire || ""));
   const lines: string[] = [];
-  if (/reprise/.test(t)) lines.push("Pour la reprise de votre véhicule actuel, notre responsable vous rappelle pour l'estimer.");
+  if (/reprise/.test(t)) lines.push("Nous ne faisons pas de reprise (nous vendons uniquement nos véhicules neufs, en direct) : le plus simple est de vendre votre voiture actuelle sur Leboncoin.");
   if (/essai|essayer|voir la voiture|visible|visite/.test(t)) lines.push("Vous voyez et essayez la voiture le jour de la livraison, avant de payer (0 € d'acompte).");
   if (/financ|credit|mensualit|par mois/.test(t)) lines.push(`Le financement est possible : simulation en 30 secondes sur ${SITE}/financement`);
   if (/autonomie|combien de km/.test(t)) lines.push("Autonomie : 50 à 70 km selon la conduite, recharge sur une simple prise 220 V (environ 6 h).");
-  if (/marque/.test(t)) lines.push("C'est la NeoDrive SWITCH, notre marque française.");
-  if (/professionn/.test(t)) lines.push("Nous sommes une entreprise française (SIREN 908 645 393), basée à Muret.");
+  if (/marque/.test(t)) lines.push("C'est la NeoDrive SWITCH : nous sommes le fabricant et nous vendons en direct, sans intermédiaire.");
+  if (/professionn/.test(t)) lines.push("Nous sommes le fabricant, une entreprise basée à Toulouse (SIREN 908 645 393).");
   if (!lines.length || /disponible|confort|interess/.test(t)) lines.unshift("La Confort (4 990 € TTC) est en stock ✅ et l'Essentielle (3 990 €) se commande avec 6 à 8 mois de délai.");
   return lines.slice(0, 2).join("\n");
 }
