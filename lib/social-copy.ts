@@ -160,7 +160,56 @@ export const SOCIAL_THEMES: SocialTheme[] = [
     body: "Le bon véhicule est celui qui correspond au trajet, au budget et aux contraintes du client. Notre positionnement est simple : proposer une mobilité électrique accessible, pratique et réparable, sans faire payer une complexité qui n’est pas nécessaire à tous.",
     tags: ["prix", "usage", "confiance"],
   },
+  {
+    id: "ado-14-ans",
+    hook: "Votre ado a 14 ans ? Il peut conduire une voiture sans permis.",
+    body: "Avec le permis AM, un jeune peut conduire une voiture sans permis dès 14 ans. Au chaud, au sec, avec une carrosserie en acier et une caméra de recul sur la version Confort : pour aller au lycée, c'est plus rassurant qu'un scooter. NeoDrive Confort à 4 990 € TTC, livrée chez vous, payée à la livraison.",
+    tags: ["usage", "jeunes", "prix"],
+  },
+  {
+    id: "senior-liberte",
+    hook: "Garder sa liberté pour aller au marché, chez le médecin, voir ses petits-enfants.",
+    body: "Pour les personnes nées avant 1988, aucun permis n'est nécessaire pour conduire une voiture sans permis. Simple à conduire, facile à garer, chauffage à bord : la NeoDrive est livrée et expliquée à domicile, et on ne paie qu'à la livraison.",
+    tags: ["usage", "senior"],
+  },
+  {
+    id: "trois-versions",
+    hook: "3 versions, 3 budgets : laquelle est faite pour vous ?",
+    body: "Essentielle 3 990 € (sur commande) · Confort 4 990 € en stock, avec caméra de recul, chauffage, Bluetooth et alarme · Confort Plus+ 5 990 € avec charge rapide et plus d'autonomie. Toutes 100 % électriques, 2 places, carrosserie acier.",
+    tags: ["prix", "produit"],
+  },
+  {
+    id: "recharge-maison",
+    hook: "Une prise de garage suffit pour recharger.",
+    body: "La NeoDrive se recharge sur une prise 220 V classique, en environ 6 heures, par exemple la nuit. Pas de borne à installer, pas de station-service. Jusqu'à 70 km d'autonomie pour les trajets du quotidien.",
+    tags: ["recharge", "usage"],
+  },
+  {
+    id: "zero-acompte",
+    hook: "0 € d'acompte. Vous payez quand la voiture est devant chez vous.",
+    body: "Vous réservez en ligne sans rien payer. Le jour de la livraison, vous voyez la voiture, vous l'essayez, et vous payez seulement à ce moment-là. C'est notre façon de vous faire confiance, et de mériter la vôtre.",
+    tags: ["confiance", "livraison"],
+  },
+  {
+    id: "couleur-gratuite",
+    hook: "Le choix de la couleur est gratuit.",
+    body: "Nous avons souvent du gris en stock, et vous pouvez demander une autre couleur selon les disponibilités, sans supplément. Dites-nous laquelle vous ferait plaisir.",
+    tags: ["produit"],
+  },
+  {
+    id: "fabricant-direct",
+    hook: "Nous sommes le fabricant : pas de concessionnaire entre vous et nous.",
+    body: "NeoDrive conçoit et vend ses propres voitures sans permis, en direct depuis Toulouse. Pas d'intermédiaire, pas de marge de revendeur : c'est ce qui permet une voiture neuve à partir de 3 990 € TTC.",
+    tags: ["prix", "distribution", "confiance"],
+  },
+  {
+    id: "neuf-vs-occasion",
+    hook: "Une neuve au prix d'une occasion.",
+    body: "Une voiture sans permis d'occasion peut cacher une batterie fatiguée et des réparations. Pour un budget comparable, la NeoDrive est neuve, garantie 2 ans, avec des pièces disponibles rapidement.",
+    tags: ["prix", "confiance"],
+  },
 ];
+
 
 function hash(value: string) {
   let h = 2166136261;
