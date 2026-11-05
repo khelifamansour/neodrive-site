@@ -25,6 +25,9 @@ type Lead = {
   whatsapp_opt_in?: boolean;
   opted_out_at?: string | null;
   ai_enabled?: boolean;
+  history?: any;
+  followup_step?: number | null;
+  last_inbound_at?: string | null;
 };
 
 const STATUTS = ["Nouveau", "Contacté", "Chaud", "Réfléchit", "Livraison", "Client", "Perdu"];
@@ -35,6 +38,13 @@ function normalizePhone(v?: string | null) {
   if (p.startsWith("0")) p = `33${p.slice(1)}`;
   p = p.replace(/^\+/, "");
   return p;
+}
+
+function aiInfo(lead: Lead) {
+  const h = Array.isArray(lead.history) ? lead.history : [];
+  const last = [...h].reverse().find((x: any) => x?.type === "ai_update");
+  const err = [...h].reverse().find((x: any) => x?.type === "auto_followup_error");
+  return { temperature: last?.temperature as string | undefined, resume: last?.resume as string | undefined, action: last?.prochaine_action as string | undefined, humain: Boolean(last?.besoin_humain), error: err?.error as string | undefined };
 }
 
 function formatDate(v?: string | null) {
@@ -146,7 +156,7 @@ export default function CRMPage() {
 
   async function importFile(file?: File) {
     if (!file) return; setWorking(true);
-    try { const result = await api("import", { csv: await file.text() }); setMessage(`✅ ${result.imported} prospect(s) importé(s), ${result.duplicates} doublon(s), ${result.invalid} ligne(s) ignorée(s).`); await loadLeads(); }
+    try { const result = await api("import", { csv: await file.text() }); setMessage(`✅ ${result.imported} nouveau(x) prospect(s) importé(s) — l’agent va leur écrire automatiquement (15 par heure, de 8 h à 19 h). ${result.duplicates} déjà dans le CRM, ${result.invalid} ligne(s) sans téléphone ni email.`); await loadLeads(); }
     catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Import impossible"}`); }
     setWorking(false);
   }
@@ -155,6 +165,20 @@ export default function CRMPage() {
     setWorking(true);
     try { const result = await api("draft", { id: lead.id }); setDraft({ lead, message: result.message, whatsappUrl: result.whatsappUrl }); }
     catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Agent IA indisponible"}`); }
+    setWorking(false);
+  }
+
+  async function runNow() {
+    setWorking(true);
+    try { const r = await api("run"); const sent = (r.results || []).filter((x: any) => x.sent).length; setMessage(r.authBroken ? "❌ Le jeton WhatsApp est invalide ou expiré : renouvelle-le sur /connexions, puis relance." : `✅ Tournée lancée : ${sent} message(s) envoyé(s).`); await loadLeads(); }
+    catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Lancement impossible"}`); }
+    setWorking(false);
+  }
+
+  async function templates(create: boolean) {
+    setWorking(true);
+    try { const r = await api("templates", { create }); setMessage("Modèles WhatsApp : " + (r.templates || []).map((x: any) => `${x.name} → ${x.status === "APPROVED" ? "✅ approuvé" : x.status === "PENDING" ? "⏳ en validation Meta" : x.status === "ABSENT" ? "⚪ à créer" : x.status === "REJECTED" ? "❌ refusé" : x.status}${x.error ? ` (${x.error})` : ""}`).join(" · ")); }
+    catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Modèles indisponibles"}`); }
     setWorking(false);
   }
 
@@ -224,11 +248,14 @@ export default function CRMPage() {
           <button style={styles.secondary} onClick={() => loadLeads()}>↻ Actualiser</button>
           <button style={styles.secondary} onClick={exportCSV}>Exporter CSV</button>
           <label style={{ ...styles.secondary, cursor: "pointer" }}>{working ? "Traitement…" : "Importer Leboncoin CSV"}<input type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={event => { importFile(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
+          <button style={styles.secondary} onClick={() => templates(false)} disabled={working}>Modèles WhatsApp</button>
+          <button style={styles.secondary} onClick={() => { if (confirm("Créer les 3 modèles WhatsApp (bienvenue + 2 relances) chez Meta ?")) templates(true); }} disabled={working}>Créer les modèles</button>
+          <button style={{ ...styles.primary, background: "#16a34a" }} onClick={runNow} disabled={working}>▶ Envoyer maintenant</button>
           <button style={styles.primary} onClick={() => setNewLeadOpen(true)}>+ Nouveau lead</button>
         </div>
       </div>
 
-      <div style={{ ...styles.card, marginBottom: 16, background: "#f8fafc", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><div><strong>Agent commercial NeoDrive</strong><div style={styles.sub}>{aiReady ? "IA active : présentation NeoDrive, réponses clients et une seule relance." : "IA non configurée : messages commerciaux standards."}</div></div><div><strong style={{ color: whatsappReady && templateReady ? "#16a34a" : "#b45309" }}>{whatsappReady && templateReady ? "Envoi WhatsApp automatique actif" : whatsappReady ? "WhatsApp connecté · modèle Meta à configurer" : "WhatsApp Business à connecter"}</strong><div style={styles.sub}>{whatsappReady && templateReady ? `Prospects consentants traités automatiquement. ${webhookReady ? "Réponses automatiques configurées." : "Webhook à configurer pour les réponses entrantes."}` : whatsappReady ? "Ajoute WHATSAPP_TEMPLATE_NAME dans Vercel après validation du modèle Meta." : "Les messages peuvent déjà être préparés et ouverts dans WhatsApp."}</div></div></div>
+      <div style={{ ...styles.card, marginBottom: 16, background: "#f8fafc", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><div><strong>Agent commercial NeoDrive</strong><div style={styles.sub}>{aiReady ? "Agent Léa actif : message de bienvenue, réponses détaillées avec vidéos, 2 relances (J+2, J+5), fiche client mise à jour automatiquement." : "IA non configurée : messages commerciaux standards."}</div></div><div><strong style={{ color: whatsappReady && templateReady ? "#16a34a" : "#b45309" }}>{whatsappReady && templateReady ? "Envoi WhatsApp automatique actif" : whatsappReady ? "WhatsApp connecté · modèle Meta à configurer" : "WhatsApp Business à connecter"}</strong><div style={styles.sub}>{whatsappReady && templateReady ? `Prospects consentants traités automatiquement. ${webhookReady ? "Réponses automatiques configurées." : "Webhook à configurer pour les réponses entrantes."}` : whatsappReady ? "Ajoute WHATSAPP_TEMPLATE_NAME dans Vercel après validation du modèle Meta." : "Les messages peuvent déjà être préparés et ouverts dans WhatsApp."}</div></div></div>
 
       <div style={styles.stats}>
         <Stat label="Leads" value={stats.total} />
@@ -263,7 +290,7 @@ export default function CRMPage() {
             const overdue = isOverdue(lead.next_followup_at);
             return <tr key={lead.id} style={{ background: overdue ? "#fff7ed" : "white" }}>
               <td style={styles.td}><input type="checkbox" checked={selected.includes(lead.id)} onChange={e => setSelected(e.target.checked ? [...selected, lead.id] : selected.filter(x => x !== lead.id))} /></td>
-              <td style={styles.td}><strong>{lead.nom || "Sans nom"}</strong><div style={styles.sub}>{lead.ville || ""} {lead.departement ? `(${lead.departement})` : ""}</div><div style={styles.sub}>{lead.source || ""}</div></td>
+              <td style={styles.td}><strong>{lead.nom || "Sans nom"}</strong>{(() => { const ai = aiInfo(lead); return <>{ai.temperature && <div style={{ ...styles.sub, fontWeight: 800, color: "#111827" }}>{ai.temperature}{ai.humain ? " · 🙋 À reprendre par toi" : ""}</div>}{ai.resume && <div style={styles.sub}>🤖 {ai.resume}</div>}{ai.action && <div style={styles.sub}>➡️ {ai.action}</div>}{lead.followup_step ? <div style={styles.sub}>📨 Message {Math.min(3, lead.followup_step)}/3{lead.last_inbound_at ? " · a répondu" : ""}</div> : null}{ai.error && <div style={{ ...styles.sub, color: "#b91c1c" }}>⚠ {ai.error}</div>}</>; })()}<div style={styles.sub}>{lead.ville || ""} {lead.departement ? `(${lead.departement})` : ""}</div><div style={styles.sub}>{lead.source || ""}</div></td>
               <td style={styles.td}><div>{lead.telephone || "—"}</div><div style={styles.sub}>{lead.email || "—"}</div></td>
               <td style={styles.td}><strong>{lead.modele_interesse || "—"}</strong><div style={styles.sub}>{lead.annonce || ""}</div></td>
               <td style={styles.td}><select value={lead.statut || "Nouveau"} disabled={saving===lead.id} onChange={e => patchLead(lead.id,{statut:e.target.value})} style={{...styles.pill, background:statusStyle(lead.statut)}}>{STATUTS.map(x => <option key={x}>{x}</option>)}</select></td>

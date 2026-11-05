@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { crmDatabase, firstMessage, generateCommercialReply, sendWhatsApp, whatsappConfigured } from "@/lib/crm-agent";
+import { agentTurn, crmDatabase, sendWhatsApp, TEMPLATES, templateName, whatsappConfigured, type TemplateKey } from "@/lib/crm-agent";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +59,8 @@ export async function GET(req:Request){
     // `ornext_followup_at` and the hourly automation fails before loading any
     // leads.
     url.searchParams.set("or",`(next_followup_at.lte.${now},and(next_followup_at.is.null,statut.eq.Nouveau))`);
-    url.searchParams.set("limit","25");
+    url.searchParams.set("order","next_followup_at.asc.nullsfirst");
+    url.searchParams.set("limit","60");
     console.log("[AUTO-FOLLOWUP] loading due leads",{now});
     const rr=await fetch(url,{headers:dbHeaders(key),cache:"no-store"});
     const raw=await rr.text();
@@ -69,26 +70,44 @@ export async function GET(req:Request){
     console.log("[AUTO-FOLLOWUP] due leads loaded",{count:rows.length,whatsappConfigured:whatsappConfigured(),emailConfigured:Boolean(process.env.RESEND_API_KEY&&process.env.CRM_FROM_EMAIL),templateConfigured:Boolean(process.env.WHATSAPP_TEMPLATE_NAME)});
 
     const results:any[]=[];
+    const firstContactCap=Number(process.env.CRM_FIRST_CONTACT_PER_RUN||15); let firstContacts=0; let authBroken=false;
     for(const lead of rows as Lead[]){
+      if(authBroken) break;
       if(["Client","Perdu"].includes(String(lead.statut||""))) continue;
       if(lead.opted_out_at){results.push({id:lead.id,skipped:true,reason:"prospect opted out"});continue;}
       if(lead.telephone&&lead.whatsapp_opt_in&&whatsappConfigured()){
-        const step=Number(lead.followup_step||0)+1;
-        if(step>2){results.push({id:lead.id,skipped:true,reason:"WhatsApp sequence complete"});continue;}
-        const withinWindow=Boolean(lead.last_inbound_at&&Date.now()-new Date(lead.last_inbound_at).getTime()<24*60*60*1000);
-        const template=withinWindow?undefined:process.env.WHATSAPP_TEMPLATE_NAME;
-        if(!withinWindow&&!template){console.warn("[AUTO-FOLLOWUP] WhatsApp skipped: template missing",{id:lead.id,step});results.push({id:lead.id,skipped:true,reason:"approved WhatsApp template missing"});continue;}
+        const done=Number(lead.followup_step||0);
+        if(done>=3){await patchLead(key,lead.id,{next_followup_at:null});results.push({id:lead.id,skipped:true,reason:"séquence terminée"});continue;}
+        const neverContacted=!lead.last_contact_at&&String(lead.statut||"Nouveau")==="Nouveau";
+        if(neverContacted&&firstContacts>=firstContactCap){results.push({id:lead.id,skipped:true,reason:"quota de premiers contacts atteint pour cette heure"});continue;}
+        const withinWindow=Boolean(lead.last_inbound_at&&Date.now()-new Date(lead.last_inbound_at).getTime()<23*60*60*1000);
+        const tplKey:TemplateKey=neverContacted?"bienvenue":done<=1?"relance1":"relance2";
         try{
-          const prompt="Une seule relance douce, courte et naturelle, 48 heures après le premier message. Demande si le prospect souhaite recevoir le catalogue et la vidéo NeoDrive. Indique que nous ne relancerons pas sans réponse.";
-          const message=step===1?firstMessage(lead):lead.ai_enabled?await generateCommercialReply(lead,prompt):firstMessage(lead);
-          const providerId=await sendWhatsApp(lead.telephone,message,template);
-          const db=crmDatabase(); const insert=await db.from("crm_messages").insert({lead_id:lead.id,direction:"outbound",channel:"whatsapp",body:message,provider_message_id:providerId,status:"sent",ai_generated:Boolean(lead.ai_enabled)});
+          let body:string; let providerId:string|null;
+          if(withinWindow){
+            const db=crmDatabase(); const h=await db.from("crm_messages").select("direction,body").eq("lead_id",lead.id).order("created_at",{ascending:false}).limit(14);
+            const turn=await agentTurn(lead,"(Le client n'a pas répondu à notre dernier message. Écris une relance courte, utile et naturelle, avec une seule question.)",(h.data||[]).reverse());
+            body=turn.reply; providerId=await sendWhatsApp(lead.telephone,body);
+          }else{
+            const prenom=firstName(lead.nom); const p=prenom?prenom.charAt(0).toUpperCase()+prenom.slice(1).toLowerCase():"à vous";
+            body=TEMPLATES[tplKey].body.replace("{{1}}",p); providerId=await sendWhatsApp(lead.telephone,body,templateName(tplKey),[p]);
+          }
+          const db=crmDatabase(); const insert=await db.from("crm_messages").insert({lead_id:lead.id,direction:"outbound",channel:"whatsapp",body,provider_message_id:providerId,status:"sent",ai_generated:withinWindow});
           if(insert.error) console.error("[AUTO-FOLLOWUP] crm_messages insert failed",{id:lead.id,error:insert.error});
-          const next=step===1?addDays(2):null;
-          await patchLead(key,lead.id,{followup_step:step,statut:lead.statut==="Nouveau"?"Contacté":lead.statut,phase:"Attente réponse",last_contact_at:new Date().toISOString(),derniere_relance:new Date().toISOString(),next_followup_at:next});
-          console.log("[AUTO-FOLLOWUP] WhatsApp sent",{id:lead.id,step,providerId});
+          const step=neverContacted?1:done+1;
+          const next=step===1?addDays(2):step===2?addDays(3):null;
+          const history=[...historyOf(lead.history),{type:"auto_followup",channel:"whatsapp",step,template:withinWindow?null:templateName(tplKey),sent_at:new Date().toISOString(),...(step>=3?{note:"Séquence terminée : sans réponse après 3 messages"}:{})}].slice(-60);
+          await patchLead(key,lead.id,{followup_step:step,history,statut:lead.statut==="Nouveau"?"Contacté":lead.statut,phase:step>=3?"Terminé":"Attente réponse",last_contact_at:new Date().toISOString(),derniere_relance:new Date().toISOString(),next_followup_at:next});
+          if(neverContacted) firstContacts++;
+          console.log("[AUTO-FOLLOWUP] WhatsApp sent",{id:lead.id,step,template:withinWindow?null:templateName(tplKey),providerId});
           results.push({id:lead.id,step,channel:"whatsapp",sent:true,next});continue;
-        }catch(error){const message=error instanceof Error?error.message:"WhatsApp send failed";console.error("[AUTO-FOLLOWUP] WhatsApp failed",{id:lead.id,step,error:message});results.push({id:lead.id,step,channel:"whatsapp",error:message});continue;}
+        }catch(error:any){
+          const message=error instanceof Error?error.message:"WhatsApp send failed";
+          console.error("[AUTO-FOLLOWUP] WhatsApp failed",{id:lead.id,error:message});
+          if(error?.auth){authBroken=true;results.push({id:lead.id,error:"Jeton WhatsApp invalide ou expiré : envoi arrêté (à renouveler sur /connexions)"});break;}
+          await patchLead(key,lead.id,{next_followup_at:new Date(Date.now()+6*3600000).toISOString(),history:[...historyOf(lead.history),{type:"auto_followup_error",at:new Date().toISOString(),error:message}].slice(-60)}).catch(()=>null);
+          results.push({id:lead.id,channel:"whatsapp",error:message});continue;
+        }
       }
       if(!lead.email){results.push({id:lead.id,skipped:true,reason:"no email"});continue;}
       const previous=lastStep(lead); if(previous>=4){results.push({id:lead.id,skipped:true,reason:"sequence complete"});continue;}
@@ -103,7 +122,7 @@ export async function GET(req:Request){
       }catch(e){const message=e instanceof Error?e.message:"unknown";console.error("[AUTO-FOLLOWUP] email failed",{id:lead.id,step,error:message});results.push({id:lead.id,step,error:message});}
     }
     console.log("[AUTO-FOLLOWUP] cron completed",{processed:results.length});
-    return NextResponse.json({ok:true,processed:results.length,results,emailConfigured:Boolean(process.env.RESEND_API_KEY&&process.env.CRM_FROM_EMAIL),whatsappConfigured:whatsappConfigured()});
+    return NextResponse.json({ok:true,processed:results.length,authBroken,results,emailConfigured:Boolean(process.env.RESEND_API_KEY&&process.env.CRM_FROM_EMAIL),whatsappConfigured:whatsappConfigured()});
   } catch(error) {
     console.error("[AUTO-FOLLOWUP] UNHANDLED ERROR",error);
     return NextResponse.json({ok:false,error:error instanceof Error?error.message:"Unknown auto-followup error"},{status:500});

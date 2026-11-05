@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { crmDatabase, generateCommercialReply, normalizePhone, sendWhatsApp } from "@/lib/crm-agent";
+import { agentTurn, crmDatabase, crmPatchFromTurn, normalizePhone, sendWhatsApp, sendWhatsAppVideo } from "@/lib/crm-agent";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +44,8 @@ export async function POST(request: Request) {
     for (const entry of entries) for (const change of entry.changes || []) for (const message of change.value?.messages || []) {
       messagesSeen++;
       const phone = normalizePhone(message.from);
-      const text = String(message.text?.body || "").trim();
+      const text = String(message.text?.body || message.button?.text || message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || "").trim()
+        || (message.type === "audio" ? "[Le client a envoyé un message vocal]" : message.type === "image" ? "[Le client a envoyé une photo]" : message.type === "video" ? "[Le client a envoyé une vidéo]" : message.type ? `[Message ${message.type}]` : "");
       console.log("[WA-WEBHOOK] inbound", { messageId: message.id || null, type: message.type, phone, textLength: text.length });
       if (!phone || !text) continue;
 
@@ -62,26 +63,39 @@ export async function POST(request: Request) {
       if (duplicateCheck.data) continue;
 
       await db.from("crm_messages").insert({ lead_id: lead.id, direction: "inbound", channel: "whatsapp", body: text, provider_message_id: message.id || null, status: "received" });
-      const stop = /^(stop|désabonner|desabonner|unsubscribe|ne plus contacter|non merci)$/i.test(text);
+      const stop = /^(stop|arr[eê]t|d[ée]sabonner|unsubscribe|ne plus (me )?contacter|non merci|pas int[ée]ress[ée]e?)\b/i.test(text);
       const now = new Date().toISOString();
-      await db.from("leads").update({ last_inbound_at: now, whatsapp_opt_in: !stop, opted_out_at: stop ? now : null, next_followup_at: null, statut: stop ? "Perdu" : "Chaud", phase: stop ? "Terminé" : "Attente réponse", updated_at: now }).eq("id", lead.id);
+      await db.from("leads").update({ last_inbound_at: now, whatsapp_opt_in: !stop, opted_out_at: stop ? now : null, next_followup_at: null, followup_step: 0, statut: stop ? "Perdu" : (lead.statut === "Nouveau" || lead.statut === "Contacté" ? "Chaud" : lead.statut), phase: stop ? "Terminé" : "Attente réponse", updated_at: now }).eq("id", lead.id);
 
-      // WhatsApp inbound conversations should be answered automatically by default.
-      // Only an explicit ai_enabled=false disables the agent.
-      const aiEnabled = lead.ai_enabled !== false;
-      if (!stop && aiEnabled) {
-        console.log("[WA-WEBHOOK] AI reply starting", { leadId: lead.id });
-        const historyResult = await db.from("crm_messages").select("direction,body").eq("lead_id", lead.id).order("created_at", { ascending: false }).limit(8);
+      if (stop) {
         try {
-          const reply = await generateCommercialReply(lead, text, (historyResult.data || []).reverse());
-          const id = await sendWhatsApp(phone, reply);
-          await db.from("crm_messages").insert({ lead_id: lead.id, direction: "outbound", channel: "whatsapp", body: reply, provider_message_id: id, status: "sent", ai_generated: true });
-          console.log("[WA-WEBHOOK] AI reply sent", { leadId: lead.id, providerMessageId: id });
+          const bye = "C'est noté, nous ne vous recontacterons plus. Merci et belle journée ! — NeoDrive";
+          const id = await sendWhatsApp(phone, bye);
+          await db.from("crm_messages").insert({ lead_id: lead.id, direction: "outbound", channel: "whatsapp", body: bye, provider_message_id: id, status: "sent", ai_generated: false });
+        } catch (error) { console.error("[WA-WEBHOOK] stop confirmation failed", error); }
+      } else if (lead.ai_enabled !== false) {
+        // L'agent répond automatiquement, sauf si l'IA a été coupée pour ce client (ai_enabled=false).
+        const historyResult = await db.from("crm_messages").select("direction,body").eq("lead_id", lead.id).order("created_at", { ascending: false }).limit(16);
+        const history = (historyResult.data || []).reverse();
+        const videosSent = history.map((m: any) => String(m.body || "").match(/^\[vidéo:(\w+)\]/)?.[1]).filter(Boolean) as string[];
+        try {
+          const turn = await agentTurn(lead, text, history, videosSent);
+          const id = await sendWhatsApp(phone, turn.reply);
+          await db.from("crm_messages").insert({ lead_id: lead.id, direction: "outbound", channel: "whatsapp", body: turn.reply, provider_message_id: id, status: "sent", ai_generated: true });
+          if (turn.video) {
+            try {
+              const vid = await sendWhatsAppVideo(phone, turn.video);
+              await db.from("crm_messages").insert({ lead_id: lead.id, direction: "outbound", channel: "whatsapp", body: `[vidéo:${turn.video}]`, provider_message_id: vid, status: "sent", ai_generated: true });
+            } catch (error) { console.error("[WA-WEBHOOK] video failed", error); }
+          }
+          const fresh = await db.from("leads").select("*").eq("id", lead.id).single();
+          await db.from("leads").update({ ...crmPatchFromTurn(fresh.data || lead, turn), last_contact_at: new Date().toISOString() }).eq("id", lead.id);
+          console.log("[WA-WEBHOOK] AI reply sent", { leadId: lead.id, providerMessageId: id, video: turn.video, statut: turn.crm.statut, humain: turn.crm.besoin_humain });
         } catch (error) {
           console.error("[WA-WEBHOOK] AI/send failure", error);
           await db.from("crm_messages").insert({ lead_id: lead.id, direction: "draft", channel: "whatsapp", body: `Réponse à préparer : ${text}`, status: "failed", ai_generated: false });
         }
-      } else console.log("[WA-WEBHOOK] no automatic reply", { leadId: lead.id, stop, aiEnabled });
+      } else console.log("[WA-WEBHOOK] no automatic reply (IA coupée)", { leadId: lead.id });
       processed++;
     }
     console.log("[WA-WEBHOOK] POST completed", { processed, messagesSeen });
