@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { isOffTopic, welcomePackage } from "../../lib/welcome-package";
+import SalesPanels from "./SalesPanels";
 
 type Lead = {
   id: number;
@@ -294,6 +295,7 @@ export default function CRMPage() {
         <button style={styles.dangerButton} onClick={deleteSelected}>Supprimer</button>
       </div>}
 
+      <SalesPanels leads={leads as any} onCalled={(l: any) => markContacted(l)} />
       {message && <div style={styles.message}>{message}</div>}
       {loading ? <p>Chargement…</p> : <div style={styles.tableWrap}>
         <table style={styles.table}>
