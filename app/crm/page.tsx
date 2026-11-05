@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { isOffTopic, welcomePackage } from "../../lib/welcome-package";
 
 type Lead = {
   id: number;
@@ -168,6 +169,24 @@ export default function CRMPage() {
     setWorking(false);
   }
 
+  function packageFor(lead: Lead) { return welcomePackage(lead); }
+
+  async function sendPackage(lead: Lead) {
+    const phone = normalizePhone(lead.telephone); if (!phone) return;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(packageFor(lead))}`, "_blank");
+    await markContacted(lead);
+  }
+
+  function exportPackages() {
+    const todo = leads.filter(l => (l.statut || "Nouveau") === "Nouveau" && normalizePhone(l.telephone) && !l.opted_out_at && !isOffTopic(l));
+    if (!todo.length) { setMessage("Aucun nouveau client à contacter."); return; }
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = [["telephone", "prenom", "ville", "message", "lien_whatsapp"], ...todo.map(l => { const m = packageFor(l); return [`+${normalizePhone(l.telephone)}`, String(l.nom || "").split(/\s+/)[0], l.ville || "", m, `https://wa.me/${normalizePhone(l.telephone)}?text=${encodeURIComponent(m)}`]; })];
+    const blob = new Blob(["\uFEFF" + rows.map(r => r.map(esc).join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `packages-neodrive-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    setMessage(`✅ ${todo.length} package(s) prêt(s) : fichier téléchargé (à importer dans Hana ou à envoyer un par un avec le bouton 📦).`);
+  }
+
   async function runNow() {
     setWorking(true);
     try { const r = await api("run"); const sent = (r.results || []).filter((x: any) => x.sent).length; setMessage(r.authBroken ? "❌ Le jeton WhatsApp est invalide ou expiré : renouvelle-le sur /connexions, puis relance." : `✅ Tournée lancée : ${sent} message(s) envoyé(s).`); await loadLeads(); }
@@ -248,6 +267,7 @@ export default function CRMPage() {
           <button style={styles.secondary} onClick={() => loadLeads()}>↻ Actualiser</button>
           <button style={styles.secondary} onClick={exportCSV}>Exporter CSV</button>
           <label style={{ ...styles.secondary, cursor: "pointer" }}>{working ? "Traitement…" : "Importer Leboncoin CSV"}<input type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={event => { importFile(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
+          <button style={{ ...styles.secondary, borderColor: "#16a34a", color: "#166534" }} onClick={exportPackages}>📦 Packages du jour</button>
           <button style={styles.secondary} onClick={() => templates(false)} disabled={working}>Modèles WhatsApp</button>
           <button style={styles.secondary} onClick={() => { if (confirm("Créer les 3 modèles WhatsApp (bienvenue + 2 relances) chez Meta ?")) templates(true); }} disabled={working}>Créer les modèles</button>
           <button style={{ ...styles.primary, background: "#16a34a" }} onClick={runNow} disabled={working}>▶ Envoyer maintenant</button>
@@ -300,6 +320,7 @@ export default function CRMPage() {
               <td style={styles.td}><textarea style={styles.note} value={lead.commentaire || ""} placeholder="Note commerciale…" onBlur={e => patchLead(lead.id,{commentaire:e.target.value})} onChange={e => setLeads(prev=>prev.map(l=>l.id===lead.id?{...l,commentaire:e.target.value}:l))} /></td>
               <td style={styles.td}><div style={{display:"grid",gap:6}}>
                 {phone && lead.statut === "Nouveau" && <button style={{ ...styles.action, border: 0, cursor: "pointer", background: "#dcfce7", color: "#166534" }} onClick={() => sendPresentation(lead)} disabled={working || !whatsappReady || !templateReady}>Envoyer présentation</button>}
+                {phone && !isOffTopic(lead) && <button style={{ ...styles.action, border: 0, cursor: "pointer", background: "#ecfdf5", color: "#065f46" }} onClick={() => sendPackage(lead)}>📦 Package</button>}
                 {phone && <button style={{ ...styles.action, border: 0, cursor: "pointer" }} onClick={() => prepareReply(lead)}>Réponse IA</button>}
                 {phone && <a style={styles.action} href={`https://wa.me/${phone}`} target="_blank" onClick={() => markContacted(lead)}>WhatsApp</a>}
                 {phone && <label style={{ ...styles.sub, display: "flex", gap: 4, alignItems: "center" }}><input type="checkbox" checked={Boolean(lead.whatsapp_opt_in)} onChange={event => patchLead(lead.id, { whatsapp_opt_in: event.target.checked })} /> Consentement</label>}
