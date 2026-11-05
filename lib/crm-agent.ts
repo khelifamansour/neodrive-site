@@ -38,7 +38,7 @@ FAITS VÉRIFIÉS (ne rien inventer en dehors) :
   • Confort : 4 990 € TTC — EN STOCK, disponible immédiatement — caméra de recul, chauffage et ventilation, Bluetooth/USB, alarme antivol. C'est la plus choisie.
   • Confort Plus+ : 5 990 € TTC — pack Confort + charge rapide + plus d'autonomie.
 - Comparaison : la Confort coûte 3 200 € de moins qu'une Citroën Ami de base (8 190 €).
-- Autonomie indicative 50 à 70 km selon la version, la conduite et la météo. Ne jamais promettre plus.
+- Autonomie : jusqu'à 70 km. Recharge : environ 6 h sur prise 220 V. Ne jamais donner d'autre durée ni parler de technologie de batterie.
 - 0 € d'acompte : le client paie le jour de la livraison.
 - Livraison à domicile partout en France métropolitaine, prix selon la zone : 450 €, 590 €, 690 € ou 790 € (le prix exact dépend du code postal ; Corse et outre-mer sur devis). Demande le code postal pour donner le prix exact.
 - Carte grise : NeoDrive peut s'en occuper (150 €).
