@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { applyStoredSecrets } from "../../../../lib/integrations";
-import { sendDailyPackages } from "../../../../lib/package-sender";
+import { sendDailyPackages, sendRelances } from "../../../../lib/package-sender";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -11,6 +11,11 @@ export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   if (process.env.PACKAGE_AUTO_SEND !== "on") return NextResponse.json({ ok: true, skipped: "Envoi automatique désactivé (PACKAGE_AUTO_SEND)" });
-  try { const r = await sendDailyPackages(); console.log("[PACKAGES]", { sent: r.sent, failed: r.failed, remaining: r.remaining, stopped: r.stopped }); return NextResponse.json({ ok: true, ...r }); }
+  try {
+    const r = await sendDailyPackages(); console.log("[PACKAGES]", { sent: r.sent, failed: r.failed, remaining: r.remaining, stopped: r.stopped });
+    let relances: any = null;
+    if (!r.stopped) { try { relances = await sendRelances(); console.log("[RELANCES]", { sent: relances.sent, failed: relances.failed, answered: relances.answered, stopped: relances.stopped }); } catch (e) { console.error("[RELANCES] error", e); } }
+    return NextResponse.json({ ok: true, ...r, relances });
+  }
   catch (e) { console.error("[PACKAGES] error", e); return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 500 }); }
 }

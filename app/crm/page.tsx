@@ -183,7 +183,7 @@ export default function CRMPage() {
 
   async function packageTemplate(create: boolean) {
     setWorking(true);
-    try { const r = await api("package-template", { create }); const s = r.template?.status; setMessage(`Modèle WhatsApp du package : ${s === "APPROVED" ? "✅ approuvé, l'envoi automatique est prêt" : s === "PENDING" ? "⏳ en validation chez Meta (quelques minutes à 24 h)" : s === "REJECTED" ? `❌ refusé${r.template?.reason ? ` (${r.template.reason})` : ""}` : "⚪ pas encore créé"}`); }
+    try { const r = await api("package-template", { create }); const s = r.template?.status; setMessage(`Modèle WhatsApp du package : ${s === "APPROVED" ? "✅ approuvé, l'envoi automatique est prêt" : s === "PENDING" ? "⏳ en validation chez Meta (quelques minutes à 24 h)" : s === "REJECTED" ? `❌ refusé${r.template?.reason ? ` (${r.template.reason})` : ""}` : "⚪ pas encore créé"} · Relance J+3 : ${({APPROVED:"✅ approuvée",PENDING:"⏳ en validation",REJECTED:"❌ refusée",ABSENT:"⚪ pas encore créée"} as any)[r.template?.relance?.status] || (r.template?.relance?.reason || "?")}`); }
     catch (error) { setMessage(`❌ ${error instanceof Error ? error.message : "Modèle indisponible"}`); }
     setWorking(false);
   }
