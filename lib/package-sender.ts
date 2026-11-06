@@ -174,3 +174,11 @@ export async function sendRelances(limit = Number(process.env.RELANCE_PER_RUN ||
   for (const l of answered) await db.from("leads").update({ statut: "Chaud", phase: "Attente réponse", last_inbound_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", l.id);
   return { sent: results.filter(r => r.sent).length, failed: results.filter(r => r.error).length, answered: answered.length, stopped, results };
 }
+
+/** Test du fondateur : envoie le package uniquement à son numéro personnel (fixe, aucun autre numéro possible). */
+const OWNER_TEST_PHONE = "33628261446";
+export async function sendOwnerTestPackage() {
+  const params = packageParams({ nom: "Mansour", annonce: "Bonjour, est-elle toujours disponible ?" });
+  const id = await sendTemplate(OWNER_TEST_PHONE, params);
+  return { sent: true, to: "06 28 26 14 46", id };
+}
