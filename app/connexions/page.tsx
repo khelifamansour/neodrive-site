@@ -11,7 +11,7 @@ export default function Connexions(){
  const [msg,setMsg]=useState<{t:"ok"|"err";m:string}|null>(null);
  const [metaToken,setMetaToken]=useState("");
  const [waToken,setWaToken]=useState("");
- const [waPhone,setWaPhone]=useState("");const [waWaba,setWaWaba]=useState("");const [mailKey,setMailKey]=useState("");const [brevoKey,setBrevoKey]=useState("");const [brevoFrom,setBrevoFrom]=useState("khelifamansour@hotmail.fr");
+ const [waPhone,setWaPhone]=useState("");const [waWaba,setWaWaba]=useState("");const [mailKey,setMailKey]=useState("");const [brevoKey,setBrevoKey]=useState("");const [brevoFrom,setBrevoFrom]=useState("contact.neodrivefrance@gmail.com");
  const [open,setOpen]=useState<string|null>(null);
 
  const api=async(body:object)=>{const r=await fetch("/api/connexions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:code,...body})});const j=await r.json().catch(()=>({ok:false,error:"Réponse invalide"}));if(!r.ok||!j.ok)throw new Error(j.error||"Erreur");return j;};
@@ -66,7 +66,7 @@ export default function Connexions(){
   <section className="card">
    <button className="toggle" onClick={()=>setOpen(open==="brevo"?null:"brevo")}><b>E-mails et SMS automatiques (Brevo)</b><span>{open==="brevo"?"−":"+"}</span></button>
    {open==="brevo"?<div className="body">
-    <ol><li>Créez un compte sur <a href="https://www.brevo.com" target="_blank" rel="noreferrer">brevo.com</a> avec <b>khelifamansour@hotmail.fr</b>.</li><li>Menu (en haut à droite) → <b>SMTP et API</b> → onglet <b>Clés API</b> → <b>Générer une nouvelle clé API</b> → copiez-la (elle commence par <code>xkeysib-</code>).</li><li>Pour les SMS : achetez un petit pack de crédits SMS dans Brevo.</li><li>Collez la clé ci-dessous : un e-mail de test part aussitôt.</li></ol>
+    <ol><li>Créez un compte sur <a href="https://www.brevo.com" target="_blank" rel="noreferrer">brevo.com</a> (compte NeoDrive).</li><li>Menu (en haut à droite) → <b>SMTP et API</b> → onglet <b>Clés API</b> → <b>Générer une nouvelle clé API</b> → copiez-la (elle commence par <code>xkeysib-</code>).</li><li>Pour les SMS : achetez un petit pack de crédits SMS dans Brevo.</li><li>Collez la clé ci-dessous : un e-mail de test part aussitôt.</li></ol>
     <input value={brevoKey} onChange={e=>setBrevoKey(e.target.value.trim())} placeholder="Clé API Brevo (xkeysib-…)" autoComplete="off" spellCheck={false}/>
     <input value={brevoFrom} onChange={e=>setBrevoFrom(e.target.value.trim())} placeholder="Adresse d'expéditeur validée dans Brevo"/>
     <button className="go" onClick={saveBrevo} disabled={!!busy||brevoKey.length<20}>{busy==="brevo"?"Vérification…":"Vérifier et enregistrer"}</button>

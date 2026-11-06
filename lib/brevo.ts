@@ -8,7 +8,7 @@ import { normalizePhone } from "./crm-agent";
 export const SITE = "https://www.easydrive-auto.fr";
 export const OWNER_EMAIL = "khelifamansour@hotmail.fr";
 export const brevoReady = () => Boolean(process.env.BREVO_API_KEY);
-const senderEmail = () => process.env.BREVO_SENDER_EMAIL || OWNER_EMAIL;
+const senderEmail = () => process.env.BREVO_SENDER_EMAIL || "contact.neodrivefrance@gmail.com";
 
 async function brevo(path: string, body: unknown) {
   const key = process.env.BREVO_API_KEY;

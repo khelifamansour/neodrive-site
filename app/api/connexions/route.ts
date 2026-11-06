@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   }
 
   if (b.action === "save_brevo") {
-    const key = String(b.key || "").trim(); const sender = String(b.sender || "khelifamansour@hotmail.fr").trim();
+    const key = String(b.key || "").trim(); const sender = String(b.sender || "contact.neodrivefrance@gmail.com").trim();
     if (key.length < 20) return NextResponse.json({ ok: false, error: "Collez la clé API Brevo complète (elle commence par xkeysib-)." }, { status: 400 });
     const a = await fetch("https://api.brevo.com/v3/account", { headers: { "api-key": key, accept: "application/json" }, cache: "no-store" });
     const aj = await a.json().catch(() => ({}));
