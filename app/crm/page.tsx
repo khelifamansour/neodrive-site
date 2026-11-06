@@ -166,6 +166,15 @@ export default function CRMPage() {
     await markContacted(lead);
   }
 
+  async function addMissedCalls() {
+    const phones = window.prompt("Numéros des appels manqués (un par ligne ou séparés par des virgules). Ils recevront un SMS d'excuse avec le lien WhatsApp et le site, puis apparaîtront dans « À appeler ».");
+    if (!phones) return;
+    setWorking(true);
+    try { const r = await api("missed-calls", { phones }); setMessage(`✅ ${r.added} appel(s) manqué(s) ajouté(s). Le SMS part au prochain envoi (à h 20).`); await loadLeads(); }
+    catch (e) { setMessage(e instanceof Error ? e.message : "Erreur"); }
+    finally { setWorking(false); }
+  }
+
   async function showReport() {
     setWorking(true);
     try { const { report: r } = await api("report"); setMessage(`📊 Aujourd'hui : ${r.imported} importé(s) · ${r.packages} package(s) envoyé(s) · ${r.replies} client(s) ont répondu · ${r.outbound} message(s) envoyé(s) · ${r.stops} STOP · ${r.waiting} nouveau(x) pas encore contacté(s)${r.hot.length ? ` · 🔥 à rappeler : ${r.hot.map((h: any) => h.nom).join(", ")}` : ""}`); }
@@ -267,6 +276,7 @@ export default function CRMPage() {
           <button style={{ ...styles.secondary, borderColor: "#16a34a", color: "#166534" }} onClick={exportPackages}>📦 Packages du jour</button>
           <button style={{ ...styles.primary, background: "#16a34a" }} onClick={autoSendPackages} disabled={working}>🚀 Envoyer les packages</button>
           <button style={styles.secondary} onClick={showReport} disabled={working}>📊 Rapport du jour</button>
+          <button style={styles.secondary} onClick={addMissedCalls} disabled={working}>📵 Appels manqués</button>
           <button style={styles.secondary} onClick={() => packageTemplate(!confirm("Vérifier seulement le statut ?\n\nOK = vérifier · Annuler = créer le modèle chez Meta"))} disabled={working}>Modèle WhatsApp</button>
           <button style={styles.primary} onClick={() => setNewLeadOpen(true)}>+ Nouveau lead</button>
         </div>

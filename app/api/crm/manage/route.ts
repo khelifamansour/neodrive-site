@@ -77,6 +77,18 @@ export async function POST(request: Request) {
     catch (error) { return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Rapport indisponible" }, { status: 500 }); }
   }
 
+  if (action === "missed-calls") {
+    const phones = String(body.phones || "").split(/[\n,;]+/).map(p => normalizePhone(p)).filter(Boolean).slice(0, 50);
+    const db = crmDatabase(); const now = new Date().toISOString(); let added = 0;
+    for (const phone of phones) {
+      const ex = (await db.from("leads").select("id,history").eq("telephone", phone).maybeSingle()).data;
+      const ev = { type: "missed_call", at: now };
+      if (ex) await db.from("leads").update({ phase: "Appel manqué", statut: "Chaud", history: [...(Array.isArray(ex.history) ? ex.history : []), ev].slice(-60), updated_at: now }).eq("id", ex.id);
+      else await db.from("leads").insert({ nom: "Appel manqué", telephone: phone, source: "telephone", statut: "Chaud", phase: "Appel manqué", history: [ev], whatsapp_opt_in: false, ai_enabled: true, lead_score: 70 });
+      added++;
+    }
+    return NextResponse.json({ ok: true, added });
+  }
   if (action === "package-template") {
     try { return NextResponse.json({ ok: true, template: await packageTemplateStatus(Boolean(body.create)) }); }
     catch (error) { return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Modèle indisponible" }, { status: 502 }); }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 import { notifyOwner, sendDailyPackages, sendRelances } from "../../../../lib/package-sender";
-import { copyToOwner, sendEmailsAndSms } from "../../../../lib/multichannel";
+import { copyToOwner, sendEmailsAndSms, sendMissedCallSms } from "../../../../lib/multichannel";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -18,8 +18,10 @@ export async function GET(req: Request) {
     if (!r.stopped) { try { relances = await sendRelances(); console.log("[RELANCES]", { sent: relances.sent, failed: relances.failed, answered: relances.answered, stopped: relances.stopped }); } catch (e) { console.error("[RELANCES] error", e); } }
     let mails: any = null;
     try { mails = await sendEmailsAndSms(); console.log("[EMAIL-SMS]", { sent: mails.sent, failed: mails.failed, skipped: mails.skipped, stopped: mails.stopped }); } catch (e) { console.error("[EMAIL-SMS] error", e); }
+    let missed: any = null;
+    try { missed = await sendMissedCallSms(); if (missed.sent) console.log("[MISSED]", missed.sent); } catch (e) { console.error("[MISSED] error", e); }
     let owner: any = null;
-    try { owner = await notifyOwner([...(r.results || []), ...(relances?.results || []), ...(mails?.results || [])], copyToOwner); console.log("[OWNER]", owner); } catch (e) { console.error("[OWNER] error", e); }
+    try { owner = await notifyOwner([...(r.results || []), ...(relances?.results || []), ...(mails?.results || []), ...(missed?.results || [])], copyToOwner); console.log("[OWNER]", owner); } catch (e) { console.error("[OWNER] error", e); }
     return NextResponse.json({ ok: true, ...r, relances, mails, owner });
   }
   catch (e) { console.error("[PACKAGES] error", e); return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 500 }); }

@@ -242,7 +242,7 @@ export async function sendOwnerTestPackage() {
 /* ---------- Copie et résumé pour le fondateur sur son WhatsApp ---------- */
 const RAPPORT_TEMPLATE = "neodrive_rapport_envois";
 const RAPPORT_BODY = "📊 Envois NeoDrive du {{1}} : {{2}}. Le détail est dans le CRM.";
-const LABEL: Record<string, string> = { package: "Package WhatsApp", relance1: "Relance J+1 (vidéo livraison)", relance2: "Relance J+3 (catalogue)", relance3: "Relance J+7 (dernier message)", email1: "E-mail catalogue + vidéos", email2: "E-mail relance prix livré", sms: "SMS de bienvenue", sms2: "Relance SMS J+5" };
+const LABEL: Record<string, string> = { package: "Package WhatsApp", relance1: "Relance J+1 (vidéo livraison)", relance2: "Relance J+3 (catalogue)", relance3: "Relance J+7 (dernier message)", email1: "E-mail catalogue + vidéos", email2: "E-mail relance prix livré", sms: "SMS de bienvenue", sms2: "Relance SMS J+5", missed_sms: "SMS appel manqué" };
 const fmtTel = (t: string) => { const n = normalizePhone(t); return n.startsWith("33") ? ("0" + n.slice(2)).replace(/(\d{2})(?=\d)/g, "$1 ") : n; };
 
 /** Après chaque envoi : une copie de chaque type de message envoyé + la liste des clients, sur le WhatsApp du fondateur. */
@@ -253,7 +253,7 @@ export async function notifyOwner(sent: any[], copyEmail?: (type: string) => Pro
   for (const t of types) {
     try {
       if (t === "package") await sendTemplate(OWNER_TEST_PHONE, ["Mansour"]);
-      else if (t.startsWith("email") || t.startsWith("sms")) { if (copyEmail) await copyEmail(t); }
+      else if (t.startsWith("email") || t.startsWith("sms") || t === "missed_sms") { if (copyEmail) await copyEmail(t); }
       else { const st = RELANCES.find(r => `relance${r.step}` === t); if (st) await sendRelanceTemplate(OWNER_TEST_PHONE, "Mansour", st); }
     } catch (e) { console.error("[OWNER] copie impossible", t, e); }
   }
