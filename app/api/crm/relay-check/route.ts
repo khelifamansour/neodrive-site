@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { packageTemplateStatus, sendOwnerTestPackage } from "../../../../lib/package-sender";
-import { copyToOwner } from "../../../../lib/multichannel";
-import { brevoDomains, brevoEvents, setSenderOverride } from "../../../../lib/brevo";
+import { copyToOwner, smsText } from "../../../../lib/multichannel";
+import { brevoDomains, brevoEvents, sendSms, setSenderOverride } from "../../../../lib/brevo";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +11,12 @@ export async function GET(req: Request) {
   // ?create=1 crée les 2 modèles fixes du package et de la relance s'ils n'existent pas encore (sans effet sinon).
   await applyStoredSecrets();
   const sp = new URL(req.url).searchParams;
+  if (sp.get("test") === "sms") {
+    // SMS de test vers les numéros du fondateur uniquement.
+    const to = sp.get("to") === "0689781710" ? "0689781710" : "0628261446";
+    try { const id = await sendSms(to, smsText("Mansour")); return NextResponse.json({ ok: true, to, id }); }
+    catch (e) { return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 502 }); }
+  }
   if (sp.get("brevo") === "events") return NextResponse.json({ ok: true, events: await brevoEvents("khelifamansour@hotmail.fr") });
   if (sp.get("brevo") === "domains") return NextResponse.json({ ok: true, domains: await brevoDomains() });
   if (sp.get("test") === "brevo") {
