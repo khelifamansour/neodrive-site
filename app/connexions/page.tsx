@@ -11,7 +11,7 @@ export default function Connexions(){
  const [msg,setMsg]=useState<{t:"ok"|"err";m:string}|null>(null);
  const [metaToken,setMetaToken]=useState("");
  const [waToken,setWaToken]=useState("");
- const [waPhone,setWaPhone]=useState("");const [waWaba,setWaWaba]=useState("");
+ const [waPhone,setWaPhone]=useState("");const [waWaba,setWaWaba]=useState("");const [mailKey,setMailKey]=useState("");
  const [open,setOpen]=useState<string|null>(null);
 
  const api=async(body:object)=>{const r=await fetch("/api/connexions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:code,...body})});const j=await r.json().catch(()=>({ok:false,error:"Réponse invalide"}));if(!r.ok||!j.ok)throw new Error(j.error||"Erreur");return j;};
@@ -22,6 +22,7 @@ export default function Connexions(){
 
  const saveMeta=async()=>{setBusy("meta");setMsg(null);try{const j=await api({action:"save_meta",token:metaToken});setChecks(j.checks);setMetaToken("");setMsg({t:"ok",m:`✅ Page « ${j.page} » connectée${j.instagram?` · Instagram @${j.instagram}`:" · Instagram pas encore relié à la Page"}${j.whatsapp?" · WhatsApp connecté":""}.`});}catch(e){setMsg({t:"err",m:(e as Error).message})}finally{setBusy("")}};
  const saveWa=async()=>{setBusy("wa");setMsg(null);try{const j=await api({action:"save_whatsapp",token:waToken,phoneId:waPhone||undefined,wabaId:waWaba||undefined});setChecks(j.checks);setWaToken("");setMsg({t:"ok",m:`✅ WhatsApp connecté (${j.number}). Les relances repartent dans l’heure.`});}catch(e){setMsg({t:"err",m:(e as Error).message})}finally{setBusy("")}};
+ const saveMail=async()=>{setBusy("mail");setMsg(null);try{const j=await api({action:"save_email",key:mailKey});setChecks(j.checks);setMailKey("");setMsg({t:"ok",m:`✅ E-mail connecté : un e-mail de test vient de partir vers ${j.to}. Le rapport arrivera chaque soir à 19 h 30.`});}catch(e){setMsg({t:"err",m:(e as Error).message});}finally{setBusy("");}};
  const tiktok=async()=>{setBusy("tt");setMsg(null);try{const r=await fetch("/api/tiktok/connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:code})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||"Erreur");window.location.href=j.authorizationUrl;}catch(e){setMsg({t:"err",m:(e as Error).message});setBusy("")}};
  const report=async()=>{setBusy("report");setMsg(null);try{const r=await fetch("/api/health",{headers:{Authorization:"Bearer "+code}});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||"Erreur");setChecks(j.checks);setMsg(j.sent?{t:"ok",m:"📧 Rapport envoyé sur votre e-mail."}:{t:"err",m:"Le rapport n’a pas pu partir (Formspree)."});}catch(e){setMsg({t:"err",m:(e as Error).message})}finally{setBusy("")}};
 
@@ -58,6 +59,15 @@ export default function Connexions(){
     <input value={waPhone} onChange={e=>setWaPhone(e.target.value.replace(/\D/g,""))} placeholder="Identifiant du numéro (nouveau numéro de Hana)"/>
     <input value={waWaba} onChange={e=>setWaWaba(e.target.value.replace(/\D/g,""))} placeholder="Identifiant du compte WhatsApp Business (WABA)"/>
     <button className="go" onClick={saveWa} disabled={!!busy||waToken.trim().length<30}>{busy==="wa"?"Vérification…":"Vérifier et enregistrer"}</button>
+   </div>:null}
+  </section>
+
+  <section className="card">
+   <button className="toggle" onClick={()=>setOpen(open==="mail"?null:"mail")}><b>E-mail du rapport du soir</b><span>{open==="mail"?"−":"+"}</span></button>
+   {open==="mail"?<div className="body">
+    <ol><li>Créez un compte gratuit sur <a href="https://resend.com/signup" target="_blank" rel="noreferrer">resend.com</a> <b>avec l’adresse khelifamansour@hotmail.fr</b>.</li><li>Menu <b>API Keys</b> → <b>Create API Key</b> → copiez la clé (elle commence par <code>re_</code>).</li><li>Collez-la ci-dessous : un e-mail de test part tout de suite.</li></ol>
+    <input value={mailKey} onChange={e=>setMailKey(e.target.value.trim())} placeholder="Clé Resend (re_…)" autoComplete="off" spellCheck={false}/>
+    <button className="go" onClick={saveMail} disabled={!!busy||mailKey.length<12}>{busy==="mail"?"Envoi du test…":"Vérifier et enregistrer"}</button>
    </div>:null}
   </section>
 

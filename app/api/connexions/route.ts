@@ -42,5 +42,17 @@ export async function POST(req: Request) {
     } catch (e) { return NextResponse.json({ ok: false, error: "WhatsApp refuse cet accès : " + (e as Error).message }, { status: 400 }); }
   }
 
+  if (b.action === "save_email") {
+    const key = String(b.key || "").trim();
+    if (!/^re_[A-Za-z0-9_]{10,}$/.test(key)) return NextResponse.json({ ok: false, error: "Collez la clé Resend complète (elle commence par re_)." }, { status: 400 });
+    const from = "NeoDrive <onboarding@resend.dev>";
+    const to = process.env.REPORT_EMAIL || "khelifamansour@hotmail.fr";
+    const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: [to], subject: "NeoDrive — test du rapport du soir", html: "<p>✅ C'est bon : vous recevrez ici le rapport commercial NeoDrive chaque soir à 19 h 30.</p>" }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return NextResponse.json({ ok: false, error: "Resend refuse cette clé : " + (j?.message || r.status) }, { status: 400 });
+    await writeIntegrations({ RESEND_API_KEY: key, CRM_FROM_EMAIL: from }, { email_saved_at: new Date().toISOString() });
+    return NextResponse.json({ ok: true, to, checks: await runHealthChecks() });
+  }
+
   return NextResponse.json({ ok: false, error: "Action inconnue" }, { status: 400 });
 }
