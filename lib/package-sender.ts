@@ -44,7 +44,7 @@ export function packageParams(lead: any): [string, string] {
 export async function packageTemplateStatus(create: boolean) {
   const pkg = await packageOnlyStatus(create);
   let relance: any = null;
-  try { relance = await relanceTemplateStatus(create); } catch (e: any) { relance = { name: RELANCE_TEMPLATE, status: "ERREUR", reason: e?.message || null }; }
+  try { relance = await relanceTemplateStatus(create); } catch (e: any) { relance = { name: "relances", status: "ERREUR", reason: e?.message || null }; }
   return { ...pkg, relance };
 }
 
@@ -111,73 +111,115 @@ export async function sendDailyPackages(limit = Number(process.env.PACKAGE_PER_R
   return { sent: results.filter(r => r.sent).length, failed: results.filter(r => r.error).length, remaining: Math.max(0, (data || []).filter((l: any) => normalizePhone(l.telephone) && !sentPackage(l) && !isOffTopic(l)).length - results.filter(r => r.sent).length), stopped, results };
 }
 
-/* ---------- Relance automatique (une seule, à J+3 sans réponse) ---------- */
-export const RELANCE_TEMPLATE = process.env.WHATSAPP_RELANCE_TEMPLATE || "neodrive_relance_1";
-const RELANCE_DAYS = Number(process.env.RELANCE_AFTER_DAYS || 3);
-const RELANCE_BODY = [
-  "Bonjour {{1}} 🙂",
-  "",
-  "C'est NeoDrive, je reviens vers vous suite à votre demande sur Leboncoin. Avez-vous pu regarder les vidéos de la NeoDrive SWITCH ?",
-  "",
-  "La Confort est en stock à 4 990 €, 0 € d'acompte, paiement à la livraison.",
-  "",
-  "Donnez-moi simplement votre code postal et je vous indique le prix livré chez vous.",
-].join("\n");
+/* ---------- Relances automatiques : 3 messages différents, arrêt dès la première réponse ou STOP ---------- */
+const CATALOGUE = { link: `${SITE}/catalogue-neodrive-2026.pdf`, filename: "Catalogue NeoDrive 2026.pdf" };
+type Step = { step: number; name: string; afterDays: number; body: string; header?: "VIDEO" | "DOCUMENT"; media?: string };
+export const RELANCES: Step[] = [
+  { step: 1, name: "neodrive_relance_livraison", afterDays: 1, header: "VIDEO", media: `${SITE}/client1.mp4`, body: [
+    "Bonjour {{1}} 🙂",
+    "",
+    "Voici une vraie livraison NeoDrive chez un client 🚚 C'est comme ça que votre voiture arrive chez vous, prête à rouler.",
+    "",
+    "La Confort est en stock à 4 990 €, rien à payer avant la livraison.",
+    "",
+    "Quel est votre code postal ? Je vous donne le prix livré chez vous.",
+  ].join("\n") },
+  { step: 2, name: "neodrive_relance_catalogue", afterDays: 2, header: "DOCUMENT", media: CATALOGUE.link, body: [
+    "Bonjour {{1}},",
+    "",
+    "Je vous laisse notre catalogue 2026 📄 : les 3 versions, les équipements et les prix.",
+    "",
+    "Vous hésitez entre quelles versions ? Dites-moi pour qui c'est et je vous conseille en 2 minutes.",
+  ].join("\n") },
+  { step: 3, name: "neodrive_relance_derniere", afterDays: 4, body: [
+    "Bonjour {{1}},",
+    "",
+    "Dernier message de ma part concernant votre demande NeoDrive 🙂",
+    "",
+    "Si votre projet tient toujours, répondez simplement OUI : je vous prépare le prix livré chez vous ou un conseiller vous rappelle.",
+    "",
+    "Sinon, pas de souci, je ne vous relancerai plus. Bonne journée !",
+  ].join("\n") },
+];
+
+async function relanceComponents(st: Step) {
+  const comps: any[] = [];
+  if (st.header) {
+    const up = await relay("upload-handle", { url: st.media, type: st.header === "VIDEO" ? "video/mp4" : "application/pdf" });
+    if (!up.ok || !up.j?.h) throw new Error(up.j?.error?.message || up.j?.error || "Téléversement du média refusé");
+    comps.push({ type: "HEADER", format: st.header, example: { header_handle: [up.j.h] } });
+  }
+  comps.push({ type: "BODY", text: st.body, example: { body_text: [["Marie"]] } });
+  comps.push({ type: "FOOTER", text: "Répondez STOP pour ne plus être contacté" });
+  comps.push({ type: "BUTTONS", buttons: [{ type: "URL", text: "Prix livré et réservation", url: `${SITE}/reservation-devis` }, { type: "QUICK_REPLY", text: "STOP" }] });
+  return comps;
+}
 
 async function relanceTemplateStatus(create: boolean) {
-  return templateStatus(RELANCE_TEMPLATE, create, [
-    { type: "BODY", text: RELANCE_BODY, example: { body_text: [["Marie"]] } },
-    { type: "FOOTER", text: "Répondez STOP pour ne plus être contacté" },
-    { type: "BUTTONS", buttons: [{ type: "URL", text: "Prix livré et réservation", url: `${SITE}/reservation-devis` }, { type: "QUICK_REPLY", text: "STOP" }] },
-  ]);
+  const out: any[] = [];
+  for (const st of RELANCES) {
+    try { out.push(await templateStatus(st.name, create, () => relanceComponents(st))); }
+    catch (e: any) { out.push({ name: st.name, status: "ERREUR", reason: e?.message || null }); }
+  }
+  const all = out.every(x => x.status === "APPROVED") ? "APPROVED" : out.some(x => x.status === "REJECTED") ? "REJECTED" : out.some(x => x.status === "PENDING") ? "PENDING" : out.some(x => x.status === "ERREUR") ? "ERREUR" : "ABSENT";
+  return { name: "relances", status: all, reason: null, details: out };
+}
+
+async function sendRelanceTemplate(phone: string, prenom: string, st: Step) {
+  const r = await relay("send-template", { to: normalizePhone(phone), name: st.name, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", params: [prenom],
+    ...(st.header === "VIDEO" ? { headerVideo: st.media } : {}), ...(st.header === "DOCUMENT" ? { headerDocument: CATALOGUE } : {}) });
+  if (!r.ok) { const code = r.j?.error?.code; throw Object.assign(new Error(r.j?.error?.message || r.j?.error || "Envoi refusé"), { fatal: r.status === 401 || r.status === 403 || code === 190 || code === 132001 || code === 131042 }); }
+  return r.j?.messages?.[0]?.id || null;
 }
 
 /** Numéros qui ont répondu sur WhatsApp (conversations de Hana) depuis une date. */
 async function repliedSince(phones: string[], sinceIso: string) {
   const db = crmDatabase(); const out = new Set<string>();
   if (!phones.length) return out;
-  const { data } = await db.from("whatsapp_ai_processed").select("phone,created_at").in("phone", phones).gte("created_at", sinceIso).limit(2000);
+  const { data } = await db.from("whatsapp_ai_processed").select("phone,created_at").in("phone", phones).gte("created_at", sinceIso).limit(5000);
   for (const row of data || []) out.add(String((row as any).phone));
   return out;
 }
 
-/** Une relance WhatsApp, J+3 après le package, seulement si le client n'a pas répondu. */
+/** Envoie la relance suivante (J+1 vidéo livraison, J+3 catalogue, J+7 dernier message) aux contacts sans réponse. Pas le dimanche. */
 export async function sendRelances(limit = Number(process.env.RELANCE_PER_RUN || 20)) {
+  if (new Date().toLocaleDateString("fr-FR", { weekday: "long", timeZone: "Europe/Paris" }) === "dimanche") return { sent: 0, failed: 0, answered: 0, stopped: "", results: [], skipped: "dimanche" };
   const db = crmDatabase();
-  const { data, error } = await db.from("leads").select("*").eq("statut", "Contacté").is("opted_out_at", null).not("telephone", "is", null).order("id", { ascending: true }).limit(800);
+  const { data, error } = await db.from("leads").select("*").eq("statut", "Contacté").is("opted_out_at", null).not("telephone", "is", null).order("id", { ascending: true }).limit(1000);
   if (error) throw new Error(error.message);
-  const cutoff = Date.now() - RELANCE_DAYS * 86400000;
   const hist = (l: any) => (Array.isArray(l?.history) ? l.history : []);
-  const due = (data || []).filter((l: any) => {
+  const now = Date.now();
+  const candidates = (data || []).map((l: any) => {
     const pkg = hist(l).find((h: any) => h?.type === "package");
-    if (!pkg?.sent_at || new Date(pkg.sent_at).getTime() > cutoff) return false;
-    if (hist(l).some((h: any) => h?.type === "relance")) return false;
-    if (l.last_inbound_at && new Date(l.last_inbound_at).getTime() >= new Date(pkg.sent_at).getTime()) return false;
-    return Boolean(normalizePhone(l.telephone));
-  });
-  const oldest = due.reduce((m: string, l: any) => { const s = hist(l).find((h: any) => h?.type === "package")?.sent_at; return !m || s < m ? s : m; }, "");
-  const replied = await repliedSince(due.map((l: any) => normalizePhone(l.telephone)), oldest || new Date(cutoff).toISOString());
-  const todo = due.filter((l: any) => {
-    if (!replied.has(normalizePhone(l.telephone))) return true;
-    return false;
-  }).slice(0, limit);
+    if (!pkg?.sent_at || !normalizePhone(l.telephone)) return null;
+    const done = hist(l).filter((h: any) => h?.type === "relance");
+    const lastStep = done.reduce((m: number, h: any) => Math.max(m, Number(h?.step || 0)), 0);
+    const next = RELANCES.find(r => r.step === lastStep + 1);
+    if (!next) return null;
+    const lastAt = lastStep ? done.find((h: any) => Number(h?.step) === lastStep)?.sent_at : pkg.sent_at;
+    if (!lastAt || now - new Date(lastAt).getTime() < next.afterDays * 86400000) return null;
+    if (l.last_inbound_at && new Date(l.last_inbound_at).getTime() >= new Date(pkg.sent_at).getTime()) return null;
+    return { lead: l, next, since: pkg.sent_at as string };
+  }).filter(Boolean) as { lead: any; next: Step; since: string }[];
+  const oldest = candidates.reduce((m, c) => (!m || c.since < m ? c.since : m), "");
+  const replied = await repliedSince(candidates.map(c => normalizePhone(c.lead.telephone)), oldest || new Date(now - 30 * 86400000).toISOString());
+  const answered = candidates.filter(c => replied.has(normalizePhone(c.lead.telephone)));
+  for (const c of answered) await db.from("leads").update({ statut: "Chaud", phase: "Attente réponse", last_inbound_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", c.lead.id);
+  const todo = candidates.filter(c => !replied.has(normalizePhone(c.lead.telephone))).slice(0, limit);
   const results: any[] = []; let stopped = "";
-  for (const lead of todo) {
+  for (const { lead, next } of todo) {
     try {
       const prenom = packageParams(lead)[0];
-      const id = await sendTemplate(lead.telephone, [prenom], RELANCE_TEMPLATE);
-      const now = new Date().toISOString();
-      await db.from("crm_messages").insert({ lead_id: lead.id, direction: "outbound", channel: "whatsapp", body: RELANCE_BODY.replace("{{1}}", prenom), provider_message_id: id, status: "sent", ai_generated: false });
-      await db.from("leads").update({ phase: "Réfléchit", last_contact_at: now, derniere_relance: now, history: [...hist(lead), { type: "relance", step: 1, template: RELANCE_TEMPLATE, sent_at: now }].slice(-60), updated_at: now }).eq("id", lead.id);
-      results.push({ id: lead.id, sent: true });
+      const id = await sendRelanceTemplate(lead.telephone, prenom, next);
+      const at = new Date().toISOString();
+      await db.from("crm_messages").insert({ lead_id: lead.id, direction: "outbound", channel: "whatsapp", body: (next.header ? `[${next.header === "VIDEO" ? "vidéo livraison" : "catalogue PDF"}]\n` : "") + next.body.replace("{{1}}", prenom), provider_message_id: id, status: "sent", ai_generated: false });
+      await db.from("leads").update({ phase: next.step === 3 ? "Terminé si pas de réponse" : "Réfléchit", last_contact_at: at, derniere_relance: at, history: [...hist(lead), { type: "relance", step: next.step, template: next.name, sent_at: at }].slice(-60), updated_at: at }).eq("id", lead.id);
+      results.push({ id: lead.id, step: next.step, sent: true });
     } catch (e: any) {
       results.push({ id: lead.id, error: e?.message || "erreur" });
       if (e?.fatal) { stopped = e.message; break; }
     }
   }
-  // Ceux qui ont répondu à Hana : on les marque « Chaud » dans le CRM.
-  const answered = due.filter((l: any) => replied.has(normalizePhone(l.telephone)));
-  for (const l of answered) await db.from("leads").update({ statut: "Chaud", phase: "Attente réponse", last_inbound_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", l.id);
   return { sent: results.filter(r => r.sent).length, failed: results.filter(r => r.error).length, answered: answered.length, stopped, results };
 }
 
