@@ -20,7 +20,7 @@ async function brevo(path: string, body: unknown) {
 }
 
 export async function sendEmail(to: string, toName: string, subject: string, html: string) {
-  const j = await brevo("smtp/email", { sender: { name: "NeoDrive", email: senderEmail() }, replyTo: { email: senderEmail(), name: "NeoDrive" }, to: [{ email: to, ...(toName ? { name: toName } : {}) }], subject, htmlContent: html });
+  const j = await brevo("smtp/email", { sender: { name: "NeoDrive", email: senderEmail() }, replyTo: { email: process.env.BREVO_REPLY_TO || "contact.neodrivefrance@gmail.com", name: "NeoDrive" }, to: [{ email: to, ...(toName ? { name: toName } : {}) }], subject, htmlContent: html });
   return j?.messageId || null;
 }
 
