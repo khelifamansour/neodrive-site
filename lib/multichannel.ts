@@ -54,7 +54,7 @@ async function repliedPhones(phones: string[]) {
 
 export function smsText(nom: string | null) {
   const p = prenomOf(nom);
-  return `NeoDrive : Bonjour${p ? " " + p : ""}, merci pour votre demande Leboncoin. Voiture sans permis electrique neuve en acier, des 3990 EUR, 0 EUR d'acompte, payee a la livraison. Videos : ${SITE.replace("https://", "")}/videos Prix livre : ${SITE.replace("https://", "")}/reservation-devis`;
+  return `NeoDrive, voitures sans permis electriques neuves a prix direct fabricant. Bonjour${p ? " " + p : ""}, merci pour votre demande sur Leboncoin. Decouvrez notre gamme des 3990 EUR : ${SITE} Nos videos : ${SITE}/videos`;
 }
 
 /** E-mails 1 et 2 + SMS. Renvoie les envois (pour le résumé du fondateur). */
