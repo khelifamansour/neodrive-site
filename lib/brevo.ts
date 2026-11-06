@@ -8,7 +8,9 @@ import { normalizePhone } from "./crm-agent";
 export const SITE = "https://www.easydrive-auto.fr";
 export const OWNER_EMAIL = "khelifamansour@hotmail.fr";
 export const brevoReady = () => Boolean(process.env.BREVO_API_KEY);
-const senderEmail = () => process.env.BREVO_SENDER_EMAIL || "contact.neodrivefrance@gmail.com";
+let senderOverride = "";
+export const setSenderOverride = (e: string) => { senderOverride = e; };
+const senderEmail = () => senderOverride || process.env.BREVO_SENDER_EMAIL || "contact.neodrivefrance@gmail.com";
 
 async function brevo(path: string, body: unknown) {
   const key = process.env.BREVO_API_KEY;
@@ -39,4 +41,12 @@ export function unsubscribeUrl(leadId: number) {
 export function checkUnsubscribe(id: string, sig: string) {
   const good = createHmac("sha256", process.env.CRON_SECRET || "neodrive").update(String(Number(id))).digest("hex").slice(0, 20);
   return Boolean(id) && sig === good;
+}
+
+/** État des domaines d'envoi dans Brevo (lecture seule). */
+export async function brevoDomains() {
+  const key = process.env.BREVO_API_KEY; if (!key) return null;
+  const r = await fetch("https://api.brevo.com/v3/senders/domains", { headers: { "api-key": key, accept: "application/json" }, cache: "no-store" });
+  const j = await r.json().catch(() => ({}));
+  return (j?.domains || []).map((d: any) => ({ domain: d.domain_name, authenticated: d.authenticated, verified: d.verified }));
 }
