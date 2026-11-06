@@ -2,7 +2,7 @@
  * E-mails et SMS automatiques (Brevo), en complément de WhatsApp.
  * - E-mail 1 : le jour du package (catalogue + vidéos + réservation).
  * - E-mail 2 : 4 jours après si pas de réponse (prix livré). Puis plus rien.
- * - SMS : une seule fois, uniquement si le numéro n'a pas WhatsApp.
+ * - SMS : un seul, à tous les contacts (1 h après le package WhatsApp).
  * Arrêt dès que le client répond, se désinscrit ou dit STOP. Pas le dimanche.
  */
 import { crmDatabase, normalizePhone } from "./crm-agent";
@@ -52,7 +52,12 @@ async function repliedPhones(phones: string[]) {
   return out;
 }
 
-/** E-mails 1 et 2 + SMS pour les numéros sans WhatsApp. Renvoie les envois (pour le résumé du fondateur). */
+export function smsText(nom: string | null) {
+  const p = prenomOf(nom);
+  return `NeoDrive : Bonjour${p ? " " + p : ""}, merci pour votre demande Leboncoin. Voiture sans permis electrique neuve en acier, des 3990 EUR, 0 EUR d'acompte, payee a la livraison. Videos : ${SITE.replace("https://", "")}/videos Prix livre : ${SITE.replace("https://", "")}/reservation-devis`;
+}
+
+/** E-mails 1 et 2 + SMS. Renvoie les envois (pour le résumé du fondateur). */
 export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN || 25)) {
   if (!brevoReady()) return { skipped: "Brevo pas encore connecté", results: [] as any[] };
   if (isSunday()) return { skipped: "dimanche", results: [] as any[] };
@@ -63,37 +68,37 @@ export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN 
   const rows = (data || []).filter((l: any) => hist(l).some((h: any) => h?.type === "package"));
   const replied = await repliedPhones(rows.map((l: any) => normalizePhone(l.telephone)).filter(Boolean));
   const results: any[] = []; let stopped = "";
+  const smsLimit = Number(process.env.SMS_PER_RUN || 20);
+  let mailsSent = 0, smsSent = 0;
   for (const l of rows) {
-    if (results.length >= limit || stopped) break;
+    if (stopped || (mailsSent >= limit && smsSent >= smsLimit)) break;
     if (replied.has(normalizePhone(l.telephone))) continue;
     const pkg = hist(l).find((h: any) => h?.type === "package");
     if (l.last_inbound_at && pkg?.sent_at && new Date(l.last_inbound_at) >= new Date(pkg.sent_at)) continue;
-    const mails = hist(l).filter((h: any) => h?.type === "email");
-    const sms = hist(l).some((h: any) => h?.type === "sms");
-    try {
-      const at = new Date().toISOString();
-      if (validEmail(l.email) && mails.length < 2) {
-        const step: 1 | 2 = mails.length === 0 ? 1 : 2;
-        if (step === 2 && now - new Date(mails[0].sent_at).getTime() < 4 * 86400000) { /* trop tôt */ }
-        else {
-          const c = emailContent(step, l); const id = await sendEmail(String(l.email).trim(), String(l.nom || ""), c.subject, c.html);
-          await db.from("crm_messages").insert({ lead_id: l.id, direction: "outbound", channel: "email", body: c.subject, provider_message_id: id, status: "sent", ai_generated: false });
-          await db.from("leads").update({ history: [...hist(l), { type: "email", step, sent_at: at }].slice(-60), last_contact_at: at, updated_at: at }).eq("id", l.id);
-          results.push({ id: l.id, sent: true, type: `email${step}`, nom: l.nom, email: l.email });
-          continue;
-        }
-      }
-      if (pkg?.channel === "none" && !sms && normalizePhone(l.telephone)) {
-        const p = prenomOf(l.nom);
-        const text = `NeoDrive : bonjour${p ? " " + p : ""}, merci pour votre demande Leboncoin ! Voiture sans permis électrique dès 3 990 €, 0 € d'acompte, payée à la livraison. Vidéos : ${SITE}/videos Prix livré : ${SITE}/reservation-devis`;
+    let h = hist(l);
+    const mails = h.filter((x: any) => x?.type === "email");
+    const sms = h.some((x: any) => x?.type === "sms");
+    // E-mail (1 le jour du package, 2 quatre jours après)
+    if (mailsSent < limit && validEmail(l.email) && mails.length < 2 && !(mails.length === 1 && now - new Date(mails[0].sent_at).getTime() < 4 * 86400000)) {
+      try {
+        const step: 1 | 2 = mails.length === 0 ? 1 : 2; const at = new Date().toISOString();
+        const c = emailContent(step, l); const id = await sendEmail(String(l.email).trim(), String(l.nom || ""), c.subject, c.html);
+        await db.from("crm_messages").insert({ lead_id: l.id, direction: "outbound", channel: "email", body: c.subject, provider_message_id: id, status: "sent", ai_generated: false });
+        h = [...h, { type: "email", step, sent_at: at }].slice(-60);
+        await db.from("leads").update({ history: h, last_contact_at: at, updated_at: at }).eq("id", l.id);
+        results.push({ id: l.id, sent: true, type: `email${step}`, nom: l.nom, email: l.email }); mailsSent++;
+      } catch (e: any) { results.push({ id: l.id, error: e?.message || "erreur" }); if (e?.fatal) stopped = e.message; }
+    }
+    // SMS : un seul, à tous (beaucoup de clients ne lisent pas WhatsApp), au moins 1 h après le package.
+    if (!stopped && smsSent < smsLimit && !sms && normalizePhone(l.telephone) && pkg?.sent_at && now - new Date(pkg.sent_at).getTime() > 3600000) {
+      try {
+        const at = new Date().toISOString(); const text = smsText(l.nom);
         const id = await sendSms(l.telephone, text);
         await db.from("crm_messages").insert({ lead_id: l.id, direction: "outbound", channel: "sms", body: text, provider_message_id: id, status: "sent", ai_generated: false });
-        await db.from("leads").update({ history: [...hist(l), { type: "sms", sent_at: at }].slice(-60), last_contact_at: at, updated_at: at }).eq("id", l.id);
-        results.push({ id: l.id, sent: true, type: "sms", nom: l.nom, tel: l.telephone });
-      }
-    } catch (e: any) {
-      results.push({ id: l.id, error: e?.message || "erreur" });
-      if (e?.fatal) stopped = e.message;
+        h = [...h, { type: "sms", sent_at: at }].slice(-60);
+        await db.from("leads").update({ history: h, last_contact_at: at, updated_at: at }).eq("id", l.id);
+        results.push({ id: l.id, sent: true, type: "sms", nom: l.nom, tel: l.telephone }); smsSent++;
+      } catch (e: any) { results.push({ id: l.id, error: e?.message || "erreur" }); if (e?.fatal) stopped = e.message; }
     }
   }
   return { sent: results.filter(r => r.sent).length, failed: results.filter(r => r.error).length, stopped, results };
@@ -107,6 +112,6 @@ export async function copyToOwner(type: string) {
     const c = emailContent(type === "email1" ? 1 : 2, fake);
     await sendEmail(OWNER_EMAIL, "Mansour", `[Copie envoyée aux clients] ${c.subject}`, c.html);
   } else if (type === "sms") {
-    await sendEmail(OWNER_EMAIL, "Mansour", "[Copie] SMS envoyé aux clients sans WhatsApp", `<p>Texte du SMS envoyé :</p><p style="background:#f1f5f9;padding:12px;border-radius:8px">NeoDrive : bonjour Mansour, merci pour votre demande Leboncoin ! Voiture sans permis électrique dès 3 990 €, 0 € d'acompte, payée à la livraison. Vidéos : ${SITE}/videos Prix livré : ${SITE}/reservation-devis</p>`);
+    await sendSms("0628261446", smsText("Mansour"));
   }
 }
