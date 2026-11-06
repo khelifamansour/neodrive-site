@@ -13,16 +13,16 @@ const prenomOf = (nom: string | null) => { const f = String(nom || "").trim().sp
 const validEmail = (e: string | null) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e || "").trim()) && !/leboncoin/i.test(String(e));
 const isSunday = () => new Date().toLocaleDateString("fr-FR", { weekday: "long", timeZone: "Europe/Paris" }) === "dimanche";
 
-function layout(inner: string, leadId: number) {
+export function layout(inner: string, leadId: number) {
   return `<!doctype html><html lang="fr"><body style="margin:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 0"><tr><td align="center">
 <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden">
 <tr><td style="background:#0b1b33;padding:18px 24px"><span style="font-size:24px;font-weight:bold;color:#ffffff">Neo<span style="color:#f97316">Drive</span></span><br><span style="font-size:11px;letter-spacing:2px;color:#cbd5e1">VOITURES SANS PERMIS ÉLECTRIQUES</span></td></tr>
 <tr><td style="padding:24px;font-size:15px;line-height:1.55">${inner}</td></tr>
-<tr><td style="padding:16px 24px;background:#f8fafc;font-size:12px;color:#64748b">NeoDrive — fabricant, vente directe, Toulouse (SIREN 908 645 393). Vous recevez ce message suite à votre demande sur Leboncoin.<br><a href="${unsubscribeUrl(leadId)}" style="color:#64748b">Ne plus recevoir de messages de NeoDrive</a></td></tr>
+<tr><td style="padding:16px 24px;background:#f8fafc;font-size:12px;color:#64748b">NeoDrive — fabricant, vente directe, Toulouse (SIREN 908 645 393). Vous recevez ce message suite à votre demande sur Leboncoin, ainsi qu’une lettre de conseils par mois au maximum.<br><a href="${unsubscribeUrl(leadId)}" style="color:#64748b">Ne plus recevoir de messages de NeoDrive</a></td></tr>
 </table></td></tr></table></body></html>`;
 }
-const btn = (href: string, label: string) => `<p style="text-align:center;margin:22px 0"><a href="${href}" style="background:#f97316;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:999px;display:inline-block">${label}</a></p>`;
+export const btn = (href: string, label: string) => `<p style="text-align:center;margin:22px 0"><a href="${href}" style="background:#f97316;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:999px;display:inline-block">${label}</a></p>`;
 
 export function emailContent(step: 1 | 2, lead: any) {
   const p = prenomOf(lead?.nom); const hello = p ? `Bonjour ${p},` : "Bonjour,";
@@ -112,6 +112,6 @@ export async function copyToOwner(type: string) {
     const c = emailContent(type === "email1" ? 1 : 2, fake);
     await sendEmail(OWNER_EMAIL, "Mansour", `[Copie envoyée aux clients] ${c.subject}`, c.html);
   } else if (type === "sms") {
-    await sendSms("0628261446", smsText("Mansour"));
+    await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", smsText("Mansour"));
   }
 }
