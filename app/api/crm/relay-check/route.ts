@@ -4,7 +4,9 @@ import { packageTemplateStatus } from "../../../../lib/package-sender";
 export const dynamic = "force-dynamic";
 
 /** Vérification sans danger : le relais WhatsApp (Supabase) répond-il ? Renvoie seulement l'état des modèles. */
-export async function GET() {
-  try { return NextResponse.json({ ok: true, templates: await packageTemplateStatus(false) }); }
+export async function GET(req: Request) {
+  // ?create=1 crée les 2 modèles fixes du package et de la relance s'ils n'existent pas encore (sans effet sinon).
+  const create = new URL(req.url).searchParams.get("create") === "1";
+  try { return NextResponse.json({ ok: true, templates: await packageTemplateStatus(create) }); }
   catch (e) { return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 502 }); }
 }
