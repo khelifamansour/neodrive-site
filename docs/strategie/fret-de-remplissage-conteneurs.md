@@ -14,3 +14,15 @@ Estimations à confirmer par devis et TARIC.
 
 ## Test d'un conteneur (~22 m³)
 40 packs accessoires, lot de pièces SAV, 20 servantes, 150 coffrets, 80 paddles : ~15 000 € FOB, ~17 900 € rendu, ~45 900 € HT de CA → **~19 000 € de marge nette** (prudent : 10–12 000 €).
+
+## Recherche n°2 : produits non évidents (6/11/2026)
+Prix relevés [V] = source citée ; marges [E] = estimées. Droits à confirmer sur TARIC.
+| # | Produit | Achat Chine | Vente France HT | Marge/m³ [E] |
+|---|---|---|---|---|
+| 1 | Pétrin à spirale 20 L pro (pizzerias, boulangeries) | 315–477 $ | 893–1 952 € (METRO, Maxima) | 1 300–1 600 € |
+| 2 | Box chevaux en kit acier galvanisé | façade 450–650 $ | 1 800–9 000 € (sur devis) | 2 000–2 600 € |
+| 3 | Caoutchouc « cour & parking » (ralentisseurs, butées, rampes) — sites privés uniquement | 4–17 $ | 39–148 € | 1 700–2 400 € |
+| 4 | Vestiaires métal démontables | 37–41 $ | 355–715 € | 1 200–1 500 € (attendre clarification AD755) |
+| 5–13 | Chambre froide en kit, tapis stabulation/dalles, mini-pelle 1 t, spa rigide, fauteuil releveur, sauna tonneau, fauteuil barbier, table de soin, tente lodge | — | — | 450–900 € |
+Exclus en 2026 : rayonnages acier (AD755), treillis/clôtures (AD753), pergolas alu (profilés), tables inox (marge), fauteuils massants (prix bas).
+Test ~22,5 m³ / ~10,4 t : 20 pétrins, 10 kits box, 300 ralentisseurs, 200 butées, 60 rampes → ~21 800 € d'achat, ~40 000 € de marge brute (~35 000 € nette avant marketing). Préventes avant commande : 5 pétrins + 3 box.
