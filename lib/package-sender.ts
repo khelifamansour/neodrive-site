@@ -9,7 +9,17 @@ import { crmDatabase, normalizePhone } from "./crm-agent";
 import { isOffTopic, personalLine, PACKAGE_VIDEOS } from "./welcome-package";
 
 const SITE = "https://www.easydrive-auto.fr";
-const V = () => process.env.WHATSAPP_API_VERSION || "v22.0";
+
+/** Relais Supabase (fonction neodrive-wa-send) : utilise le jeton Meta de Hana, qui est à jour. */
+const RELAY_URL = "https://tzlsdjzcxdjaatcpwqwn.supabase.co/functions/v1/neodrive-wa-send";
+async function relay(action: string, payload: Record<string, unknown>) {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) throw Object.assign(new Error("Clé Supabase du serveur absente"), { fatal: true });
+  const r = await fetch(RELAY_URL, { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload }), cache: "no-store" });
+  const j = await r.json().catch(() => ({}));
+  return { ok: r.ok, status: r.status, j };
+}
+
 export const PACKAGE_TEMPLATE = process.env.WHATSAPP_PACKAGE_TEMPLATE || "neodrive_package_bienvenue";
 
 const BODY = [
@@ -43,36 +53,30 @@ export async function packageTemplateStatus(create: boolean) {
 }
 
 async function packageOnlyStatus(create: boolean) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN; const waba = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "29898117843112108";
-  if (!token || !waba) throw new Error("Accès WhatsApp du nouveau numéro manquant : jeton + identifiant du compte WhatsApp Business (page /connexions)");
-  const r = await fetch(`https://graph.facebook.com/${V()}/${waba}/message_templates?name=${PACKAGE_TEMPLATE}&fields=name,status,rejected_reason`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j?.error?.message || "Lecture du modèle impossible");
-  const found = (j.data || []).find((x: any) => x.name === PACKAGE_TEMPLATE);
-  if (found || !create) return { name: PACKAGE_TEMPLATE, status: found?.status || "ABSENT", reason: found?.rejected_reason || null };
-  const c = await fetch(`https://graph.facebook.com/${V()}/${waba}/message_templates`, {
-    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ name: PACKAGE_TEMPLATE, category: "MARKETING", language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", components: [
-      { type: "BODY", text: BODY, example: { body_text: [["Marie", "Oui, elle est disponible : la Confort est en stock et livrable rapidement ✅"]] } },
-      { type: "FOOTER", text: "Répondez STOP pour ne plus être contacté" },
-      { type: "BUTTONS", buttons: [{ type: "URL", text: "Prix livré et réservation", url: `${SITE}/reservation-devis` }, { type: "QUICK_REPLY", text: "STOP" }] },
-    ] }),
-  });
-  const cj = await c.json().catch(() => ({}));
-  if (!c.ok) throw new Error(cj?.error?.error_user_msg || cj?.error?.message || "Création du modèle refusée");
-  return { name: PACKAGE_TEMPLATE, status: String(cj.status || "PENDING"), reason: null };
+  return templateStatus(PACKAGE_TEMPLATE, create, [
+    { type: "BODY", text: BODY, example: { body_text: [["Marie", "Oui, elle est disponible : la Confort est en stock et livrable rapidement ✅"]] } },
+    { type: "FOOTER", text: "Répondez STOP pour ne plus être contacté" },
+    { type: "BUTTONS", buttons: [{ type: "URL", text: "Prix livré et réservation", url: `${SITE}/reservation-devis` }, { type: "QUICK_REPLY", text: "STOP" }] },
+  ]);
+}
+
+async function templateStatus(name: string, create: boolean, components: any[]) {
+  const r = await relay("template-status", { name });
+  if (!r.ok) throw new Error(r.j?.error?.message || r.j?.error || "Lecture du modèle impossible");
+  const found = (r.j.data || []).find((x: any) => x.name === name);
+  if (found || !create) return { name, status: found?.status || "ABSENT", reason: found?.rejected_reason || null };
+  const c = await relay("template-create", { template: { name, category: "MARKETING", language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", components } });
+  if (!c.ok) throw new Error(c.j?.error?.error_user_msg || c.j?.error?.message || "Création du modèle refusée");
+  return { name, status: String(c.j.status || "PENDING"), reason: null };
 }
 
 async function sendTemplate(phone: string, params: string[], name = PACKAGE_TEMPLATE) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN; const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  if (!token || !phoneId) throw Object.assign(new Error("Accès WhatsApp manquant (page /connexions)"), { fatal: true });
-  const r = await fetch(`https://graph.facebook.com/${V()}/${phoneId}/messages`, {
-    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ messaging_product: "whatsapp", to: normalizePhone(phone), type: "template", template: { name, language: { code: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr" }, components: [{ type: "body", parameters: params.map(text => ({ type: "text", text })) }] } }),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(j?.error?.message || "Envoi refusé"), { fatal: r.status === 401 || j?.error?.code === 190 || j?.error?.code === 132001 });
-  return j?.messages?.[0]?.id || null;
+  const r = await relay("send-template", { to: normalizePhone(phone), name, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", params });
+  if (!r.ok) {
+    const code = r.j?.error?.code;
+    throw Object.assign(new Error(r.j?.error?.message || r.j?.error || "Envoi refusé"), { fatal: r.status === 401 || r.status === 403 || code === 190 || code === 132001 || code === 131042 });
+  }
+  return r.j?.messages?.[0]?.id || null;
 }
 
 const sentPackage = (lead: any) => (Array.isArray(lead?.history) ? lead.history : []).some((h: any) => h?.type === "package");
@@ -115,24 +119,11 @@ const RELANCE_BODY = [
 ].join("\n");
 
 async function relanceTemplateStatus(create: boolean) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN; const waba = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "29898117843112108";
-  if (!token) throw new Error("Accès WhatsApp manquant (page /connexions)");
-  const r = await fetch(`https://graph.facebook.com/${V()}/${waba}/message_templates?name=${RELANCE_TEMPLATE}&fields=name,status,rejected_reason`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j?.error?.message || "Lecture du modèle de relance impossible");
-  const found = (j.data || []).find((x: any) => x.name === RELANCE_TEMPLATE);
-  if (found || !create) return { name: RELANCE_TEMPLATE, status: found?.status || "ABSENT", reason: found?.rejected_reason || null };
-  const c = await fetch(`https://graph.facebook.com/${V()}/${waba}/message_templates`, {
-    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ name: RELANCE_TEMPLATE, category: "MARKETING", language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", components: [
-      { type: "BODY", text: RELANCE_BODY, example: { body_text: [["Marie"]] } },
-      { type: "FOOTER", text: "Répondez STOP pour ne plus être contacté" },
-      { type: "BUTTONS", buttons: [{ type: "URL", text: "Prix livré et réservation", url: `${SITE}/reservation-devis` }, { type: "QUICK_REPLY", text: "STOP" }] },
-    ] }),
-  });
-  const cj = await c.json().catch(() => ({}));
-  if (!c.ok) throw new Error(cj?.error?.error_user_msg || cj?.error?.message || "Création du modèle de relance refusée");
-  return { name: RELANCE_TEMPLATE, status: String(cj.status || "PENDING"), reason: null };
+  return templateStatus(RELANCE_TEMPLATE, create, [
+    { type: "BODY", text: RELANCE_BODY, example: { body_text: [["Marie"]] } },
+    { type: "FOOTER", text: "Répondez STOP pour ne plus être contacté" },
+    { type: "BUTTONS", buttons: [{ type: "URL", text: "Prix livré et réservation", url: `${SITE}/reservation-devis` }, { type: "QUICK_REPLY", text: "STOP" }] },
+  ]);
 }
 
 /** Numéros qui ont répondu sur WhatsApp (conversations de Hana) depuis une date. */
