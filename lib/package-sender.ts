@@ -6,7 +6,7 @@
  * un seul message de bienvenue, STOP respecté.
  */
 import { crmDatabase, normalizePhone } from "./crm-agent";
-import { isOffTopic, personalLine, PACKAGE_VIDEOS } from "./welcome-package";
+import { isOffTopic, personalLine } from "./welcome-package";
 
 const SITE = "https://www.easydrive-auto.fr";
 
@@ -20,21 +20,17 @@ async function relay(action: string, payload: Record<string, unknown>) {
   return { ok: r.ok, status: r.status, j };
 }
 
-export const PACKAGE_TEMPLATE = process.env.WHATSAPP_PACKAGE_TEMPLATE || "neodrive_package_bienvenue";
+export const PACKAGE_TEMPLATE = process.env.WHATSAPP_PACKAGE_TEMPLATE || "neodrive_bienvenue_video";
+export const PACKAGE_VIDEO = `${"https://www.easydrive-auto.fr"}/presentation.mp4`;
 
 const BODY = [
   "Bonjour {{1}} 👋",
   "",
-  "Merci pour votre message sur Leboncoin ! Ici NeoDrive, le fabricant français de voitures sans permis 100 % électriques, neuves, en acier, livrées chez vous partout en France.",
+  "Merci pour votre message sur Leboncoin ! Voici la NeoDrive SWITCH en vidéo 🎬",
   "",
-  "{{2}}",
+  "3 versions de 3 990 € à 5 990 €, 0 € d'acompte, paiement à la livraison, livrée chez vous partout en France.",
   "",
-  "Nos 3 versions : Essentielle 3 990 € · Confort 4 990 € (en stock) · Confort Plus+ 5 990 €. 0 € d'acompte, vous payez à la livraison.",
-  "",
-  "Découvrez-la en vidéo :",
-  ...PACKAGE_VIDEOS.map(v => `${v.label} : ${v.url}`),
-  "",
-  "Pour bien vous conseiller, dites-moi : c'est pour qui (un ado de 14-16 ans, vous-même, une personne âgée…), votre code postal, et pour quand ?",
+  "C'est pour qui, et quel est votre code postal ?",
 ].join("\n");
 
 export function packageParams(lead: any): [string, string] {
@@ -53,25 +49,35 @@ export async function packageTemplateStatus(create: boolean) {
 }
 
 async function packageOnlyStatus(create: boolean) {
-  return templateStatus(PACKAGE_TEMPLATE, create, [
-    { type: "BODY", text: BODY, example: { body_text: [["Marie", "Oui, elle est disponible : la Confort est en stock et livrable rapidement ✅"]] } },
-    { type: "FOOTER", text: "Répondez STOP pour ne plus être contacté" },
-    { type: "BUTTONS", buttons: [{ type: "URL", text: "Prix livré et réservation", url: `${SITE}/reservation-devis` }, { type: "QUICK_REPLY", text: "STOP" }] },
-  ]);
+  return templateStatus(PACKAGE_TEMPLATE, create, async () => {
+    const up = await relay("upload-handle", { url: PACKAGE_VIDEO, type: "video/mp4" });
+    if (!up.ok || !up.j?.h) throw new Error(up.j?.error?.message || up.j?.error || "Téléversement de la vidéo refusé");
+    return [
+      { type: "HEADER", format: "VIDEO", example: { header_handle: [up.j.h] } },
+      { type: "BODY", text: BODY, example: { body_text: [["Marie"]] } },
+      { type: "FOOTER", text: "Répondez STOP pour ne plus être contacté" },
+      { type: "BUTTONS", buttons: [
+        { type: "URL", text: "Voir toutes les vidéos", url: `${SITE}/videos` },
+        { type: "URL", text: "Prix livré et réservation", url: `${SITE}/reservation-devis` },
+        { type: "QUICK_REPLY", text: "STOP" },
+      ] },
+    ];
+  });
 }
 
-async function templateStatus(name: string, create: boolean, components: any[]) {
+async function templateStatus(name: string, create: boolean, components: any[] | (() => Promise<any[]>)) {
   const r = await relay("template-status", { name });
   if (!r.ok) throw new Error(r.j?.error?.message || r.j?.error || "Lecture du modèle impossible");
   const found = (r.j.data || []).find((x: any) => x.name === name);
   if (found || !create) return { name, status: found?.status || "ABSENT", reason: found?.rejected_reason || null };
-  const c = await relay("template-create", { template: { name, category: "MARKETING", language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", components } });
+  const comps = typeof components === "function" ? await components() : components;
+  const c = await relay("template-create", { template: { name, category: "MARKETING", language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", components: comps } });
   if (!c.ok) throw new Error(c.j?.error?.error_user_msg || c.j?.error?.message || "Création du modèle refusée");
   return { name, status: String(c.j.status || "PENDING"), reason: null };
 }
 
 async function sendTemplate(phone: string, params: string[], name = PACKAGE_TEMPLATE) {
-  const r = await relay("send-template", { to: normalizePhone(phone), name, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", params });
+  const r = await relay("send-template", { to: normalizePhone(phone), name, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", params, ...(name === PACKAGE_TEMPLATE ? { headerVideo: PACKAGE_VIDEO } : {}) });
   if (!r.ok) {
     const code = r.j?.error?.code;
     throw Object.assign(new Error(r.j?.error?.message || r.j?.error || "Envoi refusé"), { fatal: r.status === 401 || r.status === 403 || code === 190 || code === 132001 || code === 131042 });
@@ -90,10 +96,10 @@ export async function sendDailyPackages(limit = Number(process.env.PACKAGE_PER_R
   const results: any[] = []; let stopped = "";
   for (const lead of todo) {
     try {
-      const params = packageParams(lead);
+      const params = [packageParams(lead)[0]];
       const id = await sendTemplate(lead.telephone, params);
       const now = new Date().toISOString();
-      const body = BODY.replace("{{1}}", params[0]).replace("{{2}}", params[1]);
+      const body = "🎬 [vidéo de présentation]\n" + BODY.replace("{{1}}", params[0]);
       await db.from("crm_messages").insert({ lead_id: lead.id, direction: "outbound", channel: "whatsapp", body, provider_message_id: id, status: "sent", ai_generated: false });
       await db.from("leads").update({ statut: "Contacté", phase: "Attente réponse", last_contact_at: now, derniere_relance: now, next_followup_at: null, history: [...(Array.isArray(lead.history) ? lead.history : []), { type: "package", template: PACKAGE_TEMPLATE, sent_at: now, basis: "réponse à la demande Leboncoin" }].slice(-60), updated_at: now }).eq("id", lead.id);
       results.push({ id: lead.id, sent: true });
@@ -178,7 +184,6 @@ export async function sendRelances(limit = Number(process.env.RELANCE_PER_RUN ||
 /** Test du fondateur : envoie le package uniquement à son numéro personnel (fixe, aucun autre numéro possible). */
 const OWNER_TEST_PHONE = "33628261446";
 export async function sendOwnerTestPackage() {
-  const params = packageParams({ nom: "Mansour", annonce: "Bonjour, est-elle toujours disponible ?" });
-  const id = await sendTemplate(OWNER_TEST_PHONE, params);
+  const id = await sendTemplate(OWNER_TEST_PHONE, ["Mansour"]);
   return { sent: true, to: "06 28 26 14 46", id };
 }
