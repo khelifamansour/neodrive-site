@@ -52,6 +52,11 @@ async function repliedPhones(phones: string[]) {
   return out;
 }
 
+export function smsRelanceText(nom: string | null) {
+  const p = prenomOf(nom);
+  return `NeoDrive : Bonjour${p ? " " + p : ""}, avez-vous pu decouvrir la NeoDrive SWITCH ? Voiture sans permis electrique neuve en acier, des 3990 EUR. Notre gamme : ${SITE} Une question ? Ecrivez-nous sur WhatsApp : https://wa.me/33676192234`;
+}
+
 export function smsText(nom: string | null) {
   const p = prenomOf(nom);
   return `NeoDrive, voitures sans permis electriques neuves a prix direct fabricant. Bonjour${p ? " " + p : ""}, merci pour votre demande sur Leboncoin. Decouvrez notre gamme des 3990 EUR : ${SITE} Nos videos : ${SITE}/videos`;
@@ -100,6 +105,18 @@ export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN 
         results.push({ id: l.id, sent: true, type: "sms", nom: l.nom, tel: l.telephone }); smsSent++;
       } catch (e: any) { results.push({ id: l.id, error: e?.message || "erreur" }); if (e?.fatal) stopped = e.message; }
     }
+    // Relance SMS : une seule, 5 jours après le premier SMS, sans réponse.
+    const firstSms = h.find((x: any) => x?.type === "sms");
+    if (!stopped && smsSent < smsLimit && firstSms && !h.some((x: any) => x?.type === "sms2") && now - new Date(firstSms.sent_at).getTime() > 5 * 86400000 && normalizePhone(l.telephone)) {
+      try {
+        const at = new Date().toISOString(); const text = smsRelanceText(l.nom);
+        const id = await sendSms(l.telephone, text);
+        await db.from("crm_messages").insert({ lead_id: l.id, direction: "outbound", channel: "sms", body: text, provider_message_id: id, status: "sent", ai_generated: false });
+        h = [...h, { type: "sms2", sent_at: at }].slice(-60);
+        await db.from("leads").update({ history: h, last_contact_at: at, updated_at: at }).eq("id", l.id);
+        results.push({ id: l.id, sent: true, type: "sms2", nom: l.nom, tel: l.telephone }); smsSent++;
+      } catch (e: any) { results.push({ id: l.id, error: e?.message || "erreur" }); if (e?.fatal) stopped = e.message; }
+    }
   }
   return { sent: results.filter(r => r.sent).length, failed: results.filter(r => r.error).length, stopped, results };
 }
@@ -111,6 +128,8 @@ export async function copyToOwner(type: string) {
   if (type === "email1" || type === "email2") {
     const c = emailContent(type === "email1" ? 1 : 2, fake);
     await sendEmail(OWNER_EMAIL, "Mansour", `[Copie envoyée aux clients] ${c.subject}`, c.html);
+  } else if (type === "sms2") {
+    await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", smsRelanceText("Mansour"));
   } else if (type === "sms") {
     await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", smsText("Mansour"));
   }

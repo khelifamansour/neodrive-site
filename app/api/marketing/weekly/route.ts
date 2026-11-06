@@ -13,8 +13,9 @@ export async function GET(req: Request) {
   await applyStoredSecrets();
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  const daily = new URL(req.url).searchParams.get("period") === "day";
   const db = crmDatabase();
-  const since = new Date(Date.now() - 7 * 86400000).toISOString();
+  const since = new Date(Date.now() - (daily ? 1 : 7) * 86400000).toISOString();
   const [leadsNew, leadsAll, replies, seo, social] = await Promise.all([
     db.from("leads").select("id,source", { count: "exact" }).gte("created_at", since),
     db.from("leads").select("statut,history").limit(5000),
@@ -35,14 +36,14 @@ export async function GET(req: Request) {
   if (process.env.OPENAI_API_KEY) {
     try {
       const ai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const r = await ai.responses.create({ model: process.env.OPENAI_SOCIAL_MODEL || "gpt-4.1-mini", max_output_tokens: 500, input: [{ role: "system", content: "Tu es le responsable marketing de NeoDrive (voitures sans permis électriques, fabricant en vente directe, 3 990 à 5 990 €, 0 € d'acompte, carrosserie acier, livraison partout en France, concurrents : VoltandGo, Citroën Ami, Aixam, Ligier, Fiat Topolino). À partir des chiffres de la semaine, donne 5 actions concrètes et chiffrées pour la semaine qui vient (Leboncoin, Facebook/Instagram/TikTok, SEO, WhatsApp, publicité Meta), en français simple, une ligne chacune, sans inventer de chiffres absents." }, { role: "user", content: JSON.stringify(m) }] });
+      const r = await ai.responses.create({ model: process.env.OPENAI_SOCIAL_MODEL || "gpt-4.1-mini", max_output_tokens: daily ? 700 : 500, input: [{ role: "system", content: (daily ? "MODE QUOTIDIEN : à partir des chiffres des dernières 24 h, donne 3 actions concrètes pour AUJOURD'HUI (chacune en 1 ligne, faisable en moins de 30 min), puis un texte d'annonce Leboncoin prêt à copier (titre + 5 lignes, honnête, sans superlatif invérifiable), puis une idée de vidéo TikTok/Reel de 15 secondes (accroche + plans). " : "") + "Tu es le responsable marketing de NeoDrive (voitures sans permis électriques, fabricant en vente directe, 3 990 à 5 990 €, 0 € d'acompte, carrosserie acier, livraison partout en France, concurrents : VoltandGo, Citroën Ami, Aixam, Ligier, Fiat Topolino). À partir des chiffres de la semaine, donne 5 actions concrètes et chiffrées pour la semaine qui vient (Leboncoin, Facebook/Instagram/TikTok, SEO, WhatsApp, publicité Meta), en français simple, une ligne chacune, sans inventer de chiffres absents." }, { role: "user", content: JSON.stringify(m) }] });
       plan = (r.output_text || "").trim();
     } catch (e) { console.error("[MARKETING] IA", e); }
   }
-  const text = `📈 Bilan marketing NeoDrive (7 derniers jours)\n\n• Nouveaux contacts : ${m.nouveauxContacts}\n• Packages WhatsApp : ${m.packages} · relances : ${m.relances} · e-mails : ${m.emails} · SMS : ${m.sms}\n• Clients qui ont répondu à Hana : ${m.clientsAyantRepondu}\n• Clients chauds : ${m.chauds} · clients : ${m.clients}\n• Pages SEO publiées : ${m.pagesSeoPubliees.length}\n• Réseaux sociaux : ${Object.entries(m.reseaux).map(([k, v]) => `${k} ${v}`).join(", ") || "rien"}\n\n${plan ? "🎯 Plan de la semaine :\n" + plan : ""}`;
-  const wa = await whatsappOwner(text, "Bilan marketing").catch(() => false);
+  const text = `${daily ? "☀️ Brief marketing du jour (dernières 24 h)" : "📈 Bilan marketing NeoDrive (7 derniers jours)"}\n\n• Nouveaux contacts : ${m.nouveauxContacts}\n• Packages WhatsApp : ${m.packages} · relances : ${m.relances} · e-mails : ${m.emails} · SMS : ${m.sms}\n• Clients qui ont répondu à Hana : ${m.clientsAyantRepondu}\n• Clients chauds : ${m.chauds} · clients : ${m.clients}\n• Pages SEO publiées : ${m.pagesSeoPubliees.length}\n• Réseaux sociaux : ${Object.entries(m.reseaux).map(([k, v]) => `${k} ${v}`).join(", ") || "rien"}\n\n${plan ? (daily ? "🎯 Aujourd'hui :\n" : "🎯 Plan de la semaine :\n") + plan : ""}`;
+  const wa = await whatsappOwner(text, daily ? "Brief du jour" : "Bilan marketing").catch(() => false);
   let mail = false;
-  if (brevoReady()) { try { await sendEmail(OWNER_EMAIL, "Mansour", "NeoDrive — bilan marketing de la semaine", `<pre style="font-family:Arial,sans-serif;font-size:15px;white-space:pre-wrap">${text.replace(/</g, "&lt;")}</pre>`); mail = true; } catch (e) { console.error("[MARKETING] mail", e); } }
+  if (brevoReady() && !daily) { try { await sendEmail(OWNER_EMAIL, "Mansour", "NeoDrive — bilan marketing de la semaine", `<pre style="font-family:Arial,sans-serif;font-size:15px;white-space:pre-wrap">${text.replace(/</g, "&lt;")}</pre>`); mail = true; } catch (e) { console.error("[MARKETING] mail", e); } }
   console.log("[MARKETING] weekly", { wa, mail });
   return NextResponse.json({ ok: true, whatsapp: wa, email: mail, metrics: m });
 }

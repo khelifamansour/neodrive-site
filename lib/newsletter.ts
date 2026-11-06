@@ -15,9 +15,9 @@ const validEmail = (e: string | null) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(St
 const esc = (t: string) => String(t || "").replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] as string));
 export const editionOf = (d = new Date()) => d.toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" }).slice(0, 7);
 
-async function getOrCreateEdition(edition: string) {
+async function getOrCreateEdition(edition: string, store = true) {
   const db = crmDatabase();
-  const found = await db.from("newsletter_editions").select("*").eq("edition", edition).maybeSingle();
+  const found = store ? await db.from("newsletter_editions").select("*").eq("edition", edition).maybeSingle() : { data: null };
   if (found.data) return found.data as { edition: string; subject: string; html: string };
   const { data: arts } = await db.from("seo_articles").select("slug,title,excerpt,meta_description").eq("status", "published").order("published_at", { ascending: false }).limit(4);
   const articles = (arts || []).map((a: any) => ({ titre: a.title, resume: a.excerpt || a.meta_description || "", lien: `${SITE}/blog/${a.slug}` }));
@@ -41,7 +41,7 @@ ${blocs.map(b => `<h3 style="color:#0b1b33;margin:20px 0 6px">${esc(b.titre)}</h
 <p style="margin-top:22px">🎬 <a href="${SITE}/videos"><b>Nos vidéos</b></a> · 📄 <a href="${SITE}/catalogue-neodrive-2026.pdf"><b>Catalogue 2026</b></a></p>
 ${btn(`${SITE}/reservation-devis`, "Voir mon prix livré")}
 <p>Une question ? Répondez simplement à cet e-mail ou écrivez-nous sur WhatsApp au 06 76 19 22 34.</p><p>À bientôt,<br><b>L'équipe NeoDrive</b></p>`;
-  await db.from("newsletter_editions").insert({ edition, subject, html: body, topic: blocs.map(b => b.titre).join(" | ") });
+  if (store) await db.from("newsletter_editions").insert({ edition, subject, html: body, topic: blocs.map(b => b.titre).join(" | ") });
   return { edition, subject, html: body };
 }
 
@@ -53,6 +53,7 @@ export async function sendNewsletterBatch(limit = Number(process.env.NEWSLETTER_
   if (now.toLocaleDateString("fr-FR", { weekday: "long", timeZone: "Europe/Paris" }) === "dimanche") return { skipped: "dimanche", sent: 0 };
   if (day < Number(process.env.NEWSLETTER_START_DAY || 5) || limit <= 0) return { skipped: "pas encore la date d'envoi", sent: 0 };
   const edition = editionOf(now);
+  if (edition < (process.env.NEWSLETTER_FIRST_EDITION || "2026-12")) return { skipped: "première newsletter en décembre", sent: 0 };
   const ed = await getOrCreateEdition(edition);
   const db = crmDatabase();
   const { data, error } = await db.from("leads").select("id,nom,email,history,last_contact_at").is("opted_out_at", null).not("email", "is", null).order("id", { ascending: true }).limit(10000);
@@ -72,4 +73,11 @@ export async function sendNewsletterBatch(limit = Number(process.env.NEWSLETTER_
     } catch (e: any) { failed++; if (e?.fatal) break; }
   }
   return { edition, subject: ed.subject, sent, failed, remainingToday: Math.max(0, todo.length - sent) };
+}
+
+/** Aperçu : rédige une newsletter (sans l'enregistrer) et l'envoie au fondateur uniquement. */
+export async function sendNewsletterPreview() {
+  const ed = await getOrCreateEdition(`apercu-${Date.now()}`, false);
+  await sendEmail(OWNER_EMAIL, "Mansour", `[Aperçu newsletter] ${ed.subject}`, layout(ed.html.replace("{{PRENOM}}", "Mansour"), 0));
+  return { subject: ed.subject };
 }
