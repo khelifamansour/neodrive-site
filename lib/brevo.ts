@@ -50,3 +50,11 @@ export async function brevoDomains() {
   const j = await r.json().catch(() => ({}));
   return (j?.domains || []).map((d: any) => ({ domain: d.domain_name, authenticated: d.authenticated, verified: d.verified }));
 }
+
+/** Derniers événements d'envoi Brevo vers une adresse (livré, bloqué, rejeté…). */
+export async function brevoEvents(email: string) {
+  const key = process.env.BREVO_API_KEY; if (!key) return null;
+  const r = await fetch(`https://api.brevo.com/v3/smtp/statistics/events?limit=15&sort=desc&email=${encodeURIComponent(email)}`, { headers: { "api-key": key, accept: "application/json" }, cache: "no-store" });
+  const j = await r.json().catch(() => ({}));
+  return (j?.events || []).map((e: any) => ({ date: e.date, event: e.event, reason: e.reason || null, from: e.from, subject: e.subject }));
+}
