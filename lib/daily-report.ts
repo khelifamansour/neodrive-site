@@ -42,6 +42,11 @@ ${r.hot.length ? `<h3>🔥 À rappeler en priorité</h3><ul>${r.hot.map(h => `<l
 }
 
 export async function sendReportEmail(r: Awaited<ReturnType<typeof buildDailyReport>>) {
+  if (process.env.BREVO_API_KEY) {
+    const { sendEmail } = await import("./brevo");
+    try { const id = await sendEmail(process.env.REPORT_EMAIL || "khelifamansour@hotmail.fr", "Mansour", `NeoDrive — rapport du ${new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}`, reportHtml(r)); return { sent: true, id }; }
+    catch (e) { return { sent: false, reason: e instanceof Error ? e.message : "envoi refusé" }; }
+  }
   const key = process.env.RESEND_API_KEY, from = process.env.CRM_FROM_EMAIL, to = process.env.REPORT_EMAIL;
   if (!key || !from || !to) return { sent: false, reason: "E-mail du rapport non configuré (RESEND_API_KEY, CRM_FROM_EMAIL, REPORT_EMAIL)" };
   const res = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: to.split(",").map(s => s.trim()), subject: `NeoDrive — rapport du ${r.date} : ${r.packages} packages, ${r.replies} réponses`, html: reportHtml(r) }) });

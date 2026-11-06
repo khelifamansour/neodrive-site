@@ -42,6 +42,20 @@ export async function POST(req: Request) {
     } catch (e) { return NextResponse.json({ ok: false, error: "WhatsApp refuse cet accès : " + (e as Error).message }, { status: 400 }); }
   }
 
+  if (b.action === "save_brevo") {
+    const key = String(b.key || "").trim(); const sender = String(b.sender || "khelifamansour@hotmail.fr").trim();
+    if (key.length < 20) return NextResponse.json({ ok: false, error: "Collez la clé API Brevo complète (elle commence par xkeysib-)." }, { status: 400 });
+    const a = await fetch("https://api.brevo.com/v3/account", { headers: { "api-key": key, accept: "application/json" }, cache: "no-store" });
+    const aj = await a.json().catch(() => ({}));
+    if (!a.ok) return NextResponse.json({ ok: false, error: "Brevo refuse cette clé : " + (aj?.message || a.status) }, { status: 400 });
+    const t = await fetch("https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { "api-key": key, "Content-Type": "application/json", accept: "application/json" }, body: JSON.stringify({ sender: { name: "NeoDrive", email: sender }, to: [{ email: "khelifamansour@hotmail.fr" }], subject: "NeoDrive — Brevo est connecté ✅", htmlContent: "<p>C'est bon : les e-mails et SMS NeoDrive partiront automatiquement, et vous recevrez une copie de chaque envoi.</p>" }) });
+    const tj = await t.json().catch(() => ({}));
+    if (!t.ok) return NextResponse.json({ ok: false, error: "Clé valide, mais l'e-mail de test est refusé : " + (tj?.message || t.status) + ". Vérifiez que l'adresse d'expéditeur est validée dans Brevo (Expéditeurs)." }, { status: 400 });
+    await writeIntegrations({ BREVO_API_KEY: key, BREVO_SENDER_EMAIL: sender }, { brevo_saved_at: new Date().toISOString() });
+    const sms = (aj?.plan || []).find((p: any) => p?.type === "sms")?.credits;
+    return NextResponse.json({ ok: true, company: aj?.companyName || "", smsCredits: sms ?? 0, checks: await runHealthChecks() });
+  }
+
   if (b.action === "save_email") {
     const key = String(b.key || "").trim();
     if (!/^re_[A-Za-z0-9_]{10,}$/.test(key)) return NextResponse.json({ ok: false, error: "Collez la clé Resend complète (elle commence par re_)." }, { status: 400 });

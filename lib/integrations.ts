@@ -9,7 +9,7 @@ import { readJson, writeJson, dataClient } from "./datastore";
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 export const INTEGRATIONS_BUCKET = "erp-documents";
 export const INTEGRATIONS_PATH = "integrations/connexions.json";
-export const MANAGED_KEYS = ["FACEBOOK_PAGE_ID", "FACEBOOK_PAGE_ACCESS_TOKEN", "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_BUSINESS_ACCOUNT_ID", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_BUSINESS_ACCOUNT_ID", "RESEND_API_KEY", "CRM_FROM_EMAIL"] as const;
+export const MANAGED_KEYS = ["FACEBOOK_PAGE_ID", "FACEBOOK_PAGE_ACCESS_TOKEN", "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_BUSINESS_ACCOUNT_ID", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_BUSINESS_ACCOUNT_ID", "RESEND_API_KEY", "CRM_FROM_EMAIL", "BREVO_API_KEY", "BREVO_SENDER_EMAIL"] as const;
 export type ManagedKey = typeof MANAGED_KEYS[number];
 export type StoredIntegrations = { values: Partial<Record<ManagedKey, string>>; meta: Record<string, unknown>; updated_at?: string };
 

@@ -1,0 +1,42 @@
+/**
+ * Brevo (ex-Sendinblue) : envoi d'e-mails et de SMS pour NeoDrive.
+ * Clé et expéditeur enregistrés sur /connexions (BREVO_API_KEY, BREVO_SENDER_EMAIL).
+ */
+import { createHmac } from "crypto";
+import { normalizePhone } from "./crm-agent";
+
+export const SITE = "https://www.easydrive-auto.fr";
+export const OWNER_EMAIL = "khelifamansour@hotmail.fr";
+export const brevoReady = () => Boolean(process.env.BREVO_API_KEY);
+const senderEmail = () => process.env.BREVO_SENDER_EMAIL || OWNER_EMAIL;
+
+async function brevo(path: string, body: unknown) {
+  const key = process.env.BREVO_API_KEY;
+  if (!key) throw Object.assign(new Error("Brevo n'est pas encore connecté (page /connexions)"), { fatal: true });
+  const r = await fetch(`https://api.brevo.com/v3/${path}`, { method: "POST", headers: { "api-key": key, "Content-Type": "application/json", accept: "application/json" }, body: JSON.stringify(body), cache: "no-store" });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j?.message || `Brevo ${r.status}`), { fatal: r.status === 401 || r.status === 403 });
+  return j;
+}
+
+export async function sendEmail(to: string, toName: string, subject: string, html: string) {
+  const j = await brevo("smtp/email", { sender: { name: "NeoDrive", email: senderEmail() }, replyTo: { email: senderEmail(), name: "NeoDrive" }, to: [{ email: to, ...(toName ? { name: toName } : {}) }], subject, htmlContent: html });
+  return j?.messageId || null;
+}
+
+export async function sendSms(phone: string, content: string) {
+  const to = normalizePhone(phone);
+  if (!to) throw new Error("Numéro invalide");
+  const j = await brevo("transactionalSMS/sms", { sender: "NeoDrive", recipient: to, content, type: "marketing" });
+  return j?.messageId ? String(j.messageId) : null;
+}
+
+/** Lien de désinscription signé (sans compte client). */
+export function unsubscribeUrl(leadId: number) {
+  const sig = createHmac("sha256", process.env.CRON_SECRET || "neodrive").update(String(leadId)).digest("hex").slice(0, 20);
+  return `${SITE}/api/crm/unsubscribe?id=${leadId}&s=${sig}`;
+}
+export function checkUnsubscribe(id: string, sig: string) {
+  const good = createHmac("sha256", process.env.CRON_SECRET || "neodrive").update(String(Number(id))).digest("hex").slice(0, 20);
+  return Boolean(id) && sig === good;
+}

@@ -11,7 +11,7 @@ export default function Connexions(){
  const [msg,setMsg]=useState<{t:"ok"|"err";m:string}|null>(null);
  const [metaToken,setMetaToken]=useState("");
  const [waToken,setWaToken]=useState("");
- const [waPhone,setWaPhone]=useState("");const [waWaba,setWaWaba]=useState("");const [mailKey,setMailKey]=useState("");
+ const [waPhone,setWaPhone]=useState("");const [waWaba,setWaWaba]=useState("");const [mailKey,setMailKey]=useState("");const [brevoKey,setBrevoKey]=useState("");const [brevoFrom,setBrevoFrom]=useState("khelifamansour@hotmail.fr");
  const [open,setOpen]=useState<string|null>(null);
 
  const api=async(body:object)=>{const r=await fetch("/api/connexions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:code,...body})});const j=await r.json().catch(()=>({ok:false,error:"Réponse invalide"}));if(!r.ok||!j.ok)throw new Error(j.error||"Erreur");return j;};
@@ -23,6 +23,7 @@ export default function Connexions(){
  const saveMeta=async()=>{setBusy("meta");setMsg(null);try{const j=await api({action:"save_meta",token:metaToken});setChecks(j.checks);setMetaToken("");setMsg({t:"ok",m:`✅ Page « ${j.page} » connectée${j.instagram?` · Instagram @${j.instagram}`:" · Instagram pas encore relié à la Page"}${j.whatsapp?" · WhatsApp connecté":""}.`});}catch(e){setMsg({t:"err",m:(e as Error).message})}finally{setBusy("")}};
  const saveWa=async()=>{setBusy("wa");setMsg(null);try{const j=await api({action:"save_whatsapp",token:waToken,phoneId:waPhone||undefined,wabaId:waWaba||undefined});setChecks(j.checks);setWaToken("");setMsg({t:"ok",m:`✅ WhatsApp connecté (${j.number}). Les relances repartent dans l’heure.`});}catch(e){setMsg({t:"err",m:(e as Error).message})}finally{setBusy("")}};
  const saveMail=async()=>{setBusy("mail");setMsg(null);try{const j=await api({action:"save_email",key:mailKey});setChecks(j.checks);setMailKey("");setMsg({t:"ok",m:`✅ E-mail connecté : un e-mail de test vient de partir vers ${j.to}. Le rapport arrivera chaque soir à 19 h 30.`});}catch(e){setMsg({t:"err",m:(e as Error).message});}finally{setBusy("");}};
+ const saveBrevo=async()=>{setBusy("brevo");setMsg(null);try{const j=await api({action:"save_brevo",key:brevoKey,sender:brevoFrom});setChecks(j.checks);setBrevoKey("");setMsg({t:"ok",m:`✅ Brevo connecté${j.company?` (${j.company})`:""}. Un e-mail de test est parti vers khelifamansour@hotmail.fr. Crédits SMS : ${j.smsCredits}. Les e-mails et SMS démarrent à la prochaine heure.`});}catch(e){setMsg({t:"err",m:(e as Error).message})}finally{setBusy("")}};
  const tiktok=async()=>{setBusy("tt");setMsg(null);try{const r=await fetch("/api/tiktok/connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:code})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||"Erreur");window.location.href=j.authorizationUrl;}catch(e){setMsg({t:"err",m:(e as Error).message});setBusy("")}};
  const report=async()=>{setBusy("report");setMsg(null);try{const r=await fetch("/api/health",{headers:{Authorization:"Bearer "+code}});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||"Erreur");setChecks(j.checks);setMsg(j.sent?{t:"ok",m:"📧 Rapport envoyé sur votre e-mail."}:{t:"err",m:"Le rapport n’a pas pu partir (Formspree)."});}catch(e){setMsg({t:"err",m:(e as Error).message})}finally{setBusy("")}};
 
@@ -59,6 +60,16 @@ export default function Connexions(){
     <input value={waPhone} onChange={e=>setWaPhone(e.target.value.replace(/\D/g,""))} placeholder="Identifiant du numéro (nouveau numéro de Hana)"/>
     <input value={waWaba} onChange={e=>setWaWaba(e.target.value.replace(/\D/g,""))} placeholder="Identifiant du compte WhatsApp Business (WABA)"/>
     <button className="go" onClick={saveWa} disabled={!!busy||waToken.trim().length<30}>{busy==="wa"?"Vérification…":"Vérifier et enregistrer"}</button>
+   </div>:null}
+  </section>
+
+  <section className="card">
+   <button className="toggle" onClick={()=>setOpen(open==="brevo"?null:"brevo")}><b>E-mails et SMS automatiques (Brevo)</b><span>{open==="brevo"?"−":"+"}</span></button>
+   {open==="brevo"?<div className="body">
+    <ol><li>Créez un compte sur <a href="https://www.brevo.com" target="_blank" rel="noreferrer">brevo.com</a> avec <b>khelifamansour@hotmail.fr</b>.</li><li>Menu (en haut à droite) → <b>SMTP et API</b> → onglet <b>Clés API</b> → <b>Générer une nouvelle clé API</b> → copiez-la (elle commence par <code>xkeysib-</code>).</li><li>Pour les SMS : achetez un petit pack de crédits SMS dans Brevo.</li><li>Collez la clé ci-dessous : un e-mail de test part aussitôt.</li></ol>
+    <input value={brevoKey} onChange={e=>setBrevoKey(e.target.value.trim())} placeholder="Clé API Brevo (xkeysib-…)" autoComplete="off" spellCheck={false}/>
+    <input value={brevoFrom} onChange={e=>setBrevoFrom(e.target.value.trim())} placeholder="Adresse d'expéditeur validée dans Brevo"/>
+    <button className="go" onClick={saveBrevo} disabled={!!busy||brevoKey.length<20}>{busy==="brevo"?"Vérification…":"Vérifier et enregistrer"}</button>
    </div>:null}
   </section>
 

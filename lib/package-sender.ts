@@ -82,7 +82,7 @@ async function sendTemplate(phone: string, params: string[], name = PACKAGE_TEMP
   const r = await relay("send-template", { to: normalizePhone(phone), name, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", params, ...(name === PACKAGE_TEMPLATE ? { headerVideo: PACKAGE_VIDEO } : {}) });
   if (!r.ok) {
     const code = r.j?.error?.code;
-    throw Object.assign(new Error(r.j?.error?.message || r.j?.error || "Envoi refusé"), { fatal: r.status === 401 || r.status === 403 || code === 190 || code === 132001 || code === 131042 });
+    throw Object.assign(new Error(r.j?.error?.message || r.j?.error || "Envoi refusé"), { code, fatal: r.status === 401 || r.status === 403 || code === 190 || code === 132001 || code === 131042 });
   }
   return r.j?.messages?.[0]?.id || null;
 }
@@ -106,6 +106,13 @@ export async function sendDailyPackages(limit = Number(process.env.PACKAGE_PER_R
       await db.from("leads").update({ statut: "Contacté", phase: "Attente réponse", last_contact_at: now, derniere_relance: now, next_followup_at: null, history: [...(Array.isArray(lead.history) ? lead.history : []), { type: "package", template: PACKAGE_TEMPLATE, sent_at: now, basis: "réponse à la demande Leboncoin" }].slice(-60), updated_at: now }).eq("id", lead.id);
       results.push({ id: lead.id, sent: true, nom: lead.nom || "", tel: lead.telephone, type: "package" });
     } catch (e: any) {
+      if (e?.code === 131026) {
+        // Pas de WhatsApp sur ce numéro : on le note, l'e-mail et le SMS prennent le relais.
+        const at = new Date().toISOString();
+        await db.from("leads").update({ statut: "Contacté", phase: "Attente réponse", history: [...(Array.isArray(lead.history) ? lead.history : []), { type: "package", channel: "none", reason: "no_whatsapp", sent_at: at }].slice(-60), updated_at: at }).eq("id", lead.id);
+        results.push({ id: lead.id, noWhatsapp: true });
+        continue;
+      }
       results.push({ id: lead.id, error: e?.message || "erreur" });
       if (e?.fatal) { stopped = e.message; break; }
     }
@@ -193,7 +200,7 @@ export async function sendRelances(limit = Number(process.env.RELANCE_PER_RUN ||
   const now = Date.now();
   const candidates = (data || []).map((l: any) => {
     const pkg = hist(l).find((h: any) => h?.type === "package");
-    if (!pkg?.sent_at || !normalizePhone(l.telephone)) return null;
+    if (!pkg?.sent_at || !normalizePhone(l.telephone) || (pkg.channel && pkg.channel !== "whatsapp")) return null;
     const done = hist(l).filter((h: any) => h?.type === "relance");
     const lastStep = done.reduce((m: number, h: any) => Math.max(m, Number(h?.step || 0)), 0);
     const next = RELANCES.find(r => r.step === lastStep + 1);
@@ -235,27 +242,37 @@ export async function sendOwnerTestPackage() {
 /* ---------- Copie et résumé pour le fondateur sur son WhatsApp ---------- */
 const RAPPORT_TEMPLATE = "neodrive_rapport_envois";
 const RAPPORT_BODY = "📊 Envois NeoDrive du {{1}} : {{2}}. Le détail est dans le CRM.";
-const LABEL: Record<string, string> = { package: "Package", relance1: "Relance J+1 (vidéo livraison)", relance2: "Relance J+3 (catalogue)", relance3: "Relance J+7 (dernier message)" };
+const LABEL: Record<string, string> = { package: "Package WhatsApp", relance1: "Relance J+1 (vidéo livraison)", relance2: "Relance J+3 (catalogue)", relance3: "Relance J+7 (dernier message)", email1: "E-mail catalogue + vidéos", email2: "E-mail relance prix livré", sms: "SMS (pas de WhatsApp)" };
 const fmtTel = (t: string) => { const n = normalizePhone(t); return n.startsWith("33") ? ("0" + n.slice(2)).replace(/(\d{2})(?=\d)/g, "$1 ") : n; };
 
 /** Après chaque envoi : une copie de chaque type de message envoyé + la liste des clients, sur le WhatsApp du fondateur. */
-export async function notifyOwner(sent: any[]) {
+export async function notifyOwner(sent: any[], copyEmail?: (type: string) => Promise<void>) {
   const ok = sent.filter(r => r?.sent);
   if (!ok.length) return { notified: false };
   const types = [...new Set(ok.map(r => String(r.type)))];
   for (const t of types) {
     try {
       if (t === "package") await sendTemplate(OWNER_TEST_PHONE, ["Mansour"]);
+      else if (t.startsWith("email") || t === "sms") { if (copyEmail) await copyEmail(t); }
       else { const st = RELANCES.find(r => `relance${r.step}` === t); if (st) await sendRelanceTemplate(OWNER_TEST_PHONE, "Mansour", st); }
     } catch (e) { console.error("[OWNER] copie impossible", t, e); }
   }
   const when = new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  const lines = types.map(t => `${LABEL[t] || t} (${ok.filter(r => r.type === t).length}) : ` + ok.filter(r => r.type === t).map(r => `${String(r.nom || "Sans nom").trim().split(/\s+/)[0]} ${fmtTel(r.tel)}`).join(", "));
-  const text = `📊 Envois NeoDrive du ${when}\n\n` + lines.join("\n\n") + `\n\nVous venez de recevoir une copie de chaque message envoyé. Détail dans le CRM : ${SITE}/crm`;
+  const lines = types.map(t => `${LABEL[t] || t} (${ok.filter(r => r.type === t).length}) : ` + ok.filter(r => r.type === t).map(r => `${String(r.nom || "Sans nom").trim().split(/\s+/)[0]} ${r.email || fmtTel(r.tel)}`).join(", "));
+  const text = `📊 Envois NeoDrive du ${when}\n\n` + lines.join("\n\n") + `\n\nVous venez de recevoir une copie de chaque message envoyé (WhatsApp ici, e-mails sur votre boîte mail). Détail dans le CRM : ${SITE}/crm`;
   const r = await relay("send-text", { to: OWNER_TEST_PHONE, text });
   if (r.ok) return { notified: true, via: "texte" };
   // Hors fenêtre de 24 h : modèle « rapport » (une seule ligne, sans retour à la ligne).
   const flat = lines.join(" · ").replace(/\s+/g, " ").slice(0, 900);
   const t = await relay("send-template", { to: OWNER_TEST_PHONE, name: RAPPORT_TEMPLATE, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", params: [when, flat] });
   return { notified: t.ok, via: "modèle", error: t.ok ? null : (t.j?.error?.message || t.j?.error) };
+}
+
+/** Message WhatsApp libre au fondateur (modèle « rapport » si la fenêtre de 24 h est fermée). */
+export async function whatsappOwner(text: string, title: string) {
+  const r = await relay("send-text", { to: OWNER_TEST_PHONE, text });
+  if (r.ok) return true;
+  const when = new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const t = await relay("send-template", { to: OWNER_TEST_PHONE, name: RAPPORT_TEMPLATE, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", params: [when, `${title} — ${text}`.replace(/\s+/g, " ").slice(0, 900)] });
+  return t.ok;
 }
