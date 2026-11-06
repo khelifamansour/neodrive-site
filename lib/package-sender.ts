@@ -45,7 +45,9 @@ export async function packageTemplateStatus(create: boolean) {
   const pkg = await packageOnlyStatus(create);
   let relance: any = null;
   try { relance = await relanceTemplateStatus(create); } catch (e: any) { relance = { name: "relances", status: "ERREUR", reason: e?.message || null }; }
-  return { ...pkg, relance };
+  let rapport: any = null;
+  try { rapport = await templateStatus(RAPPORT_TEMPLATE, create, [{ type: "BODY", text: RAPPORT_BODY, example: { body_text: [["06/11 15:20", "Package → Marie (06 12 34 56 78) · Relance J+1 → Paul (07 98 76 54 32)"]] } }], "UTILITY"); } catch (e: any) { rapport = { name: RAPPORT_TEMPLATE, status: "ERREUR", reason: e?.message || null }; }
+  return { ...pkg, relance, rapport };
 }
 
 async function packageOnlyStatus(create: boolean) {
@@ -65,13 +67,13 @@ async function packageOnlyStatus(create: boolean) {
   });
 }
 
-async function templateStatus(name: string, create: boolean, components: any[] | (() => Promise<any[]>)) {
+async function templateStatus(name: string, create: boolean, components: any[] | (() => Promise<any[]>), category = "MARKETING") {
   const r = await relay("template-status", { name });
   if (!r.ok) throw new Error(r.j?.error?.message || r.j?.error || "Lecture du modèle impossible");
   const found = (r.j.data || []).find((x: any) => x.name === name);
   if (found || !create) return { name, status: found?.status || "ABSENT", reason: found?.rejected_reason || null };
   const comps = typeof components === "function" ? await components() : components;
-  const c = await relay("template-create", { template: { name, category: "MARKETING", language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", components: comps } });
+  const c = await relay("template-create", { template: { name, category, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", components: comps } });
   if (!c.ok) throw new Error(c.j?.error?.error_user_msg || c.j?.error?.message || "Création du modèle refusée");
   return { name, status: String(c.j.status || "PENDING"), reason: null };
 }
@@ -92,7 +94,7 @@ export async function sendDailyPackages(limit = Number(process.env.PACKAGE_PER_R
   const db = crmDatabase();
   const { data, error } = await db.from("leads").select("*").eq("statut", "Nouveau").is("opted_out_at", null).not("telephone", "is", null).order("id", { ascending: true }).limit(400);
   if (error) throw new Error(error.message);
-  const todo = (data || []).filter((l: any) => normalizePhone(l.telephone) && !sentPackage(l) && !isOffTopic(l)).slice(0, limit);
+  const todo = (data || []).filter((l: any) => normalizePhone(l.telephone) && normalizePhone(l.telephone) !== OWNER_TEST_PHONE && !sentPackage(l) && !isOffTopic(l)).slice(0, limit);
   const results: any[] = []; let stopped = "";
   for (const lead of todo) {
     try {
@@ -102,7 +104,7 @@ export async function sendDailyPackages(limit = Number(process.env.PACKAGE_PER_R
       const body = "🎬 [vidéo de présentation]\n" + BODY.replace("{{1}}", params[0]);
       await db.from("crm_messages").insert({ lead_id: lead.id, direction: "outbound", channel: "whatsapp", body, provider_message_id: id, status: "sent", ai_generated: false });
       await db.from("leads").update({ statut: "Contacté", phase: "Attente réponse", last_contact_at: now, derniere_relance: now, next_followup_at: null, history: [...(Array.isArray(lead.history) ? lead.history : []), { type: "package", template: PACKAGE_TEMPLATE, sent_at: now, basis: "réponse à la demande Leboncoin" }].slice(-60), updated_at: now }).eq("id", lead.id);
-      results.push({ id: lead.id, sent: true });
+      results.push({ id: lead.id, sent: true, nom: lead.nom || "", tel: lead.telephone, type: "package" });
     } catch (e: any) {
       results.push({ id: lead.id, error: e?.message || "erreur" });
       if (e?.fatal) { stopped = e.message; break; }
@@ -214,7 +216,7 @@ export async function sendRelances(limit = Number(process.env.RELANCE_PER_RUN ||
       const at = new Date().toISOString();
       await db.from("crm_messages").insert({ lead_id: lead.id, direction: "outbound", channel: "whatsapp", body: (next.header ? `[${next.header === "VIDEO" ? "vidéo livraison" : "catalogue PDF"}]\n` : "") + next.body.replace("{{1}}", prenom), provider_message_id: id, status: "sent", ai_generated: false });
       await db.from("leads").update({ phase: next.step === 3 ? "Terminé si pas de réponse" : "Réfléchit", last_contact_at: at, derniere_relance: at, history: [...hist(lead), { type: "relance", step: next.step, template: next.name, sent_at: at }].slice(-60), updated_at: at }).eq("id", lead.id);
-      results.push({ id: lead.id, step: next.step, sent: true });
+      results.push({ id: lead.id, step: next.step, sent: true, nom: lead.nom || "", tel: lead.telephone, type: `relance${next.step}` });
     } catch (e: any) {
       results.push({ id: lead.id, error: e?.message || "erreur" });
       if (e?.fatal) { stopped = e.message; break; }
@@ -228,4 +230,32 @@ const OWNER_TEST_PHONE = "33628261446";
 export async function sendOwnerTestPackage() {
   const id = await sendTemplate(OWNER_TEST_PHONE, ["Mansour"]);
   return { sent: true, to: "06 28 26 14 46", id };
+}
+
+/* ---------- Copie et résumé pour le fondateur sur son WhatsApp ---------- */
+const RAPPORT_TEMPLATE = "neodrive_rapport_envois";
+const RAPPORT_BODY = "📊 Envois NeoDrive du {{1}} : {{2}}. Le détail est dans le CRM.";
+const LABEL: Record<string, string> = { package: "Package", relance1: "Relance J+1 (vidéo livraison)", relance2: "Relance J+3 (catalogue)", relance3: "Relance J+7 (dernier message)" };
+const fmtTel = (t: string) => { const n = normalizePhone(t); return n.startsWith("33") ? ("0" + n.slice(2)).replace(/(\d{2})(?=\d)/g, "$1 ") : n; };
+
+/** Après chaque envoi : une copie de chaque type de message envoyé + la liste des clients, sur le WhatsApp du fondateur. */
+export async function notifyOwner(sent: any[]) {
+  const ok = sent.filter(r => r?.sent);
+  if (!ok.length) return { notified: false };
+  const types = [...new Set(ok.map(r => String(r.type)))];
+  for (const t of types) {
+    try {
+      if (t === "package") await sendTemplate(OWNER_TEST_PHONE, ["Mansour"]);
+      else { const st = RELANCES.find(r => `relance${r.step}` === t); if (st) await sendRelanceTemplate(OWNER_TEST_PHONE, "Mansour", st); }
+    } catch (e) { console.error("[OWNER] copie impossible", t, e); }
+  }
+  const when = new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const lines = types.map(t => `${LABEL[t] || t} (${ok.filter(r => r.type === t).length}) : ` + ok.filter(r => r.type === t).map(r => `${String(r.nom || "Sans nom").trim().split(/\s+/)[0]} ${fmtTel(r.tel)}`).join(", "));
+  const text = `📊 Envois NeoDrive du ${when}\n\n` + lines.join("\n\n") + `\n\nVous venez de recevoir une copie de chaque message envoyé. Détail dans le CRM : ${SITE}/crm`;
+  const r = await relay("send-text", { to: OWNER_TEST_PHONE, text });
+  if (r.ok) return { notified: true, via: "texte" };
+  // Hors fenêtre de 24 h : modèle « rapport » (une seule ligne, sans retour à la ligne).
+  const flat = lines.join(" · ").replace(/\s+/g, " ").slice(0, 900);
+  const t = await relay("send-template", { to: OWNER_TEST_PHONE, name: RAPPORT_TEMPLATE, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", params: [when, flat] });
+  return { notified: t.ok, via: "modèle", error: t.ok ? null : (t.j?.error?.message || t.j?.error) };
 }
