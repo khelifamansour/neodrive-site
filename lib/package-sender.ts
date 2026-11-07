@@ -99,7 +99,7 @@ export async function sendDailyPackages(limit = Number(process.env.PACKAGE_PER_R
   const { data, error } = await db.from("leads").select("*").eq("statut", "Nouveau").is("opted_out_at", null).not("telephone", "is", null).order("id", { ascending: true }).limit(400);
   if (error) throw new Error(error.message);
   // Seulement les NOUVEAUX contacts (pas de rattrapage de l'ancien stock), pour protéger le numéro.
-  const maxAge = Date.now() - Number(process.env.PACKAGE_MAX_AGE_DAYS || 3) * 86400000;
+  const maxAge = Date.now() - Number(process.env.PACKAGE_MAX_AGE_DAYS || 2) * 86400000;
   const todo = (data || []).filter((l: any) => normalizePhone(l.telephone) && normalizePhone(l.telephone) !== OWNER_TEST_PHONE && !sentPackage(l) && !isOffTopic(l) && l.created_at && new Date(l.created_at).getTime() >= maxAge).slice(0, limit);
   const results: any[] = []; let stopped = "";
   for (const lead of todo) {

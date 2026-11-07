@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     // WhatsApp : 2 créneaux par jour (9 h et 18 h, heure de Paris), 10 messages max par créneau, 20 max par jour.
     const hour = Number(new Date().toLocaleString("fr-FR", { hour: "2-digit", hour12: false, timeZone: "Europe/Paris" }));
     const windows = String(process.env.WHATSAPP_HOURS || "9,18").split(",").map(Number);
-    const daily = Number(process.env.WHATSAPP_DAILY_MAX || 20), perRun = Number(process.env.WHATSAPP_PER_RUN || 10);
+    const daily = Number(process.env.WHATSAPP_DAILY_MAX || 10), perRun = Number(process.env.WHATSAPP_PER_RUN || 5);
     let r: any = { sent: 0, failed: 0, remaining: 0, stopped: "", results: [] as any[], skipped: "hors créneau WhatsApp" };
     let relances: any = null;
     if (process.env.WHATSAPP_SENDING === "on" && windows.includes(hour)) {
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
       if (budget > 0) {
         r = await sendDailyPackages(budget); console.log("[PACKAGES]", { sent: r.sent, failed: r.failed, remaining: r.remaining, stopped: r.stopped });
         const left = budget - r.sent;
-        if (!r.stopped && left > 0) { try { relances = await sendRelances(left); console.log("[RELANCES]", { sent: relances.sent, failed: relances.failed, answered: relances.answered, stopped: relances.stopped }); } catch (e) { console.error("[RELANCES] error", e); } }
+        if (!r.stopped && left > 0 && process.env.WHATSAPP_RELANCES === "on") { try { relances = await sendRelances(left); console.log("[RELANCES]", { sent: relances.sent, failed: relances.failed, answered: relances.answered, stopped: relances.stopped }); } catch (e) { console.error("[RELANCES] error", e); } }
       }
     }
     let mails: any = null;
