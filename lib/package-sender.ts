@@ -248,7 +248,7 @@ export async function sendOwnerTestPackage() {
 /* ---------- Copie et résumé pour le fondateur sur son WhatsApp ---------- */
 const RAPPORT_TEMPLATE = "neodrive_rapport_envois";
 const RAPPORT_BODY = "📊 Envois NeoDrive du {{1}} : {{2}}. Le détail est dans le CRM.";
-const LABEL: Record<string, string> = { package: "Package WhatsApp", relance1: "Relance J+1 (vidéo livraison)", relance2: "Relance J+3 (catalogue)", relance3: "Relance J+7 (dernier message)", email1: "E-mail catalogue + vidéos", email2: "E-mail relance prix livré", sms: "SMS de bienvenue", sms2: "Relance SMS J+5", missed_sms: "SMS appel manqué" };
+const LABEL: Record<string, string> = { package: "Package WhatsApp", relance1: "Relance J+1 (vidéo livraison)", relance2: "Relance J+3 (catalogue)", relance3: "Relance J+7 (dernier message)", email1: "E-mail catalogue + vidéos", email2: "E-mail relance prix livré", sms: "SMS de bienvenue", sms_mid: "Relance SMS J+2 (catalogue + vidéos)", sms2: "Relance SMS J+5", missed_sms: "SMS appel manqué" };
 const fmtTel = (t: string) => { const n = normalizePhone(t); return n.startsWith("33") ? ("0" + n.slice(2)).replace(/(\d{2})(?=\d)/g, "$1 ") : n; };
 
 /** Après chaque envoi : une copie de chaque type de message envoyé + la liste des clients, sur le WhatsApp du fondateur. */
@@ -268,7 +268,11 @@ export async function notifyOwner(sent: any[], copyEmail?: (type: string) => Pro
   const text = `📊 Envois NeoDrive du ${when}\n\n` + lines.join("\n\n") + `\n\nVous venez de recevoir une copie de chaque message envoyé (WhatsApp ici, e-mails sur votre boîte mail). Détail dans le CRM : ${SITE}/crm`;
   const r = await relay("send-text", { to: OWNER_TEST_PHONE, text }).catch(() => ({ ok: false, j: {} as any, status: 0 }));
   if (r.ok) return { notified: true, via: "texte" };
-  if (process.env.WHATSAPP_SENDING !== "on") return { notified: false, via: "pause" };
+  if (process.env.WHATSAPP_SENDING !== "on") {
+    // WhatsApp en pause : résumé par e-mail.
+    try { const { sendEmail, brevoReady, OWNER_EMAIL } = await import("./brevo"); if (brevoReady()) { await sendEmail(OWNER_EMAIL, "Mansour", `NeoDrive — envois du ${when}`, `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap">${text.replace(/</g, "&lt;")}</pre>`); return { notified: true, via: "email" }; } } catch (e) { console.error("[OWNER] email", e); }
+    return { notified: false, via: "pause" };
+  }
   // Hors fenêtre de 24 h : modèle « rapport » (une seule ligne, sans retour à la ligne).
   const flat = lines.join(" · ").replace(/\s+/g, " ").slice(0, 900);
   const t = await relay("send-template", { to: OWNER_TEST_PHONE, name: RAPPORT_TEMPLATE, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", params: [when, flat] });
