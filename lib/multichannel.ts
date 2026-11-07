@@ -139,7 +139,7 @@ export async function copyToOwner(type: string) {
 
 export const MISSED_CALL_SMS = "Bonjour, ici NeoDrive, voitures sans permis electriques. Desoles de ne pas avoir pu repondre, notre equipe est actuellement en livraison. Nous vous rappelons tres rapidement. En attendant, decouvrez notre gamme : https://www.easydrive-auto.fr ou ecrivez-nous sur WhatsApp : https://wa.me/33676192234 L'equipe NeoDrive";
 
-export const MISSED_CALL_SMS_WEEKEND = "Bonjour, merci d'avoir appele NeoDrive, voitures sans permis electriques. Nous sommes fermes ce week-end, notre equipe est en deplacement, et nous vous rappelons lundi. Ecrivez-nous sur WhatsApp : https://wa.me/33676192234 ou decouvrez nos modeles : https://www.easydrive-auto.fr La Confort est disponible en stock. L'equipe NeoDrive";
+export const MISSED_CALL_SMS_WEEKEND = "Bonjour, merci d'avoir appele NeoDrive. Nous n'avons pas pu vous repondre, notre equipe est actuellement en livraison. Pour une reponse rapide, ecrivez-nous sur WhatsApp : https://wa.me/33676192234 Nos modeles et prix : https://www.easydrive-auto.fr La Confort est disponible en stock. A tres vite, l'equipe NeoDrive";
 const isWeekend = () => ["samedi", "dimanche"].includes(new Date().toLocaleDateString("fr-FR", { weekday: "long", timeZone: "Europe/Paris" }));
 
 /** Appels manqués notés dans le CRM (history type "missed_call" sans "missed_sms") : SMS d'excuse + lien WhatsApp, une fois. */
@@ -150,7 +150,10 @@ export async function sendMissedCallSms() {
   const results: any[] = [];
   for (const l of data || []) {
     const h = hist(l);
-    if (!h.some((x: any) => x?.type === "missed_call") || h.some((x: any) => x?.type === "missed_sms") || !normalizePhone(l.telephone)) continue;
+    const lastCall = h.filter((x: any) => x?.type === "missed_call").map((x: any) => String(x.at || "")).sort().pop();
+    const lastSms = h.filter((x: any) => x?.type === "missed_sms").map((x: any) => String(x.sent_at || "")).sort().pop();
+    // Un SMS par nouvel appel manqué (pas de doublon pour le même appel).
+    if (!lastCall || (lastSms && lastSms >= lastCall) || !normalizePhone(l.telephone)) continue;
     try {
       const text = isWeekend() ? MISSED_CALL_SMS_WEEKEND : MISSED_CALL_SMS;
       const id = await sendSms(l.telephone, text); const at = new Date().toISOString();
