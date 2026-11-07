@@ -98,7 +98,9 @@ export async function sendDailyPackages(limit = Number(process.env.PACKAGE_PER_R
   const db = crmDatabase();
   const { data, error } = await db.from("leads").select("*").eq("statut", "Nouveau").is("opted_out_at", null).not("telephone", "is", null).order("id", { ascending: true }).limit(400);
   if (error) throw new Error(error.message);
-  const todo = (data || []).filter((l: any) => normalizePhone(l.telephone) && normalizePhone(l.telephone) !== OWNER_TEST_PHONE && !sentPackage(l) && !isOffTopic(l)).slice(0, limit);
+  // Seulement les NOUVEAUX contacts (pas de rattrapage de l'ancien stock), pour protéger le numéro.
+  const maxAge = Date.now() - Number(process.env.PACKAGE_MAX_AGE_DAYS || 3) * 86400000;
+  const todo = (data || []).filter((l: any) => normalizePhone(l.telephone) && normalizePhone(l.telephone) !== OWNER_TEST_PHONE && !sentPackage(l) && !isOffTopic(l) && l.created_at && new Date(l.created_at).getTime() >= maxAge).slice(0, limit);
   const results: any[] = []; let stopped = "";
   for (const lead of todo) {
     try {
@@ -281,4 +283,15 @@ export async function whatsappOwner(text: string, title: string) {
   const when = new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const t = await relay("send-template", { to: OWNER_TEST_PHONE, name: RAPPORT_TEMPLATE, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", params: [when, `${title} — ${text}`.replace(/\s+/g, " ").slice(0, 900)] });
   return t.ok;
+}
+
+/** Nombre de messages WhatsApp commerciaux (packages + relances) déjà envoyés aujourd'hui (heure de Paris). */
+export async function whatsappSentToday() {
+  const today = new Date().toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" });
+  const { data } = await crmDatabase().from("leads").select("history").gte("updated_at", new Date(Date.now() - 2 * 86400000).toISOString()).limit(3000);
+  let n = 0;
+  for (const l of data || []) for (const h of (Array.isArray((l as any).history) ? (l as any).history : [])) {
+    if ((h?.type === "package" || h?.type === "relance") && h?.channel !== "none" && h?.sent_at && new Date(h.sent_at).toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" }) === today) n++;
+  }
+  return n;
 }

@@ -6,6 +6,7 @@
  * Arrêt dès que le client répond, se désinscrit ou dit STOP. Pas le dimanche.
  */
 import { crmDatabase, normalizePhone } from "./crm-agent";
+import { isOffTopic as isOffTopicLead } from "./welcome-package";
 import { brevoReady, sendEmail, sendSms, unsubscribeUrl, SITE, OWNER_EMAIL } from "./brevo";
 
 const hist = (l: any) => (Array.isArray(l?.history) ? l.history : []);
@@ -67,10 +68,12 @@ export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN 
   if (!brevoReady()) return { skipped: "Brevo pas encore connecté", results: [] as any[] };
   if (isSunday()) return { skipped: "dimanche", results: [] as any[] };
   const db = crmDatabase();
-  const { data, error } = await db.from("leads").select("*").is("opted_out_at", null).in("statut", ["Contacté", "Réfléchit"]).order("id", { ascending: true }).limit(1500);
+  const { data, error } = await db.from("leads").select("*").is("opted_out_at", null).in("statut", ["Nouveau", "Contacté", "Réfléchit"]).order("id", { ascending: true }).limit(1500);
   if (error) throw new Error(error.message);
   const now = Date.now();
-  const rows = (data || []).filter((l: any) => hist(l).some((h: any) => h?.type === "package"));
+  // Contacts ayant reçu le package WhatsApp, ou nouveaux contacts récents (SMS/e-mail en premier contact si WhatsApp est en pause).
+  const recent = Date.now() - Number(process.env.PACKAGE_MAX_AGE_DAYS || 3) * 86400000;
+  const rows = (data || []).filter((l: any) => hist(l).some((h: any) => h?.type === "package") || (l.created_at && new Date(l.created_at).getTime() >= recent && !isOffTopicLead(l)));
   const replied = await repliedPhones(rows.map((l: any) => normalizePhone(l.telephone)).filter(Boolean));
   const results: any[] = []; let stopped = "";
   const smsLimit = Number(process.env.SMS_PER_RUN || 20);
@@ -78,7 +81,7 @@ export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN 
   for (const l of rows) {
     if (stopped || (mailsSent >= limit && smsSent >= smsLimit)) break;
     if (replied.has(normalizePhone(l.telephone))) continue;
-    const pkg = hist(l).find((h: any) => h?.type === "package");
+    const pkg = hist(l).find((h: any) => h?.type === "package") || { sent_at: l.created_at, channel: "none" };
     if (l.last_inbound_at && pkg?.sent_at && new Date(l.last_inbound_at) >= new Date(pkg.sent_at)) continue;
     let h = hist(l);
     const mails = h.filter((x: any) => x?.type === "email");
