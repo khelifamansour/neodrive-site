@@ -129,7 +129,7 @@ export async function copyToOwner(type: string) {
     const c = emailContent(type === "email1" ? 1 : 2, fake);
     await sendEmail(OWNER_EMAIL, "Mansour", `[Copie envoyée aux clients] ${c.subject}`, c.html);
   } else if (type === "missed_sms") {
-    await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", MISSED_CALL_SMS);
+    await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", isWeekend() ? MISSED_CALL_SMS_WEEKEND : MISSED_CALL_SMS);
   } else if (type === "sms2") {
     await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", smsRelanceText("Mansour"));
   } else if (type === "sms") {
@@ -138,6 +138,9 @@ export async function copyToOwner(type: string) {
 }
 
 export const MISSED_CALL_SMS = "Bonjour, ici NeoDrive, voitures sans permis electriques. Desoles de ne pas avoir pu repondre, notre equipe est actuellement en livraison. Nous vous rappelons tres rapidement. En attendant, decouvrez notre gamme : https://www.easydrive-auto.fr ou ecrivez-nous sur WhatsApp : https://wa.me/33676192234 L'equipe NeoDrive";
+
+export const MISSED_CALL_SMS_WEEKEND = "Bonjour, merci d'avoir appele NeoDrive, voitures sans permis electriques. Nous sommes fermes ce week-end, notre equipe est en deplacement, et nous vous rappelons lundi. Ecrivez-nous sur WhatsApp : https://wa.me/33676192234 ou decouvrez nos modeles : https://www.easydrive-auto.fr La Confort est disponible en stock. L'equipe NeoDrive";
+const isWeekend = () => ["samedi", "dimanche"].includes(new Date().toLocaleDateString("fr-FR", { weekday: "long", timeZone: "Europe/Paris" }));
 
 /** Appels manqués notés dans le CRM (history type "missed_call" sans "missed_sms") : SMS d'excuse + lien WhatsApp, une fois. */
 export async function sendMissedCallSms() {
@@ -149,8 +152,9 @@ export async function sendMissedCallSms() {
     const h = hist(l);
     if (!h.some((x: any) => x?.type === "missed_call") || h.some((x: any) => x?.type === "missed_sms") || !normalizePhone(l.telephone)) continue;
     try {
-      const id = await sendSms(l.telephone, MISSED_CALL_SMS); const at = new Date().toISOString();
-      await db.from("crm_messages").insert({ lead_id: l.id, direction: "outbound", channel: "sms", body: MISSED_CALL_SMS, provider_message_id: id, status: "sent", ai_generated: false });
+      const text = isWeekend() ? MISSED_CALL_SMS_WEEKEND : MISSED_CALL_SMS;
+      const id = await sendSms(l.telephone, text); const at = new Date().toISOString();
+      await db.from("crm_messages").insert({ lead_id: l.id, direction: "outbound", channel: "sms", body: text, provider_message_id: id, status: "sent", ai_generated: false });
       await db.from("leads").update({ phase: "À rappeler", history: [...h, { type: "missed_sms", sent_at: at }].slice(-60), last_contact_at: at, updated_at: at }).eq("id", l.id);
       results.push({ id: l.id, sent: true, type: "missed_sms", nom: l.nom, tel: l.telephone });
     } catch (e: any) { results.push({ id: l.id, error: e?.message || "erreur" }); if (e?.fatal) break; }
