@@ -40,7 +40,7 @@ async function getOrCreateEdition(edition: string, store = true) {
 ${blocs.map(b => `<h3 style="color:#0b1b33;margin:20px 0 6px">${esc(b.titre)}</h3><p style="margin:0">${esc(b.texte)}${b.lien && b.lien.startsWith(SITE) ? ` <a href="${b.lien}">Lire la suite</a>` : ""}</p>`).join("")}
 <p style="margin-top:22px">🎬 <a href="${SITE}/videos"><b>Nos vidéos</b></a> · 📄 <a href="${SITE}/catalogue-neodrive-2026.pdf"><b>Catalogue 2026</b></a></p>
 ${btn(`${SITE}/reservation-devis`, "Voir mon prix livré")}
-<p>Une question ? Répondez simplement à cet e-mail ou écrivez-nous sur WhatsApp au 06 76 19 22 34.</p><p>À bientôt,<br><b>L'équipe NeoDrive</b></p>`;
+<p>Une question ? Répondez simplement à cet e-mail.</p><p>À bientôt,<br><b>L'équipe NeoDrive</b></p>`;
   if (store) await db.from("newsletter_editions").insert({ edition, subject, html: body, topic: blocs.map(b => b.titre).join(" | ") });
   return { edition, subject, html: body };
 }

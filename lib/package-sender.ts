@@ -13,6 +13,10 @@ const SITE = "https://www.easydrive-auto.fr";
 /** Relais Supabase (fonction neodrive-wa-send) : utilise le jeton Meta de Hana, qui est à jour. */
 const RELAY_URL = "https://tzlsdjzcxdjaatcpwqwn.supabase.co/functions/v1/neodrive-wa-send";
 async function relay(action: string, payload: Record<string, unknown>) {
+  // Pause de sécurité : numéro WhatsApp en vérification chez Meta (7/11/2026). Aucun envoi sortant sauf si WHATSAPP_SENDING=on.
+  if ((action === "send-template" || action === "send-text") && process.env.WHATSAPP_SENDING !== "on") {
+    throw Object.assign(new Error("Envois WhatsApp en pause (compte en vérification)"), { fatal: true });
+  }
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key) throw Object.assign(new Error("Clé Supabase du serveur absente"), { fatal: true });
   const r = await fetch(RELAY_URL, { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload }), cache: "no-store" });
@@ -260,8 +264,9 @@ export async function notifyOwner(sent: any[], copyEmail?: (type: string) => Pro
   const when = new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const lines = types.map(t => `${LABEL[t] || t} (${ok.filter(r => r.type === t).length}) : ` + ok.filter(r => r.type === t).map(r => `${String(r.nom || "Sans nom").trim().split(/\s+/)[0]} ${r.email || fmtTel(r.tel)}`).join(", "));
   const text = `📊 Envois NeoDrive du ${when}\n\n` + lines.join("\n\n") + `\n\nVous venez de recevoir une copie de chaque message envoyé (WhatsApp ici, e-mails sur votre boîte mail). Détail dans le CRM : ${SITE}/crm`;
-  const r = await relay("send-text", { to: OWNER_TEST_PHONE, text });
+  const r = await relay("send-text", { to: OWNER_TEST_PHONE, text }).catch(() => ({ ok: false, j: {} as any, status: 0 }));
   if (r.ok) return { notified: true, via: "texte" };
+  if (process.env.WHATSAPP_SENDING !== "on") return { notified: false, via: "pause" };
   // Hors fenêtre de 24 h : modèle « rapport » (une seule ligne, sans retour à la ligne).
   const flat = lines.join(" · ").replace(/\s+/g, " ").slice(0, 900);
   const t = await relay("send-template", { to: OWNER_TEST_PHONE, name: RAPPORT_TEMPLATE, language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "fr", params: [when, flat] });
@@ -270,6 +275,7 @@ export async function notifyOwner(sent: any[], copyEmail?: (type: string) => Pro
 
 /** Message WhatsApp libre au fondateur (modèle « rapport » si la fenêtre de 24 h est fermée). */
 export async function whatsappOwner(text: string, title: string) {
+  if (process.env.WHATSAPP_SENDING !== "on") return false;
   const r = await relay("send-text", { to: OWNER_TEST_PHONE, text });
   if (r.ok) return true;
   const when = new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });

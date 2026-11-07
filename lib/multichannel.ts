@@ -34,14 +34,14 @@ export function emailContent(step: 1 | 2, lead: any) {
 <p>✔ <b>0 € d'acompte</b> : vous payez à la livraison, après avoir vu la voiture<br>✔ Jusqu'à 70 km d'autonomie, recharge sur une prise classique<br>✔ Conception simple et modulaire : peu de composants, entretien facile<br>✔ Garantie 2 ans, pièces disponibles</p>
 <p>📄 <a href="${SITE}/catalogue-neodrive-2026.pdf"><b>Télécharger le catalogue 2026 (PDF)</b></a><br>🎬 <a href="${SITE}/videos"><b>Voir toutes les vidéos</b></a> (intérieur, essai sur route, vraies livraisons)</p>
 ${btn(`${SITE}/reservation-devis`, "Voir mon prix livré et réserver")}
-<p>Dites-moi simplement <b>pour qui</b> est la voiture et votre <b>code postal</b> en répondant à cet e-mail : je vous donne le prix tout compris livré chez vous.</p><p>À très vite,<br><b>L'équipe NeoDrive</b><br>WhatsApp : 06 76 19 22 34</p>`, lead.id),
+<p>Dites-moi simplement <b>pour qui</b> est la voiture et votre <b>code postal</b> en répondant à cet e-mail : je vous donne le prix tout compris livré chez vous.</p><p>À très vite,<br><b>L'équipe NeoDrive</b></p>`, lead.id),
   };
   return {
     subject: "Votre prix livré en 1 minute (0 € d'acompte)",
     html: layout(`<p>${hello}</p><p>Je reviens vers vous suite à votre demande sur Leboncoin. Pour connaître le <b>prix exact livré chez vous</b>, il suffit de votre code postal :</p>
 <p style="background:#fff7ed;border-radius:10px;padding:14px">Exemple : <b>Confort livrée à Bordeaux</b> = 4 990 € + 590 € de livraison + 150 € de carte grise et mise en route = <b>5 730 € tout compris</b>, payés à la livraison.</p>
 ${btn(`${SITE}/reservation-devis`, "Calculer mon prix livré")}
-<p>Vous préférez en parler ? Répondez à cet e-mail ou écrivez-nous sur WhatsApp au <b>06 76 19 22 34</b>, nous vous rappelons.</p><p>Bonne journée,<br><b>L'équipe NeoDrive</b></p>`, lead.id),
+<p>Vous préférez en parler ? Répondez simplement à cet e-mail, nous vous rappelons.</p><p>Bonne journée,<br><b>L'équipe NeoDrive</b></p>`, lead.id),
   };
 }
 
@@ -54,7 +54,7 @@ async function repliedPhones(phones: string[]) {
 
 export function smsRelanceText(nom: string | null) {
   const p = prenomOf(nom);
-  return `NeoDrive : Bonjour${p ? " " + p : ""}, avez-vous pu decouvrir la NeoDrive SWITCH ? Voiture sans permis electrique neuve en acier, des 3990 EUR. Notre gamme : ${SITE} Une question ? Ecrivez-nous sur WhatsApp : https://wa.me/33676192234`;
+  return `NeoDrive : Bonjour${p ? " " + p : ""}, avez-vous pu decouvrir la NeoDrive SWITCH ? Voiture sans permis electrique neuve en acier, des 3990 EUR. Notre gamme : ${SITE} Prix livre : ${SITE}/reservation-devis`;
 }
 
 export function smsText(nom: string | null) {
@@ -137,9 +137,9 @@ export async function copyToOwner(type: string) {
   }
 }
 
-export const MISSED_CALL_SMS = "Bonjour, ici NeoDrive, voitures sans permis electriques. Desoles de ne pas avoir pu repondre, notre equipe est actuellement en livraison. Nous vous rappelons tres rapidement. En attendant, decouvrez notre gamme : https://www.easydrive-auto.fr ou ecrivez-nous sur WhatsApp : https://wa.me/33676192234 L'equipe NeoDrive";
+export const MISSED_CALL_SMS = "Bonjour, ici NeoDrive, voitures sans permis electriques. Desoles de ne pas avoir pu repondre, notre equipe est actuellement en livraison et vous rappelle tres vite. Decouvrez nos modeles et prix : https://www.easydrive-auto.fr La Confort est disponible en stock. L'equipe NeoDrive";
 
-export const MISSED_CALL_SMS_WEEKEND = "Bonjour, merci d'avoir appele NeoDrive. Nous n'avons pas pu vous repondre, notre equipe est actuellement en livraison. Pour une reponse rapide, ecrivez-nous sur WhatsApp : https://wa.me/33676192234 Nos modeles et prix : https://www.easydrive-auto.fr La Confort est disponible en stock. A tres vite, l'equipe NeoDrive";
+export const MISSED_CALL_SMS_WEEKEND = "Bonjour, merci d'avoir appele NeoDrive. Nous n'avons pas pu vous repondre, notre equipe est actuellement en livraison et vous rappelle tres vite. Decouvrez nos modeles et prix : https://www.easydrive-auto.fr La Confort est disponible en stock. A tres vite, l'equipe NeoDrive";
 const isWeekend = () => ["samedi", "dimanche"].includes(new Date().toLocaleDateString("fr-FR", { weekday: "long", timeZone: "Europe/Paris" }));
 
 /** Appels manqués notés dans le CRM (history type "missed_call" sans "missed_sms") : SMS d'excuse + lien WhatsApp, une fois. */
