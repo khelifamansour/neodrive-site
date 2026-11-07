@@ -161,7 +161,7 @@ export async function copyToOwner(type: string) {
 
 export const MISSED_CALL_SMS = "Bonjour, ici NeoDrive, voitures sans permis electriques. Desoles de ne pas avoir pu repondre, notre equipe est actuellement en livraison et vous rappelle tres vite. Decouvrez nos modeles et prix : https://www.easydrive-auto.fr La Confort est disponible en stock. L'equipe NeoDrive";
 
-export const MISSED_CALL_SMS_WEEKEND = "Bonjour, merci d'avoir appele NeoDrive. Nous n'avons pas pu vous repondre, notre equipe est actuellement en livraison et vous rappelle tres vite. Decouvrez nos modeles et prix : https://www.easydrive-auto.fr La Confort est disponible en stock. A tres vite, l'equipe NeoDrive";
+export const MISSED_CALL_SMS_WEEKEND = "Bonjour, merci d'avoir appele NeoDrive. Voitures sans permis electriques neuves a partir de 3990 EUR. La version Confort est actuellement en stock, les autres versions sont sur commande. Decouvrez nos modeles : https://www.easydrive-auto.fr Vous pouvez nous rappeler a partir de lundi. L'equipe NeoDrive";
 const isWeekend = () => ["samedi", "dimanche"].includes(new Date().toLocaleDateString("fr-FR", { weekday: "long", timeZone: "Europe/Paris" }));
 
 /** Appels manqués notés dans le CRM (history type "missed_call" sans "missed_sms") : SMS d'excuse + lien WhatsApp, une fois. */
