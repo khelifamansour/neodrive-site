@@ -66,7 +66,7 @@ export function smsMidText(nom: string | null) {
 export function smsText(nom: string | null) {
   void nom; // pas de prénom : le message tient en 2 SMS
   const W = "www.easydrive-auto.fr"; // sans https:// pour tenir en 2 SMS
-  return `NeoDrive, leader des prix en France. Merci pour votre demande ! Voitures sans permis electriques neuves de 3990 a 5990 EUR, la Confort a 4990 EUR est disponible de suite. Videos : ${W}/videos Reservez sans acompte, payez a la livraison : ${W}/reservation`;
+  return `Merci d'avoir contacte NeoDrive, leader des prix en France des voitures sans permis neuves, a partir de 3990 EUR. Retrouvez notre gamme et nos videos sur ${W}/videos Reservez sans acompte, paiement a la livraison : ${W}/reservation`;
 }
 
 /** E-mails 1 et 2 + SMS. Renvoie les envois (pour le résumé du fondateur). */
