@@ -29,6 +29,7 @@ export async function sendEmail(to: string, toName: string, subject: string, htm
 export async function sendSms(phone: string, content: string) {
   const to = normalizePhone(phone);
   if (!to) throw new Error("Numéro invalide");
+  if (to.replace(/\D/g, "").endsWith("676192234")) throw new Error("Numéro de Hana (NeoDrive) : pas de SMS");
   const j = await brevo("transactionalSMS/sms", { sender: "NeoDrive", recipient: to, content, type: "marketing" });
   return j?.messageId ? String(j.messageId) : null;
 }

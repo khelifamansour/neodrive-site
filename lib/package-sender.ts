@@ -255,7 +255,7 @@ export async function sendOwnerTestPackage() {
 /* ---------- Copie et résumé pour le fondateur sur son WhatsApp ---------- */
 const RAPPORT_TEMPLATE = "neodrive_rapport_envois";
 const RAPPORT_BODY = "📊 Envois NeoDrive du {{1}} : {{2}}. Le détail est dans le CRM.";
-const LABEL: Record<string, string> = { package: "Package WhatsApp", relance1: "Relance J+1 (vidéo livraison)", relance2: "Relance J+3 (catalogue)", relance3: "Relance J+7 (dernier message)", email1: "E-mail catalogue + vidéos", email2: "E-mail relance prix livré", sms: "SMS de bienvenue", sms_mid: "Relance SMS J+2 (catalogue + vidéos)", sms2: "Relance SMS J+5", missed_sms: "SMS appel manqué" };
+const LABEL: Record<string, string> = { package: "Package WhatsApp", relance1: "Relance J+1 (vidéo livraison)", relance2: "Relance J+3 (catalogue)", relance3: "Relance J+7 (dernier message)", email1: "E-mail catalogue + vidéos", email2: "E-mail relance prix livré", sms: "SMS de bienvenue", sms_mid: "Relance SMS J+2 (catalogue + vidéos)", sms2: "Relance SMS J+5", missed_sms: "SMS appel manqué", sms_campaign: "Campagne SMS rappel (anciens contacts)" };
 const fmtTel = (t: string) => { const n = normalizePhone(t); return n.startsWith("33") ? ("0" + n.slice(2)).replace(/(\d{2})(?=\d)/g, "$1 ") : n; };
 
 /** Après chaque envoi : une copie de chaque type de message envoyé + la liste des clients, sur le WhatsApp du fondateur. */

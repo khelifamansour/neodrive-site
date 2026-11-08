@@ -12,7 +12,9 @@ import { brevoReady, sendEmail, sendSms, unsubscribeUrl, SITE, OWNER_EMAIL } fro
 const hist = (l: any) => (Array.isArray(l?.history) ? l.history : []);
 const prenomOf = (nom: string | null) => { const f = String(nom || "").trim().split(/\s+/)[0] || ""; return f ? f.charAt(0).toUpperCase() + f.slice(1).toLowerCase() : ""; };
 const validEmail = (e: string | null) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e || "").trim()) && !/leboncoin/i.test(String(e));
-const isSunday = () => new Date().toLocaleDateString("fr-FR", { weekday: "long", timeZone: "Europe/Paris" }) === "dimanche";
+// Pas de SMS/e-mail commercial le dimanche ni les jours fériés.
+const FERIES = ["2026-11-11", "2026-12-25", "2027-01-01", "2027-03-29", "2027-05-01", "2027-05-06", "2027-05-08", "2027-05-17", "2027-07-14", "2027-08-15", "2027-11-01", "2027-11-11", "2027-12-25"];
+const isSunday = () => new Date().toLocaleDateString("fr-FR", { weekday: "long", timeZone: "Europe/Paris" }) === "dimanche" || FERIES.includes(new Date().toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" }));
 
 export function layout(inner: string, leadId: number) {
   return `<!doctype html><html lang="fr"><body style="margin:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a">
@@ -54,13 +56,19 @@ async function repliedPhones(phones: string[]) {
 }
 
 export function smsRelanceText(nom: string | null) {
-  const p = prenomOf(nom);
-  return `NeoDrive : Bonjour${p ? " " + p : ""}, avez-vous pu decouvrir la NeoDrive SWITCH ? Voiture sans permis electrique neuve en acier, des 3990 EUR. Notre gamme : ${SITE} Prix livre : ${SITE}/reservation-devis`;
+  void nom; const W = "www.easydrive-auto.fr";
+  return `Bonjour, dernier petit message de NeoDrive, leader des prix en France de la voiture sans permis neuve, dès 3990 €. Garantie 2 ans, service après-vente national et livraison chez vous. Nos clients livrés en vidéo : ${W}/videos Réservez ici : ${W}/reservation`;
 }
 
 export function smsMidText(nom: string | null) {
-  const p = prenomOf(nom);
-  return `NeoDrive : Bonjour${p ? " " + p : ""}, voici notre catalogue 2026 et les videos de la NeoDrive SWITCH, voiture sans permis electrique neuve en acier. Catalogue : ${SITE}/catalogue-neodrive-2026.pdf Videos : ${SITE}/videos La Confort est disponible en stock.`;
+  void nom; const W = "www.easydrive-auto.fr";
+  return `Bonjour, c'est NeoDrive. Avez-vous pu découvrir nos voitures sans permis neuves ? Voici notre catalogue 2026 : ${W}/catalogue-neodrive-2026.pdf La Confort à 4990 € est disponible de suite, livrée chez vous. Nos clients livrés en vidéo : ${W}/videos`;
+}
+
+/** Campagne de rappel (une seule fois) pour les anciens contacts jamais relancés par SMS. */
+export function smsCampaignText() {
+  const W = "www.easydrive-auto.fr";
+  return `Bonjour, vous nous aviez contactés au sujet d'une voiture sans permis. NeoDrive, leader des prix en France : modèles neufs dès 3990 €, garantie 2 ans et service après-vente national. Nos clients livrés en vidéo : ${W}/videos Réservez ici : ${W}/reservation`;
 }
 
 export function smsText(nom: string | null) {
@@ -157,12 +165,41 @@ export async function copyToOwner(type: string) {
     await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", smsRelanceText("Mansour"));
   } else if (type === "sms") {
     await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", smsText("Mansour"));
+  } else if (type === "sms_campaign") {
+    await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", smsCampaignText());
   }
 }
 
 export const MISSED_CALL_SMS = "Bonjour, ici NeoDrive, voitures sans permis electriques. Desoles de ne pas avoir pu repondre, notre equipe est actuellement en livraison et vous rappelle tres vite. Decouvrez nos modeles et prix : https://www.easydrive-auto.fr La Confort est disponible en stock. L'equipe NeoDrive";
 
 export const MISSED_CALL_SMS_WEEKEND = "Bonjour, merci d'avoir appele NeoDrive. Voitures sans permis electriques neuves a partir de 3990 EUR. La version Confort est actuellement en stock, les autres versions sont sur commande. Decouvrez nos modeles : https://www.easydrive-auto.fr Vous pouvez nous rappeler a partir de lundi. L'equipe NeoDrive";
+/** Campagne SMS de rappel : anciens contacts jamais relancés par SMS, les plus récents d'abord, quelques-uns par passage. */
+export async function sendCampaignSms(limit = Number(process.env.CAMPAIGN_SMS_PER_RUN || 5)) {
+  if (!brevoReady() || limit <= 0 || process.env.SMS_CAMPAIGN === "off") return { sent: 0, results: [] as any[] };
+  if (isSunday()) return { skipped: "dimanche ou férié", sent: 0, results: [] as any[] };
+  const hour = Number(new Date().toLocaleString("fr-FR", { hour: "numeric", hour12: false, timeZone: "Europe/Paris" }));
+  if (hour < 10 || hour > 19) return { skipped: "hors horaires", sent: 0, results: [] as any[] };
+  const db = crmDatabase();
+  const { data, error } = await db.from("leads").select("id,nom,telephone,history,created_at,statut,last_inbound_at,besoin,message").is("opted_out_at", null).in("statut", ["Nouveau", "Contacté", "Réfléchit"]).order("created_at", { ascending: false }).limit(2000);
+  if (error) throw new Error(error.message);
+  const old = Date.now() - Number(process.env.PACKAGE_MAX_AGE_DAYS || 3) * 86400000;
+  const cand = (data || []).filter((l: any) => normalizePhone(l.telephone) && !l.last_inbound_at && l.created_at && new Date(l.created_at).getTime() < old && !isOffTopicLead(l)
+    && !hist(l).some((x: any) => ["sms", "sms_mid", "sms2", "missed_sms", "sms_campaign"].includes(x?.type)));
+  const replied = await repliedPhones(cand.map((l: any) => normalizePhone(l.telephone)).filter(Boolean));
+  const results: any[] = []; const text = smsCampaignText();
+  for (const l of cand) {
+    if (results.filter(r => r.sent).length >= limit) break;
+    if (replied.has(normalizePhone(l.telephone))) continue;
+    try {
+      const id = await sendSms(l.telephone, text); const at = new Date().toISOString();
+      await db.from("crm_messages").insert({ lead_id: l.id, direction: "outbound", channel: "sms", body: text, provider_message_id: id, status: "sent", ai_generated: false });
+      await db.from("leads").update({ history: [...hist(l), { type: "sms_campaign", sent_at: at }].slice(-60), last_contact_at: at, updated_at: at }).eq("id", l.id);
+      results.push({ id: l.id, sent: true, type: "sms_campaign", nom: l.nom, tel: l.telephone });
+    } catch (e: any) { results.push({ id: l.id, error: e?.message || "erreur" }); if (e?.fatal) break; }
+  }
+  return { sent: results.filter(r => r.sent).length, remaining: Math.max(0, cand.length - results.length), results };
+}
+
 const isWeekend = () => ["samedi", "dimanche"].includes(new Date().toLocaleDateString("fr-FR", { weekday: "long", timeZone: "Europe/Paris" }));
 
 /** Appels manqués notés dans le CRM (history type "missed_call" sans "missed_sms") : SMS d'excuse + lien WhatsApp, une fois. */

@@ -1,6 +1,6 @@
 /**
  * Newsletter mensuelle NeoDrive (e-mail) à toute la base Leboncoin.
- * - Une édition par mois (AAAA-MM), rédigée par l'IA à partir des articles du blog, enregistrée dans newsletter_editions.
+ * - Deux éditions par mois (AAAA-MM-a / AAAA-MM-b), rédigée par l'IA à partir des articles du blog, enregistrée dans newsletter_editions.
  * - Envoi à partir du 5 du mois, par lots (plan gratuit Brevo : 300 e-mails/jour au total), pas le dimanche.
  * - Jamais aux désinscrits, ni aux contacts écrits dans les 14 derniers jours (ils sont déjà dans la séquence de bienvenue).
  * - Désinscription en un clic dans chaque e-mail ; copie au fondateur.
@@ -13,7 +13,8 @@ import { btn, layout } from "./multichannel";
 const hist = (l: any) => (Array.isArray(l?.history) ? l.history : []);
 const validEmail = (e: string | null) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e || "").trim()) && !/leboncoin/i.test(String(e));
 const esc = (t: string) => String(t || "").replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] as string));
-export const editionOf = (d = new Date()) => d.toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" }).slice(0, 7);
+// Deux éditions par mois : AAAA-MM-a (du 5 au 15) et AAAA-MM-b (à partir du 16).
+export const editionOf = (d = new Date()) => { const iso = d.toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" }); return `${iso.slice(0, 7)}-${Number(iso.slice(8, 10)) <= 15 ? "a" : "b"}`; };
 
 async function getOrCreateEdition(edition: string, store = true) {
   const db = crmDatabase();
@@ -53,7 +54,7 @@ export async function sendNewsletterBatch(limit = Number(process.env.NEWSLETTER_
   if (now.toLocaleDateString("fr-FR", { weekday: "long", timeZone: "Europe/Paris" }) === "dimanche") return { skipped: "dimanche", sent: 0 };
   if (day < Number(process.env.NEWSLETTER_START_DAY || 5) || limit <= 0) return { skipped: "pas encore la date d'envoi", sent: 0 };
   const edition = editionOf(now);
-  if (edition < (process.env.NEWSLETTER_FIRST_EDITION || "2026-12")) return { skipped: "première newsletter en décembre", sent: 0 };
+  if (edition < (process.env.NEWSLETTER_FIRST_EDITION || "2026-11-b")) return { skipped: "première newsletter le 16 novembre", sent: 0 };
   const ed = await getOrCreateEdition(edition);
   const db = crmDatabase();
   const { data, error } = await db.from("leads").select("id,nom,email,history,last_contact_at").is("opted_out_at", null).not("email", "is", null).order("id", { ascending: true }).limit(10000);
