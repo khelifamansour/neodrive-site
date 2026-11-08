@@ -166,7 +166,10 @@ export default function Home() {
           <h2>Toute la gamme NeoDrive dans un seul document.</h2>
           <p>Les 3 versions, les équipements, les caractéristiques et les photos réelles. À garder, imprimer ou partager.</p>
         </div>
-        <a href="/catalogue-neodrive-2026.pdf" target="_blank" rel="noreferrer" download className="catalogueBtn">Télécharger le catalogue (PDF)</a>
+        <div className="catalogueActions">
+          <a href="/catalogue" className="catalogueBtn">📖 Feuilleter le catalogue</a>
+          <a href="/catalogue-neodrive-2026.pdf" target="_blank" rel="noreferrer" download className="catalogueLink">Télécharger le PDF</a>
+        </div>
       </section>
 
       <section className="finalCta">
@@ -183,7 +186,7 @@ export default function Home() {
         <strong>NeoDrive</strong>
         <span>31 rue Jean Nougaro, 31600 Muret</span>
         <span>SIREN 908 645 393</span>
-        <a href="/catalogue-neodrive-2026.pdf" target="_blank" rel="noreferrer" download style={{ color: "#f97316", fontWeight: 800, textDecoration: "none" }}>📄 Télécharger le catalogue 2026</a>
+        <a href="/catalogue" style={{ color: "#f97316", fontWeight: 800, textDecoration: "none" }}>📖 Catalogue 2026</a>
       </footer>
 
       <style jsx global>{`
@@ -225,7 +228,7 @@ export default function Home() {
           .modelsSection,.clientMoments{padding:10px 16px 62px}.sectionHeader{margin-bottom:28px}.sectionHeader h2,.emotionText h2,.finalCta h2{font-size:34px;letter-spacing:-1.4px}.sectionHeader p,.emotionText p,.finalCta p{font-size:16px}.versions{grid-template-columns:1fr;gap:16px}.card{padding:24px;border-radius:24px;box-shadow:0 10px 28px rgba(0,0,0,.06)}.featured{transform:none;order:-1}.card h3{font-size:25px}.cardPrice{font-size:34px}.cardText{font-size:16px}.card ul{margin-bottom:20px}.card li{font-size:15px}.warranty span{font-size:13px}
           .emotionSection{width:calc(100% - 28px);margin-bottom:62px;grid-template-columns:1fr;padding:24px;border-radius:26px;gap:24px}.emotionText{text-align:left}.videoFrame{border-radius:18px}.clientGrid{grid-template-columns:1fr;gap:16px}.clientGrid article div{padding:14px 16px;font-size:14px}.finalCta{margin:0 14px 42px;padding:36px 22px;border-radius:26px}.ctaActions{flex-direction:column}.ctaActions a{width:100%}.footer{padding:22px 18px;flex-direction:column}
         }
-        .catalogueBlock{width:min(1080px,calc(100% - 48px));margin:0 auto 60px;display:flex;align-items:center;justify-content:space-between;gap:28px;flex-wrap:wrap;padding:36px 40px;border-radius:30px;background:#fff7ed;border:1px solid #fed7aa}.catalogueBlock span{font-weight:950;color:#f97316;letter-spacing:1px;font-size:13px}.catalogueBlock h2{font-size:clamp(26px,3.4vw,38px);line-height:1.1;letter-spacing:-1px;margin:10px 0 8px;font-weight:950}.catalogueBlock p{margin:0;color:#666;font-size:16px;line-height:1.55;max-width:560px}.catalogueBtn{text-decoration:none;padding:16px 24px;border-radius:15px;font-weight:950;background:#f97316;color:#fff;box-shadow:0 12px 30px rgba(249,115,22,.3);white-space:nowrap}
+        .catalogueBlock{width:min(1080px,calc(100% - 48px));margin:0 auto 60px;display:flex;align-items:center;justify-content:space-between;gap:28px;flex-wrap:wrap;padding:36px 40px;border-radius:30px;background:#fff7ed;border:1px solid #fed7aa}.catalogueBlock span{font-weight:950;color:#f97316;letter-spacing:1px;font-size:13px}.catalogueBlock h2{font-size:clamp(26px,3.4vw,38px);line-height:1.1;letter-spacing:-1px;margin:10px 0 8px;font-weight:950}.catalogueBlock p{margin:0;color:#666;font-size:16px;line-height:1.55;max-width:560px}.catalogueActions{display:flex;flex-direction:column;align-items:center;gap:10px}.catalogueLink{color:#c2410c;font-weight:800;text-decoration:none;font-size:14px}.catalogueBtn{text-decoration:none;padding:16px 24px;border-radius:15px;font-weight:950;background:#f97316;color:#fff;box-shadow:0 12px 30px rgba(249,115,22,.3);white-space:nowrap}
         @media(max-width:900px){.catalogueBlock{width:calc(100% - 28px);padding:26px 22px;border-radius:24px;margin-bottom:42px}.catalogueBtn{width:100%;text-align:center}}
         .reserveBtn{background:linear-gradient(135deg,#ff8a00,#f05a28);color:#fff;box-shadow:0 14px 34px rgba(240,90,40,.35)}
         .whySection{width:min(1180px,calc(100% - 48px));margin:0 auto 100px;background:#0c0c0c;color:#fff;border-radius:34px;padding:56px 48px}

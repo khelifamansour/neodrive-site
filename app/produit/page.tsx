@@ -54,7 +54,7 @@ export default function Produit() {
           <div className={styles.actions}>
             <a href="https://wa.me/33676192234?text=Bonjour%2C%20je%20souhaite%20recevoir%20une%20vid%C3%A9o%20de%20la%20NeoDrive%20SWITCH" target="_blank" rel="noreferrer">Recevoir une vidéo</a>
             <a className={styles.secondary} href="#galerie">Voir les photos réelles</a>
-            <a className={styles.secondary} href="/catalogue-neodrive-2026.pdf" target="_blank" rel="noreferrer" download>📄 Télécharger le catalogue</a>
+            <a className={styles.secondary} href="/catalogue">📖 Voir le catalogue</a>
           </div>
           <small>Prix selon version, équipement et disponibilité.</small>
         </div>
@@ -141,8 +141,8 @@ export default function Produit() {
           <article className={styles.comfort}><span>VERSION CONFORT</span><h3>4 990 € TTC</h3><p>Davantage d’équipements pour une utilisation quotidienne plus agréable.</p><ul><li>Caméra et aide au stationnement</li><li>Chauffage et ventilation de toit</li><li>Autoradio, Bluetooth et USB</li><li>Alarme antivol et assistance en côte</li></ul></article>
         </div>
         <div className={styles.catalogue}>
-          <div><b>📄 Catalogue NeoDrive 2026</b><span>Toutes les versions, équipements, caractéristiques et photos, en PDF.</span></div>
-          <a href="/catalogue-neodrive-2026.pdf" target="_blank" rel="noreferrer" download>Télécharger le catalogue</a>
+          <div><b>📄 Catalogue NeoDrive 2026</b><span>Toutes les versions, équipements, caractéristiques et photos, à feuilleter en ligne.</span></div>
+          <a href="/catalogue">Feuilleter le catalogue</a>
         </div>
       </section>
 

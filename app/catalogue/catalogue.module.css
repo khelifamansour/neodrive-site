@@ -1,0 +1,24 @@
+.page{background:#0b1220;color:#fff;min-height:100vh;overflow-x:hidden}
+.hero{max-width:860px;margin:0 auto;padding:56px 20px 26px;text-align:center}
+.eyebrow{font-size:12px;font-weight:950;letter-spacing:2px;color:#ff8a00}
+.hero h1{font-size:clamp(34px,5.4vw,58px);line-height:1.04;letter-spacing:-2px;margin:14px 0 14px;font-weight:950}
+.hero p{font-size:18px;line-height:1.6;color:#cbd5e1;margin:0 auto;max-width:680px}
+.actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px}
+.actions a{text-decoration:none;padding:15px 22px;border-radius:15px;font-weight:950}
+.primary{background:linear-gradient(135deg,#ff8a00,#f05a28);color:#fff;box-shadow:0 14px 34px rgba(240,90,40,.35)}
+.secondary{background:#fff;color:#111}
+.whatsapp{background:#25d366;color:#fff}
+.thumbs{display:flex;gap:10px;overflow-x:auto;padding:12px max(16px,calc((100vw - 900px)/2));background:rgba(11,18,32,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08);scrollbar-width:thin}
+.thumbs a{flex:0 0 64px;position:relative;border-radius:8px;overflow:hidden;border:2px solid rgba(255,255,255,.15)}
+.thumbs a:hover{border-color:#ff8a00}
+.thumbs img{width:100%;aspect-ratio:1240/1754;object-fit:cover;display:block}
+.thumbs span{position:absolute;right:3px;bottom:3px;background:#000b;color:#fff;font-size:10px;font-weight:900;padding:2px 5px;border-radius:6px}
+.pages{max-width:900px;margin:0 auto;padding:30px 16px 20px;display:grid;gap:34px}
+.sheet{margin:0;scroll-margin-top:110px}
+.sheet img{width:100%;height:auto;display:block;border-radius:14px;box-shadow:0 26px 60px rgba(0,0,0,.45);background:#162033}
+.sheet figcaption{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:14px;color:#94a3b8}
+.sheet figcaption b{color:#fff}
+.cta{max-width:860px;margin:30px auto 0;padding:40px 20px 70px;text-align:center}
+.cta h2{font-size:clamp(28px,4vw,42px);letter-spacing:-1px;margin:0 0 10px;font-weight:950}
+.cta p{color:#cbd5e1;font-size:17px;margin:0}
+@media(max-width:600px){.hero{padding:38px 16px 20px}.hero p{font-size:16px}.actions a{width:100%;text-align:center}.pages{padding:22px 10px 10px;gap:24px}.sheet img{border-radius:10px}.sheet figcaption{font-size:12.5px;flex-direction:column;gap:2px}}

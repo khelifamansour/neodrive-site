@@ -13,7 +13,7 @@ const supabase = createClient(
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes = [
     ["", "daily", 1], ["/produit", "weekly", 0.95], ["/blog", "daily", 0.9],
-    ["/voiture-sans-permis", "weekly", 0.98], ["/videos", "daily", 0.9],
+    ["/voiture-sans-permis", "weekly", 0.98], ["/videos", "daily", 0.9], ["/catalogue", "monthly", 0.85],
     ["/blog/livraison-voiture-sans-permis", "monthly", 0.8],
     ["/blog/5-questions-avant-acheter-voiture-sans-permis-electrique", "monthly", 0.8],
     ["/blog/voiture-sans-permis-14-ans", "monthly", 0.8],

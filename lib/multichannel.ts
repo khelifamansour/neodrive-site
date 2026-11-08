@@ -35,7 +35,7 @@ export function emailContent(step: 1 | 2 | 3 | 4, lead: any) {
 <p><a href="${SITE}/videos"><img src="${SITE}/voiture.jpg" alt="NeoDrive SWITCH" width="512" style="width:100%;max-width:512px;border-radius:10px;display:block"></a></p>
 <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;font-size:14px;margin:8px 0 4px"><tr style="background:#fff7ed"><td><b>Essentielle</b> (sur commande)</td><td align="right"><b>3 990 €</b></td></tr><tr><td><b>Confort</b> ✅ en stock — la plus choisie</td><td align="right"><b>4 990 €</b></td></tr><tr style="background:#fff7ed"><td><b>Confort Plus+</b> (plus d'autonomie)</td><td align="right"><b>5 990 €</b></td></tr></table>
 <p>✔ <b>0 € d'acompte</b> : vous payez à la livraison, après avoir vu la voiture<br>✔ Jusqu'à 70 km d'autonomie, recharge sur une prise classique<br>✔ Conception simple et modulaire : peu de composants, entretien facile<br>✔ Garantie 2 ans, pièces disponibles</p>
-<p>📄 <a href="${SITE}/catalogue-neodrive-2026.pdf"><b>Télécharger le catalogue 2026 (PDF)</b></a><br>🎬 <a href="${SITE}/videos"><b>Voir toutes les vidéos</b></a> (intérieur, essai sur route, vraies livraisons)</p>
+<p>📖 <a href="${SITE}/catalogue"><b>Feuilleter le catalogue 2026</b></a><br>🎬 <a href="${SITE}/videos"><b>Voir toutes les vidéos</b></a> (intérieur, essai sur route, vraies livraisons)</p>
 ${btn(`${SITE}/reservation-devis`, "Voir mon prix livré et réserver")}
 <p>Dites-moi simplement <b>pour qui</b> est la voiture et votre <b>code postal</b> en répondant à cet e-mail : je vous donne le prix tout compris livré chez vous.</p><p>À très vite,<br><b>L'équipe NeoDrive</b></p>`, lead.id),
   };
@@ -81,7 +81,7 @@ export function smsRelanceText(nom: string | null) {
 
 export function smsMidText(nom: string | null) {
   void nom; const W = "www.easydrive-auto.fr";
-  return `Bonjour, c'est NeoDrive. Avez-vous pu découvrir nos voitures sans permis neuves ? Voici notre catalogue 2026 : ${W}/catalogue-neodrive-2026.pdf La Confort à 4990 € est disponible de suite, livrée chez vous. Nos clients livrés en vidéo : ${W}/videos`;
+  return `Bonjour, c'est NeoDrive. Avez-vous pu découvrir nos voitures sans permis neuves ? Voici notre catalogue 2026 : ${W}/catalogue La Confort à 4990 € est disponible de suite, livrée chez vous. Nos clients livrés en vidéo : ${W}/videos`;
 }
 
 /** Campagne de rappel (une seule fois) pour les anciens contacts jamais relancés par SMS. */
