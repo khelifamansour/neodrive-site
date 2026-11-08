@@ -66,7 +66,7 @@ export function smsMidText(nom: string | null) {
 export function smsText(nom: string | null) {
   void nom; // pas de prénom : le message tient en 2 SMS
   const W = "www.easydrive-auto.fr"; // sans https:// pour tenir en 2 SMS
-  return `Merci d'avoir contacte NeoDrive, leader des prix en France des voitures sans permis neuves, a partir de 3990 EUR. Retrouvez notre gamme et nos videos sur ${W}/videos Reservez sans acompte, paiement a la livraison : ${W}/reservation`;
+  return `Bonjour, merci d'avoir contacte NeoDrive, leader des prix en France de la voiture sans permis neuve, des 3990 EUR. Gamme et videos : ${W}/videos Devenez proprietaire, pas locataire : financement possible sur ${W}/financement Un credit vous engage et doit etre rembourse.`;
 }
 
 /** E-mails 1 et 2 + SMS. Renvoie les envois (pour le résumé du fondateur). */
