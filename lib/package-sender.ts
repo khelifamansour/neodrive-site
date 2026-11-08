@@ -24,6 +24,13 @@ async function relay(action: string, payload: Record<string, unknown>) {
   return { ok: r.ok, status: r.status, j };
 }
 
+/** Diagnostic WhatsApp (état du numéro, abonnement webhook de Hana) ou ré-abonnement. N'envoie aucun message. */
+export async function waAdmin(action: "health" | "subscribe") {
+  const r = await relay(action, {});
+  if (!r.ok) throw new Error(r.j?.error?.message || r.j?.error || `Relais ${r.status}`);
+  return r.j;
+}
+
 export const PACKAGE_TEMPLATE = process.env.WHATSAPP_PACKAGE_TEMPLATE || "neodrive_bienvenue_video";
 export const PACKAGE_VIDEO = `${"https://www.easydrive-auto.fr"}/presentation.mp4`;
 

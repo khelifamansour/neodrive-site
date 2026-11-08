@@ -51,6 +51,14 @@ export async function brevoDomains() {
   return (j?.domains || []).map((d: any) => ({ domain: d.domain_name, authenticated: d.authenticated, verified: d.verified }));
 }
 
+/** Plan et crédits restants (e-mails, SMS) du compte Brevo. */
+export async function brevoAccount() {
+  const key = process.env.BREVO_API_KEY; if (!key) return null;
+  const r = await fetch("https://api.brevo.com/v3/account", { headers: { "api-key": key, accept: "application/json" }, cache: "no-store" });
+  const j = await r.json().catch(() => ({}));
+  return (j?.plan || []).map((p: any) => ({ type: p.type, credits: p.credits, creditsType: p.creditsType }));
+}
+
 /** Derniers événements d'envoi Brevo vers une adresse (livré, bloqué, rejeté…). */
 export async function brevoEvents(email: string) {
   const key = process.env.BREVO_API_KEY; if (!key) return null;

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { packageTemplateStatus, sendOwnerTestPackage } from "../../../../lib/package-sender";
+import { packageTemplateStatus, sendOwnerTestPackage, waAdmin } from "../../../../lib/package-sender";
 import { copyToOwner, smsText } from "../../../../lib/multichannel";
 import { sendNewsletterPreview } from "../../../../lib/newsletter";
-import { brevoDomains, brevoEvents, sendSms, setSenderOverride } from "../../../../lib/brevo";
+import { brevoAccount, brevoDomains, brevoEvents, sendSms, setSenderOverride } from "../../../../lib/brevo";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +23,11 @@ export async function GET(req: Request) {
     catch (e) { return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 502 }); }
   }
   if (sp.get("brevo") === "events") return NextResponse.json({ ok: true, events: await brevoEvents("khelifamansour@hotmail.fr") });
+  if (sp.get("brevo") === "account") return NextResponse.json({ ok: true, account: await brevoAccount() });
+  if (sp.get("wa") === "health" || sp.get("wa") === "subscribe") {
+    try { return NextResponse.json({ ok: true, result: await waAdmin(sp.get("wa") as "health" | "subscribe") }); }
+    catch (e) { return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 502 }); }
+  }
   if (sp.get("brevo") === "domains") return NextResponse.json({ ok: true, domains: await brevoDomains() });
   if (sp.get("test") === "brevo") {
     const from = sp.get("from") || "";

@@ -47,5 +47,16 @@ Deno.serve(async (req) => {
     const s2 = await fetch(`https://graph.facebook.com/${V}/${j1.id}`, { method: "POST", headers: { authorization: "OAuth " + token, file_offset: "0" }, body: bytes });
     return json(await s2.json().catch(() => ({})), s2.status);
   }
+  if (body.action === "health") {
+    // État du numéro (qualité, limite d'envoi, statut) et de l'abonnement webhook de l'app (nécessaire pour Hana).
+    const ph = await fetch(`https://graph.facebook.com/${V}/${PHONE_ID}?fields=display_phone_number,verified_name,status,quality_rating,messaging_limit_tier,name_status,code_verification_status,platform_type,throughput`, { headers: H });
+    const sa = await fetch(`https://graph.facebook.com/${V}/${WABA}/subscribed_apps`, { headers: H });
+    return json({ phone: await ph.json().catch(() => ({})), subscribed_apps: await sa.json().catch(() => ({})) });
+  }
+  if (body.action === "subscribe") {
+    // Ré-abonne l'app aux webhooks du compte WhatsApp (sans effet si déjà abonnée).
+    const r = await fetch(`https://graph.facebook.com/${V}/${WABA}/subscribed_apps`, { method: "POST", headers: H });
+    return json(await r.json().catch(() => ({})), r.status);
+  }
   return json({ error: "Action inconnue" }, 400);
 });
