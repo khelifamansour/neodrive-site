@@ -65,7 +65,8 @@ export function smsMidText(nom: string | null) {
 
 export function smsText(nom: string | null) {
   const p = prenomOf(nom);
-  return `NeoDrive, voitures sans permis electriques neuves a prix direct fabricant. Bonjour${p ? " " + p : ""}, merci pour votre demande sur Leboncoin. Decouvrez notre gamme des 3990 EUR : ${SITE} Nos videos : ${SITE}/videos`;
+  const W = "www.easydrive-auto.fr"; // sans https:// pour tenir en 2 SMS
+  return `Bonjour${p ? " " + p : ""}, merci d'avoir contacte NeoDrive. Voitures sans permis neuves des 3990 EUR, Confort en stock. Site : ${W} Videos : ${W}/videos Reservez sans acompte, paiement a la livraison : ${W}/reservation NeoDrive, leader des prix en France`;
 }
 
 /** E-mails 1 et 2 + SMS. Renvoie les envois (pour le résumé du fondateur). */
