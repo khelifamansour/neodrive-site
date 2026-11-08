@@ -22,12 +22,12 @@ export function layout(inner: string, leadId: number) {
 <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden">
 <tr><td style="background:#0b1b33;padding:18px 24px"><span style="font-size:24px;font-weight:bold;color:#ffffff">Neo<span style="color:#f97316">Drive</span></span><br><span style="font-size:11px;letter-spacing:2px;color:#cbd5e1">VOITURES SANS PERMIS ÉLECTRIQUES</span></td></tr>
 <tr><td style="padding:24px;font-size:15px;line-height:1.55">${inner}</td></tr>
-<tr><td style="padding:16px 24px;background:#f8fafc;font-size:12px;color:#64748b">NeoDrive — fabricant, vente directe, Toulouse (SIREN 908 645 393). Vous recevez ce message suite à votre demande sur Leboncoin, ainsi qu’une lettre de conseils par mois au maximum.<br><a href="${unsubscribeUrl(leadId)}" style="color:#64748b">Ne plus recevoir de messages de NeoDrive</a></td></tr>
+<tr><td style="padding:16px 24px;background:#f8fafc;font-size:12px;color:#64748b">NeoDrive — voitures sans permis électriques, Toulouse (SIREN 908 645 393). Vous recevez ce message suite à votre demande sur Leboncoin, ainsi que notre lettre d’information (deux fois par mois au maximum).<br><a href="${unsubscribeUrl(leadId)}" style="color:#64748b">Ne plus recevoir de messages de NeoDrive</a></td></tr>
 </table></td></tr></table></body></html>`;
 }
 export const btn = (href: string, label: string) => `<p style="text-align:center;margin:22px 0"><a href="${href}" style="background:#f97316;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:999px;display:inline-block">${label}</a></p>`;
 
-export function emailContent(step: 1 | 2, lead: any) {
+export function emailContent(step: 1 | 2 | 3 | 4, lead: any) {
   const p = prenomOf(lead?.nom); const hello = p ? `Bonjour ${p},` : "Bonjour,";
   if (step === 1) return {
     subject: "Votre NeoDrive en vidéo + notre catalogue 2026",
@@ -38,6 +38,25 @@ export function emailContent(step: 1 | 2, lead: any) {
 <p>📄 <a href="${SITE}/catalogue-neodrive-2026.pdf"><b>Télécharger le catalogue 2026 (PDF)</b></a><br>🎬 <a href="${SITE}/videos"><b>Voir toutes les vidéos</b></a> (intérieur, essai sur route, vraies livraisons)</p>
 ${btn(`${SITE}/reservation-devis`, "Voir mon prix livré et réserver")}
 <p>Dites-moi simplement <b>pour qui</b> est la voiture et votre <b>code postal</b> en répondant à cet e-mail : je vous donne le prix tout compris livré chez vous.</p><p>À très vite,<br><b>L'équipe NeoDrive</b></p>`, lead.id),
+  };
+  if (step === 3) return {
+    subject: "Devenez propriétaire de votre voiture sans permis, pas locataire",
+    html: layout(`<p>${hello}</p><p>Beaucoup de nos clients hésitaient entre l'achat et la <b>location avec option d'achat (LOA)</b>. Avec la LOA, vous payez chaque mois… et la voiture ne vous appartient pas à la fin du contrat, sauf à payer encore l'option d'achat.</p>
+<p>Chez NeoDrive, la voiture est <b>à vous</b>, avec deux possibilités :</p>
+<table width="100%" cellpadding="10" cellspacing="0" style="border-collapse:collapse;font-size:14px;margin:6px 0 10px"><tr style="background:#fff7ed"><td>💶 <b>Paiement comptant</b></td><td>à la livraison, après avoir vu votre voiture</td></tr><tr><td>📝 <b>Financement</b></td><td>déposez votre dossier en ligne en quelques minutes, nous recherchons une solution adaptée à votre budget</td></tr></table>
+<p>✔ Modèles neufs de <b>3 990 € à 5 990 €</b>, la Confort (4 990 €) disponible de suite<br>✔ Garantie 2 ans et service après-vente national<br>✔ Livraison chez vous partout en France</p>
+${btn(`${SITE}/financement`, "Simuler et déposer mon dossier")}
+<p>Une question ? Répondez simplement à cet e-mail.</p><p>Bonne journée,<br><b>L'équipe NeoDrive</b></p>
+<p style="font-size:12px;color:#64748b"><b>Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager.</b> Financement sous réserve d'étude et d'acceptation de votre dossier par l'organisme prêteur. Vous disposez d'un délai de rétractation de 14 jours.</p>`, lead.id),
+  };
+  if (step === 4) return {
+    subject: "Ils roulent déjà en NeoDrive : découvrez leurs livraisons",
+    html: layout(`<p>${hello}</p><p>Acheter une voiture sans permis à distance, c'est normal de vouloir être rassuré. Alors plutôt que de longs discours, voici nos <b>vraies livraisons en vidéo</b>, chez de vrais clients :</p>
+<p><a href="${SITE}/videos"><img src="${SITE}/voiture.jpg" alt="Livraisons NeoDrive" width="512" style="width:100%;max-width:512px;border-radius:10px;display:block"></a></p>
+${btn(`${SITE}/videos`, "Voir les livraisons de nos clients")}
+<p>✔ <b>Entreprise basée à Toulouse</b> (SIREN 908 645 393)<br>✔ <b>0 € d'acompte</b> : vous réglez à la réception de votre voiture<br>✔ <b>Garantie 2 ans</b> et <b>service après-vente national</b>, pièces disponibles<br>✔ Les avis de nos clients : <a href="${SITE}/avis">${SITE.replace("https://", "")}/avis</a></p>
+<p>Prêt à franchir le pas ? Votre voiture vous attend : ${btn(`${SITE}/reservation`, "Réserver ma NeoDrive")}</p>
+<p>À très vite,<br><b>L'équipe NeoDrive</b></p>`, lead.id),
   };
   return {
     subject: "Votre prix livré en 1 minute (0 € d'acompte)",
@@ -101,9 +120,11 @@ export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN 
     const mails = h.filter((x: any) => x?.type === "email");
     const sms = h.some((x: any) => x?.type === "sms");
     // E-mail (1 le jour du package, 2 quatre jours après)
-    if (mailsSent < limit && validEmail(l.email) && mails.length < 2 && !(mails.length === 1 && now - new Date(mails[0].sent_at).getTime() < 4 * 86400000)) {
+    // 4 e-mails : J0 catalogue, J+4 prix livré, J+8 financement, J+13 livraisons clients (écarts : 4, 4, 5 jours).
+    const GAPS = [0, 4, 4, 5]; const lastMail = mails.length ? new Date(mails[mails.length - 1].sent_at).getTime() : 0;
+    if (mailsSent < limit && validEmail(l.email) && mails.length < 4 && (mails.length === 0 || now - lastMail >= GAPS[mails.length] * 86400000)) {
       try {
-        const step: 1 | 2 = mails.length === 0 ? 1 : 2; const at = new Date().toISOString();
+        const step = (mails.length + 1) as 1 | 2 | 3 | 4; const at = new Date().toISOString();
         const c = emailContent(step, l); const id = await sendEmail(String(l.email).trim(), String(l.nom || ""), c.subject, c.html);
         await db.from("crm_messages").insert({ lead_id: l.id, direction: "outbound", channel: "email", body: c.subject, provider_message_id: id, status: "sent", ai_generated: false });
         h = [...h, { type: "email", step, sent_at: at }].slice(-60);
@@ -154,8 +175,8 @@ export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN 
 export async function copyToOwner(type: string) {
   if (!brevoReady()) return;
   const fake = { id: 0, nom: "Mansour" };
-  if (type === "email1" || type === "email2") {
-    const c = emailContent(type === "email1" ? 1 : 2, fake);
+  if (/^email[1-4]$/.test(type)) {
+    const c = emailContent(Number(type.slice(5)) as 1 | 2 | 3 | 4, fake);
     await sendEmail(OWNER_EMAIL, "Mansour", `[Copie envoyée aux clients] ${c.subject}`, c.html);
   } else if (type === "missed_sms") {
     await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", isWeekend() ? MISSED_CALL_SMS_WEEKEND : MISSED_CALL_SMS);
