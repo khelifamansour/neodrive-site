@@ -17,3 +17,4 @@ export async function POST(req: Request) {
   try { owner = await notifyOwner(missed.results || [], copyToOwner); } catch (e) { console.error("[MISSED-NOW] owner", e); }
   return NextResponse.json({ ok: true, sent: missed.sent, results: (missed.results || []).map((r: any) => ({ tel: r.tel, sent: !!r.sent, error: r.error || null })), owner });
 }
+export const GET = POST;
