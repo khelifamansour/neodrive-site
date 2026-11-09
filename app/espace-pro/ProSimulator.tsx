@@ -106,10 +106,10 @@ export default function ProSimulator() {
           <div className={s.excluHead}>
             <span className={s.eyebrow}>EXCLUSIVITÉ DÉPARTEMENTALE</span>
             <h3>{ex.name} ({ex.dept}) : {exFree ? <em className={s.free}>disponible</em> : <em className={s.taken}>déjà réservée</em>}</h3>
-            <p>Devenez le seul partenaire NeoDrive du département en vous engageant sur 10 % du marché local.</p>
+            <p>Devenez le seul partenaire NeoDrive du département en vous engageant sur 10 % du marché du neuf. Le marché de l’occasion, 2 à 3 fois plus grand, est votre potentiel en plus.</p>
           </div>
           <div className={s.excluGrid}>
-            <article><span>Marché estimé</span><b>≈ {ex.market}</b><small>voitures sans permis / an</small></article>
+            <article><span>Marché neuf estimé</span><b>≈ {ex.market}</b><small>+ ≈ {ex.usedMarket} occasions / an</small></article>
             <article><span>Objectif annuel (10 %)</span><b>{ex.annualTarget}</b><small>NeoDrive / an</small></article>
             <article><span>1re commande</span><b>{ex.firstOrder}</b><small>lot de 13</small></article>
             <article><span>À 6 mois</span><b>{ex.sixMonthTarget}</b><small>commandées au total</small></article>

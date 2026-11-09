@@ -15,7 +15,7 @@ export default function PartnerPage() {
       <section className={s.whyTop}>
         <span className={s.eyebrow}>POURQUOI DEVENIR PARTENAIRE NEODRIVE ?</span>
         <h1>La voiture sans permis neuve <em>2 à 3 fois moins chère</em> que les grandes marques.</h1>
-        <p className={s.lead}>Vos clients paient souvent moins cher une NeoDrive neuve qu’une voiture sans permis d’occasion. C’est ce qui la rend si facile à vendre.</p>
+        <p className={s.lead}>Sous 6 000 €, le marché ne propose quasiment que des occasions anciennes et très kilométrées. NeoDrive ouvre un nouveau créneau : <b>le neuf au prix de l’occasion</b>. Vos clients viennent du neuf… et de l’occasion.</p>
 
         <div className={s.compare}>
           <article className={s.us}><span>NeoDrive Confort</span><b>4 990 €</b><small>neuve, électrique, équipée</small></article>
@@ -26,19 +26,19 @@ export default function PartnerPage() {
 
         <div className={s.market}>
           <article><b>≈ 25 000</b><span>voitures sans permis neuves vendues chaque année en France</span></article>
-          <article><b>≈ 280 000</b><span>voitures sans permis en circulation : autant d’acheteurs potentiels sur l’occasion</span></article>
-          <article><b>Dès 14 ans</b><span>avec le permis AM : parents d’ados, seniors, zones rurales</span></article>
+          <article><b>2 à 3 fois plus</b><span>de ventes sur l’occasion que sur le neuf : ces acheteurs deviennent vos clients au prix NeoDrive</span></article>
+          <article><b>≈ 280 000</b><span>voitures sans permis en circulation, dès 14 ans avec le permis AM</span></article>
         </div>
 
         <h2 className={s.earnTitle}>Combien pouvez-vous gagner ?</h2>
         <div className={s.earn}>
           <div className={s.earnGrid}>
-            <article><span>Département moyen · 10 %</span><b>≈ 26 voitures / an</b><em>≈ 17 000 € HT</em><small>marché ≈ 260 voitures / an</small></article>
-            <article><span>Département moyen · 20 %</span><b>≈ 52 voitures / an</b><em>≈ 34 000 € HT</em><small>marché ≈ 260 voitures / an</small></article>
-            <article><span>Haute-Garonne · 10 %</span><b>≈ 54 voitures / an</b><em>≈ 35 000 € HT</em><small>marché ≈ 540 voitures / an</small></article>
-            <article className={s.best}><span>Haute-Garonne · 20 %</span><b>≈ 108 voitures / an</b><em>≈ 71 000 € HT</em><small>marché ≈ 540 voitures / an</small></article>
+            <article><span>Département moyen · scénario prudent</span><b>10 % du neuf + 5 % de l’occasion ≈ 59 voitures / an</b><em>≈ 39 000 € HT</em><small>marché ≈ 260 neuves + 650 occasions / an</small></article>
+            <article><span>Département moyen · bon partenaire</span><b>20 % du neuf + 10 % de l’occasion ≈ 117 voitures / an</b><em>≈ 77 000 € HT</em><small>marché ≈ 260 neuves + 650 occasions / an</small></article>
+            <article><span>Haute-Garonne · scénario prudent</span><b>10 % du neuf + 5 % de l’occasion ≈ 122 voitures / an</b><em>≈ 80 000 € HT</em><small>marché ≈ 540 neuves + 1 350 occasions / an</small></article>
+            <article className={s.best}><span>Haute-Garonne · bon partenaire</span><b>20 % du neuf + 10 % de l’occasion ≈ 243 voitures / an</b><em>≈ 160 000 € HT</em><small>marché ≈ 540 neuves + 1 350 occasions / an</small></article>
           </div>
-          <p>Marge annuelle du distributeur : environ 658 € HT par voiture par voiture (lots de 13), hors accessoires, entretien et services. Marché local estimé au prorata de la population : à titre indicatif.</p>
+          <p>Marge annuelle du distributeur : environ 658 € HT par voiture par voiture (lots de 13), hors accessoires, entretien et services. Marché local estimé au prorata de la population ; marché de l’occasion estimé à 2,5 fois le neuf. Estimations indicatives, non garanties.</p>
         </div>
 
         <div className={s.actions}>
