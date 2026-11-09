@@ -91,9 +91,9 @@ export function smsCampaignText() {
 }
 
 export function smsText(nom: string | null) {
-  void nom; // pas de prénom : le message tient en 2 SMS (accents é/è/à autorisés : alphabet SMS standard, pas de surcoût ; éviter ê, â, î, ô, ç)
+  void nom; // pas de prénom ; 3 SMS avec le lien catalogue (accents é/è/à autorisés : alphabet SMS standard, pas de surcoût ; éviter ê, â, î, ô, ç)
   const W = "www.easydrive-auto.fr"; // sans https:// pour tenir en 2 SMS
-  return `Bonjour, merci d'avoir contacté NeoDrive, leader des prix en France de la voiture sans permis neuve, dès 3990 €. Garantie 2 ans et service après-vente national. Découvrez nos modèles et clients livrés en vidéo : ${W}/videos Vous pouvez réserver ici : ${W}/reservation`;
+  return `Bonjour, merci d'avoir contacté NeoDrive, leader des prix en France de la voiture sans permis neuve, dès 3990 €. Garantie 2 ans et service après-vente national. Feuilletez notre catalogue : ${W}/catalogue Nos clients livrés en vidéo : ${W}/videos Réservez ici : ${W}/reservation`;
 }
 
 /** E-mails 1 et 2 + SMS. Renvoie les envois (pour le résumé du fondateur). */
