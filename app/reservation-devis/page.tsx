@@ -40,6 +40,17 @@ export default function ReservationDevis(){
  const [postalVerified,setPostalVerified]=useState(false);
  const [postalCities,setPostalCities]=useState<string[]>([]);
  const [postalLoading,setPostalLoading]=useState(false);
+ const [promoInput,setPromoInput]=useState("");
+ const [promo,setPromo]=useState<{code:string;discount:number}|null>(null);
+ const [promoMsg,setPromoMsg]=useState("");
+ const checkPromo=async(raw:string)=>{
+  const c=raw.toUpperCase().replace(/[^A-Z0-9]/g,"");setPromoMsg("");
+  if(c.length<4){setPromo(null);return;}
+  const j=await fetch("/api/ambassadeurs?code="+encodeURIComponent(c)).then(r=>r.json()).catch(()=>null);
+  if(j?.valid){setPromo({code:j.code,discount:Number(j.discount)||0});setPromoMsg("Code appliqué ✅");try{localStorage.setItem("neodrive_code",j.code)}catch{}}
+  else{setPromo(null);setPromoMsg("Ce code n’est pas valide.");}
+ };
+ useEffect(()=>{let c="";try{c=new URLSearchParams(window.location.search).get("code")||localStorage.getItem("neodrive_code")||"";}catch{}if(c){setPromoInput(c.toUpperCase());checkPromo(c);}},[]);
  useEffect(()=>{
   setPostalVerified(false);setPostalCities([]);
   if(!/^[0-9]{5}$/.test(postal))return;
@@ -53,14 +64,16 @@ export default function ReservationDevis(){
  },[postal]);
  useEffect(()=>{try{const m=new URLSearchParams(window.location.search).get("modele");if(m&&m in VEHICLES)setModel(m as VehicleKey);}catch{}},[]);
  const quote=useMemo(()=>calculateQuote(model,postal,registration),[model,postal,registration]);
+ const discount=promo?.discount||0;
+ const total=quote.total===null?null:quote.total-discount;
  const normalizeCity=(v:string)=>v.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
  const cityMatches=postalCities.some(city=>normalizeCity(city)===normalizeCity(customer.ville));
  const contactDone=!!(customer.nom&&customer.prenom&&customer.email&&customer.adresse&&customer.ville);
- const valid=postalVerified&&cityMatches&&quote.total!==null&&accepted&&signed.trim().length>=3&&customer.nom&&customer.prenom&&customer.email&&customer.adresse&&customer.ville;
+ const valid=postalVerified&&cityMatches&&total!==null&&accepted&&signed.trim().length>=3&&customer.nom&&customer.prenom&&customer.email&&customer.adresse&&customer.ville;
 
  const missing:string[]=[];
  if(!postalVerified)missing.push("un code postal de livraison valide");
- else if(quote.total===null)missing.push("un tarif de livraison (zone sur devis : contactez-nous)");
+ else if(total===null)missing.push("un tarif de livraison (zone sur devis : contactez-nous)");
  if(!contactDone)missing.push("vos coordonnées complètes");
  else if(postalVerified&&!cityMatches)missing.push("une ville correspondant au code postal");
  if(signed.trim().length<3)missing.push("votre nom de signataire");
@@ -97,9 +110,10 @@ export default function ReservationDevis(){
   row(VEHICLES[model].label,amount(quote.vehiclePrice),136);
   row("Livraison à votre porte ("+postal+")",quote.delivery.status==="estimated"?amount(quote.delivery.price):"Sur devis",148);
   row("Formalités carte grise",amount(quote.registrationPrice),160);
+  if(promo)row("Remise code "+promo.code,"- "+amount(promo.discount),170);
   pdf.setFillColor(22,32,46);pdf.roundedRect(margin,183,176,22,3,3,"F");
   pdf.setFont("helvetica","bold");pdf.setFontSize(13);pdf.setTextColor(255,255,255);text("TOTAL TTC",22,197);
-  pdf.setFontSize(18);pdf.text(quote.total===null?"Sur devis":amount(quote.total),187,197,{align:"right"});
+  pdf.setFontSize(18);pdf.text(total===null?"Sur devis":amount(total),187,197,{align:"right"});
   pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.setTextColor(45,55,72);text("MODALITÉS",margin,219);
   pdf.setFont("helvetica","normal");pdf.setFontSize(9);pdf.setTextColor(88,97,109);
   pdf.text(pdf.splitTextToSize("Paiement à la livraison, sans acompte. Livraison à domicile par transport sécurisé. Date de livraison selon les tournées et la disponibilité du véhicule. Toute modification du prix exige l'accord du client.",170),margin,226);
@@ -121,7 +135,9 @@ export default function ReservationDevis(){
    data.append("prix_vehicule",String(quote.vehiclePrice));
    data.append("livraison",quote.delivery.status==="estimated"?String(quote.delivery.price):"sur devis");
    data.append("carte_grise",String(quote.registrationPrice));
-   data.append("total_ttc",String(quote.total));
+   data.append("total_ttc",String(total));
+   data.append("code_promo",promo?promo.code:"");
+   data.append("remise",String(discount));
    data.append("signature",signed);
    data.append("signature_date",new Date().toISOString());
    data.append("acceptation","oui");
@@ -129,7 +145,7 @@ export default function ReservationDevis(){
    const response=await fetch("https://formspree.io/f/xjgjrqqg",{method:"POST",body:data,headers:{Accept:"application/json"}});
    if(!response.ok)throw new Error("La transmission a échoué. Réessayez ou contactez NeoDrive.");
    // Ajout automatique au planificateur de livraisons (sans bloquer le client en cas d'échec)
-   fetch("/api/planificateur",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"reservation",...customer,code_postal:postal,modele:VEHICLES[model].label,total:quote.total})}).catch(()=>null);
+   fetch("/api/planificateur",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"reservation",...customer,code_postal:postal,modele:VEHICLES[model].label,total,code_promo:promo?.code||""})}).catch(()=>null);
    setSent(true);
    if(typeof window!=="undefined")window.scrollTo({top:0,behavior:"smooth"});
   }catch(e){setSendError(e instanceof Error?e.message:"Erreur d'envoi");}
@@ -155,8 +171,9 @@ export default function ReservationDevis(){
    <div><dt>Véhicule</dt><dd>{euro(quote.vehiclePrice)}</dd></div>
    <div><dt>Livraison à domicile{quote.delivery.status==="estimated"?<small> · {postal}</small>:null}</dt><dd className={quote.delivery.status==="estimated"?"":s.muted}>{deliveryLabel}</dd></div>
    <div><dt>Carte grise (formalités)</dt><dd>{euro(REGISTRATION_PRICE)}</dd></div>
+   {promo?<div><dt>Remise code {promo.code}</dt><dd>- {euro(promo.discount)}</dd></div>:null}
   </dl>
-  <div className={s.summaryTotal}><span>Total TTC</span>{quote.total===null?<em>{postal.length===5?"Sur devis":"Saisissez votre code postal pour voir le prix livré"}</em>:<strong>{euro(quote.total)}</strong>}</div>
+  <div className={s.summaryTotal}><span>Total TTC</span>{total===null?<em>{postal.length===5?"Sur devis":"Saisissez votre code postal pour voir le prix livré"}</em>:<strong>{euro(total)}</strong>}</div>
   <ul className={s.summaryPerks}>
    <li>{Icon.check} 0 € à payer aujourd’hui</li>
    <li>{Icon.check} Paiement à la livraison</li>
@@ -169,7 +186,7 @@ export default function ReservationDevis(){
    <div className={s.successIcon}>{Icon.check}</div>
    <h1>Merci {customer.prenom}, votre demande est bien envoyée&nbsp;!</h1>
    <p>Nous avons reçu votre devis signé pour une <b>{VEHICLES[model].label}</b> livrée à <b>{customer.ville} ({postal})</b>. Un conseiller NeoDrive vous recontacte pour confirmer la disponibilité et la date de livraison.</p>
-   <div className={s.successTotal}><span>Total TTC de votre devis</span><strong>{quote.total===null?"Sur devis":euro(quote.total)}</strong><small>Aucun acompte · paiement à la livraison</small></div>
+   <div className={s.successTotal}><span>Total TTC de votre devis</span><strong>{total===null?"Sur devis":euro(total)}</strong><small>Aucun acompte · paiement à la livraison</small></div>
    <div className={s.successActions}>
     <button type="button" className={s.btnGhost} onClick={downloadPdf}>{Icon.download} Télécharger mon devis PDF</button>
     <a className={s.btnWhatsapp} href={WHATSAPP} target="_blank" rel="noreferrer">{Icon.chat} Une question ? WhatsApp</a>
@@ -271,12 +288,14 @@ export default function ReservationDevis(){
        <div><span>{VEHICLES[model].label}</span><strong>{euro(quote.vehiclePrice)}</strong></div>
        <div><span>Livraison à domicile{postal?` · ${postal}`:""}</span><strong>{quote.delivery.status==="estimated"?euro(quote.delivery.price):"À confirmer"}</strong></div>
        <div><span>Formalités carte grise {registration?"incluses":"non demandées"}</span><strong>{euro(quote.registrationPrice)}</strong></div>
+       {promo?<div><span>Remise code {promo.code}</span><strong>- {euro(promo.discount)}</strong></div>:null}
       </div>
-      <div className={s.quoteTotal}><span>Total TTC{quote.total===null?" à confirmer":""}<small>Aucun acompte · payable à la livraison</small></span><strong>{quote.total===null?"Sur devis":euro(quote.total)}</strong></div>
+      <div className={s.quoteTotal}><span>Total TTC{total===null?" à confirmer":""}<small>Aucun acompte · payable à la livraison</small></span><strong>{total===null?"Sur devis":euro(total)}</strong></div>
       <details className={s.terms}><summary>Conditions essentielles</summary><p>Aucun acompte demandé. Paiement à la livraison selon les modalités convenues. Délai et disponibilité à confirmer par NeoDrive. Le tarif de livraison est calculé pour le code postal renseigné selon notre barème ; tout changement du montant nécessitera votre accord. Les conditions générales de vente et les informations légales applicables doivent être remises au client avant conclusion du contrat.</p></details>
       <div className={s.quoteSign}><small>Accord du client</small><strong className={signed?s.signature:""}>{signed||"Votre signature apparaîtra ici"}</strong></div>
      </article>
 
+     <label className={s.field}><span>Code promo<em> · facultatif</em></span><span className={s.inputWrap}><input value={promoInput} onChange={e=>{setPromoInput(e.target.value.toUpperCase());setPromoMsg("");}} onBlur={e=>checkPromo(e.target.value)} placeholder="Ex. NEOJULIE27" autoComplete="off"/>{promo?<i className={s.ok}>{Icon.check}</i>:null}</span>{promoMsg?<small style={{color:promo?"#15803d":"#b91c1c",fontWeight:700}}>{promoMsg}</small>:null}</label>
      <label className={`${s.field} ${s.signField}`}><span>{Icon.pen} Signez en tapant votre nom et prénom</span><span className={s.inputWrap}><input value={signed} onChange={e=>setSigned(e.target.value)} placeholder="Ex. Marie Dupont" autoComplete="name" required/></span></label>
      <label className={s.check}><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/><span>J’ai vérifié les informations du devis et je souhaite réserver ce véhicule. Je ne paie rien aujourd’hui.</span></label>
 
@@ -326,7 +345,7 @@ export default function ReservationDevis(){
 
   {/* BARRE MOBILE */}
   <div className={s.mobileBar}>
-   <div><small>{VEHICLES[model].label.replace("NeoDrive ","")} · total TTC</small><strong>{quote.total===null?(postal.length===5?"Sur devis":euro(quote.vehiclePrice+REGISTRATION_PRICE)+" + livr."):euro(quote.total)}</strong></div>
+   <div><small>{VEHICLES[model].label.replace("NeoDrive ","")} · total TTC</small><strong>{total===null?(postal.length===5?"Sur devis":euro(quote.vehiclePrice+REGISTRATION_PRICE-discount)+" + livr."):euro(total)}</strong></div>
    <a href={valid?"#devis":postalVerified&&contactDone?"#devis":"#configurer"} className={s.btnPrimary}>{valid?"Réserver":"Continuer"}</a>
   </div>
  </main>;
