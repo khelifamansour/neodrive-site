@@ -52,3 +52,15 @@ export function validSiren(v: string) {
   for (let i = 0; i < 9; i++) { let d = Number(s[8 - i]); if (i % 2 === 1) { d *= 2; if (d > 9) d -= 9; } sum += d; }
   return sum % 10 === 0;
 }
+
+/** Exclusivité départementale : marché estimé (prorata de la population), objectif annuel de 10 %, premier achat d'un lot de 13, point d'étape à 6 mois. */
+import { DEPARTEMENTS, METRO_POP } from "./departements";
+export const EXCLU = { nationalMarket: 25000, shareTarget: 0.1, minAnnual: 13, firstOrder: 13, checkpointMonths: 6, lossThreshold: 0.7 };
+export function exclusivityFor(dept: string | null) {
+  if (!dept || !DEPARTEMENTS[dept]) return null;
+  const [name, pop] = DEPARTEMENTS[dept];
+  const market = Math.round(EXCLU.nationalMarket * pop / METRO_POP);
+  const annualTarget = Math.max(EXCLU.minAnnual, Math.round(market * EXCLU.shareTarget));
+  const sixMonthTarget = Math.max(EXCLU.firstOrder, Math.ceil(annualTarget / 2));
+  return { dept, name, market, annualTarget, sixMonthTarget, firstOrder: EXCLU.firstOrder };
+}

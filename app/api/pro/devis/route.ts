@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { crmDatabase } from "../../../../lib/crm-agent";
 import { brevoReady, sendEmail, sendSms, OWNER_EMAIL } from "../../../../lib/brevo";
-import { proQuote, validSiren } from "../../../../lib/pro-pricing";
+import { exclusivityFor, proQuote, validSiren } from "../../../../lib/pro-pricing";
 
 export const dynamic = "force-dynamic";
 const clean = (v: unknown, max = 200) => String(v ?? "").replace(/[<>]/g, "").trim().slice(0, max);
@@ -17,11 +17,17 @@ export async function POST(req: Request) {
   if (!validSiren(siren)) return NextResponse.json({ ok: false, error: "Numéro SIREN invalide (9 chiffres)." }, { status: 400 });
   const q = proQuote(clean(b.offer, 20), postal);
   if (!q.ok) return NextResponse.json({ ok: false, error: q.reason }, { status: 400 });
-  const row = { company, siren, contact_name: contact, phone, email, postal_code: postal, department: q.department, zone: null, offer: q.offer.key, quantity: q.offer.qty, total_ht: q.totalHT, total_ttc: q.totalTTC, details: q, message: clean(b.message, 1500) };
+  const ex = b.exclusivity === true && q.offer.key === "lot13" ? exclusivityFor(q.department) : null;
+  if (ex) {
+    const { data: t } = await crmDatabase().from("pro_exclusivities").select("status").eq("department", ex.dept).maybeSingle();
+    if (t && ["réservé", "attribué"].includes(String(t.status))) return NextResponse.json({ ok: false, error: `L'exclusivité ${ex.name} n'est plus disponible.` }, { status: 409 });
+    await crmDatabase().from("pro_exclusivities").upsert({ department: ex.dept, company, status: "demandé", annual_target: ex.annualTarget, updated_at: new Date().toISOString() }, { onConflict: "department" });
+  }
+  const row = { company, siren, contact_name: contact, phone, email, postal_code: postal, department: q.department, zone: null, offer: q.offer.key, quantity: q.offer.qty, total_ht: q.totalHT, total_ttc: q.totalTTC, details: { ...q, exclusivity: ex }, message: clean(b.message, 1500) };
   const { data, error } = await crmDatabase().from("pro_quotes").insert(row).select("id").single();
   if (error) return NextResponse.json({ ok: false, error: "Enregistrement impossible, réessayez." }, { status: 502 });
   if (brevoReady()) {
-    const resume = `${company} (SIREN ${siren}), ${contact}, ${phone}${email ? ", " + email : ""}, dept ${q.department}. ${q.offer.label} : ${eur(q.totalHT)} HT / ${eur(q.totalTTC)} TTC.`;
+    const resume = `${company} (SIREN ${siren}), ${contact}, ${phone}${email ? ", " + email : ""}, dept ${q.department}. ${q.offer.label} : ${eur(q.totalHT)} HT / ${eur(q.totalTTC)} TTC.${ex ? ` DEMANDE D'EXCLUSIVITÉ ${ex.name} (objectif ${ex.annualTarget}/an).` : ""}`;
     try { await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", `Demande de commande PRO NeoDrive : ${resume}`.slice(0, 300)); } catch (e) { console.error("[PRO] sms", e); }
     try { await sendEmail(OWNER_EMAIL, "Mansour", `Commande pro : ${company} – ${q.offer.label} (${eur(q.totalHT)} HT)`, `<p>${resume}</p><p>Par voiture : ${eur(q.perCar.totalHT)} HT (véhicule ${eur(q.perCar.vehicleHT)} + forfait réseau ${eur(q.perCar.forfaitReseauHT)} + mise à disposition ${eur(q.perCar.miseADispositionHT)}).<br>Acompte 30 % : ${eur(q.depositTTC)} TTC.</p><p>Message : ${row.message || "—"}</p><p>Demande n°${data?.id}</p>`); } catch (e) { console.error("[PRO] email", e); }
     if (email) { try { await sendEmail(email, contact, `Votre devis NeoDrive Pro – ${q.offer.label}`, `<p>Bonjour ${contact},</p><p>Merci pour votre demande. Voici le récapitulatif de votre devis :</p><p><b>${q.offer.label} – NeoDrive Confort</b><br>Total : <b>${eur(q.totalHT)} HT</b> (${eur(q.totalTTC)} TTC)<br>Acompte de 30 % à la commande : ${eur(q.depositTTC)} TTC, solde avant le départ du transport.</p><p>Prix public conseillé clé en main dans votre secteur : <b>${eur(q.publicCleEnMainTTC)} TTC</b>, le même que sur notre site.</p><p>Notre équipe vous rappelle sous 48 h pour confirmer la commande.</p><p>L'équipe NeoDrive</p>`); } catch (e) { console.error("[PRO] email client", e); } }

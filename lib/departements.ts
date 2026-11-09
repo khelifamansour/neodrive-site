@@ -1,0 +1,14 @@
+/** Départements de métropole : nom et population approximative (milliers d'habitants, ordre de grandeur INSEE récent). Sert à estimer le marché local des voitures sans permis. */
+export const DEPARTEMENTS: Record<string, [string, number]> = {
+  "01": ["Ain", 657], "02": ["Aisne", 529], "03": ["Allier", 335], "04": ["Alpes-de-Haute-Provence", 165], "05": ["Hautes-Alpes", 141], "06": ["Alpes-Maritimes", 1094], "07": ["Ardèche", 329], "08": ["Ardennes", 270], "09": ["Ariège", 154], "10": ["Aube", 310],
+  "11": ["Aude", 375], "12": ["Aveyron", 279], "13": ["Bouches-du-Rhône", 2043], "14": ["Calvados", 695], "15": ["Cantal", 144], "16": ["Charente", 352], "17": ["Charente-Maritime", 655], "18": ["Cher", 300], "19": ["Corrèze", 240], "21": ["Côte-d'Or", 535],
+  "22": ["Côtes-d'Armor", 602], "23": ["Creuse", 116], "24": ["Dordogne", 414], "25": ["Doubs", 545], "26": ["Drôme", 518], "27": ["Eure", 600], "28": ["Eure-et-Loir", 431], "29": ["Finistère", 916], "2A": ["Corse-du-Sud", 160], "2B": ["Haute-Corse", 182],
+  "30": ["Gard", 752], "31": ["Haute-Garonne", 1415], "32": ["Gers", 192], "33": ["Gironde", 1654], "34": ["Hérault", 1191], "35": ["Ille-et-Vilaine", 1095], "36": ["Indre", 218], "37": ["Indre-et-Loire", 610], "38": ["Isère", 1272], "39": ["Jura", 259],
+  "40": ["Landes", 418], "41": ["Loir-et-Cher", 329], "42": ["Loire", 766], "43": ["Haute-Loire", 227], "44": ["Loire-Atlantique", 1442], "45": ["Loiret", 681], "46": ["Lot", 174], "47": ["Lot-et-Garonne", 332], "48": ["Lozère", 76], "49": ["Maine-et-Loire", 820],
+  "50": ["Manche", 495], "51": ["Marne", 566], "52": ["Haute-Marne", 172], "53": ["Mayenne", 307], "54": ["Meurthe-et-Moselle", 733], "55": ["Meuse", 184], "56": ["Morbihan", 761], "57": ["Moselle", 1046], "58": ["Nièvre", 204], "59": ["Nord", 2611],
+  "60": ["Oise", 830], "61": ["Orne", 279], "62": ["Pas-de-Calais", 1462], "63": ["Puy-de-Dôme", 662], "64": ["Pyrénées-Atlantiques", 687], "65": ["Hautes-Pyrénées", 229], "66": ["Pyrénées-Orientales", 479], "67": ["Bas-Rhin", 1140], "68": ["Haut-Rhin", 767], "69": ["Rhône", 1883],
+  "70": ["Haute-Saône", 235], "71": ["Saône-et-Loire", 551], "72": ["Sarthe", 567], "73": ["Savoie", 438], "74": ["Haute-Savoie", 827], "75": ["Paris", 2133], "76": ["Seine-Maritime", 1255], "77": ["Seine-et-Marne", 1421], "78": ["Yvelines", 1448], "79": ["Deux-Sèvres", 375],
+  "80": ["Somme", 570], "81": ["Tarn", 389], "82": ["Tarn-et-Garonne", 262], "83": ["Var", 1076], "84": ["Vaucluse", 562], "85": ["Vendée", 685], "86": ["Vienne", 438], "87": ["Haute-Vienne", 372], "88": ["Vosges", 364], "89": ["Yonne", 335],
+  "90": ["Territoire de Belfort", 141], "91": ["Essonne", 1306], "92": ["Hauts-de-Seine", 1624], "93": ["Seine-Saint-Denis", 1655], "94": ["Val-de-Marne", 1407], "95": ["Val-d'Oise", 1249],
+};
+export const METRO_POP = Object.values(DEPARTEMENTS).reduce((a, [, p]) => a + p, 0);

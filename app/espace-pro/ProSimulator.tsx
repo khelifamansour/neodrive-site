@@ -1,6 +1,8 @@
 "use client";
-import { useMemo, useState } from "react";
-import { DEMO, PRO_OFFERS, proQuote, validSiren } from "../../lib/pro-pricing";
+import { useEffect, useMemo, useState } from "react";
+import { DEMO, PRO_OFFERS, exclusivityFor, proQuote, validSiren } from "../../lib/pro-pricing";
+import { departmentFromPostalCode } from "../../lib/neodrive-pricing";
+import { DEPARTEMENTS } from "../../lib/departements";
 import s from "./pro.module.css";
 
 const eur = (n: number) => n.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " €";
@@ -14,6 +16,15 @@ export default function ProSimulator() {
   const [err, setErr] = useState("");
   const set = (k: string, v: string) => setId(p => ({ ...p, [k]: v }));
   const q = useMemo(() => proQuote(offer, id.postal_code), [offer, id.postal_code]);
+  const dept = useMemo(() => departmentFromPostalCode(id.postal_code), [id.postal_code]);
+  const ex = useMemo(() => exclusivityFor(dept), [dept]);
+  const [taken, setTaken] = useState<Record<string, string>>({});
+  const [wantExclu, setWantExclu] = useState(false);
+  useEffect(() => {
+    if (!unlocked) return;
+    fetch("/api/pro/exclusivites").then(r => r.json()).then(j => setTaken(Object.fromEntries((j?.taken || []).map((t: any) => [t.dept, t.status])))).catch(() => {});
+  }, [unlocked]);
+  const exFree = ex ? !taken[ex.dept] : false;
 
   function unlock(e: React.FormEvent) {
     e.preventDefault(); setErr("");
@@ -24,7 +35,7 @@ export default function ProSimulator() {
   }
   async function order() {
     setErr(""); setState("sending");
-    const r = await fetch("/api/pro/devis", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...id, offer, message }) }).catch(() => null);
+    const r = await fetch("/api/pro/devis", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...id, offer, message, exclusivity: wantExclu && offer === "lot13" }) }).catch(() => null);
     const j = await r?.json().catch(() => null);
     if (r?.ok && j?.ok) setState("done"); else { setState("idle"); setErr(j?.error || "Envoi impossible, réessayez."); }
   }
@@ -51,7 +62,7 @@ export default function ProSimulator() {
       <div className={s.gateHead}><span className={s.eyebrow}>{id.company.toUpperCase()} · {id.postal_code}</span><h2>Choisissez votre commande.</h2></div>
       <div className={s.offers}>
         {PRO_OFFERS.map(o => (
-          <button key={o.key} type="button" className={offer === o.key ? s.offerOn : s.offer} onClick={() => setOffer(o.key)}>
+          <button key={o.key} type="button" className={offer === o.key ? s.offerOn : s.offer} onClick={() => { setOffer(o.key); if (o.key !== "lot13") setWantExclu(false); }}>
             <span>{o.short}</span><b>{eur(o.priceHT)} HT</b><small>{o.note}</small>
           </button>
         ))}
@@ -90,10 +101,31 @@ export default function ProSimulator() {
           </div>)}
         </div>
       )}
+      {ex && (
+        <div className={s.exclu}>
+          <div className={s.excluHead}>
+            <span className={s.eyebrow}>EXCLUSIVITÉ DÉPARTEMENTALE</span>
+            <h3>{ex.name} ({ex.dept}) : {exFree ? <em className={s.free}>disponible</em> : <em className={s.taken}>déjà réservée</em>}</h3>
+            <p>Devenez le seul partenaire NeoDrive du département en vous engageant sur 10 % du marché local.</p>
+          </div>
+          <div className={s.excluGrid}>
+            <article><span>Marché estimé</span><b>≈ {ex.market}</b><small>voitures sans permis / an</small></article>
+            <article><span>Objectif annuel (10 %)</span><b>{ex.annualTarget}</b><small>NeoDrive / an</small></article>
+            <article><span>1re commande</span><b>{ex.firstOrder}</b><small>lot de 13</small></article>
+            <article><span>À 6 mois</span><b>{ex.sixMonthTarget}</b><small>commandées au total</small></article>
+          </div>
+          <p className={s.hint2}>Exclusivité vis-à-vis des autres partenaires NeoDrive du département. Point d'étape tous les 6 mois : sous 70 % de l'objectif, l'exclusivité est retirée et vous restez distributeur. Les ventes en ligne NeoDrive continuent au même prix ; les clients de votre département qui veulent voir ou essayer vous sont transmis en priorité.</p>
+          {exFree && <label className={s.excluCheck}><input type="checkbox" checked={wantExclu} onChange={e => { setWantExclu(e.target.checked); if (e.target.checked) setOffer("lot13"); }} /> Je demande l'exclusivité sur {ex.name} (commande d'un lot de 13)</label>}
+          <details className={s.map}><summary>Voir la carte des exclusivités par département</summary>
+            <div className={s.mapGrid}>{Object.entries(DEPARTEMENTS).map(([code, [name]]) => <span key={code} title={name} className={taken[code] ? s.cellTaken : code === ex.dept ? s.cellMine : s.cellFree}>{code}</span>)}</div>
+            <p className={s.legendRow}><i className={s.cellFree}>&nbsp;</i> disponible <i className={s.cellTaken}>&nbsp;</i> réservé <i className={s.cellMine}>&nbsp;</i> votre département</p>
+          </details>
+        </div>
+      )}
       <label className={s.msg}>Un message, une question ?<textarea rows={3} value={message} onChange={e => setMessage(e.target.value)} placeholder="Date souhaitée, couleur, questions…" /></label>
       {err && <p className={s.err}>{err}</p>}
       <div className={s.actions}>
-        <button className={s.primary} disabled={!q.ok || state === "sending"} onClick={order}>{state === "sending" ? "Envoi…" : q.ok && q.isDemo ? "Réserver ma voiture de démonstration" : "Réserver ma commande"}</button>
+        <button className={s.primary} disabled={!q.ok || state === "sending"} onClick={order}>{state === "sending" ? "Envoi…" : q.ok && q.isDemo ? "Réserver ma voiture de démonstration" : wantExclu ? "Réserver ma commande et mon exclusivité" : "Réserver ma commande"}</button>
         <a className={s.secondary} href="/catalogue" target="_blank">📖 Catalogue</a>
       </div>
       <p className={s.legal}>Réservation sans paiement en ligne : NeoDrive vous rappelle sous 48 h pour valider votre dossier (Kbis, local) et confirmer la commande. Acompte de 30 % à la confirmation, solde avant livraison. Prix HT. Prix public conseillé donné à titre indicatif.</p>
