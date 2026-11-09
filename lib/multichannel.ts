@@ -191,7 +191,7 @@ export async function copyToOwner(type: string) {
   }
 }
 
-export const MISSED_CALL_SMS = "Bonjour, ici NeoDrive, voitures sans permis electriques. Desoles de ne pas avoir pu repondre, notre equipe est actuellement en livraison et vous rappelle tres vite. Decouvrez nos modeles et prix : https://www.easydrive-auto.fr La Confort est disponible en stock. L'equipe NeoDrive";
+export const MISSED_CALL_SMS = "Bonjour, merci d'avoir contacté NeoDrive, leader des prix en France de la voiture sans permis électrique neuve, dès 3990 €. Feuilletez notre catalogue : www.easydrive-auto.fr/catalogue Nos vidéos : www.easydrive-auto.fr/videos Réservez ici : www.easydrive-auto.fr/reservation";
 
 export const MISSED_CALL_SMS_WEEKEND = "Bonjour, merci d'avoir appele NeoDrive. Voitures sans permis electriques neuves a partir de 3990 EUR. La version Confort est actuellement en stock, les autres versions sont sur commande. Decouvrez nos modeles : https://www.easydrive-auto.fr Vous pouvez nous rappeler a partir de lundi. L'equipe NeoDrive";
 /** Campagne SMS de rappel : anciens contacts jamais relancés par SMS, les plus récents d'abord, quelques-uns par passage. */
