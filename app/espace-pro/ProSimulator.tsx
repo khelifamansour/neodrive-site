@@ -18,7 +18,7 @@ export default function ProSimulator() {
   function unlock(e: React.FormEvent) {
     e.preventDefault(); setErr("");
     if (!id.company || !id.contact_name || id.phone.replace(/\D/g, "").length < 9) return setErr("Indiquez la société, votre nom et votre téléphone.");
-    if (!validSiren(id.siren)) return setErr("Numéro SIREN invalide : 9 chiffres, sans espaces.");
+    if (!validSiren(id.siren)) return setErr("Ce numéro SIREN n’est pas valide. Vérifiez-le sur votre Kbis (9 chiffres).");
     if (!/^\d{5}$/.test(id.postal_code)) return setErr("Indiquez le code postal de votre établissement.");
     setUnlocked(true);
   }
