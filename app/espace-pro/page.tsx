@@ -38,7 +38,8 @@ export default function EspacePro() {
         <details><summary>Pourquoi le prix est-il le même sur le site et chez moi ?</summary><p>Le prix public clé en main (voiture + forfait réseau de la région + carte grise et mise en route) est le même partout. Un client de votre secteur n'a donc aucun intérêt à commander en ligne plutôt que chez vous, et vous avez l'avantage de la voiture à essayer sur place.</p></details>
         <details><summary>Qu'est-ce que le forfait réseau ?</summary><p>Un forfait fixe par région qui comprend le transport jusqu'à chez vous, la préparation, le contrôle avant livraison et les documents. Il est identique pour tous nos partenaires de la même région et vous le refacturez à votre client.</p></details>
         <details><summary>Comment se passe le paiement ?</summary><p>30 % d'acompte à la commande, le solde avant le départ du transport. Une facture avec TVA vous est remise.</p></details>
-        <details><summary>Puis-je commencer avec une seule voiture ?</summary><p>Oui : la voiture de démonstration est proposée à prix partenaire, une seule fois, pour vous permettre de démarrer sans risque.</p></details>
+        <details><summary>Puis-je commencer avec une seule voiture ?</summary><p>Oui : la voiture de démonstration est proposée à prix partenaire avec une livraison forfaitaire, une seule fois par société. Vous l'exposez au moins 6 mois avec une annonce Leboncoin (remboursée jusqu'à 120 € HT par mois, versés avec vos commissions) et vous touchez une commission sur chaque commande passée par vous.</p></details>
+        <details><summary>Qui peut devenir partenaire ?</summary><p>Les professionnels de l'automobile et du deux-roues disposant d'un local accueillant du public : garages, concessions, centres auto, magasins de motos et scooters. Nous validons chaque dossier (Kbis, photos du local) avant la commande.</p></details>
       </section>
     </main>
   );

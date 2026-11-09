@@ -55,3 +55,4 @@
 .faq summary{font-weight:800;cursor:pointer}.faq p{color:#57534e;line-height:1.6}
 @media(max-width:860px){.steps,.perks,.quote{grid-template-columns:1fr}.perks{grid-template-columns:1fr 1fr}.gate{grid-template-columns:1fr;padding:20px}.sim{padding:18px}.offers{grid-template-columns:1fr 1fr}.actions a,.actions button{width:100%}}
 @media(max-width:480px){.perks{grid-template-columns:1fr}}
+.perksList{margin:14px 0 0;padding-left:18px;color:#e7e5e4;font-size:14px;line-height:1.55}.perksList li{margin:6px 0}
