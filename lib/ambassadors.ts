@@ -25,4 +25,5 @@ export const LEVELS = [
 export const MONTHLY_BONUS = [
   { sales: 3, bonus: 50 },
   { sales: 5, bonus: 150 },
+  { sales: 10, bonus: 200 },
 ] as const;
