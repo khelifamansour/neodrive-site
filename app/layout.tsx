@@ -17,7 +17,7 @@ export default function RootLayout({children}:{children:React.ReactNode}){
   <footer className="seoFooter">
     <div className="footerInner">
       <div className="footerBrand"><strong>NeoDrive</strong><span>Voiture sans permis électrique · Livraison en France</span></div>
-      <div><strong>Recherches utiles</strong><div className="footerLinks"><a href="/voiture-sans-permis">Voiture sans permis</a><a href="/voiture-sans-permis-electrique">Électrique</a><a href="/voiture-sans-permis-occasion">Occasion</a><a href="/prix-voiture-sans-permis">Prix</a><a href="/citroen-ami-ou-neodrive">Citroën Ami</a><a href="/fiat-topolino-ou-neodrive">Fiat Topolino</a><a href="/videos">Vidéos réelles</a><a href="/catalogue">Catalogue 2026</a><a href="/devenir-partenaire">Devenir partenaire</a></div></div>
+      <div><strong>Recherches utiles</strong><div className="footerLinks"><a href="/voiture-sans-permis">Voiture sans permis</a><a href="/voiture-sans-permis-electrique">Électrique</a><a href="/voiture-sans-permis-occasion">Occasion</a><a href="/prix-voiture-sans-permis">Prix</a><a href="/citroen-ami-ou-neodrive">Citroën Ami</a><a href="/fiat-topolino-ou-neodrive">Fiat Topolino</a><a href="/videos">Vidéos réelles</a><a href="/catalogue">Catalogue 2026</a><a href="/devenir-partenaire">Devenir partenaire</a><a href="/espace-pro">Espace pro</a></div></div>
       <div><strong>Voiture sans permis par ville</strong><div className="footerLinks">{cityLinks.map(([name,slug])=><a key={slug} href={`/voiture-sans-permis/${slug}`}>{name}</a>)}</div></div>
     </div>
   </footer>

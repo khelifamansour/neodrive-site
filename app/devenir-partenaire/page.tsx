@@ -18,8 +18,8 @@ export default function PartnerPage() {
           <h1>Vendez la voiture sans permis neuve que vos clients peuvent s’offrir.</h1>
           <p>Garage, concession, magasin de motos et scooters, centre auto : proposez la <b>NeoDrive Confort</b> dans votre région. Un produit simple, très demandé par les parents d’ados et les seniors, avec un prix public parmi les plus bas du marché.</p>
           <div className={s.actions}>
-            <a className={s.primary} href="#candidature">Devenir partenaire</a>
-            <a className={s.secondary} href="/catalogue">📖 Feuilleter le catalogue</a>
+            <a className={s.primary} href="/espace-pro">Simuler mon devis pro</a>
+            <a className={s.secondary} href="#candidature">Devenir partenaire</a>
           </div>
         </div>
         <img src="/catalogue/page-4.jpg" alt="NeoDrive Confort : design et équipements" />
@@ -33,32 +33,33 @@ export default function PartnerPage() {
       </section>
 
       <section className={s.formulas}>
-        <div className={s.heading}><span className={s.eyebrow}>DEUX FORMULES</span><h2>Choisissez votre façon de travailler avec nous.</h2></div>
+        <div className={s.heading}><span className={s.eyebrow}>DEUX ÉTAPES</span><h2>Commencez avec une seule voiture, grandissez à votre rythme.</h2></div>
         <div className={s.grid}>
           <article>
-            <span className={s.tag}>SANS ACHAT DE STOCK</span>
-            <h3>Exposant-vendeur</h3>
-            <p>Nous déposons une NeoDrive Confort chez vous. Vous la présentez, faites essayer et vendez : nous facturons le client et livrons.</p>
+            <span className={s.tag}>ÉTAPE 1 · SANS RISQUE</span>
+            <h3>Partenaire</h3>
+            <p>Vous démarrez avec <b>une seule NeoDrive Confort de démonstration</b>, à prix partenaire. Vous la présentez, faites essayer et vendez.</p>
             <ul>
-              <li>Aucun achat de véhicule</li>
-              <li><b>Commission fixe sur chaque voiture vendue</b></li>
-              <li>Prime dès la 3e vente du trimestre</li>
-              <li>Les contacts de votre secteur vous sont envoyés</li>
+              <li><b>Voiture de démonstration à prix partenaire</b> (une seule fois)</li>
+              <li>Commission fixe sur chaque commande passée par vous</li>
+              <li>Des clients de votre secteur vous sont transmis</li>
+              <li>Catalogue, photos et vidéos fournis</li>
             </ul>
           </article>
           <article className={s.featured}>
-            <span className={s.tag}>MEILLEURE MARGE</span>
-            <h3>Revendeur</h3>
-            <p>Vous achetez vos NeoDrive Confort à prix revendeur et les revendez au prix public conseillé, livrées par lots dans votre région.</p>
+            <span className={s.tag}>ÉTAPE 2 · MEILLEURE MARGE</span>
+            <h3>Distributeur</h3>
+            <p>Quand vous vendez régulièrement, vous commandez vos NeoDrive par lots et les revendez au prix public conseillé.</p>
             <ul>
               <li><b>Prix dégressif par lot de 3, 9 ou 13 voitures</b></li>
-              <li>Frais de transfert fixes par région, refacturés au client</li>
-              <li>Même prix public partout : pas de concurrence avec notre site</li>
-              <li>Catalogue, photos et vidéos fournis pour vos annonces</li>
+              <li>Forfait réseau fixe par région, refacturé au client</li>
+              <li>Même prix clé en main que sur notre site : aucune concurrence</li>
+              <li>Prime annuelle selon vos volumes</li>
             </ul>
           </article>
         </div>
-        <p className={s.note}>Conditions détaillées (commissions, prix revendeur, contrat) envoyées sous 48 h après votre candidature.</p>
+        <div className={s.actions}><a className={s.primary} href="/espace-pro">Simuler mon devis selon ma région</a></div>
+        <p className={s.note}>Le simulateur affiche vos prix réseau, votre prix de revente clé en main et votre marge, de 1 à 13 voitures.</p>
       </section>
 
       <section className={s.why}>
