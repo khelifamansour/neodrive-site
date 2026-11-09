@@ -29,6 +29,12 @@ export default function PrivacyPolicyPage() {
         et la réponse à vos demandes. Ces échanges peuvent être enregistrés dans notre outil CRM afin d’assurer
         le suivi commercial et le service client.
       </p>
+      <p>
+        Publicité : les coordonnées des personnes ayant contacté NeoDrive (téléphone, e-mail) peuvent être
+        transmises à Meta sous forme chiffrée (hachage) afin de leur montrer, ou de montrer à des personnes
+        aux profils proches, des publicités NeoDrive sur Facebook et Instagram. Vous pouvez vous y opposer à
+        tout moment en nous écrivant (voir « Vos droits ») ; vos coordonnées seront alors retirées de nos listes.
+      </p>
 
       <h2>Assistant et automatisation par intelligence artificielle</h2>
       <p>
