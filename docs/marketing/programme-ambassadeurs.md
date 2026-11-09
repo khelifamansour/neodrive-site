@@ -8,10 +8,11 @@ Réglages (commissions, niveaux, bonus) : `lib/ambassadors.ts`. Liste des ambass
 |---|---|---|---|
 | Bronze | inscription | 100 € | Code promo + lien, kit vidéos NeoDrive à republier |
 | Argent | 5 ventes | 100 € | Tournage sur place, mise en avant sur nos réseaux |
-| Or | 15 ventes | 120 € | Avant-première des nouveaux modèles |
-| Platine | 30 ventes | 150 € | Une NeoDrive pour lui au prix ambassadeur |
+| Or | 15 ventes | 100 € | Avant-première des nouveaux modèles, vidéos exclusives |
+| Platine | 30 ventes | 100 € | Une NeoDrive pour lui au prix ambassadeur, mis en avant sur le site |
 
-Bonus du mois (en plus) : 3 ventes = +50 €, 5 ventes = +150 €, 10 ventes = +400 € (seul le palier le plus haut est versé).
+La commission reste toujours 100 € par vente. Objectifs du mois (en plus, non cumulables) : 3 ventes = +50 €, 5 ventes = +150 €.
+Coût maximum par voiture : 100 € + 20 € de remise client (+ 30 €/voiture au plus si l'objectif de 5 ventes est atteint).
 Client : 20 € de remise avec le code (montant non annoncé dans les vidéos).
 Une vente compte quand la voiture est livrée et payée. Paiement sous 30 jours. Pas de prêt de voiture.
 

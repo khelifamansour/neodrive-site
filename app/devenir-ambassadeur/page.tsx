@@ -39,7 +39,7 @@ export default function AmbassadorPage() {
       </section>
 
       <section className={s.formulas}>
-        <div className={s.heading}><span className={s.eyebrow}>VOTRE PARCOURS</span><h2>Plus vous vendez, plus vous gagnez.</h2><p>Votre niveau monte avec le nombre total de voitures vendues grâce à vous. Il ne redescend jamais.</p></div>
+        <div className={s.heading}><span className={s.eyebrow}>VOTRE PARCOURS</span><h2>Plus vous vendez, plus vous débloquez d’avantages.</h2><p>La commission reste de 100 € par voiture. Votre niveau monte avec le nombre total de voitures vendues grâce à vous et ne redescend jamais ; chaque mois, des objectifs vous rapportent un bonus en plus.</p></div>
         <div className={s.grid} style={{ gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))" }}>
           {LEVELS.map((l, i) => (
             <article key={l.name} className={i === LEVELS.length - 1 ? s.featured : undefined}>
@@ -51,9 +51,9 @@ export default function AmbassadorPage() {
           ))}
         </div>
         <div className={s.facts} style={{ padding: 0, margin: "20px 0 0", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
-          {MONTHLY_BONUS.map(b => <article key={b.sales}><b>+ {euro(b.bonus)}</b><span>de bonus si vous vendez {b.sales} voitures ou plus dans le même mois</span></article>)}
+          {MONTHLY_BONUS.map(b => <article key={b.sales}><b>+ {euro(b.bonus)}</b><span>de bonus si vous atteignez l’objectif de {b.sales} voitures vendues dans le mois</span></article>)}
         </div>
-        <p className={s.note}>Le bonus mensuel s’ajoute aux commissions (seul le palier le plus élevé atteint dans le mois est versé). Le prix ambassadeur du niveau Platine est communiqué individuellement.</p>
+        <p className={s.note}>Le bonus du mois s’ajoute aux commissions ; il n’est pas cumulable (seul l’objectif le plus élevé atteint dans le mois est versé). Le prix ambassadeur du niveau Platine est communiqué individuellement.</p>
       </section>
 
       <section className={s.formulas}>
