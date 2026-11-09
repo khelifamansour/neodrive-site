@@ -12,17 +12,41 @@ export const metadata: Metadata = {
 export default function PartnerPage() {
   return (
     <main className={s.page}>
-      <section className={s.hero}>
-        <div>
-          <span className={s.eyebrow}>RÉSEAU NEODRIVE · PROFESSIONNELS</span>
-          <h1>Vendez la voiture sans permis neuve que vos clients peuvent s’offrir.</h1>
-          <p>Garage, concession, magasin de motos et scooters, centre auto : proposez la <b>NeoDrive Confort</b> dans votre région. Un produit simple, très demandé par les parents d’ados et les seniors, avec un prix public parmi les plus bas du marché.</p>
-          <div className={s.actions}>
-            <a className={s.primary} href="/espace-pro">Simuler mon devis pro</a>
-            <a className={s.secondary} href="#candidature">Devenir partenaire</a>
-          </div>
+      <section className={s.whyTop}>
+        <span className={s.eyebrow}>POURQUOI DEVENIR PARTENAIRE NEODRIVE ?</span>
+        <h1>La voiture sans permis neuve <em>2 à 3 fois moins chère</em> que les grandes marques.</h1>
+        <p className={s.lead}>Vos clients paient souvent moins cher une NeoDrive neuve qu’une voiture sans permis d’occasion. C’est ce qui la rend si facile à vendre.</p>
+
+        <div className={s.compare}>
+          <article className={s.us}><span>NeoDrive Confort</span><b>4 990 €</b><small>neuve, électrique, équipée</small></article>
+          <article><span>Citroën Ami</span><b>8 190 €</b><small>prix de base 2026</small></article>
+          <article><span>Ligier Myli électrique</span><b>dès 10 999 €</b><small>finition d’entrée 2026</small></article>
+          <article><span>Aixam City</span><b>dès ≈ 14 400 €</b><small>prix relevé chez un concessionnaire</small></article>
         </div>
-        <img src="/catalogue/page-4.jpg" alt="NeoDrive Confort : design et équipements" />
+
+        <div className={s.market}>
+          <article><b>≈ 25 000</b><span>voitures sans permis neuves vendues chaque année en France</span></article>
+          <article><b>≈ 280 000</b><span>voitures sans permis en circulation : autant d’acheteurs potentiels sur l’occasion</span></article>
+          <article><b>Dès 14 ans</b><span>avec le permis AM : parents d’ados, seniors, zones rurales</span></article>
+        </div>
+
+        <h2 className={s.earnTitle}>Combien pouvez-vous gagner ?</h2>
+        <div className={s.earn}>
+          <div className={s.earnGrid}>
+            <article><span>Département moyen · 10 %</span><b>≈ 26 voitures / an</b><em>≈ 17 000 € HT</em><small>marché ≈ 260 voitures / an</small></article>
+            <article><span>Département moyen · 20 %</span><b>≈ 52 voitures / an</b><em>≈ 34 000 € HT</em><small>marché ≈ 260 voitures / an</small></article>
+            <article><span>Haute-Garonne · 10 %</span><b>≈ 54 voitures / an</b><em>≈ 35 000 € HT</em><small>marché ≈ 540 voitures / an</small></article>
+            <article className={s.best}><span>Haute-Garonne · 20 %</span><b>≈ 108 voitures / an</b><em>≈ 71 000 € HT</em><small>marché ≈ 540 voitures / an</small></article>
+          </div>
+          <p>Marge annuelle du distributeur : environ 658 € HT par voiture par voiture (lots de 13), hors accessoires, entretien et services. Marché local estimé au prorata de la population : à titre indicatif.</p>
+        </div>
+
+        <div className={s.actions}>
+          <a className={s.primary} href="/espace-pro">Simuler mon devis et ma marge</a>
+          <a className={s.secondary} href="#candidature">Devenir partenaire</a>
+          <a className={s.ghost} href="/catalogue">📖 Catalogue</a>
+        </div>
+        <p className={s.sources}>Prix concurrents relevés en 2026 dans la presse automobile et chez des concessionnaires, susceptibles d’évoluer.</p>
       </section>
 
       <section className={s.facts}>

@@ -43,3 +43,36 @@
 .done{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:22px;padding:26px}
 .done b{font-size:20px}.done a{color:#c2410c;font-weight:800}
 @media(max-width:860px){.hero{grid-template-columns:1fr;padding:36px 16px 28px;gap:26px}.hero p{font-size:16px}.facts{grid-template-columns:1fr 1fr;padding:0 16px;margin-bottom:50px}.formulas,.why,.formSection{padding:0 16px 56px}.grid,.whyGrid{grid-template-columns:1fr}.grid article{padding:24px}.form{grid-template-columns:1fr;padding:20px}.actions a,.form button{width:100%;text-align:center}}
+
+.whyTop{background:radial-gradient(circle at top left,#2d3b52,#090909 65%);color:#fff;padding:56px 22px 46px;text-align:center}
+.whyTop h1{font-size:clamp(32px,5vw,58px);line-height:1.04;letter-spacing:-2px;margin:14px auto;max-width:920px;font-weight:950}
+.whyTop h1 em{font-style:normal;color:#ff8a00}
+.lead{font-size:19px;color:#d6d3d1;max-width:720px;margin:0 auto;line-height:1.6}
+.compare{max-width:1000px;margin:30px auto 0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.compare article{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:18px 12px}
+.compare span,.compare b,.compare small{display:block}.compare span{font-size:13px;color:#d6d3d1;font-weight:800}.compare b{font-size:28px;margin:6px 0;letter-spacing:-1px}.compare small{font-size:12px;color:#a8a29e}
+.compare .us{background:#f97316;border-color:#f97316}.compare .us span,.compare .us small{color:#fff}.compare .us b{font-size:36px}
+.market{max-width:1000px;margin:14px auto 0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.market article{border-radius:16px;padding:16px;background:rgba(255,255,255,.04)}
+.market b{display:block;font-size:30px;color:#ff8a00}.market span{font-size:14px;color:#d6d3d1;line-height:1.45}
+.earnTitle{font-size:clamp(28px,4vw,44px);letter-spacing:-1.2px;margin:44px 0 16px}
+.earn{max-width:900px;margin:0 auto;background:#fff;color:#111;border-radius:22px;padding:18px;overflow-x:auto}
+.earn table{width:100%;border-collapse:collapse;min-width:520px}
+.earn th{font-size:13px;color:#78716c;text-align:left;padding:8px}
+.earn td{padding:12px 8px;border-top:1px solid #eee;text-align:left;vertical-align:top}
+.earn td small{display:block;font-size:12px;color:#78716c;font-weight:500}
+.earn td:first-child{font-weight:800}
+.earn td b{display:block;font-size:18px}.earn td em{display:block;font-style:normal;font-size:22px;font-weight:950;color:#c2410c}
+.earn>p{font-size:12px;color:#78716c;margin:10px 4px 0;text-align:left}
+.whyTop .actions{justify-content:center;margin-top:28px}
+.ghost{color:#fff;border:1px solid rgba(255,255,255,.4);padding:15px 22px;border-radius:15px;font-weight:950;text-decoration:none}
+.sources{font-size:11px;color:#a8a29e;margin-top:16px}
+@media(max-width:860px){.compare{grid-template-columns:1fr 1fr}.market{grid-template-columns:1fr}.whyTop{padding:38px 14px 34px}.lead{font-size:16px}.whyTop .actions a{width:100%;text-align:center}}
+.earnGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.earnGrid article{border:1px solid #eee;border-radius:16px;padding:16px;text-align:left}
+.earnGrid span,.earnGrid b,.earnGrid em,.earnGrid small{display:block}
+.earnGrid span{font-size:13px;font-weight:800;color:#78716c}.earnGrid b{font-size:18px;margin-top:6px}
+.earnGrid em{font-style:normal;font-size:28px;font-weight:950;color:#c2410c;letter-spacing:-.5px}.earnGrid small{font-size:12px;color:#a8a29e}
+.earnGrid .best{background:#fff7ed;border-color:#fdba74}
+@media(max-width:860px){.compare b{font-size:22px}.compare .us b{font-size:28px}.earnGrid em{font-size:24px}}
+@media(max-width:420px){.earnGrid{grid-template-columns:1fr}}
