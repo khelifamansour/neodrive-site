@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import AmbassadorForm from "./AmbassadorForm";
 import s from "../devenir-partenaire/partenaire.module.css";
-import { AMBASSADOR } from "../../lib/ambassadors";
+import { AMBASSADOR, LEVELS, MONTHLY_BONUS } from "../../lib/ambassadors";
 
 export const metadata: Metadata = {
   title: "Devenir ambassadeur NeoDrive | 100 € par voiture vendue grâce à vous",
@@ -32,10 +32,28 @@ export default function AmbassadorPage() {
       </section>
 
       <section className={s.facts} style={{ marginTop: 40 }}>
-        <article><b>1. Inscription</b><span>2 minutes : vous recevez votre code (ex. NEOJULIE27) et votre lien</span></article>
+        <article><b>1. Inscription</b><span>2 minutes : vous recevez votre code (ex. NEOJULIE27), votre lien et le kit vidéos NeoDrive</span></article>
         <article><b>2. Publication</b><span>vous parlez de NeoDrive à votre façon, avec votre code ou votre lien</span></article>
         <article><b>3. Vente</b><span>vos abonnés réservent avec votre code et profitent d’une petite remise</span></article>
         <article><b>4. Paiement</b><span>{euro(c)} par voiture, versés sous {AMBASSADOR.payDelayDays} jours après la livraison</span></article>
+      </section>
+
+      <section className={s.formulas}>
+        <div className={s.heading}><span className={s.eyebrow}>VOTRE PARCOURS</span><h2>Plus vous vendez, plus vous gagnez.</h2><p>Votre niveau monte avec le nombre total de voitures vendues grâce à vous. Il ne redescend jamais.</p></div>
+        <div className={s.grid} style={{ gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))" }}>
+          {LEVELS.map((l, i) => (
+            <article key={l.name} className={i === LEVELS.length - 1 ? s.featured : undefined}>
+              <span className={s.tag}>{l.from === 0 ? "DÈS L’INSCRIPTION" : `DÈS ${l.from} VENTES`}</span>
+              <h3>{l.name}</h3>
+              <p><b>{euro(l.commission)}</b> par voiture vendue</p>
+              <ul>{l.perks.map(p => <li key={p}>{p}</li>)}</ul>
+            </article>
+          ))}
+        </div>
+        <div className={s.facts} style={{ padding: 0, margin: "20px 0 0", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
+          {MONTHLY_BONUS.map(b => <article key={b.sales}><b>+ {euro(b.bonus)}</b><span>de bonus si vous vendez {b.sales} voitures ou plus dans le même mois</span></article>)}
+        </div>
+        <p className={s.note}>Le bonus mensuel s’ajoute aux commissions (seul le palier le plus élevé atteint dans le mois est versé). Le prix ambassadeur du niveau Platine est communiqué individuellement.</p>
       </section>
 
       <section className={s.formulas}>
