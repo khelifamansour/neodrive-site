@@ -39,7 +39,7 @@ export default function AmbassadorPage() {
       </section>
 
       <section className={s.formulas}>
-        <div className={s.heading}><span className={s.eyebrow}>VOTRE PARCOURS</span><h2>Plus vous vendez, plus vous débloquez d’avantages.</h2><p>La commission reste de 100 € par voiture. Votre niveau monte avec le nombre total de voitures vendues grâce à vous et ne redescend jamais ; chaque mois, des objectifs vous rapportent un bonus en plus.</p></div>
+        <div className={s.heading}><span className={s.eyebrow}>VOTRE PARCOURS</span><h2>Simple : 100 € par voiture, et des bonus chaque mois.</h2><p>Dès 30 voitures vendues grâce à vous, vous devenez partenaire officiel NeoDrive.</p></div>
         <div className={s.grid} style={{ gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))" }}>
           {LEVELS.map((l, i) => (
             <article key={l.name} className={i === LEVELS.length - 1 ? s.featured : undefined}>
@@ -53,7 +53,7 @@ export default function AmbassadorPage() {
         <div className={s.facts} style={{ padding: 0, margin: "20px 0 0", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
           {MONTHLY_BONUS.map(b => <article key={b.sales}><b>+ {euro(b.bonus)}</b><span>de bonus si vous atteignez l’objectif de {b.sales} voitures vendues dans le mois</span></article>)}
         </div>
-        <p className={s.note}>Le bonus du mois s’ajoute aux commissions ; il n’est pas cumulable (seul l’objectif le plus élevé atteint dans le mois est versé). Le prix ambassadeur du niveau Platine est communiqué individuellement.</p>
+        <p className={s.note}>Le bonus du mois s’ajoute aux commissions ; il n’est pas cumulable (seul l’objectif le plus élevé atteint dans le mois est versé). Le prix ambassadeur des partenaires officiels est communiqué individuellement.</p>
       </section>
 
       <section className={s.formulas}>

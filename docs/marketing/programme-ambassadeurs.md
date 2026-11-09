@@ -4,24 +4,14 @@ Page publique : `easydrive-auto.fr/devenir-ambassadeur` (inscription, règles, c
 Réglages (commissions, niveaux, bonus) : `lib/ambassadors.ts`. Liste des ambassadeurs : table `ambassadors` (Supabase).
 
 ## 1. L'offre
-| Niveau | À partir de | Commission par voiture | Avantages |
-|---|---|---|---|
-| Bronze | inscription | 100 € | Code promo + lien, kit vidéos NeoDrive à republier |
-| Argent | 5 ventes | 100 € | Tournage sur place, mise en avant sur nos réseaux |
-| Or | 15 ventes | 100 € | Avant-première des nouveaux modèles, vidéos exclusives |
-| Platine | 30 ventes | 100 € | Une NeoDrive pour lui au prix ambassadeur, mis en avant sur le site |
-
-La commission reste toujours 100 € par vente. Objectifs du mois (en plus, non cumulables) : 3 ventes = +50 €, 5 ventes = +150 €, 10 ventes = +200 €.
-Coût total pour NeoDrive (commission 100 € + remise client 20 € + bonus du mois) :
-| Ventes du mois | Coût total | Coût par voiture |
+| Niveau | Dès | Avantages |
 |---|---|---|
-| 1 | 120 € | 120 € |
-| 3 | 410 € | 137 € |
-| 5 | 750 € | 150 € (maximum) |
-| 9 | 1 230 € | 137 € |
-| 10 | 1 400 € | 140 € |
-| 15 | 2 000 € | 133 € |
-Client : 20 € de remise avec le code (montant non annoncé dans les vidéos).
+| Ambassadeur | inscription | 100 € par voiture, code promo + lien, kit vidéos NeoDrive |
+| Partenaire officiel | 30 ventes | Une NeoDrive pour lui au prix ambassadeur, mis en avant sur le site |
+
+Objectifs du mois (en plus, non cumulables) : 5 ventes = +100 €, 10 ventes = +200 €.
+Client : 20 € de remise avec le code (montant non annoncé dans les vidéos, il le découvre en réservant).
+Coût pour NeoDrive : 120 € par voiture, 140 € au maximum quand un objectif est atteint.
 Une vente compte quand la voiture est livrée et payée. Paiement sous 30 jours. Pas de prêt de voiture.
 
 ## 2. Recrutement, étape par étape
@@ -31,7 +21,7 @@ Une vente compte quand la voiture est livrée et payée. Paiement sous 30 jours.
 4. **Sous 48 h** : envoyer sur WhatsApp le kit vidéos (5 à 10 vidéos de livraisons et de la Confort) + un rappel des règles.
 5. **Suivi** : à chaque réservation avec un code (champ `code_promo` dans l'e-mail de réservation), ajouter +1 à `sales_count` et la commission à `commission_due` une fois la voiture livrée et payée.
 6. **Paiement** : une fois par mois, virement des commissions et du bonus du mois.
-7. **Montée de niveau** : quand `sales_count` atteint 5, 15 ou 30, le prévenir et lui proposer les nouveaux avantages.
+7. **Partenaire officiel** : quand `sales_count` atteint 30, le prévenir et lui proposer une NeoDrive au prix ambassadeur.
 8. **Arrêt** : en cas de non-respect des règles (crédit, « la moins chère », faux avis, spam), lui demander de corriger ; si ça continue, passer `status` à « suspendu » (le code ne marche plus).
 
 ## 3. Message de premier contact
