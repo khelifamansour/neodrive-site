@@ -10,9 +10,23 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const isMobile = (p: string) => /^33[67]\d{8}$/.test(normalizePhone(p) || "");
 
 /** Onglet Logistique : prestataires de dépotage / stockage, suivi et envoi groupé (e-mail + SMS). */
+/** Envoi déclenché par un jeton à usage unique (admin_once_tokens, purpose « logistique-send », payload = { ids, subject, emailBody, smsBody }). */
+export async function GET(req: Request) {
+  const token = new URL(req.url).searchParams.get("token") || "";
+  if (!/^[a-f0-9]{48}$/.test(token)) return NextResponse.json({ ok: false }, { status: 401 });
+  const { data } = await crmDatabase().from("admin_once_tokens").update({ used_at: new Date().toISOString() }).eq("token", token).eq("purpose", "logistique-send").is("used_at", null).gt("expires_at", new Date().toISOString()).select("payload");
+  const payload = (data?.[0] as { payload?: Record<string, unknown> } | undefined)?.payload;
+  if (!payload) return NextResponse.json({ ok: false }, { status: 401 });
+  return handle({ ...payload, action: "send" });
+}
+
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
   if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  return handle(b);
+}
+
+async function handle(b: Record<string, any>) {
   const db = crmDatabase();
   try {
     if (b.action === "list") {
