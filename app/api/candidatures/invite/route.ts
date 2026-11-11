@@ -22,13 +22,13 @@ async function send(ids: number[]) {
     const r: { name: string; email?: string; sms?: string } = { name: c.full_name }; const now = new Date().toISOString(); const patch: Record<string, string> = {};
     if (c.email && !c.email_sent_at) {
       try {
-        await sendEmail(c.email, c.full_name, `NeoDrive – votre candidature : ${POSTES[c.poste].short}`, `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6"><p>Bonjour ${esc(first)},</p><p>Nous avons bien reçu votre candidature sur Emploitic, merci. NeoDrive est une marque française de voitures sans permis électriques. Votre CV a retenu notre attention pour le poste de <b>${esc(POSTES[c.poste].title)}</b> (prestataire freelance, présentiel à Alger, du lundi au samedi, et ponctuellement le dimanche selon les besoins).</p><p>Prochaine étape : remplir notre formulaire avec quelques tests (français, logique, énigmes, rédaction et mises en situation). Comptez 30 à 40 minutes, en une seule fois.</p><p style="font-size:17px;font-weight:bold;color:#b91c1c">⚠️ À faire seul(e), sans aucune aide ni outil d'intelligence artificielle.</p><p><a href="${link}" style="display:inline-block;background:#f05a28;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:bold">Remplir le formulaire</a></p><p>Les meilleurs profils seront appelés pour un entretien.</p><p>Cordialement,<br>Mansour Khelifa – NeoDrive</p></div>`);
+        await sendEmail(c.email, c.full_name, `NeoDrive – votre candidature : ${POSTES[c.poste].short}`, `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6"><p>Bonjour ${esc(first)},</p><p>NeoDrive, suite à votre candidature sur Emploitic : merci. NeoDrive est une marque française de voitures sans permis électriques. Votre CV a retenu notre attention pour le poste de <b>${esc(POSTES[c.poste].title)}</b> (prestataire freelance, présentiel à Alger, du lundi au samedi, et ponctuellement le dimanche selon les besoins).</p><p>Voici le test : notre formulaire avec quelques tests (français, logique, énigmes, rédaction et mises en situation). Comptez 30 à 40 minutes, en une seule fois.</p><p style="font-size:17px;font-weight:bold;color:#b91c1c">⚠️ À faire seul(e), sans aucune aide ni outil d'intelligence artificielle.</p><p><a href="${link}" style="display:inline-block;background:#f05a28;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:bold">Remplir le formulaire</a></p><p>Les meilleurs profils seront appelés pour un entretien.</p><p>Cordialement,<br>Mansour Khelifa – NeoDrive</p></div>`);
         r.email = "envoyé"; patch.email_sent_at = now;
       } catch (e) { r.email = "erreur : " + (e as Error).message; }
     }
     if (c.phone && !c.sms_sent_at) {
       try {
-        await sendSms("+" + String(c.phone).replace(/\D/g, ""), `Bonjour ${first}, NeoDrive a retenu votre CV (${POSTES[c.poste].short}, Alger). Étape suivante : formulaire et tests, 30-40 min, à faire seul sans IA : ${link.replace("https://www.", "")} Mansour - NeoDrive`);
+        await sendSms("+" + String(c.phone).replace(/\D/g, ""), `Bonjour ${first}, NeoDrive : suite a votre candidature sur Emploitic (${POSTES[c.poste].short}, Alger), voici le test a faire seul, sans IA (30-40 min) : ${link.replace("https://www.", "")} Mansour - NeoDrive`);
         r.sms = "envoyé"; patch.sms_sent_at = now;
       } catch (e) { r.sms = "erreur : " + (e as Error).message; }
     }
@@ -52,6 +52,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
   if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  if (b.action === "wa" && b.id) { await crmDatabase().from("job_invitations").update({ whatsapp_at: b.done === false ? null : new Date().toISOString() }).eq("id", Number(b.id)); return NextResponse.json({ ok: true }); }
   if (b.action === "send") return NextResponse.json(await send((b.ids || []).map(Number).slice(0, 60)));
   const db = crmDatabase();
   const [{ data: inv }, { data: apps }] = await Promise.all([db.from("job_invitations").select("*").order("cv_score", { ascending: false }), db.from("job_applications").select("phone,full_name")]);
