@@ -75,7 +75,7 @@ export async function POST(req: Request) {
   const { data, error } = await db.from("job_applications").insert(row).select("id").single();
   if (error) return NextResponse.json({ ok: false, error: "Enregistrement impossible, réessayez." }, { status: 502 });
   const ai = await evaluate(poste, row, cv).catch(() => null);
-  if (ai) await db.from("job_applications").update({ ...ai, status: ai.ai_verdict === "à écarter" ? "écarté (IA)" : "nouveau" }).eq("id", data.id);
+  if (ai) await db.from("job_applications").update({ ...ai, status: ai.ai_verdict === "à écarter" ? "écarté (IA)" : ai.ai_verdict === "à convoquer" && ai.ai_score >= 70 ? "à appeler" : "nouveau" }).eq("id", data.id);
   if (brevoReady() && ai && ai.ai_score >= 70) {
     try { await sendEmail(OWNER_EMAIL, "Mansour", `Bon candidat ${POSTES[poste].short} : ${row.full_name} (${ai.ai_score}/100)`, `<p><b>${esc(row.full_name)}</b> – ${esc(row.city)} – ${esc(row.phone)}</p><p>${esc(ai.ai_summary)}</p><p>Points forts : ${esc(ai.ai_strengths)}</p><p>Risques : ${esc(ai.ai_risks)}</p><p>Tests : français ${row.test_french}/10 · logique ${row.test_logic}/8 · rédaction ${ai.test_writing}/20 · bac ${row.bac_average ?? "?"}/20</p><p>Voir tous les candidats : https://www.easydrive-auto.fr/recrutement-admin</p>`); } catch (e) { console.error("[CANDIDATURE] email", e); }
   }
