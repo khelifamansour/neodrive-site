@@ -16,9 +16,16 @@ export default function CandidaturePage() {
   useEffect(() => { try { const p = new URLSearchParams(window.location.search).get("poste"); if (isPoste(p)) setPoste(p); } catch { } }, []);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setErr(""); setState("sending");
-    const r = await fetch("/api/candidatures", { method: "POST", body: new FormData(e.currentTarget) }).catch(() => null);
+    const fd = new FormData(e.currentTarget);
+    // Les serveurs refusent les envois de plus de 4,5 Mo : un CV trop lourd (photo de téléphone) bloquait tout le formulaire.
+    // Dans ce cas on envoie le formulaire sans le fichier : nous avons déjà le CV reçu via Emploitic.
+    const cvFile = fd.get("cv"); let cvDropped = false;
+    if (cvFile && typeof cvFile !== "string" && cvFile.size > 3.5 * 1024 * 1024) { fd.delete("cv"); cvDropped = true; }
+    let r: Response | null = null;
+    for (let i = 0; i < 2 && !r; i++) r = await fetch("/api/candidatures", { method: "POST", body: fd }).catch(() => null);
     const j = await r?.json().catch(() => null);
-    if (r?.ok && j?.ok) { setState("done"); window.scrollTo({ top: 0 }); } else { setState("idle"); setErr(j?.error || "Envoi impossible, réessayez."); }
+    if (r?.ok && j?.ok) { setState("done"); window.scrollTo({ top: 0 }); if (cvDropped) setErr("Votre CV était trop lourd : nous utiliserons celui reçu via Emploitic."); }
+    else { setState("idle"); setErr(j?.error || (!r ? "Connexion interrompue : vérifiez votre réseau (Wi-Fi si possible) puis appuyez de nouveau sur Envoyer. Vos réponses sont conservées." : r.status === 413 ? "Fichier trop lourd : retirez le CV ou envoyez un PDF de moins de 3 Mo, puis réessayez." : `Envoi impossible (erreur ${r.status}), réessayez dans un instant. Vos réponses sont conservées.`)); }
   }
   const field = (q: Question) => <label key={q.id} className={q.type === "long" ? s.full : undefined}>{q.label}{q.required ? " *" : ""}
     {q.type === "choice" ? <select name={q.id} required={q.required} defaultValue=""><option value="" disabled>Choisir…</option>{q.options!.map(o => <option key={o}>{o}</option>)}</select>
@@ -60,7 +67,7 @@ export default function CandidaturePage() {
         <label>Ville<input name="city" placeholder="Alger" /></label>
         <label>Diplôme le plus élevé<input name="education" placeholder="Licence commerce, BTS transit…" /></label>
         <label>Années d'expérience sur ce type de poste<input name="experience_years" inputMode="numeric" /></label>
-        <label className={s.full}>CV (PDF de préférence, 8 Mo max)<input type="file" name="cv" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" /></label>
+        <label className={s.full}>CV (facultatif, PDF de préférence, 3 Mo max)<input type="file" name="cv" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" /></label>
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Conditions de la mission</p>
         {COMMON.map(field)}
         <label>Baccalauréat : filière *<input name="bac_stream" required placeholder="Sciences expérimentales, Gestion…" /></label>
