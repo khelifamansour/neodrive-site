@@ -33,7 +33,14 @@ export default function CandidaturePage() {
     <section className={s.whyTop}>
       <span className={s.eyebrow}>NEODRIVE RECRUTE · FREELANCE · ALGER</span>
       <h1>Rejoignez <em>NeoDrive</em></h1>
-      <p className={s.lead}>Marque française de voitures sans permis électriques neuves, livrées partout en France. Missions en freelance, en présentiel à Alger, du lundi au samedi aux horaires français.</p>
+      <p className={s.lead}>Nous avons bien reçu votre candidature sur Emploitic, merci. NeoDrive est une marque française de voitures sans permis électriques neuves, livrées partout en France.</p>
+      <div style={{ maxWidth: 760, margin: "18px auto 0", background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 16, padding: "14px 18px", textAlign: "left", color: "#fff", lineHeight: 1.6 }}>
+        <b>Conditions de la mission :</b><br />
+        • Statut : <b>prestataire freelance</b> (vous facturez NeoDrive chaque mois), ce n'est pas un contrat salarié.<br />
+        • Lieu : <b>en présentiel à Alger</b>.<br />
+        • Jours : <b>du lundi au samedi</b>, aux horaires français. Selon les besoins de l'entreprise, le planning peut varier et inclure ponctuellement le <b>dimanche</b>.<br />
+        • Rémunération : fixe + primes, à définir en entretien.
+      </div>
     </section>
     <section className={s.formSection} style={{ paddingTop: 30 }}>
       <div className={s.heading}><span className={s.eyebrow}>1. CHOISISSEZ LE POSTE</span></div>

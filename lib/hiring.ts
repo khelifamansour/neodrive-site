@@ -4,9 +4,9 @@ export type PosteKey = "closer" | "coordinateur" | "social";
 export type Question = { id: string; label: string; type: "text" | "long" | "choice"; options?: string[]; required?: boolean };
 
 export const COMMON: Question[] = [
-  { id: "freelance_ok", label: "La mission est en freelance (vous facturez NeoDrive chaque mois). Acceptez-vous ce statut ?", type: "choice", options: ["Oui", "Oui, mais j'ai besoin d'aide pour le statut", "Non"], required: true },
+  { id: "freelance_ok", label: "La mission est en prestataire freelance (vous facturez NeoDrive chaque mois, ce n'est pas un contrat salarié). Acceptez-vous ce statut ?", type: "choice", options: ["Oui", "Oui, mais j'ai besoin d'aide pour le statut", "Non"], required: true },
   { id: "billing_structure", label: "Avez-vous déjà une structure pour facturer ?", type: "choice", options: ["Oui, auto-entrepreneur", "Oui, registre de commerce / société", "Pas encore, mais je peux la créer", "Non"], required: true },
-  { id: "availability", label: "Êtes-vous disponible du lundi au samedi aux horaires français (et ponctuellement le dimanche si besoin) ?", type: "choice", options: ["Oui", "Oui, sauf certains jours", "Non"], required: true },
+  { id: "availability", label: "Êtes-vous disponible du lundi au samedi aux horaires français, en sachant que le planning peut varier et inclure ponctuellement le dimanche selon les besoins de l'entreprise ?", type: "choice", options: ["Oui", "Oui, sauf certains jours", "Non"], required: true },
   { id: "onsite", label: "La mission se fait en présentiel à Alger. Est-ce possible pour vous ?", type: "choice", options: ["Oui", "Oui, mais j'habite hors d'Alger", "Non"], required: true },
   { id: "salary_expectation", label: "Votre rémunération mensuelle souhaitée (fixe, en DA)", type: "text", required: true },
   { id: "start", label: "Quand pouvez-vous commencer ?", type: "choice", options: ["Immédiatement", "Sous 2 semaines", "Sous 1 mois", "Plus tard"], required: true },
