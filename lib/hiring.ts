@@ -83,3 +83,9 @@ export const LOGIC_TEST: Mcq[] = [
   { id: "lo8", q: "Quel est l'intrus ?", options: ["Lundi", "Mardi", "Avril", "Jeudi"] },
 ];
 export const WRITING_PROMPT = "Rédaction (8 à 12 lignes, sans copier-coller) : un client écrit « J'ai réservé il y a 3 semaines et je n'ai aucune nouvelle. C'est une arnaque ? ». Rédigez la réponse que vous lui envoyez par e-mail.";
+
+export const RIDDLES = [
+  { id: "ri1", q: "Énigme 1 : un éleveur a 17 moutons. Tous meurent sauf 9. Combien lui en reste-t-il ?" },
+  { id: "ri2", q: "Énigme 2 : chaque voiture livrée rapporte 1 000 € de marge. Chaque trajet de livraison coûte 200 €. Un client commande 3 voitures : la 1re part seule, la 2e et la 3e partent ensemble sur la même remorque. Quelle est la marge totale, en euros ?" },
+];
+export const BAC_SUBJECTS = [["bac_maths", "Mathématiques"], ["bac_francais", "Français"], ["bac_arabe", "Arabe"], ["bac_anglais", "Anglais"]] as const;

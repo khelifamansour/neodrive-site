@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import s from "../devenir-partenaire/partenaire.module.css";
-import { COMMON, POSTES, FRENCH_TEST, LOGIC_TEST, WRITING_PROMPT, isPoste, type Mcq, type PosteKey, type Question } from "../../lib/hiring";
+import { COMMON, POSTES, FRENCH_TEST, LOGIC_TEST, WRITING_PROMPT, RIDDLES, BAC_SUBJECTS, isPoste, type Mcq, type PosteKey, type Question } from "../../lib/hiring";
 
 export default function CandidaturePage() {
   const [poste, setPoste] = useState<PosteKey | "">("");
@@ -9,6 +9,8 @@ export default function CandidaturePage() {
   const [err, setErr] = useState("");
   const [startedAt, setStartedAt] = useState(0);
   const [pastes, setPastes] = useState(0);
+  const [riddleStart, setRiddleStart] = useState(0); const [riddleSec, setRiddleSec] = useState(0); const [riddleDone, setRiddleDone] = useState(false);
+  useEffect(() => { if (!riddleStart || riddleDone) return; const t = setInterval(() => setRiddleSec(Math.round((Date.now() - riddleStart) / 1000)), 1000); return () => clearInterval(t); }, [riddleStart, riddleDone]);
   useEffect(() => { if (poste && !startedAt) setStartedAt(Date.now()); }, [poste, startedAt]);
   const noPaste = (e: React.ClipboardEvent) => { e.preventDefault(); setPastes(n => n + 1); };
   useEffect(() => { try { const p = new URLSearchParams(window.location.search).get("poste"); if (isPoste(p)) setPoste(p); } catch { } }, []);
@@ -42,6 +44,7 @@ export default function CandidaturePage() {
     </section>
     {poste ? <section className={s.formSection} id="formulaire">
       <div className={s.heading}><span className={s.eyebrow}>2. VOTRE CANDIDATURE</span><h2>{POSTES[poste].short}</h2><p>Comptez 30 à 40 minutes, en une seule fois. Le copier-coller est désactivé et le temps est mesuré : répondez avec vos propres mots, sans aide extérieure ni outil d’IA.</p></div>
+      <div style={{ background: "#b91c1c", color: "#fff", borderRadius: 16, padding: "18px 20px", margin: "0 0 18px", fontSize: 22, fontWeight: 950, lineHeight: 1.3, textAlign: "center" }}>⚠️ À FAIRE SEUL(E), SANS AUCUNE AIDE : NI PERSONNE, NI CHATGPT, NI AUCUN OUTIL D’INTELLIGENCE ARTIFICIELLE.<div style={{ fontSize: 15, fontWeight: 600, marginTop: 6 }}>Le copier-coller est bloqué, le temps est chronométré et les réponses sont vérifiées. Toute réponse rédigée par une IA entraîne l’élimination.</div></div>
       <form className={s.form} onSubmit={submit}>
         <input type="hidden" name="poste" value={poste} />
         <label>Nom et prénom *<input name="full_name" required /></label>
@@ -55,11 +58,32 @@ export default function CandidaturePage() {
         {COMMON.map(field)}
         <label>Baccalauréat : filière *<input name="bac_stream" required placeholder="Sciences expérimentales, Gestion…" /></label>
         <label>Année du bac *<input name="bac_year" required inputMode="numeric" placeholder="2018" /></label>
-        <label>Moyenne au bac (sur 20) *<input name="bac_average" required inputMode="decimal" placeholder="12,45" /></label>
+        <label>Moyenne générale au bac (sur 20) *<input name="bac_average" required inputMode="decimal" placeholder="12,45" /></label>
+        {BAC_SUBJECTS.map(([id, l]) => <label key={id}>Note au bac en {l} (sur 20) *<input name={id} required inputMode="decimal" /></label>)}
+        <label>Matière principale de votre filière *<input name="bac_main_subject" required placeholder="Sciences naturelles, Gestion…" /></label>
+        <label>Note dans cette matière (sur 20) *<input name="bac_main_grade" required inputMode="decimal" /></label>
+        <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Votre dernière expérience professionnelle</p>
+        <label>Dernier employeur (entreprise) *<input name="emp_company" required /></label>
+        <label>Poste occupé *<input name="emp_role" required /></label>
+        <label>Dates (de … à …) *<input name="emp_dates" required placeholder="03/2023 – 09/2026" /></label>
+        <label>Comment s'est passé votre départ ? *<select name="emp_departure" required defaultValue=""><option value="" disabled>Choisir…</option><option>En bons termes</option><option>Neutre</option><option>Désaccord / conflit</option><option>Je suis toujours en poste</option></select></label>
+        <label className={s.full}>Pourquoi avez-vous quitté (ou voulez-vous quitter) cet employeur ? *<textarea name="emp_reason" rows={3} required onPaste={noPaste} /></label>
+        <label>Personne de référence chez cet employeur (nom et fonction)<input name="ref_name" placeholder="Mme X, responsable commerciale" /></label>
+        <label>Téléphone de la référence<input name="ref_phone" type="tel" /></label>
+        <label className={s.check}><input type="checkbox" name="ref_consent" value="oui" /> J'accepte que NeoDrive contacte cette référence.</label>
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Test de français (10 questions)</p>
         {FRENCH_TEST.map(mcq)}
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Test de logique (8 questions, sans calculatrice)</p>
         {LOGIC_TEST.map(mcq)}
+        <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Énigmes chronométrées</p>
+        <div className={s.full} style={{ border: "2px solid #f97316", borderRadius: 14, padding: 14, background: "#fff7ed" }}>
+          {!riddleStart ? <button type="button" className={s.primary} onClick={() => setRiddleStart(Date.now())}>Démarrer les énigmes (chronomètre)</button> : <>
+            <p style={{ margin: "0 0 8px", fontWeight: 900 }}>⏱ {Math.floor(riddleSec / 60)} min {String(riddleSec % 60).padStart(2, "0")} s{riddleDone ? " — terminé" : ""}</p>
+            {RIDDLES.map(r => <label key={r.id} style={{ marginBottom: 10 }}>{r.q} *<input name={r.id} required inputMode="numeric" onPaste={noPaste} readOnly={riddleDone} /></label>)}
+            {!riddleDone ? <button type="button" className={s.secondary} onClick={() => setRiddleDone(true)}>J'ai terminé les énigmes</button> : null}
+          </>}
+          <input type="hidden" name="riddle_sec" value={riddleSec} />
+        </div>
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Rédaction</p>
         <label className={s.full}>{WRITING_PROMPT} *<textarea name="writing" rows={8} required minLength={150} onPaste={noPaste} /></label>
         <input type="hidden" name="started_at" value={startedAt} /><input type="hidden" name="paste_count" value={pastes} />

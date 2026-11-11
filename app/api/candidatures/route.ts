@@ -3,7 +3,8 @@ import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail, OWNER_EMAIL } from "../../../lib/brevo";
 import { COMMON, POSTES, WRITING_PROMPT, FRENCH_TEST, LOGIC_TEST, isPoste, type PosteKey } from "../../../lib/hiring";
-import { FRENCH_KEY, LOGIC_KEY } from "../../../lib/hiring-keys";
+import { FRENCH_KEY, LOGIC_KEY, RIDDLE_KEY } from "../../../lib/hiring-keys";
+import { BAC_SUBJECTS, RIDDLES } from "../../../lib/hiring";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -16,7 +17,7 @@ async function evaluate(poste: PosteKey, row: Record<string, any>, cv?: { mime: 
   const key = process.env.OPENAI_API_KEY; if (!key) return null;
   const p = POSTES[poste];
   const qa = [...COMMON, ...p.questions].map(q => `Q: ${q.label}\nR: ${row.answers?.[q.id] ?? row[q.id] ?? "—"}`).join("\n\n");
-  const content: any[] = [{ type: "input_text", text: `Poste : ${p.title}\nMission : ${p.summary}\nCritères d'évaluation : ${p.rubric}\n\nCandidat : ${row.full_name}, ${row.city || "?"}. Formation : ${row.education || "?"}. Expérience : ${row.experience_years || "?"} ans. Bac : ${row.bac_stream || "?"} ${row.bac_year || ""}, moyenne ${row.bac_average ?? "?"}/20.\nTests corrigés automatiquement : français ${row.test_french}/10, logique ${row.test_logic}/8. Durée de remplissage : ${Math.round((row.duration_sec || 0) / 60)} min. Collages de texte détectés : ${row.paste_count || 0}.\n\n${WRITING_PROMPT}\nRédaction du candidat :\n${row.answers?.writing || "—"}\n\nRéponses au questionnaire :\n${qa}\n\nÉvalue ce candidat de façon exigeante et factuelle (le CV éventuel est joint). Pénalise fortement : français approximatif, réponses vagues ou copiées, refus du freelance, du présentiel à Alger ou des horaires. Réponds en JSON : {"score": entier 0-100 (tient compte des tests, de la rédaction et des réponses), "writing": note de la rédaction sur 20 (orthographe, ton professionnel rassurant, solution concrète proposée), "verdict": "à convoquer" | "à revoir" | "à écarter", "summary": "2 phrases", "strengths": "3 points courts", "risks": "3 points courts", "questions": "3 questions précises à poser en entretien"}` }];
+  const content: any[] = [{ type: "input_text", text: `Poste : ${p.title}\nMission : ${p.summary}\nCritères d'évaluation : ${p.rubric}\n\nCandidat : ${row.full_name}, ${row.city || "?"}. Formation : ${row.education || "?"}. Expérience : ${row.experience_years || "?"} ans. Bac : ${row.bac_stream || "?"} ${row.bac_year || ""}, moyenne ${row.bac_average ?? "?"}/20.\nNotes au bac par matière : ${JSON.stringify(row.bac_grades)}. Dernier employeur : ${JSON.stringify(row.last_employer)} (un départ en conflit ou une raison floue est un risque ; un départ en bons termes avec une référence est un bon signe).\nTests corrigés automatiquement : français ${row.test_french}/10, logique ${row.test_logic}/8, énigmes ${row.answers?.riddles_score} en ${row.riddle_sec ?? "?"} s. Durée de remplissage : ${Math.round((row.duration_sec || 0) / 60)} min. Collages de texte détectés : ${row.paste_count || 0}.\n\n${WRITING_PROMPT}\nRédaction du candidat :\n${row.answers?.writing || "—"}\n\nRéponses au questionnaire :\n${qa}\n\nÉvalue ce candidat de façon exigeante et factuelle (le CV éventuel est joint). Pénalise fortement : français approximatif, réponses vagues ou copiées, refus du freelance, du présentiel à Alger ou des horaires. Réponds en JSON : {"score": entier 0-100 (tient compte des tests, de la rédaction et des réponses), "writing": note de la rédaction sur 20 (orthographe, ton professionnel rassurant, solution concrète proposée), "verdict": "à convoquer" | "à revoir" | "à écarter", "summary": "2 phrases", "strengths": "3 points courts", "risks": "3 points courts", "questions": "3 questions précises à poser en entretien"}` }];
   if (cv?.mime === "application/pdf") content.push({ type: "input_file", filename: cv.name || "cv.pdf", file_data: `data:application/pdf;base64,${cv.b64}` });
   else if (cv && /^image\//.test(cv.mime)) content.push({ type: "input_image", image_url: `data:${cv.mime};base64,${cv.b64}` });
   const r = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ model: process.env.OPENAI_HIRING_MODEL || "gpt-4.1-mini", input: [{ role: "user", content }], text: { format: { type: "json_object" } }, max_output_tokens: 900, store: false }) });
@@ -51,6 +52,13 @@ export async function POST(req: Request) {
   const avg = Number(String(fd.get("bac_average") || "").replace(",", ".")); row.bac_average = Number.isFinite(avg) && avg > 0 && avg <= 20 ? avg : null;
   const started = Number(fd.get("started_at")); row.duration_sec = started > 0 ? Math.max(0, Math.round((Date.now() - started) / 1000)) : null;
   row.paste_count = Math.min(999, Number(fd.get("paste_count")) || 0);
+  const grade = (v: unknown) => { const n = Number(String(v ?? "").replace(",", ".")); return Number.isFinite(n) && n >= 0 && n <= 20 ? n : null; };
+  row.bac_grades = Object.fromEntries([...BAC_SUBJECTS.map(([id, l]) => [l, grade(fd.get(id))]), [clean(fd.get("bac_main_subject"), 60) || "Matière principale", grade(fd.get("bac_main_grade"))]]);
+  for (const r of RIDDLES) answers[r.id] = clean(fd.get(r.id), 40);
+  const riddles = RIDDLES.filter(r => answers[r.id].replace(/\D/g, "") === RIDDLE_KEY[r.id]).length;
+  row.riddle_ok = riddles === RIDDLES.length; answers.riddles_score = `${riddles}/${RIDDLES.length}`;
+  row.riddle_sec = Math.min(36000, Number(fd.get("riddle_sec")) || 0) || null;
+  row.last_employer = { entreprise: clean(fd.get("emp_company"), 120), poste: clean(fd.get("emp_role"), 120), dates: clean(fd.get("emp_dates"), 60), depart: clean(fd.get("emp_departure"), 60), raison: clean(fd.get("emp_reason"), 1500), reference: clean(fd.get("ref_name"), 120), reference_tel: clean(fd.get("ref_phone"), 40), accord_contact: fd.get("ref_consent") === "oui" };
   if (!row.full_name || !row.phone) return NextResponse.json({ ok: false, error: "Nom et téléphone obligatoires." }, { status: 400 });
   const db = crmDatabase();
   let cv: { mime: string; b64: string; name: string } | undefined;
