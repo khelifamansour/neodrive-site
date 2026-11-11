@@ -1,0 +1,52 @@
+"use client";
+import { useEffect, useMemo, useState } from "react";
+import s from "../planificateur/planif.module.css";
+import { COMMON, POSTES, type PosteKey } from "../../lib/hiring";
+
+type Row = Record<string, any>;
+const STATUSES = ["nouveau", "à appeler", "test téléphone", "essai payé", "recruté", "écarté", "écarté (IA)"];
+const color = (n?: number) => n == null ? "#9ca3af" : n >= 75 ? "#15803d" : n >= 55 ? "#b45309" : "#b91c1c";
+
+export default function RecrutementAdmin() {
+  const [code, setCode] = useState(""); const [rows, setRows] = useState<Row[] | null>(null); const [msg, setMsg] = useState("");
+  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<number | null>(null); const [hideOut, setHideOut] = useState(true);
+  const api = async (body: object, pc = code) => { const r = await fetch("/api/candidatures", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
+  const load = async (pc = code) => { try { const j = await api({ action: "list" }, pc); setRows(j.rows); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
+  useEffect(() => { try { const pc = sessionStorage.getItem("nd_pc"); if (pc) { setCode(pc); load(pc); } } catch { } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const shown = useMemo(() => (rows || []).filter(r => (poste === "tous" || r.poste === poste) && (!hideOut || !String(r.status).startsWith("écarté"))), [rows, poste, hideOut]);
+  const update = async (id: number, patch: Row) => { setRows(rs => rs!.map(r => r.id === id ? { ...r, ...patch } : r)); try { await api({ action: "update", id, patch }) } catch (e) { setMsg((e as Error).message) } };
+  const openCv = async (path: string) => { const j = await api({ action: "cv", path }); if (j.url) window.open(j.url, "_blank"); };
+  if (!rows) return <main className={s.page}><form className={s.login} onSubmit={e => { e.preventDefault(); load(); }}><span className={s.logo}>N</span><h1>Recrutement</h1><p>Code d'accès NeoDrive.</p><input type="password" value={code} onChange={e => setCode(e.target.value)} autoFocus /><button>Entrer</button>{msg ? <p style={{ color: "#b91c1c" }}>{msg}</p> : null}</form></main>;
+  const count = (k: string) => (rows || []).filter(r => k === "tous" || r.poste === k).length;
+  return <main className={s.page}>
+    <div className={s.top}><div><h1>👥 Recrutement</h1><p>Candidats triés par note IA. Lien à envoyer : easydrive-auto.fr/candidature?poste=closer | coordinateur | social</p></div></div>
+    <section className={s.card}>
+      <div className={s.seg}>{(["tous", "closer", "coordinateur", "social"] as const).map(k => <button key={k} className={poste === k ? s.on : ""} onClick={() => setPoste(k)}>{k === "tous" ? "Tous" : POSTES[k].short} ({count(k)})</button>)}
+        <button onClick={() => setHideOut(!hideOut)}>{hideOut ? "Afficher les écartés" : "Masquer les écartés"}</button></div>
+      {shown.length === 0 ? <p className={s.muted}>Aucune candidature pour l'instant.</p> : null}
+      {shown.map(r => <article key={r.id} style={{ border: "1px solid #ece6dd", borderRadius: 14, padding: 12, display: "grid", gap: 8 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", cursor: "pointer" }} onClick={() => setOpen(open === r.id ? null : r.id)}>
+          <b style={{ minWidth: 52, height: 52, borderRadius: 14, display: "grid", placeItems: "center", color: "#fff", background: color(r.ai_score), fontSize: 18 }}>{r.ai_score ?? "–"}</b>
+          <div style={{ flex: 1 }}><b>{r.full_name}</b> <small style={{ color: "#7a8594" }}>· {POSTES[r.poste as PosteKey]?.short} · {r.city || "?"} · {new Date(r.created_at).toLocaleDateString("fr-FR")}</small><br /><small>{r.ai_verdict ? `IA : ${r.ai_verdict} — ` : ""}{r.ai_summary || ""}</small></div>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 14 }}>
+          <a href={`tel:${String(r.phone).replace(/[^\d+]/g, "")}`}>📞 {r.phone}</a>
+          <a href={`https://wa.me/${String(r.phone).replace(/\D/g, "")}`} target="_blank" rel="noreferrer">💬 WhatsApp</a>
+          {r.email ? <a href={`mailto:${r.email}`}>✉️ {r.email}</a> : null}
+          {r.cv_path ? <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openCv(r.cv_path)}>📄 CV</button> : null}
+          <span>💰 {r.salary_expectation || "?"}</span><span>🧾 {r.billing_structure || "?"}</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
+          <select value={r.status} onChange={e => update(r.id, { status: e.target.value })}>{STATUSES.map(x => <option key={x}>{x}</option>)}</select>
+          <input defaultValue={r.notes || ""} placeholder="Notes d'entretien…" onBlur={e => e.target.value !== (r.notes || "") && update(r.id, { notes: e.target.value })} />
+        </div>
+        {open === r.id ? <div style={{ fontSize: 14, display: "grid", gap: 8, background: "#fafaf9", borderRadius: 12, padding: 12 }}>
+          <div><b>✅ Points forts :</b> {r.ai_strengths || "—"}</div><div><b>⚠️ Risques :</b> {r.ai_risks || "—"}</div><div><b>❓ Questions d'entretien :</b> {r.ai_questions || "—"}</div>
+          <hr />{[...COMMON, ...(POSTES[r.poste as PosteKey]?.questions || [])].map(q => <div key={q.id}><small style={{ color: "#7a8594" }}>{q.label}</small><div style={{ whiteSpace: "pre-wrap" }}>{r.answers?.[q.id] || "—"}</div></div>)}
+          <div><small style={{ color: "#7a8594" }}>Formation / expérience</small><div>{r.education || "—"} · {r.experience_years || "?"} ans</div></div>
+        </div> : null}
+      </article>)}
+    </section>
+  </main>;
+}
