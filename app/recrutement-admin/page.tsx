@@ -35,7 +35,7 @@ export default function RecrutementAdmin() {
           <a href={`https://wa.me/${String(r.phone).replace(/\D/g, "")}`} target="_blank" rel="noreferrer">💬 WhatsApp</a>
           {r.email ? <a href={`mailto:${r.email}`}>✉️ {r.email}</a> : null}
           {r.cv_path ? <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openCv(r.cv_path)}>📄 CV</button> : null}
-          <span>💰 {r.salary_expectation || "?"}</span><span>🧾 {r.billing_structure || "?"}</span>
+          <span>🇫🇷 {r.test_french ?? "–"}/10</span><span>🧠 {r.test_logic ?? "–"}/8</span><span>✍️ {r.test_writing ?? "–"}/20</span><span>🎓 Bac {r.bac_average ?? "?"}/20</span>{r.paste_count ? <span style={{ color: "#b91c1c" }}>⚠️ {r.paste_count} collage(s)</span> : null}{r.duration_sec ? <span>⏱ {Math.round(r.duration_sec / 60)} min</span> : null}<span>💰 {r.salary_expectation || "?"}</span><span>🧾 {r.billing_structure || "?"}</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
           <select value={r.status} onChange={e => update(r.id, { status: e.target.value })}>{STATUSES.map(x => <option key={x}>{x}</option>)}</select>
@@ -44,6 +44,7 @@ export default function RecrutementAdmin() {
         {open === r.id ? <div style={{ fontSize: 14, display: "grid", gap: 8, background: "#fafaf9", borderRadius: 12, padding: 12 }}>
           <div><b>✅ Points forts :</b> {r.ai_strengths || "—"}</div><div><b>⚠️ Risques :</b> {r.ai_risks || "—"}</div><div><b>❓ Questions d'entretien :</b> {r.ai_questions || "—"}</div>
           <hr />{[...COMMON, ...(POSTES[r.poste as PosteKey]?.questions || [])].map(q => <div key={q.id}><small style={{ color: "#7a8594" }}>{q.label}</small><div style={{ whiteSpace: "pre-wrap" }}>{r.answers?.[q.id] || "—"}</div></div>)}
+          <div><small style={{ color: "#7a8594" }}>Rédaction</small><div style={{ whiteSpace: "pre-wrap" }}>{r.answers?.writing || "—"}</div></div>
           <div><small style={{ color: "#7a8594" }}>Formation / expérience</small><div>{r.education || "—"} · {r.experience_years || "?"} ans</div></div>
         </div> : null}
       </article>)}

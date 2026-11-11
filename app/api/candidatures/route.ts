@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail, OWNER_EMAIL } from "../../../lib/brevo";
-import { COMMON, POSTES, isPoste, type PosteKey } from "../../../lib/hiring";
+import { COMMON, POSTES, WRITING_PROMPT, FRENCH_TEST, LOGIC_TEST, isPoste, type PosteKey } from "../../../lib/hiring";
+import { FRENCH_KEY, LOGIC_KEY } from "../../../lib/hiring-keys";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -15,14 +16,14 @@ async function evaluate(poste: PosteKey, row: Record<string, any>, cv?: { mime: 
   const key = process.env.OPENAI_API_KEY; if (!key) return null;
   const p = POSTES[poste];
   const qa = [...COMMON, ...p.questions].map(q => `Q: ${q.label}\nR: ${row.answers?.[q.id] ?? row[q.id] ?? "—"}`).join("\n\n");
-  const content: any[] = [{ type: "input_text", text: `Poste : ${p.title}\nMission : ${p.summary}\nCritères d'évaluation : ${p.rubric}\n\nCandidat : ${row.full_name}, ${row.city || "?"}. Formation : ${row.education || "?"}. Expérience : ${row.experience_years || "?"} ans.\n\nRéponses au questionnaire :\n${qa}\n\nÉvalue ce candidat de façon exigeante et factuelle (le CV éventuel est joint). Pénalise fortement : français approximatif, réponses vagues ou copiées, refus du freelance, du présentiel à Alger ou des horaires. Réponds en JSON : {"score": entier 0-100, "verdict": "à convoquer" | "à revoir" | "à écarter", "summary": "2 phrases", "strengths": "3 points courts", "risks": "3 points courts", "questions": "3 questions précises à poser en entretien"}` }];
+  const content: any[] = [{ type: "input_text", text: `Poste : ${p.title}\nMission : ${p.summary}\nCritères d'évaluation : ${p.rubric}\n\nCandidat : ${row.full_name}, ${row.city || "?"}. Formation : ${row.education || "?"}. Expérience : ${row.experience_years || "?"} ans. Bac : ${row.bac_stream || "?"} ${row.bac_year || ""}, moyenne ${row.bac_average ?? "?"}/20.\nTests corrigés automatiquement : français ${row.test_french}/10, logique ${row.test_logic}/8. Durée de remplissage : ${Math.round((row.duration_sec || 0) / 60)} min. Collages de texte détectés : ${row.paste_count || 0}.\n\n${WRITING_PROMPT}\nRédaction du candidat :\n${row.answers?.writing || "—"}\n\nRéponses au questionnaire :\n${qa}\n\nÉvalue ce candidat de façon exigeante et factuelle (le CV éventuel est joint). Pénalise fortement : français approximatif, réponses vagues ou copiées, refus du freelance, du présentiel à Alger ou des horaires. Réponds en JSON : {"score": entier 0-100 (tient compte des tests, de la rédaction et des réponses), "writing": note de la rédaction sur 20 (orthographe, ton professionnel rassurant, solution concrète proposée), "verdict": "à convoquer" | "à revoir" | "à écarter", "summary": "2 phrases", "strengths": "3 points courts", "risks": "3 points courts", "questions": "3 questions précises à poser en entretien"}` }];
   if (cv?.mime === "application/pdf") content.push({ type: "input_file", filename: cv.name || "cv.pdf", file_data: `data:application/pdf;base64,${cv.b64}` });
   else if (cv && /^image\//.test(cv.mime)) content.push({ type: "input_image", image_url: `data:${cv.mime};base64,${cv.b64}` });
   const r = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ model: process.env.OPENAI_HIRING_MODEL || "gpt-4.1-mini", input: [{ role: "user", content }], text: { format: { type: "json_object" } }, max_output_tokens: 900, store: false }) });
   const j = await r.json().catch(() => null);
   if (!r.ok) { console.error("[CANDIDATURE] IA", r.status, JSON.stringify(j).slice(0, 300)); return null; }
   const txt = (j?.output || []).flatMap((x: any) => x.content || []).filter((x: any) => x.type === "output_text").map((x: any) => x.text).join("");
-  try { const o = JSON.parse(txt); return { ai_score: Math.max(0, Math.min(100, Math.round(Number(o.score) || 0))), ai_verdict: clean(o.verdict, 40), ai_summary: clean(o.summary, 600), ai_strengths: clean(o.strengths, 800), ai_risks: clean(o.risks, 800), ai_questions: clean(o.questions, 1000) }; } catch { return null; }
+  try { const o = JSON.parse(txt); return { test_writing: Math.max(0, Math.min(20, Math.round(Number(o.writing) || 0))), ai_score: Math.max(0, Math.min(100, Math.round(Number(o.score) || 0))), ai_verdict: clean(o.verdict, 40), ai_summary: clean(o.summary, 600), ai_strengths: clean(o.strengths, 800), ai_risks: clean(o.risks, 800), ai_questions: clean(o.questions, 1000) }; } catch { return null; }
 }
 
 /** Dépôt d'une candidature (formulaire public multipart). */
@@ -41,6 +42,15 @@ export async function POST(req: Request) {
     education: clean(fd.get("education"), 300), experience_years: clean(fd.get("experience_years"), 20),
     freelance_ok: answers.freelance_ok, billing_structure: answers.billing_structure, availability: answers.availability, salary_expectation: answers.salary_expectation, answers,
   };
+  const score = (tests: { id: string }[], key: Record<string, string>) => tests.reduce((n, q) => n + (clean(fd.get(q.id), 200) === key[q.id] ? 1 : 0), 0);
+  for (const q of [...FRENCH_TEST, ...LOGIC_TEST]) answers[q.id] = clean(fd.get(q.id), 200);
+  answers.writing = clean(fd.get("writing"), 4000);
+  if (answers.writing.length < 150) return NextResponse.json({ ok: false, error: "La rédaction est trop courte (8 à 12 lignes demandées)." }, { status: 400 });
+  row.test_french = score(FRENCH_TEST, FRENCH_KEY); row.test_logic = score(LOGIC_TEST, LOGIC_KEY);
+  row.bac_stream = clean(fd.get("bac_stream"), 80); row.bac_year = clean(fd.get("bac_year"), 10);
+  const avg = Number(String(fd.get("bac_average") || "").replace(",", ".")); row.bac_average = Number.isFinite(avg) && avg > 0 && avg <= 20 ? avg : null;
+  const started = Number(fd.get("started_at")); row.duration_sec = started > 0 ? Math.max(0, Math.round((Date.now() - started) / 1000)) : null;
+  row.paste_count = Math.min(999, Number(fd.get("paste_count")) || 0);
   if (!row.full_name || !row.phone) return NextResponse.json({ ok: false, error: "Nom et téléphone obligatoires." }, { status: 400 });
   const db = crmDatabase();
   let cv: { mime: string; b64: string; name: string } | undefined;
@@ -59,7 +69,7 @@ export async function POST(req: Request) {
   const ai = await evaluate(poste, row, cv).catch(() => null);
   if (ai) await db.from("job_applications").update({ ...ai, status: ai.ai_verdict === "à écarter" ? "écarté (IA)" : "nouveau" }).eq("id", data.id);
   if (brevoReady() && ai && ai.ai_score >= 70) {
-    try { await sendEmail(OWNER_EMAIL, "Mansour", `Bon candidat ${POSTES[poste].short} : ${row.full_name} (${ai.ai_score}/100)`, `<p><b>${esc(row.full_name)}</b> – ${esc(row.city)} – ${esc(row.phone)}</p><p>${esc(ai.ai_summary)}</p><p>Points forts : ${esc(ai.ai_strengths)}</p><p>Risques : ${esc(ai.ai_risks)}</p><p>Voir tous les candidats : https://www.easydrive-auto.fr/recrutement-admin</p>`); } catch (e) { console.error("[CANDIDATURE] email", e); }
+    try { await sendEmail(OWNER_EMAIL, "Mansour", `Bon candidat ${POSTES[poste].short} : ${row.full_name} (${ai.ai_score}/100)`, `<p><b>${esc(row.full_name)}</b> – ${esc(row.city)} – ${esc(row.phone)}</p><p>${esc(ai.ai_summary)}</p><p>Points forts : ${esc(ai.ai_strengths)}</p><p>Risques : ${esc(ai.ai_risks)}</p><p>Tests : français ${row.test_french}/10 · logique ${row.test_logic}/8 · rédaction ${ai.test_writing}/20 · bac ${row.bac_average ?? "?"}/20</p><p>Voir tous les candidats : https://www.easydrive-auto.fr/recrutement-admin</p>`); } catch (e) { console.error("[CANDIDATURE] email", e); }
   }
   return NextResponse.json({ ok: true, id: data.id });
 }

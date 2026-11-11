@@ -57,3 +57,29 @@ export const POSTES: Record<PosteKey, { title: string; short: string; summary: s
 };
 
 export const isPoste = (v: unknown): v is PosteKey => v === "closer" || v === "coordinateur" || v === "social";
+
+/** Tests communs aux 3 postes (les bonnes réponses sont uniquement côté serveur : lib/hiring-keys.ts). */
+export type Mcq = { id: string; q: string; options: string[] };
+export const FRENCH_TEST: Mcq[] = [
+  { id: "fr1", q: "Les voitures que nous avons ___ hier sont arrivées.", options: ["livré", "livrées", "livrés", "livrer"] },
+  { id: "fr2", q: "Si le client appelle demain, nous le ___.", options: ["rappelerons", "rappellerons", "rapellerons", "rappelons"] },
+  { id: "fr3", q: "Je vous envoie le devis ___ vous m'avez demandé.", options: ["que", "dont", "qu'il", "lequel"] },
+  { id: "fr4", q: "Il faut que vous nous ___ votre code postal.", options: ["envoyez", "envoyiez", "envoyer", "envoyé"] },
+  { id: "fr5", q: "Quelle orthographe est correcte ?", options: ["accompte", "acompte", "acomte", "accomte"] },
+  { id: "fr6", q: "Quelle phrase est correcte ?", options: ["Je vous rappelle dès que possible.", "Je vous rappel dès que possible.", "Je vous rapelle dés que possible.", "Je vous rappelles dès que possible."] },
+  { id: "fr7", q: "Les clients se sont ___ satisfaits de la livraison.", options: ["déclaré", "déclarés", "déclarées", "déclarer"] },
+  { id: "fr8", q: "Nous avons ___ de préparer votre dossier.", options: ["finit", "fini", "finis", "finie"] },
+  { id: "fr9", q: "Ce sont des voitures ___ , garanties 2 ans.", options: ["neuve", "neufs", "neuves", "neuf"] },
+  { id: "fr10", q: "Quelle formule convient pour terminer un e-mail à un client ?", options: ["Bisous", "Cordialement", "A+", "Salut"] },
+];
+export const LOGIC_TEST: Mcq[] = [
+  { id: "lo1", q: "Complétez la suite : 2, 6, 12, 20, 30, …", options: ["36", "40", "42", "44"] },
+  { id: "lo2", q: "Une voiture coûte 4 990 €, la livraison 590 € et la carte grise 150 €. Quel est le total ?", options: ["5 630 €", "5 730 €", "5 830 €", "5 580 €"] },
+  { id: "lo3", q: "Une remise de 10 % est faite sur 5 000 €. Quel est le nouveau prix ?", options: ["4 900 €", "4 500 €", "4 990 €", "4 000 €"] },
+  { id: "lo4", q: "Il faut livrer 27 voitures, à raison de 3 par jour. Combien de jours faut-il ?", options: ["8", "9", "10", "12"] },
+  { id: "lo5", q: "Tous les clients de Lyon ont réservé. Paul a réservé. Donc :", options: ["Paul est de Lyon", "Paul n'est pas de Lyon", "On ne peut pas savoir si Paul est de Lyon", "Paul n'a pas réservé"] },
+  { id: "lo6", q: "Un conteneur part le 1er mars et voyage 45 jours. Quand arrive-t-il ?", options: ["14 avril", "15 avril", "16 avril", "15 mai"] },
+  { id: "lo7", q: "Un commercial rappelle 12 clients par heure. Combien en 2 h 30 ?", options: ["24", "28", "30", "36"] },
+  { id: "lo8", q: "Quel est l'intrus ?", options: ["Lundi", "Mardi", "Avril", "Jeudi"] },
+];
+export const WRITING_PROMPT = "Rédaction (8 à 12 lignes, sans copier-coller) : un client écrit « J'ai réservé il y a 3 semaines et je n'ai aucune nouvelle. C'est une arnaque ? ». Rédigez la réponse que vous lui envoyez par e-mail.";

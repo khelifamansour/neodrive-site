@@ -1,12 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
 import s from "../devenir-partenaire/partenaire.module.css";
-import { COMMON, POSTES, isPoste, type PosteKey, type Question } from "../../lib/hiring";
+import { COMMON, POSTES, FRENCH_TEST, LOGIC_TEST, WRITING_PROMPT, isPoste, type Mcq, type PosteKey, type Question } from "../../lib/hiring";
 
 export default function CandidaturePage() {
   const [poste, setPoste] = useState<PosteKey | "">("");
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");
   const [err, setErr] = useState("");
+  const [startedAt, setStartedAt] = useState(0);
+  const [pastes, setPastes] = useState(0);
+  useEffect(() => { if (poste && !startedAt) setStartedAt(Date.now()); }, [poste, startedAt]);
+  const noPaste = (e: React.ClipboardEvent) => { e.preventDefault(); setPastes(n => n + 1); };
   useEffect(() => { try { const p = new URLSearchParams(window.location.search).get("poste"); if (isPoste(p)) setPoste(p); } catch { } }, []);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setErr(""); setState("sending");
@@ -16,8 +20,12 @@ export default function CandidaturePage() {
   }
   const field = (q: Question) => <label key={q.id} className={q.type === "long" ? s.full : undefined}>{q.label}{q.required ? " *" : ""}
     {q.type === "choice" ? <select name={q.id} required={q.required} defaultValue=""><option value="" disabled>Choisir…</option>{q.options!.map(o => <option key={o}>{o}</option>)}</select>
-      : q.type === "long" ? <textarea name={q.id} rows={4} required={q.required} /> : <input name={q.id} required={q.required} />}</label>;
+      : q.type === "long" ? <textarea name={q.id} rows={4} required={q.required} onPaste={noPaste} /> : <input name={q.id} required={q.required} />}</label>;
 
+  const mcq = (m: Mcq, i: number) => <fieldset key={m.id} className={s.full} style={{ border: "1px solid #e7e5e4", borderRadius: 12, padding: "10px 14px", background: "#fff" }}>
+    <legend style={{ fontWeight: 800, fontSize: 14 }}>{i + 1}. {m.q}</legend>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px" }}>{m.options.map(o => <label key={o} style={{ flexDirection: "row", alignItems: "center", gap: 6, fontWeight: 500 }}><input type="radio" name={m.id} value={o} required style={{ width: "auto" }} /> {o}</label>)}</div>
+  </fieldset>;
   if (state === "done") return <main className={s.page}><section className={s.formSection} style={{ paddingTop: 50 }}><div className={s.done}><b>Merci, votre candidature est bien reçue ✅</b><p>Nous étudions chaque dossier avec attention. Les candidats retenus sont contactés sous 7 jours pour un entretien et une mise en situation.</p></div></section></main>;
   return <main className={s.page}>
     <section className={s.whyTop}>
@@ -33,7 +41,7 @@ export default function CandidaturePage() {
       </div>
     </section>
     {poste ? <section className={s.formSection} id="formulaire">
-      <div className={s.heading}><span className={s.eyebrow}>2. VOTRE CANDIDATURE</span><h2>{POSTES[poste].short}</h2><p>Comptez 20 à 30 minutes. Répondez avec vos propres mots : les réponses copiées ou générées automatiquement sont écartées.</p></div>
+      <div className={s.heading}><span className={s.eyebrow}>2. VOTRE CANDIDATURE</span><h2>{POSTES[poste].short}</h2><p>Comptez 30 à 40 minutes, en une seule fois. Le copier-coller est désactivé et le temps est mesuré : répondez avec vos propres mots, sans aide extérieure ni outil d’IA.</p></div>
       <form className={s.form} onSubmit={submit}>
         <input type="hidden" name="poste" value={poste} />
         <label>Nom et prénom *<input name="full_name" required /></label>
@@ -45,6 +53,16 @@ export default function CandidaturePage() {
         <label className={s.full}>CV (PDF de préférence, 8 Mo max)<input type="file" name="cv" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" /></label>
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Conditions de la mission</p>
         {COMMON.map(field)}
+        <label>Baccalauréat : filière *<input name="bac_stream" required placeholder="Sciences expérimentales, Gestion…" /></label>
+        <label>Année du bac *<input name="bac_year" required inputMode="numeric" placeholder="2018" /></label>
+        <label>Moyenne au bac (sur 20) *<input name="bac_average" required inputMode="decimal" placeholder="12,45" /></label>
+        <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Test de français (10 questions)</p>
+        {FRENCH_TEST.map(mcq)}
+        <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Test de logique (8 questions, sans calculatrice)</p>
+        {LOGIC_TEST.map(mcq)}
+        <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Rédaction</p>
+        <label className={s.full}>{WRITING_PROMPT} *<textarea name="writing" rows={8} required minLength={150} onPaste={noPaste} /></label>
+        <input type="hidden" name="started_at" value={startedAt} /><input type="hidden" name="paste_count" value={pastes} />
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Questions et mises en situation</p>
         {POSTES[poste].questions.map(field)}
         <input className={s.hp} name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
