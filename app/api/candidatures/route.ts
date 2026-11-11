@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
 import { crmDatabase } from "../../../lib/crm-agent";
-import { brevoReady, sendEmail, OWNER_EMAIL } from "../../../lib/brevo";
+import { brevoReady, sendEmail, sendSms, OWNER_EMAIL } from "../../../lib/brevo";
 import { COMMON, POSTES, WRITING_PROMPT, FRENCH_TEST, LOGIC_TEST, isPoste, type PosteKey } from "../../../lib/hiring";
 import { FRENCH_KEY, LOGIC_KEY, RIDDLE_KEY } from "../../../lib/hiring-keys";
 import { BAC_SUBJECTS, RIDDLES } from "../../../lib/hiring";
@@ -75,9 +75,17 @@ export async function POST(req: Request) {
   const { data, error } = await db.from("job_applications").insert(row).select("id").single();
   if (error) return NextResponse.json({ ok: false, error: "Enregistrement impossible, réessayez." }, { status: 502 });
   const ai = await evaluate(poste, row, cv).catch(() => null);
-  if (ai) await db.from("job_applications").update({ ...ai, status: ai.ai_verdict === "à écarter" ? "écarté (IA)" : ai.ai_verdict === "à convoquer" && ai.ai_score >= 70 ? "à appeler" : "nouveau" }).eq("id", data.id);
-  if (brevoReady() && ai && ai.ai_score >= 70) {
-    try { await sendEmail(OWNER_EMAIL, "Mansour", `Bon candidat ${POSTES[poste].short} : ${row.full_name} (${ai.ai_score}/100)`, `<p><b>${esc(row.full_name)}</b> – ${esc(row.city)} – ${esc(row.phone)}</p><p>${esc(ai.ai_summary)}</p><p>Points forts : ${esc(ai.ai_strengths)}</p><p>Risques : ${esc(ai.ai_risks)}</p><p>Tests : français ${row.test_french}/10 · logique ${row.test_logic}/8 · rédaction ${ai.test_writing}/20 · bac ${row.bac_average ?? "?"}/20</p><p>Voir tous les candidats : https://www.easydrive-auto.fr/recrutement-admin</p>`); } catch (e) { console.error("[CANDIDATURE] email", e); }
+  // Note finale : 30 % présélection du CV (si le candidat avait été invité) + 70 % formulaire et tests.
+  const tail = String(row.phone).replace(/\D/g, "").slice(-9);
+  const { data: invs } = await db.from("job_invitations").select("id,phone,cv_score,cv_path").eq("poste", poste);
+  const inv = (invs || []).find(i => String(i.phone || "").replace(/\D/g, "").slice(-9) === tail);
+  const final = ai ? (inv?.cv_score != null ? Math.round(0.3 * inv.cv_score + 0.7 * ai.ai_score) : ai.ai_score) : null;
+  if (ai) await db.from("job_applications").update({ ...ai, final_score: final, cv_prescore: inv?.cv_score ?? null, ...(!row.cv_path && inv?.cv_path ? { cv_path: inv.cv_path, cv_name: "CV (Emploitic)" } : {}), status: ai.ai_verdict === "à écarter" ? "écarté (IA)" : (final ?? 0) >= 70 && ai.ai_verdict !== "à revoir" ? "à appeler" : "nouveau" }).eq("id", data.id);
+  if (brevoReady() && ai && (final ?? 0) >= 75 && ai.ai_verdict !== "à écarter") {
+    try { await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", `TOP candidat ${POSTES[poste].short} : ${row.full_name} ${final}/100 - a appeler vite : ${row.phone}. Fiche : easydrive-auto.fr/recrutement-admin`); await db.from("job_applications").update({ alerted_at: new Date().toISOString() }).eq("id", data.id); } catch (e) { console.error("[CANDIDATURE] sms", e); }
+  }
+  if (brevoReady() && ai && (final ?? 0) >= 70) {
+    try { await sendEmail(OWNER_EMAIL, "Mansour", `Bon candidat ${POSTES[poste].short} : ${row.full_name} (${final}/100)`, `<p><b>${esc(row.full_name)}</b> – ${esc(row.city)} – ${esc(row.phone)}</p><p>${esc(ai.ai_summary)}</p><p>Points forts : ${esc(ai.ai_strengths)}</p><p>Risques : ${esc(ai.ai_risks)}</p><p>Tests : français ${row.test_french}/10 · logique ${row.test_logic}/8 · rédaction ${ai.test_writing}/20 · bac ${row.bac_average ?? "?"}/20</p><p>Voir tous les candidats : https://www.easydrive-auto.fr/recrutement-admin</p>`); } catch (e) { console.error("[CANDIDATURE] email", e); }
   }
   return NextResponse.json({ ok: true, id: data.id });
 }
@@ -88,7 +96,7 @@ export async function PUT(req: Request) {
   if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
   const db = crmDatabase();
   if (b.action === "list") {
-    const { data, error } = await db.from("job_applications").select("*").order("ai_score", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }).limit(500);
+    const { data, error } = await db.from("job_applications").select("*").order("final_score", { ascending: false, nullsFirst: false }).order("ai_score", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }).limit(500);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, rows: data });
   }

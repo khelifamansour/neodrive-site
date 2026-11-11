@@ -4,62 +4,81 @@ import s from "../planificateur/planif.module.css";
 import { COMMON, POSTES, type PosteKey } from "../../lib/hiring";
 
 type Row = Record<string, any>;
+type Dossier = { key: string; poste: PosteKey; name: string; city: string; phone: string; email: string; cvScore: number | null; app: Row | null; inv: Row | null; score: number; stage: string };
 const STATUSES = ["nouveau", "à appeler", "test téléphone", "essai payé", "recruté", "écarté", "écarté (IA)"];
-const color = (n?: number) => n == null ? "#9ca3af" : n >= 75 ? "#15803d" : n >= 55 ? "#b45309" : "#b91c1c";
+const color = (n?: number | null) => n == null ? "#9ca3af" : n >= 75 ? "#15803d" : n >= 60 ? "#b45309" : "#b91c1c";
+const tail = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 
 export default function RecrutementAdmin() {
-  const [code, setCode] = useState(""); const [rows, setRows] = useState<Row[] | null>(null); const [msg, setMsg] = useState("");
-  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<number | null>(null); const [hideOut, setHideOut] = useState(true);
-  const api = async (body: object, pc = code) => { const r = await fetch("/api/candidatures", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
-  const [inv, setInv] = useState<Row[]>([]);
-  const load = async (pc = code) => { try { const j = await api({ action: "list" }, pc); setRows(j.rows); fetch("/api/candidatures/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, action: "list" }) }).then(r => r.json()).then(k => k.ok && setInv(k.rows)).catch(() => null); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
+  const [code, setCode] = useState(""); const [apps, setApps] = useState<Row[] | null>(null); const [invs, setInvs] = useState<Row[]>([]); const [msg, setMsg] = useState("");
+  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true);
+  const call = async (url: string, method: string, body: object, pc = code) => { const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
+  const load = async (pc = code) => { try { const [a, i] = await Promise.all([call("/api/candidatures", "PUT", { action: "list" }, pc), call("/api/candidatures/invite", "POST", { action: "list" }, pc)]); setApps(a.rows); setInvs(i.rows); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
   useEffect(() => { try { const pc = sessionStorage.getItem("nd_pc"); if (pc) { setCode(pc); load(pc); } } catch { } // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const shown = useMemo(() => (rows || []).filter(r => (poste === "tous" || r.poste === poste) && (!hideOut || !String(r.status).startsWith("écarté"))), [rows, poste, hideOut]);
-  const update = async (id: number, patch: Row) => { setRows(rs => rs!.map(r => r.id === id ? { ...r, ...patch } : r)); try { await api({ action: "update", id, patch }) } catch (e) { setMsg((e as Error).message) } };
-  const openCv = async (path: string) => { const j = await api({ action: "cv", path }); if (j.url) window.open(j.url, "_blank"); };
-  if (!rows) return <main className={s.page}><form className={s.login} onSubmit={e => { e.preventDefault(); load(); }}><span className={s.logo}>N</span><h1>Recrutement</h1><p>Code d'accès NeoDrive.</p><input type="password" value={code} onChange={e => setCode(e.target.value)} autoFocus /><button>Entrer</button>{msg ? <p style={{ color: "#b91c1c" }}>{msg}</p> : null}</form></main>;
-  const count = (k: string) => (rows || []).filter(r => k === "tous" || r.poste === k).length;
+
+  // Un dossier par candidat : présélection CV (invitation) + formulaire (candidature), fusionnés par numéro de téléphone.
+  const dossiers = useMemo<Dossier[]>(() => {
+    const out: Dossier[] = []; const used = new Set<number>();
+    for (const inv of invs) {
+      const app = (apps || []).find(a => a.poste === inv.poste && tail(a.phone) === tail(inv.phone)) || null; if (app) used.add(app.id);
+      const score = app ? (app.final_score ?? app.ai_score ?? 0) : Math.round((inv.cv_score ?? 0) * 0.6);
+      out.push({ key: "i" + inv.id, poste: inv.poste, name: inv.full_name, city: inv.city || "", phone: inv.phone, email: inv.email || "", cvScore: inv.cv_score, app, inv, score, stage: app ? (app.status || "nouveau") : "invité" });
+    }
+    for (const app of apps || []) if (!used.has(app.id)) out.push({ key: "a" + app.id, poste: app.poste, name: app.full_name, city: app.city || "", phone: app.phone, email: app.email || "", cvScore: null, app, inv: null, score: app.final_score ?? app.ai_score ?? 0, stage: app.status || "nouveau" });
+    return out.sort((x, y) => (y.app ? 1 : 0) - (x.app ? 1 : 0) || y.score - x.score);
+  }, [apps, invs]);
+  const shown = dossiers.filter(d => (poste === "tous" || d.poste === poste) && (!hideOut || !String(d.stage).startsWith("écarté")));
+  const top = shown.filter(d => d.app && d.score >= 75 && !["recruté", "écarté", "écarté (IA)"].includes(d.stage));
+  const update = async (id: number, patch: Row) => { setApps(rs => rs!.map(r => r.id === id ? { ...r, ...patch } : r)); try { await call("/api/candidatures", "PUT", { action: "update", id, patch }) } catch (e) { setMsg((e as Error).message) } };
+  const openCv = async (path: string) => { try { const j = await call("/api/candidatures", "PUT", { action: "cv", path }); if (j.url) window.open(j.url, "_blank"); } catch { setMsg("CV indisponible") } };
+  const wa = (d: Dossier) => `https://wa.me/${String(d.phone).replace(/\D/g, "")}?text=${encodeURIComponent(d.app ? `Bonjour ${d.name.split(" ")[0]}, c'est Mansour de NeoDrive. Merci pour votre candidature, j'aimerais échanger 15 minutes avec vous. Quand êtes-vous disponible ?` : `Bonjour ${d.name.split(" ")[0]}, c'est Mansour de NeoDrive. Votre CV a retenu notre attention. Étape suivante : formulaire et tests (30-40 min, à faire seul, sans IA) : https://www.easydrive-auto.fr/candidature?poste=${d.poste}`)}`;
+
+  if (!apps) return <main className={s.page}><form className={s.login} onSubmit={e => { e.preventDefault(); load(); }}><span className={s.logo}>N</span><h1>Recrutement</h1><p>Code d'accès NeoDrive.</p><input type="password" value={code} onChange={e => setCode(e.target.value)} autoFocus /><button>Entrer</button>{msg ? <p style={{ color: "#b91c1c" }}>{msg}</p> : null}</form></main>;
+  const count = (k: string) => dossiers.filter(d => k === "tous" || d.poste === k).length;
+
+  const card = (d: Dossier) => { const a = d.app; const cvPath = a?.cv_path || d.inv?.cv_path; return <article key={d.key} style={{ border: "1px solid #ece6dd", borderRadius: 14, padding: 12, display: "grid", gap: 8, background: d.score >= 75 && a ? "#f0fdf4" : "#fff" }}>
+    <div style={{ display: "flex", gap: 12, alignItems: "center", cursor: "pointer" }} onClick={() => setOpen(open === d.key ? null : d.key)}>
+      <b style={{ minWidth: 52, height: 52, borderRadius: 14, display: "grid", placeItems: "center", color: "#fff", background: color(a ? d.score : d.cvScore), fontSize: 18 }}>{a ? d.score : (d.cvScore ?? "–")}</b>
+      <div style={{ flex: 1 }}><b>{d.name}</b> <small style={{ color: "#7a8594" }}>· {POSTES[d.poste]?.short} · {d.city}</small><br />
+        <small>{a ? `✅ Formulaire rempli · CV ${d.cvScore ?? "–"} · tests/IA ${a.ai_score ?? "–"}` : `⏳ Invité, formulaire non rempli · note CV ${d.cvScore ?? "–"}`} · <b>{d.stage}</b></small><br />
+        <small style={{ color: "#5b6573" }}>{a?.ai_summary || d.inv?.cv_summary || ""}</small></div>
+    </div>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 14 }}>
+      <a href={`tel:+${String(d.phone).replace(/\D/g, "")}`}>📞 {d.phone}</a><a href={wa(d)} target="_blank" rel="noreferrer">💬 WhatsApp</a>{d.email ? <a href={`mailto:${d.email}`}>✉️ e-mail</a> : null}
+      {cvPath ? <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openCv(cvPath)}>📄 CV</button> : null}
+      {a ? <><span>🇫🇷 {a.test_french ?? "–"}/10</span><span>🧠 {a.test_logic ?? "–"}/8</span><span>✍️ {a.test_writing ?? "–"}/20</span><span>🧩 {a.answers?.riddles_score ?? "–"}{a.riddle_sec ? ` en ${a.riddle_sec}s` : ""}</span><span>🎓 {a.bac_average ?? "?"}/20</span>{a.paste_count ? <span style={{ color: "#b91c1c" }}>⚠️ {a.paste_count} collage(s)</span> : null}{a.duration_sec ? <span>⏱ {Math.round(a.duration_sec / 60)} min</span> : null}<span>💰 {a.salary_expectation || "?"}</span></> : null}
+    </div>
+    {a ? <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
+      <select value={a.status} onChange={e => update(a.id, { status: e.target.value })}>{STATUSES.map(x => <option key={x}>{x}</option>)}</select>
+      <input defaultValue={a.notes || ""} placeholder="Notes d'entretien…" onBlur={e => e.target.value !== (a.notes || "") && update(a.id, { notes: e.target.value })} />
+    </div> : null}
+    {open === d.key ? <div style={{ fontSize: 14, display: "grid", gap: 8, background: "#fafaf9", borderRadius: 12, padding: 12 }}>
+      {d.inv ? <><div><b>📄 Analyse du CV :</b> {d.inv.cv_summary || "—"}</div>{d.inv.cv_strengths ? <div><b>✅</b> {d.inv.cv_strengths}</div> : null}{d.inv.cv_risks ? <div><b>⚠️</b> {d.inv.cv_risks}</div> : null}{d.inv.cv_questions ? <div><b>❓</b> {d.inv.cv_questions}</div> : null}</> : null}
+      {a ? <>
+        <hr /><div><b>🤖 Analyse du formulaire :</b> {a.ai_summary}</div><div><b>✅ Points forts :</b> {a.ai_strengths || "—"}</div><div><b>⚠️ Risques :</b> {a.ai_risks || "—"}</div><div><b>❓ Questions d'entretien :</b> {a.ai_questions || "—"}</div>
+        <div><small style={{ color: "#7a8594" }}>Notes au bac</small><div>{a.bac_grades ? Object.entries(a.bac_grades).map(([k, v]) => `${k} ${v ?? "?"}`).join(" · ") : "—"}</div></div>
+        <div><small style={{ color: "#7a8594" }}>Dernier employeur</small><div>{a.last_employer ? `${a.last_employer.entreprise} – ${a.last_employer.poste} (${a.last_employer.dates}) · départ : ${a.last_employer.depart} · ${a.last_employer.raison} · Référence : ${a.last_employer.reference || "—"} ${a.last_employer.reference_tel || ""} ${a.last_employer.accord_contact ? "(accord pour la contacter)" : "(pas d’accord)"}` : "—"}</div></div>
+        <div><small style={{ color: "#7a8594" }}>Rédaction</small><div style={{ whiteSpace: "pre-wrap" }}>{a.answers?.writing || "—"}</div></div>
+        {[...COMMON, ...(POSTES[d.poste]?.questions || [])].map(q => <div key={q.id}><small style={{ color: "#7a8594" }}>{q.label}</small><div style={{ whiteSpace: "pre-wrap" }}>{a.answers?.[q.id] || "—"}</div></div>)}
+      </> : null}
+    </div> : null}
+  </article>; };
+
   return <main className={s.page}>
-    <div className={s.top}><div><h1>👥 Recrutement</h1><p>Candidats triés par note IA. Lien à envoyer : easydrive-auto.fr/candidature?poste=closer | coordinateur | social</p></div></div>
-    {inv.length ? <section className={s.card}>
-      <h2>📨 Invitations ({inv.filter(i => i.applied).length}/{inv.length} ont rempli le formulaire)</h2>
-      <p className={s.muted}>WhatsApp : envoyez depuis votre téléphone personnel, 10 maximum par jour, pas depuis le numéro de Hana.</p>
-      {inv.filter(i => poste === "tous" || i.poste === poste).map(i => <div key={i.id} style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", fontSize: 14, borderBottom: "1px solid #eee", padding: "6px 0" }}>
-        <b style={{ minWidth: 34 }}>{i.cv_score ?? "–"}</b><b style={{ flex: 1, minWidth: 160 }}>{i.full_name}</b><small>{POSTES[i.poste as PosteKey]?.short} · {i.city}</small>
-        <span>{i.applied ? "✅ formulaire rempli" : "⏳ en attente"}</span><small>{i.email_sent_at ? "✉️ " : ""}{i.sms_sent_at ? "💬 SMS" : ""}</small>
-        {!i.applied ? <a href={`https://wa.me/${String(i.phone).replace(/\D/g, "")}?text=${encodeURIComponent(`Bonjour ${String(i.full_name).split(" ")[0]}, c'est Mansour de NeoDrive. Votre CV a retenu notre attention. Étape suivante : formulaire et tests (30-40 min, à faire seul, sans IA) : https://www.easydrive-auto.fr/candidature?poste=${i.poste}`)}`} target="_blank" rel="noreferrer">WhatsApp</a> : null}
-      </div>)}
-    </section> : null}
-    <section className={s.card}>
-      <div className={s.seg}>{(["tous", "closer", "coordinateur", "social"] as const).map(k => <button key={k} className={poste === k ? s.on : ""} onClick={() => setPoste(k)}>{k === "tous" ? "Tous" : POSTES[k].short} ({count(k)})</button>)}
-        <button onClick={() => setHideOut(!hideOut)}>{hideOut ? "Afficher les écartés" : "Masquer les écartés"}</button></div>
-      {shown.length === 0 ? <p className={s.muted}>Aucune candidature pour l'instant.</p> : null}
-      {shown.map(r => <article key={r.id} style={{ border: "1px solid #ece6dd", borderRadius: 14, padding: 12, display: "grid", gap: 8 }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center", cursor: "pointer" }} onClick={() => setOpen(open === r.id ? null : r.id)}>
-          <b style={{ minWidth: 52, height: 52, borderRadius: 14, display: "grid", placeItems: "center", color: "#fff", background: color(r.ai_score), fontSize: 18 }}>{r.ai_score ?? "–"}</b>
-          <div style={{ flex: 1 }}><b>{r.full_name}</b> <small style={{ color: "#7a8594" }}>· {POSTES[r.poste as PosteKey]?.short} · {r.city || "?"} · {new Date(r.created_at).toLocaleDateString("fr-FR")}</small><br /><small>{r.ai_verdict ? `IA : ${r.ai_verdict} — ` : ""}{r.ai_summary || ""}</small></div>
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 14 }}>
-          <a href={`tel:${String(r.phone).replace(/[^\d+]/g, "")}`}>📞 {r.phone}</a>
-          <a href={`https://wa.me/${String(r.phone).replace(/\D/g, "")}`} target="_blank" rel="noreferrer">💬 WhatsApp</a>
-          {r.email ? <a href={`mailto:${r.email}`}>✉️ {r.email}</a> : null}
-          {r.cv_path ? <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openCv(r.cv_path)}>📄 CV</button> : null}
-          <span>🇫🇷 {r.test_french ?? "–"}/10</span><span>🧠 {r.test_logic ?? "–"}/8</span><span>✍️ {r.test_writing ?? "–"}/20</span><span>🎓 Bac {r.bac_average ?? "?"}/20</span><span>🧩 Énigmes {r.answers?.riddles_score ?? "–"}{r.riddle_sec ? ` en ${r.riddle_sec}s` : ""}</span>{r.paste_count ? <span style={{ color: "#b91c1c" }}>⚠️ {r.paste_count} collage(s)</span> : null}{r.duration_sec ? <span>⏱ {Math.round(r.duration_sec / 60)} min</span> : null}<span>💰 {r.salary_expectation || "?"}</span><span>🧾 {r.billing_structure || "?"}</span>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
-          <select value={r.status} onChange={e => update(r.id, { status: e.target.value })}>{STATUSES.map(x => <option key={x}>{x}</option>)}</select>
-          <input defaultValue={r.notes || ""} placeholder="Notes d'entretien…" onBlur={e => e.target.value !== (r.notes || "") && update(r.id, { notes: e.target.value })} />
-        </div>
-        {open === r.id ? <div style={{ fontSize: 14, display: "grid", gap: 8, background: "#fafaf9", borderRadius: 12, padding: 12 }}>
-          <div><b>✅ Points forts :</b> {r.ai_strengths || "—"}</div><div><b>⚠️ Risques :</b> {r.ai_risks || "—"}</div><div><b>❓ Questions d'entretien :</b> {r.ai_questions || "—"}</div>
-          <hr />{[...COMMON, ...(POSTES[r.poste as PosteKey]?.questions || [])].map(q => <div key={q.id}><small style={{ color: "#7a8594" }}>{q.label}</small><div style={{ whiteSpace: "pre-wrap" }}>{r.answers?.[q.id] || "—"}</div></div>)}
-          <div><small style={{ color: "#7a8594" }}>Notes au bac</small><div>{r.bac_grades ? Object.entries(r.bac_grades).map(([k, v]) => `${k} ${v ?? "?"}`).join(" · ") : "—"}</div></div>
-          <div><small style={{ color: "#7a8594" }}>Dernier employeur</small><div>{r.last_employer ? `${r.last_employer.entreprise} – ${r.last_employer.poste} (${r.last_employer.dates}) · départ : ${r.last_employer.depart} · ${r.last_employer.raison} · Référence : ${r.last_employer.reference || "—"} ${r.last_employer.reference_tel || ""} ${r.last_employer.accord_contact ? "(accord pour la contacter)" : "(pas d\u2019accord)"}` : "—"}</div></div>
-          <div><small style={{ color: "#7a8594" }}>Rédaction</small><div style={{ whiteSpace: "pre-wrap" }}>{r.answers?.writing || "—"}</div></div>
-          <div><small style={{ color: "#7a8594" }}>Formation / expérience</small><div>{r.education || "—"} · {r.experience_years || "?"} ans</div></div>
-        </div> : null}
-      </article>)}
+    <div className={s.top}><div><h1>👥 Recrutement</h1><p>Note finale = 30 % CV + 70 % formulaire et tests. Mise à jour à chaque nouvelle candidature.</p></div><button className={s.ghost} onClick={() => load()}>↻ Actualiser</button></div>
+    <div className={s.seg} style={{ marginTop: 12 }}>{(["tous", "closer", "coordinateur", "social"] as const).map(k => <button key={k} className={poste === k ? s.on : ""} onClick={() => setPoste(k)}>{k === "tous" ? "Tous" : POSTES[k].short} ({count(k)})</button>)}
+      <button onClick={() => setHideOut(!hideOut)}>{hideOut ? "Afficher les écartés" : "Masquer les écartés"}</button></div>
+    <section className={s.card} style={{ borderColor: "#86efac" }}>
+      <h2>🔥 À contacter en priorité ({top.length})</h2>
+      <p className={s.muted}>Formulaire rempli, note finale ≥ 75. Vous recevez un SMS dès qu'un candidat entre ici.</p>
+      {top.length ? top.map(card) : <p className={s.muted}>Personne pour l'instant : les candidats invités n'ont pas encore rempli le formulaire.</p>}
     </section>
+    <section className={s.card}>
+      <h2>Tous les dossiers ({shown.length})</h2>
+      <p className={s.muted}>D'abord ceux qui ont rempli le formulaire (par note finale), puis les invités en attente (par note CV). Relance WhatsApp depuis votre téléphone personnel, 10 par jour maximum.</p>
+      {shown.filter(d => !top.includes(d)).map(card)}
+    </section>
+    {msg ? <p>{msg}</p> : null}
   </main>;
 }
