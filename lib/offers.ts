@@ -14,7 +14,8 @@ export type OfferParams = {
   essaiJours: number;           // période d'essai (jours)
   debut: string;                // date de début (AAAA-MM-JJ)
   horaires: string;
-  tauxEur: number;              // DA pour 1 € (pour l'estimation interne)
+  tauxEur: number;              // DA pour 1 € : taux de conversion (fixé dans le contrat si paiement en euros)
+  devise: "DA" | "EUR";         // devise du contrat et du paiement
   ventesType: number;           // ventes d'un mois « normal », pour l'exemple
 };
 
@@ -25,7 +26,7 @@ export const MARKET: Record<PosteKey, { low: number; high: number; label: string
   social: { low: 40000, high: 60000, label: "community manager / monteur vidéo junior à Alger" },
 };
 
-const base = { charges: 3000, assiduite: 3000, reposJours: 15, essaiJours: 30, debut: "", horaires: "Du lundi au samedi, aux horaires de bureau français (9 h – 18 h heure de Paris), ponctuellement le dimanche selon les besoins", tauxEur: 277 };
+const base = { charges: 3000, assiduite: 3000, reposJours: 15, essaiJours: 30, debut: "", horaires: "Du lundi au samedi, aux horaires de bureau français (9 h – 18 h heure de Paris), ponctuellement le dimanche selon les besoins", tauxEur: 270, devise: "EUR" as const };
 export const TEMPLATES: Record<PosteKey, OfferParams> = {
   closer: { ...base, fixe: 50000, commission: 2500, palierVentes: 20, palierBonus: 10000, objectifLabel: "", objectifMontant: 0, ventesType: 10 },
   coordinateur: { ...base, fixe: 55000, commission: 0, palierVentes: 0, palierBonus: 0, objectifLabel: "Conteneurs du mois dédouanés et livrés sans retard ni erreur de document", objectifMontant: 7000, ventesType: 0 },
@@ -77,7 +78,11 @@ export const posteTitle = (k: PosteKey) => POSTES[k]?.title || k;
 export const fmtDA = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} DA`;
 
 /** Texte de la proposition de mission (affiché au candidat et figé au moment de la signature). */
+/** Montant affiché au candidat, dans la devise du contrat (euros arrondis à l'euro, au taux fixé). */
+export const money = (p: OfferParams, da: number) => p.devise === "EUR" ? `${Math.round(da / (p.tauxEur || 270)).toLocaleString("fr-FR")} €` : fmtDA(da);
+
 export function contract(poste: PosteKey, p: OfferParams, name: string) {
+  const fmtDA = (n: number) => money(p, n);
   const ex = [5, 10, 20].map(v => ({ v, ...monthly(p, v) }));
   const debut = p.debut ? new Date(p.debut).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "à convenir";
   const remu = [`Rémunération fixe : ${fmtDA(p.fixe)} par mois.`,
@@ -95,7 +100,7 @@ export function contract(poste: PosteKey, p: OfferParams, name: string) {
       { title: "Organisation", items: [`Statut : prestataire indépendant (auto-entrepreneur en Algérie). Il ne s'agit pas d'un contrat de travail salarié.`, `Lieu : présentiel à Alger.`, `Horaires : ${p.horaires}.`, `Début : ${debut}.`, `Période d'essai : ${p.essaiJours} jours, pendant lesquels chacune des parties peut arrêter la mission sans préavis. Ensuite, préavis de 15 jours.`] },
       { title: "Votre rémunération", items: remu },
       { title: "Exemples de revenu mensuel (avant vos charges d'auto-entrepreneur)", items: p.commission ? ex.map(e => `${e.v} véhicules livrés : ${fmtDA(e.brut)}`) : [`Mois avec objectif atteint et assiduité complète : ${fmtDA(monthly(p, 0).brut)}`, `Mois sans prime : ${fmtDA(p.fixe + p.charges)}`] },
-      { title: "Paiement et conditions", items: ["Facturation mensuelle par le prestataire ; paiement au plus tard le 10 du mois suivant.", "Les montants sont fixés en dinars algériens (DA).", "Le prestataire est responsable de son immatriculation et de ses déclarations d'auto-entrepreneur.", "Confidentialité : les informations sur les clients, les prix et les fournisseurs de NeoDrive restent strictement confidentielles, pendant et après la mission.", "Après une période concluante, NeoDrive pourra proposer une évolution de la rémunération ou du statut."] },
+      { title: "Paiement et conditions", items: ["Facturation mensuelle par le prestataire ; paiement au plus tard le 10 du mois suivant.", p.devise === "EUR" ? "Les montants sont fixés et payés en euros, par virement bancaire. Ils sont fermes et définitifs : aucune variation du taux de change, quelle qu'elle soit, ne peut donner lieu à réclamation ni à ajustement." : "Les montants sont fixés et payés en dinars algériens (DA).", "Le prestataire est responsable de son immatriculation et de ses déclarations d'auto-entrepreneur.", "Confidentialité : les informations sur les clients, les prix et les fournisseurs de NeoDrive restent strictement confidentielles, pendant et après la mission.", "Après une période concluante, NeoDrive pourra proposer une évolution de la rémunération ou du statut."] },
     ],
   };
 }

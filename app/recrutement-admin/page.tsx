@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import s from "../planificateur/planif.module.css";
 import { COMMON, POSTES, type PosteKey } from "../../lib/hiring";
-import { MARKET, TEMPLATES, fmtDA, freelanceCharges, monthly, salariedCost, warnings, type OfferParams } from "../../lib/offers";
+import { MARKET, TEMPLATES, fmtDA, money, freelanceCharges, monthly, salariedCost, warnings, type OfferParams } from "../../lib/offers";
 
 type Row = Record<string, any>;
 type Dossier = { key: string; poste: PosteKey; name: string; city: string; phone: string; email: string; cvScore: number | null; app: Row | null; inv: Row | null; score: number; stage: string };
@@ -12,9 +12,9 @@ const tail = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 
 export default function RecrutementAdmin() {
   const [code, setCode] = useState(""); const [apps, setApps] = useState<Row[] | null>(null); const [invs, setInvs] = useState<Row[]>([]); const [msg, setMsg] = useState("");
-  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"top" | "all" | "offres">("top"); const [offers, setOffers] = useState<Row[]>([]); const [offerFor, setOfferFor] = useState<Dossier | null>(null); const [op, setOp] = useState<OfferParams | null>(null); const [created, setCreated] = useState<Row | null>(null);
+  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"top" | "all" | "offres">("top"); const [offers, setOffers] = useState<Row[]>([]); const [offerFor, setOfferFor] = useState<Dossier | null>(null); const [op, setOp] = useState<OfferParams | null>(null); const [created, setCreated] = useState<Row | null>(null); const [logs, setLogs] = useState<Row[]>([]);
   const call = async (url: string, method: string, body: object, pc = code) => { const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
-  const load = async (pc = code) => { try { const [a, i] = await Promise.all([call("/api/candidatures", "PUT", { action: "list" }, pc), call("/api/candidatures/invite", "POST", { action: "list" }, pc)]); setApps(a.rows); setInvs(i.rows); call("/api/offres", "PUT", { action: "list" }, pc).then(o => setOffers(o.offers)).catch(() => null); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
+  const load = async (pc = code) => { try { const [a, i] = await Promise.all([call("/api/candidatures", "PUT", { action: "list" }, pc), call("/api/candidatures/invite", "POST", { action: "list" }, pc)]); setApps(a.rows); setInvs(i.rows); call("/api/offres", "PUT", { action: "list" }, pc).then(o => setOffers(o.offers)).catch(() => null); call("/api/candidatures/log", "PUT", { action: "list" }, pc).then(o => setLogs(o.logs)).catch(() => null); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
   useEffect(() => { try { const pc = sessionStorage.getItem("nd_pc"); if (pc) { setCode(pc); load(pc); } } catch { } // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -47,7 +47,7 @@ export default function RecrutementAdmin() {
     const wait = dossiers.filter(d => d.poste === k && !d.app && d.stage === "invité").sort((x, y) => (y.cvScore ?? 0) - (x.cvScore ?? 0)).slice(0, 5);
     return <section key={k} className={s.card}>
       <h2>{POSTES[k].short} — {done.length} formulaire(s) rempli(s){out ? ` · ${out} écarté(s)` : ""}</h2>
-      {done.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["#", "Candidat", "Note finale", "CV", "Français /10", "Logique /8", "Rédaction /20", "Énigmes", "Bac", "Durée", "Collages", "Prétention", "Statut", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead>
+      {done.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["#", "Candidat", "Note finale", "CV", "Français /10", "Logique /8", "Rédaction /20", "Énigmes", "Bac", "Durée", "Collages", "Prétention", "Plan d'action", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead>
         <tbody>{done.map((d, i) => { const a = d.app!; return <tr key={d.key} style={{ background: i < 3 ? "#f0fdf4" : undefined }}>
           <td style={th}><b>{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</b></td>
           <td style={{ ...th, textAlign: "left", whiteSpace: "normal", minWidth: 190 }}><b>{d.name}</b><br /><small style={{ color: "#5b6573" }}>{String(a.ai_summary || d.inv?.cv_summary || "").split(/(?<=\.)\s/)[0].slice(0, 140)}</small></td>
@@ -56,7 +56,7 @@ export default function RecrutementAdmin() {
           <td style={th}>{a.answers?.riddles_score ?? "–"}{a.riddle_sec ? <><br /><small>{a.riddle_sec} s</small></> : null}</td>
           <td style={th}>{a.bac_average ?? "?"}</td><td style={th}>{a.duration_sec ? `${Math.round(a.duration_sec / 60)} min` : "–"}</td>
           <td style={{ ...th, color: a.paste_count ? "#b91c1c" : undefined }}>{a.paste_count ? `⚠️ ${a.paste_count}` : "0"}</td>
-          <td style={th}>{salaryK(a.salary_expectation)}</td><td style={th}>{a.status}</td>
+          <td style={th}>{salaryK(a.salary_expectation)}</td><td style={{ ...th, whiteSpace: "normal", minWidth: 170, textAlign: "left", background: plan(d).color }}>{plan(d).text}</td>
           <td style={th}><a href={`tel:+${String(d.phone).replace(/\D/g, "")}`}>📞</a> <a href={wa(d)} target="_blank" rel="noreferrer">💬</a> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => { setView("all"); setPoste(k); setOpen(d.key); }}>Fiche</button> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => openOffer(d)}>📝 Offre</button><br />{offerBadge(d)}</td>
         </tr>; })}</tbody></table></div> : <p className={s.muted}>Aucun formulaire rempli pour l'instant.</p>}
       {wait.length ? <p style={{ fontSize: 14, margin: "8px 0 0" }}><b>⏳ Meilleurs CV qui n'ont pas encore rempli le test :</b> {wait.map(d => `${d.name} (CV ${d.cvScore}${d.inv?.whatsapp_at ? ", WhatsApp ✅" : ""})`).join(" · ")}</p> : null}
@@ -69,6 +69,32 @@ export default function RecrutementAdmin() {
   const createOffer = async () => { if (!offerFor || !op) return; try { const j = await call("/api/offres", "PUT", { action: "create", poste: offerFor.poste, invitation_id: offerFor.inv?.id, application_id: offerFor.app?.id, full_name: offerFor.name, phone: offerFor.phone, email: offerFor.email, params: op }); setCreated({ ...j.offer, link: j.link }); setOffers(x => [j.offer, ...x]); setMsg("✅ Offre créée : envoyez-la par SMS/e-mail ou WhatsApp."); } catch (e) { setMsg((e as Error).message); } };
   const sendOffer = async (o: Row) => { try { const j = await call("/api/offres", "PUT", { action: "send", id: o.id }); setMsg(`✅ Offre envoyée (${j.via.join(" + ")})${j.errors?.length ? " — " + j.errors.join(", ") : ""}`); load(); } catch (e) { setMsg((e as Error).message); } };
   const waOffer = (o: Row) => { const link = `https://www.easydrive-auto.fr/offre/${o.token}`; call("/api/offres", "PUT", { action: "mark_whatsapp", id: o.id }).then(() => load()).catch(() => null); return `https://wa.me/${String(o.phone || "").replace(/\D/g, "").replace(/^0/, "213")}?text=${encodeURIComponent(`Bonjour ${String(o.full_name).split(" ")[0]}, c'est Mansour de NeoDrive. Suite à nos échanges, voici votre proposition de mission (${POSTES[o.poste as PosteKey]?.short}) : vous pouvez la consulter et la signer en ligne ici : ${link}`)}`; };
+
+  const logsOf = (d: Dossier) => logs.filter(l => l.poste === d.poste && l.phone9 === tail(d.phone));
+  const addLog = async (d: Dossier, kind: string, ask?: string) => { const note = ask ? prompt(ask) : ""; if (ask && note === null) return; try { await call("/api/candidatures/log", "PUT", { action: "add", poste: d.poste, phone: d.phone, full_name: d.name, kind, note }); if (d.app && (kind === "recruté" || kind === "écarté")) await update(d.app.id, { status: kind }); load(); } catch (e) { setMsg((e as Error).message); } };
+  const daysAgo = (t?: string) => t ? Math.floor((Date.now() - new Date(t).getTime()) / 86400000) : 99;
+  /** Prochaine action conseillée pour un candidat, à partir du test, des appels et de l'offre. */
+  const plan = (d: Dossier): { text: string; color: string } => {
+    const L = logsOf(d); const has = (k: string) => L.find(l => l.kind === k); const o = offerOf(d); const a = d.app;
+    if (has("recruté")) return { text: `✅ Recruté(e) le ${new Date(has("recruté")!.created_at).toLocaleDateString("fr-FR")} : préparer son démarrage`, color: "#dcfce7" };
+    if (has("écarté") || String(d.stage).startsWith("écarté")) return { text: "Écarté(e) : ne rien faire", color: "#f3f4f6" };
+    if (o?.status === "signée") return { text: "Offre signée : fixer la date de démarrage, puis marquer « Recruté »", color: "#dcfce7" };
+    if (o?.status === "refusée") return { text: `Offre refusée${o.refuse_reason ? ` (${o.refuse_reason})` : ""} : passer au candidat suivant`, color: "#fee2e2" };
+    if (o && ["brouillon", "envoyée"].includes(o.status)) return o.status === "brouillon" ? { text: "Offre créée mais pas envoyée : l'envoyer", color: "#fef3c7" } : daysAgo(o.sent_at) >= 2 ? { text: `Offre envoyée il y a ${daysAgo(o.sent_at)} j sans réponse : relancer par WhatsApp ou l'appeler`, color: "#fef3c7" } : { text: "Offre envoyée : attendre sa signature (48 h)", color: "#eff6ff" };
+    if (a) {
+      const called = has("entretien") || has("appel"); const noAnswer = L.filter(l => l.kind === "pas de réponse").length;
+      if (d.score >= 65) return called ? { text: "Entretien fait : s'il est convaincant, lui envoyer une offre (📝 Offre)", color: "#dcfce7" } : noAnswer >= 2 ? { text: `${noAnswer} appels sans réponse : envoyer un WhatsApp pour fixer un créneau`, color: "#fef3c7" } : { text: "🔥 L'appeler pour un entretien de 15 min (priorité)", color: "#dcfce7" };
+      if (d.score >= 50) return called ? { text: "Entretien fait : à garder en réserve, décider après les meilleurs", color: "#eff6ff" } : { text: "Profil moyen : l'appeler seulement si les meilleurs ne donnent rien", color: "#eff6ff" };
+      return { text: "Note faible : ne pas retenir (le marquer écarté)", color: "#f3f4f6" };
+    }
+    if ((d.cvScore ?? 0) >= 60) return !d.inv?.whatsapp_at ? { text: "Bon CV, test pas fait : le relancer par WhatsApp", color: "#fef3c7" } : daysAgo(d.inv.whatsapp_at) >= 3 ? { text: "Relancé il y a plus de 3 jours sans test : dernière relance, puis abandon", color: "#fef3c7" } : { text: "Relancé : attendre qu'il fasse le test", color: "#eff6ff" };
+    return { text: "En attente du test (pas prioritaire)", color: "#f3f4f6" };
+  };
+  const planBox = (d: Dossier) => { const p = plan(d); const L = logsOf(d); return <div style={{ background: p.color, borderRadius: 12, padding: 10, display: "grid", gap: 6, fontSize: 14 }}>
+    <div><b>🎯 Plan d'action :</b> {p.text}</div>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{([["appel", "📞 Appelé", "Notes de l'appel (facultatif)"], ["pas de réponse", "📵 Pas de réponse", ""], ["entretien", "🗣 Entretien fait", "Impression, salaire actuel, disponibilité…"], ["note", "📝 Note", "Note"], ["recruté", "✅ Recruté", "Date de début, conditions…"], ["écarté", "❌ Écarté", "Raison"]] as const).map(([k, l, q]) => <button key={k} className={s.ghost} style={{ padding: "3px 9px", fontSize: 13 }} onClick={() => addLog(d, k, q || undefined)}>{l}</button>)}</div>
+    {L.length ? <div style={{ fontSize: 13, color: "#374151" }}>{L.slice(0, 6).map(l => <div key={l.id}>• {new Date(l.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — <b>{l.kind}</b>{l.note ? ` : ${l.note}` : ""}</div>)}</div> : <small style={{ color: "#6b7280" }}>Aucun contact enregistré.</small>}
+  </div>; };
   const offerPanel = () => { if (!offerFor || !op) return null; const k = offerFor.poste; const set = (key: keyof OfferParams, v: string) => setOp(x => x ? { ...x, [key]: typeof TEMPLATES[k][key] === "number" ? Number(v) || 0 : v } : x);
     const rows = (op.commission ? [0, 5, 10, 20, 30] : [0]).map(v => { const m = monthly(op, v); const sal = salariedCost(m.net); return { v, ...m, eur: m.brut / op.tauxEur, sal, salEur: sal.cout / op.tauxEur }; });
     const num = (key: keyof OfferParams, label: string) => <label key={key} style={{ display: "grid", gap: 4, fontSize: 13 }}>{label}<input type="number" value={op[key] as number} onChange={e => set(key, e.target.value)} /></label>;
@@ -76,13 +102,14 @@ export default function RecrutementAdmin() {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}><h2>📝 Offre pour {offerFor.name} — {POSTES[k].short}</h2><button className={s.ghost} onClick={() => setOfferFor(null)}>Fermer ✕</button></div>
       <p className={s.muted}>Repère du marché : {MARKET[k].label}, environ {fmtDA(MARKET[k].low)} à {fmtDA(MARKET[k].high)} net. Objectif : être un peu au-dessus, sans plus, pour pouvoir passer la personne en salariée un jour. Prétention indiquée : {offerFor.app?.salary_expectation || "—"}.</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 8 }}>
-        {num("fixe", "Fixe (DA/mois)")}{num("charges", "Charges freelance remboursées")}{num("assiduite", "Prime d'assiduité")}{num("commission", "Commission par voiture livrée")}{num("palierVentes", "Palier : nb de ventes")}{num("palierBonus", "Bonus de palier (DA)")}{num("objectifMontant", "Prime d'objectif (DA)")}{num("reposJours", "Jours de repos payés / an")}{num("essaiJours", "Période d'essai (jours)")}{num("tauxEur", "Taux DA pour 1 € (interne)")}
+        {num("fixe", "Fixe (DA/mois)")}{num("charges", "Charges freelance remboursées")}{num("assiduite", "Prime d'assiduité")}{num("commission", "Commission par voiture livrée")}{num("palierVentes", "Palier : nb de ventes")}{num("palierBonus", "Bonus de palier (DA)")}{num("objectifMontant", "Prime d'objectif (DA)")}{num("reposJours", "Jours de repos payés / an")}{num("essaiJours", "Période d'essai (jours)")}{num("tauxEur", "Taux : DA pour 1 €")}
+        <label style={{ display: "grid", gap: 4, fontSize: 13 }}>Devise du contrat<select value={op.devise} onChange={e => setOp(x => x ? { ...x, devise: e.target.value as "DA" | "EUR" } : x)}><option value="EUR">Euros (montants convertis au taux ci-contre)</option><option value="DA">Dinars</option></select></label>
         <label style={{ display: "grid", gap: 4, fontSize: 13 }}>Date de début<input type="date" value={op.debut} onChange={e => set("debut", e.target.value)} /></label>
       </div>
       <label style={{ display: "grid", gap: 4, fontSize: 13 }}>Objectif de la prime<input value={op.objectifLabel} onChange={e => set("objectifLabel", e.target.value)} /></label>
       <label style={{ display: "grid", gap: 4, fontSize: 13 }}>Horaires<input value={op.horaires} onChange={e => set("horaires", e.target.value)} /></label>
-      <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%", fontSize: 13.5 }}><thead><tr style={{ background: "#f4f6f9" }}>{[op.commission ? "Ventes / mois" : "Mois", "Facturé par le candidat", "Ses charges", "Net dans sa poche", "Coût NeoDrive", "Si salarié(e) : coût employeur"].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
-        <tbody>{rows.map(r => <tr key={r.v} style={{ background: r.v === op.ventesType ? "#fff7ed" : undefined }}><td style={th}>{op.commission ? r.v : "complet"}</td><td style={th}>{fmtDA(r.brut)}</td><td style={th}>−{fmtDA(r.charges)}</td><td style={th}><b>{fmtDA(r.net)}</b></td><td style={th}><b>{Math.round(r.eur)} €</b></td><td style={th}>{fmtDA(r.sal.cout)} ({Math.round(r.salEur)} €)</td></tr>)}</tbody></table></div>
+      <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%", fontSize: 13.5 }}><thead><tr style={{ background: "#f4f6f9" }}>{[op.commission ? "Ventes / mois" : "Mois", "Facturé par le candidat", "Écrit dans le contrat", "Ses charges", "Net dans sa poche", "Coût NeoDrive", "Si salarié(e) : coût employeur"].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+        <tbody>{rows.map(r => <tr key={r.v} style={{ background: r.v === op.ventesType ? "#fff7ed" : undefined }}><td style={th}>{op.commission ? r.v : "complet"}</td><td style={th}>{fmtDA(r.brut)}</td><td style={th}><b>{money(op, r.brut)}</b></td><td style={th}>−{fmtDA(r.charges)}</td><td style={th}><b>{fmtDA(r.net)}</b></td><td style={th}><b>{Math.round(r.eur)} €</b></td><td style={th}>{fmtDA(r.sal.cout)} ({Math.round(r.salEur)} €)</td></tr>)}</tbody></table></div>
       <small className={s.muted}>Charges du candidat : impôt forfaitaire 0,5 % (minimum 10 000 DA/an) + CASNOS 24 000 DA/an, soit environ {fmtDA(freelanceCharges(op.fixe))} par mois. Coût « si salarié » : pour lui garantir le même net (IRG et CNAS à la charge de l'entreprise, estimation).</small>
       {warnings(k, op).map(w => <p key={w} style={{ color: "#b45309", margin: 0 }}>⚠️ {w}</p>)}
       {!created ? <button className={s.primary} onClick={createOffer}>Créer l'offre</button> : <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -106,6 +133,7 @@ export default function RecrutementAdmin() {
       {cvPath ? <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openCv(cvPath)}>📄 CV</button> : null}<button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openOffer(d)}>📝 Offre</button>{offerBadge(d)}
       {a ? <><span>🇫🇷 {a.test_french ?? "–"}/10</span><span>🧠 {a.test_logic ?? "–"}/8</span><span>✍️ {a.test_writing ?? "–"}/20</span><span>🧩 {a.answers?.riddles_score ?? "–"}{a.riddle_sec ? ` en ${a.riddle_sec}s` : ""}</span><span>🎓 {a.bac_average ?? "?"}/20</span>{a.paste_count ? <span style={{ color: "#b91c1c" }}>⚠️ {a.paste_count} collage(s)</span> : null}{a.duration_sec ? <span>⏱ {Math.round(a.duration_sec / 60)} min</span> : null}<span>💰 {a.salary_expectation || "?"}</span></> : null}
     </div>
+    {planBox(d)}
     {d.inv ? <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 13 }}>
       <span style={{ padding: "3px 8px", borderRadius: 999, background: d.inv.sms_sent_at ? "#dcfce7" : "#f3f4f6" }}>📱 SMS test {d.inv.sms_sent_at ? `✅ ${day(d.inv.sms_sent_at)}` : "❌"}</span>
       <span style={{ padding: "3px 8px", borderRadius: 999, background: d.inv.email_sent_at ? "#dcfce7" : "#f3f4f6" }}>✉️ E-mail test {d.inv.email_sent_at ? `✅ ${day(d.inv.email_sent_at)}` : "❌"}</span>
