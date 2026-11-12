@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import s from "../planificateur/planif.module.css";
 import { COMMON, POSTES, type PosteKey } from "../../lib/hiring";
+import { MARKET, TEMPLATES, fmtDA, freelanceCharges, monthly, salariedCost, warnings, type OfferParams } from "../../lib/offers";
 
 type Row = Record<string, any>;
 type Dossier = { key: string; poste: PosteKey; name: string; city: string; phone: string; email: string; cvScore: number | null; app: Row | null; inv: Row | null; score: number; stage: string };
@@ -11,9 +12,9 @@ const tail = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 
 export default function RecrutementAdmin() {
   const [code, setCode] = useState(""); const [apps, setApps] = useState<Row[] | null>(null); const [invs, setInvs] = useState<Row[]>([]); const [msg, setMsg] = useState("");
-  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"top" | "all">("top");
+  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"top" | "all" | "offres">("top"); const [offers, setOffers] = useState<Row[]>([]); const [offerFor, setOfferFor] = useState<Dossier | null>(null); const [op, setOp] = useState<OfferParams | null>(null); const [created, setCreated] = useState<Row | null>(null);
   const call = async (url: string, method: string, body: object, pc = code) => { const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
-  const load = async (pc = code) => { try { const [a, i] = await Promise.all([call("/api/candidatures", "PUT", { action: "list" }, pc), call("/api/candidatures/invite", "POST", { action: "list" }, pc)]); setApps(a.rows); setInvs(i.rows); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
+  const load = async (pc = code) => { try { const [a, i] = await Promise.all([call("/api/candidatures", "PUT", { action: "list" }, pc), call("/api/candidatures/invite", "POST", { action: "list" }, pc)]); setApps(a.rows); setInvs(i.rows); call("/api/offres", "PUT", { action: "list" }, pc).then(o => setOffers(o.offers)).catch(() => null); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
   useEffect(() => { try { const pc = sessionStorage.getItem("nd_pc"); if (pc) { setCode(pc); load(pc); } } catch { } // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -56,11 +57,40 @@ export default function RecrutementAdmin() {
           <td style={th}>{a.bac_average ?? "?"}</td><td style={th}>{a.duration_sec ? `${Math.round(a.duration_sec / 60)} min` : "–"}</td>
           <td style={{ ...th, color: a.paste_count ? "#b91c1c" : undefined }}>{a.paste_count ? `⚠️ ${a.paste_count}` : "0"}</td>
           <td style={th}>{salaryK(a.salary_expectation)}</td><td style={th}>{a.status}</td>
-          <td style={th}><a href={`tel:+${String(d.phone).replace(/\D/g, "")}`}>📞</a> <a href={wa(d)} target="_blank" rel="noreferrer">💬</a> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => { setView("all"); setPoste(k); setOpen(d.key); }}>Fiche</button></td>
+          <td style={th}><a href={`tel:+${String(d.phone).replace(/\D/g, "")}`}>📞</a> <a href={wa(d)} target="_blank" rel="noreferrer">💬</a> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => { setView("all"); setPoste(k); setOpen(d.key); }}>Fiche</button> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => openOffer(d)}>📝 Offre</button><br />{offerBadge(d)}</td>
         </tr>; })}</tbody></table></div> : <p className={s.muted}>Aucun formulaire rempli pour l'instant.</p>}
       {wait.length ? <p style={{ fontSize: 14, margin: "8px 0 0" }}><b>⏳ Meilleurs CV qui n'ont pas encore rempli le test :</b> {wait.map(d => `${d.name} (CV ${d.cvScore}${d.inv?.whatsapp_at ? ", WhatsApp ✅" : ""})`).join(" · ")}</p> : null}
     </section>;
   };
+
+  const openOffer = (d: Dossier) => { setOfferFor(d); setCreated(null); setOp({ ...TEMPLATES[d.poste], debut: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10) }); setTimeout(() => document.getElementById("offre-panel")?.scrollIntoView({ behavior: "smooth" }), 50); };
+  const offerOf = (d: Dossier) => offers.find(o => (d.inv && o.invitation_id === d.inv.id) || (d.app && o.application_id === d.app.id));
+  const offerBadge = (d: Dossier) => { const o = offerOf(d); return o ? <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, background: o.status === "signée" ? "#dcfce7" : o.status === "refusée" ? "#fee2e2" : "#fef3c7" }}>📝 offre {o.status}</span> : null; };
+  const createOffer = async () => { if (!offerFor || !op) return; try { const j = await call("/api/offres", "PUT", { action: "create", poste: offerFor.poste, invitation_id: offerFor.inv?.id, application_id: offerFor.app?.id, full_name: offerFor.name, phone: offerFor.phone, email: offerFor.email, params: op }); setCreated({ ...j.offer, link: j.link }); setOffers(x => [j.offer, ...x]); setMsg("✅ Offre créée : envoyez-la par SMS/e-mail ou WhatsApp."); } catch (e) { setMsg((e as Error).message); } };
+  const sendOffer = async (o: Row) => { try { const j = await call("/api/offres", "PUT", { action: "send", id: o.id }); setMsg(`✅ Offre envoyée (${j.via.join(" + ")})${j.errors?.length ? " — " + j.errors.join(", ") : ""}`); load(); } catch (e) { setMsg((e as Error).message); } };
+  const waOffer = (o: Row) => { const link = `https://www.easydrive-auto.fr/offre/${o.token}`; call("/api/offres", "PUT", { action: "mark_whatsapp", id: o.id }).then(() => load()).catch(() => null); return `https://wa.me/${String(o.phone || "").replace(/\D/g, "").replace(/^0/, "213")}?text=${encodeURIComponent(`Bonjour ${String(o.full_name).split(" ")[0]}, c'est Mansour de NeoDrive. Suite à nos échanges, voici votre proposition de mission (${POSTES[o.poste as PosteKey]?.short}) : vous pouvez la consulter et la signer en ligne ici : ${link}`)}`; };
+  const offerPanel = () => { if (!offerFor || !op) return null; const k = offerFor.poste; const set = (key: keyof OfferParams, v: string) => setOp(x => x ? { ...x, [key]: typeof TEMPLATES[k][key] === "number" ? Number(v) || 0 : v } : x);
+    const rows = (op.commission ? [0, 5, 10, 20, 30] : [0]).map(v => { const m = monthly(op, v); const sal = salariedCost(m.net); return { v, ...m, eur: m.brut / op.tauxEur, sal, salEur: sal.cout / op.tauxEur }; });
+    const num = (key: keyof OfferParams, label: string) => <label key={key} style={{ display: "grid", gap: 4, fontSize: 13 }}>{label}<input type="number" value={op[key] as number} onChange={e => set(key, e.target.value)} /></label>;
+    return <section id="offre-panel" className={s.card} style={{ borderColor: "#f05a28" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}><h2>📝 Offre pour {offerFor.name} — {POSTES[k].short}</h2><button className={s.ghost} onClick={() => setOfferFor(null)}>Fermer ✕</button></div>
+      <p className={s.muted}>Repère du marché : {MARKET[k].label}, environ {fmtDA(MARKET[k].low)} à {fmtDA(MARKET[k].high)} net. Objectif : être un peu au-dessus, sans plus, pour pouvoir passer la personne en salariée un jour. Prétention indiquée : {offerFor.app?.salary_expectation || "—"}.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 8 }}>
+        {num("fixe", "Fixe (DA/mois)")}{num("charges", "Charges freelance remboursées")}{num("assiduite", "Prime d'assiduité")}{num("commission", "Commission par voiture livrée")}{num("palierVentes", "Palier : nb de ventes")}{num("palierBonus", "Bonus de palier (DA)")}{num("objectifMontant", "Prime d'objectif (DA)")}{num("reposJours", "Jours de repos payés / an")}{num("essaiJours", "Période d'essai (jours)")}{num("tauxEur", "Taux DA pour 1 € (interne)")}
+        <label style={{ display: "grid", gap: 4, fontSize: 13 }}>Date de début<input type="date" value={op.debut} onChange={e => set("debut", e.target.value)} /></label>
+      </div>
+      <label style={{ display: "grid", gap: 4, fontSize: 13 }}>Objectif de la prime<input value={op.objectifLabel} onChange={e => set("objectifLabel", e.target.value)} /></label>
+      <label style={{ display: "grid", gap: 4, fontSize: 13 }}>Horaires<input value={op.horaires} onChange={e => set("horaires", e.target.value)} /></label>
+      <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%", fontSize: 13.5 }}><thead><tr style={{ background: "#f4f6f9" }}>{[op.commission ? "Ventes / mois" : "Mois", "Facturé par le candidat", "Ses charges", "Net dans sa poche", "Coût NeoDrive", "Si salarié(e) : coût employeur"].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+        <tbody>{rows.map(r => <tr key={r.v} style={{ background: r.v === op.ventesType ? "#fff7ed" : undefined }}><td style={th}>{op.commission ? r.v : "complet"}</td><td style={th}>{fmtDA(r.brut)}</td><td style={th}>−{fmtDA(r.charges)}</td><td style={th}><b>{fmtDA(r.net)}</b></td><td style={th}><b>{Math.round(r.eur)} €</b></td><td style={th}>{fmtDA(r.sal.cout)} ({Math.round(r.salEur)} €)</td></tr>)}</tbody></table></div>
+      <small className={s.muted}>Charges du candidat : impôt forfaitaire 0,5 % (minimum 10 000 DA/an) + CASNOS 24 000 DA/an, soit environ {fmtDA(freelanceCharges(op.fixe))} par mois. Coût « si salarié » : pour lui garantir le même net (IRG et CNAS à la charge de l'entreprise, estimation).</small>
+      {warnings(k, op).map(w => <p key={w} style={{ color: "#b45309", margin: 0 }}>⚠️ {w}</p>)}
+      {!created ? <button className={s.primary} onClick={createOffer}>Créer l'offre</button> : <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+        <button className={s.primary} onClick={() => sendOffer(created)}>📨 Envoyer par SMS + e-mail</button>
+        <a className={s.ghost} href="#" onClick={e => { e.preventDefault(); window.open(waOffer(created), "_blank"); }}>💬 Envoyer par WhatsApp</a>
+        <a className={s.ghost} href={created.link} target="_blank" rel="noreferrer">👁 Voir l'offre</a>
+        <button className={s.ghost} onClick={() => { navigator.clipboard?.writeText(created.link).catch(() => null); setMsg("🔗 Lien copié"); }}>🔗 Copier le lien</button></div>}
+    </section>; };
   if (!apps) return <main className={s.page}><form className={s.login} onSubmit={e => { e.preventDefault(); load(); }}><span className={s.logo}>N</span><h1>Recrutement</h1><p>Code d'accès NeoDrive.</p><input type="password" value={code} onChange={e => setCode(e.target.value)} autoFocus /><button>Entrer</button>{msg ? <p style={{ color: "#b91c1c" }}>{msg}</p> : null}</form></main>;
   const count = (k: string) => dossiers.filter(d => k === "tous" || d.poste === k).length;
 
@@ -73,7 +103,7 @@ export default function RecrutementAdmin() {
     </div>
     <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 14 }}>
       <a href={`tel:+${String(d.phone).replace(/\D/g, "")}`}>📞 {d.phone}</a><a href={wa(d)} target="_blank" rel="noreferrer" onClick={() => { if (d.inv && !d.inv.whatsapp_at && !d.app) markWa(d.inv.id, true); }}>💬 WhatsApp</a>{d.email ? <a href={`mailto:${d.email}`}>✉️ e-mail</a> : null}
-      {cvPath ? <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openCv(cvPath)}>📄 CV</button> : null}
+      {cvPath ? <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openCv(cvPath)}>📄 CV</button> : null}<button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openOffer(d)}>📝 Offre</button>{offerBadge(d)}
       {a ? <><span>🇫🇷 {a.test_french ?? "–"}/10</span><span>🧠 {a.test_logic ?? "–"}/8</span><span>✍️ {a.test_writing ?? "–"}/20</span><span>🧩 {a.answers?.riddles_score ?? "–"}{a.riddle_sec ? ` en ${a.riddle_sec}s` : ""}</span><span>🎓 {a.bac_average ?? "?"}/20</span>{a.paste_count ? <span style={{ color: "#b91c1c" }}>⚠️ {a.paste_count} collage(s)</span> : null}{a.duration_sec ? <span>⏱ {Math.round(a.duration_sec / 60)} min</span> : null}<span>💰 {a.salary_expectation || "?"}</span></> : null}
     </div>
     {d.inv ? <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 13 }}>
@@ -99,7 +129,9 @@ export default function RecrutementAdmin() {
 
   return <main className={s.page}>
     <div className={s.top}><div><h1>👥 Recrutement</h1><p>Note finale = 30 % CV + 70 % formulaire et tests. Mise à jour à chaque nouvelle candidature.</p></div><button className={s.ghost} onClick={() => load()}>↻ Actualiser</button></div>
-    <div className={s.seg} style={{ marginTop: 12 }}><button className={view === "top" ? s.on : ""} onClick={() => setView("top")}>🏆 Classement par poste</button><button className={view === "all" ? s.on : ""} onClick={() => setView("all")}>📂 Tous les dossiers</button></div>
+    <div className={s.seg} style={{ marginTop: 12 }}><button className={view === "top" ? s.on : ""} onClick={() => setView("top")}>🏆 Classement par poste</button><button className={view === "all" ? s.on : ""} onClick={() => setView("all")}>📂 Tous les dossiers</button><button className={view === "offres" ? s.on : ""} onClick={() => setView("offres")}>📝 Offres ({offers.length})</button></div>
+    {offerPanel()}
+    {view === "offres" ? <section className={s.card}><h2>📝 Offres envoyées</h2>{offers.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["Candidat", "Poste", "Fixe", "Commission", "Statut", "Envoyée", "Vue", "Signée", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead><tbody>{offers.map(o => <tr key={o.id}><td style={{ ...th, textAlign: "left" }}><b>{o.full_name}</b></td><td style={th}>{POSTES[o.poste as PosteKey]?.short}</td><td style={th}>{fmtDA(o.params?.fixe || 0)}</td><td style={th}>{o.params?.commission ? fmtDA(o.params.commission) : "—"}</td><td style={th}><b>{o.status}</b>{o.refuse_reason ? <><br /><small>{o.refuse_reason}</small></> : null}</td><td style={th}>{o.sent_at ? `${new Date(o.sent_at).toLocaleDateString("fr-FR")} (${o.sent_via})` : "—"}</td><td style={th}>{o.viewed_at ? new Date(o.viewed_at).toLocaleDateString("fr-FR") : "—"}</td><td style={th}>{o.signed_at ? `${new Date(o.signed_at).toLocaleDateString("fr-FR")} · ${o.signature_name}` : "—"}</td><td style={th}><a href={`https://www.easydrive-auto.fr/offre/${o.token}`} target="_blank" rel="noreferrer">👁</a>{!["signée", "annulée"].includes(o.status) ? <> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => sendOffer(o)}>📨</button> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => window.open(waOffer(o), "_blank")}>💬</button> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={async () => { if (confirm("Annuler cette offre ?")) { await call("/api/offres", "PUT", { action: "cancel", id: o.id }); load(); } }}>✕</button></> : null}</td></tr>)}</tbody></table></div> : <p className={s.muted}>Aucune offre pour l'instant. Cliquez sur « 📝 Offre » à côté d'un candidat.</p>}</section> : null}
     {view === "top" ? <>
       <p className={s.muted}>Classement mis à jour automatiquement à chaque formulaire reçu. Note finale = 30 % CV + 70 % tests et réponses. Les 3 premiers (en vert) sont à rappeler en priorité. Les écartés ne sont pas affichés.</p>
       {(["closer", "coordinateur", "social"] as const).map(board)}
