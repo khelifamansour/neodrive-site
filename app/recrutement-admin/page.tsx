@@ -89,7 +89,7 @@ export default function RecrutementAdmin() {
     if (o && ["brouillon", "envoyée"].includes(o.status)) return o.status === "brouillon" ? { text: "Offre créée mais pas envoyée : l'envoyer", color: "#fef3c7" } : daysAgo(o.sent_at) >= 2 ? { text: `Offre envoyée il y a ${daysAgo(o.sent_at)} j sans réponse : relancer par WhatsApp ou l'appeler`, color: "#fef3c7" } : { text: "Offre envoyée : attendre sa signature (48 h)", color: "#eff6ff" };
     if (a) {
       const ex = excOf(d); const ti = talent(d) ?? 0;
-      if (!ex && ti >= 55 && d.score >= 50) return { text: `🎯 Indice de talent ${ti} : lui envoyer le test d'excellence`, color: "#dcfce7" };
+      if (!ex && ti >= 55) return { text: `🎯 Indice de talent ${ti} : lui envoyer le test d'excellence`, color: "#dcfce7" };
       if (ex && !ex.finished_at) return daysAgo(ex.sent_at) >= 2 ? { text: "Test d'excellence non fait depuis 2 jours : relancer", color: "#fef3c7" } : { text: "Test d'excellence envoyé : attendre le résultat", color: "#eff6ff" };
       if (ex?.finished_at && (ex.score ?? 0) < 50) return { text: `Test d'excellence ${ex.score}/100 : insuffisant, ne pas retenir`, color: "#f3f4f6" };
       const called = has("entretien") || has("appel"); const noAnswer = L.filter(l => l.kind === "pas de réponse").length;
