@@ -9,7 +9,7 @@ const BUCKET = "job-applications";
 const t9 = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 
 const INSTRUCTIONS = (poste: string) => `Tu es un recruteur exigeant. Analyse en profondeur ce CV d'un candidat algérien pour le poste « ${isPoste(poste) ? POSTES[poste].title : poste} » chez NeoDrive (voitures sans permis électriques vendues en France, freelance en présentiel à Alger, horaires français). Mission : ${isPoste(poste) ? POSTES[poste].summary : ""}
-Reconstitue le parcours et évalue, en t'appuyant uniquement sur le CV :
+IMPORTANT : nous sommes le ${new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} ; des dates en 2025 ou 2026 ne sont donc pas dans le futur, ne les signale pas comme incohérentes. Reconstitue le parcours et évalue, en t'appuyant uniquement sur le CV :
 - experience (0-100) : pertinence et niveau de l'expérience pour CE poste (responsabilités, résultats chiffrés, secteur, clients français).
 - jobs : liste des postes {company, role, start: "AAAA-MM" ou null, end: "AAAA-MM" ou "en cours", months}, hors stages de moins de 3 mois.
 - total_experience_months, avg_tenure_months (durée moyenne par employeur), longest_tenure_months, short_stints (nombre de postes de moins de 12 mois, hors poste actuel et hors stages).
@@ -44,7 +44,7 @@ async function run(ids?: number[]) {
     const path = a.cv_path || inv?.cv_path; if (!path) { out.push({ name: a.full_name, status: "pas de CV" }); await db.from("cv_deep").upsert({ poste: a.poste, phone9: t9(a.phone), application_id: a.id, data: { summary: "Pas de CV disponible.", missing: true } }, { onConflict: "poste,phone9" }); return; }
     const { data: blob } = await db.storage.from(BUCKET).download(path);
     const res = blob ? await analyse(a.poste, a.cv_name || inv?.cv_file || path.split("/").pop() || "cv.pdf", new Uint8Array(await blob.arrayBuffer())) : null;
-    if (!res) { out.push({ name: a.full_name, status: "échec" }); return; }
+    if (!res) { out.push({ name: a.full_name, status: "échec" }); await db.from("cv_deep").upsert({ poste: a.poste, phone9: t9(a.phone), application_id: a.id, data: { summary: "CV non lisible automatiquement (Word ou photo) : à lire à la main.", missing: true } }, { onConflict: "poste,phone9" }); return; }
     await db.from("cv_deep").upsert({ poste: a.poste, phone9: t9(a.phone), application_id: a.id, invitation_id: inv?.id || null, data: res }, { onConflict: "poste,phone9" });
     out.push({ name: a.full_name, status: "analysé", experience: res.experience, prestige: res.prestige, coherence: res.coherence, avg_tenure: res.avg_tenure_months });
   }));
