@@ -11,7 +11,7 @@ const tail = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 
 export default function RecrutementAdmin() {
   const [code, setCode] = useState(""); const [apps, setApps] = useState<Row[] | null>(null); const [invs, setInvs] = useState<Row[]>([]); const [msg, setMsg] = useState("");
-  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false);
+  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"top" | "all">("top");
   const call = async (url: string, method: string, body: object, pc = code) => { const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
   const load = async (pc = code) => { try { const [a, i] = await Promise.all([call("/api/candidatures", "PUT", { action: "list" }, pc), call("/api/candidatures/invite", "POST", { action: "list" }, pc)]); setApps(a.rows); setInvs(i.rows); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
   useEffect(() => { try { const pc = sessionStorage.getItem("nd_pc"); if (pc) { setCode(pc); load(pc); } } catch { } // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -37,6 +37,30 @@ export default function RecrutementAdmin() {
   const day = (t?: string | null) => t ? new Date(t).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) : "";
   const wa = (d: Dossier) => `https://wa.me/${String(d.phone).replace(/\D/g, "")}?text=${encodeURIComponent(d.app ? `Bonjour ${d.name.split(" ")[0]}, c'est Mansour de NeoDrive, marque française de voitures sans permis électriques. Merci d'avoir rempli notre formulaire suite à votre candidature sur Emploitic. J'aimerais échanger 15 minutes avec vous : quand êtes-vous disponible ?` : `Bonjour ${d.name.split(" ")[0]}, c'est Mansour de NeoDrive, marque française de voitures sans permis électriques. Suite à votre candidature sur Emploitic (${POSTES[d.poste]?.short}, freelance en présentiel à Alger), voici le test : un formulaire de 30-40 min, à faire seul(e), sans aide ni IA : https://www.easydrive-auto.fr/candidature?poste=${d.poste}`)}`;
 
+
+  const th: React.CSSProperties = { padding: "7px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "center", whiteSpace: "nowrap", fontSize: 13 };
+  const salaryK = (v: unknown) => { const n = Number(String(v ?? "").replace(/[^\d]/g, "")); return n >= 1000 ? `${Math.round(n / 1000)} k DA` : String(v ?? "?").slice(0, 14); };
+  const board = (k: PosteKey) => {
+    const done = dossiers.filter(d => d.poste === k && d.app && !String(d.stage).startsWith("écarté")).sort((x, y) => y.score - x.score);
+    const out = dossiers.filter(d => d.poste === k && d.app && String(d.stage).startsWith("écarté")).length;
+    const wait = dossiers.filter(d => d.poste === k && !d.app && d.stage === "invité").sort((x, y) => (y.cvScore ?? 0) - (x.cvScore ?? 0)).slice(0, 5);
+    return <section key={k} className={s.card}>
+      <h2>{POSTES[k].short} — {done.length} formulaire(s) rempli(s){out ? ` · ${out} écarté(s)` : ""}</h2>
+      {done.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["#", "Candidat", "Note finale", "CV", "Français /10", "Logique /8", "Rédaction /20", "Énigmes", "Bac", "Durée", "Collages", "Prétention", "Statut", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead>
+        <tbody>{done.map((d, i) => { const a = d.app!; return <tr key={d.key} style={{ background: i < 3 ? "#f0fdf4" : undefined }}>
+          <td style={th}><b>{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</b></td>
+          <td style={{ ...th, textAlign: "left", whiteSpace: "normal", minWidth: 190 }}><b>{d.name}</b><br /><small style={{ color: "#5b6573" }}>{String(a.ai_summary || d.inv?.cv_summary || "").split(/(?<=\.)\s/)[0].slice(0, 140)}</small></td>
+          <td style={th}><b style={{ color: color(d.score), fontSize: 16 }}>{d.score}</b></td><td style={th}>{d.cvScore ?? "–"}</td>
+          <td style={th}>{a.test_french ?? "–"}</td><td style={th}>{a.test_logic ?? "–"}</td><td style={th}>{a.test_writing ?? "–"}</td>
+          <td style={th}>{a.answers?.riddles_score ?? "–"}{a.riddle_sec ? <><br /><small>{a.riddle_sec} s</small></> : null}</td>
+          <td style={th}>{a.bac_average ?? "?"}</td><td style={th}>{a.duration_sec ? `${Math.round(a.duration_sec / 60)} min` : "–"}</td>
+          <td style={{ ...th, color: a.paste_count ? "#b91c1c" : undefined }}>{a.paste_count ? `⚠️ ${a.paste_count}` : "0"}</td>
+          <td style={th}>{salaryK(a.salary_expectation)}</td><td style={th}>{a.status}</td>
+          <td style={th}><a href={`tel:+${String(d.phone).replace(/\D/g, "")}`}>📞</a> <a href={wa(d)} target="_blank" rel="noreferrer">💬</a> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => { setView("all"); setPoste(k); setOpen(d.key); }}>Fiche</button></td>
+        </tr>; })}</tbody></table></div> : <p className={s.muted}>Aucun formulaire rempli pour l'instant.</p>}
+      {wait.length ? <p style={{ fontSize: 14, margin: "8px 0 0" }}><b>⏳ Meilleurs CV qui n'ont pas encore rempli le test :</b> {wait.map(d => `${d.name} (CV ${d.cvScore}${d.inv?.whatsapp_at ? ", WhatsApp ✅" : ""})`).join(" · ")}</p> : null}
+    </section>;
+  };
   if (!apps) return <main className={s.page}><form className={s.login} onSubmit={e => { e.preventDefault(); load(); }}><span className={s.logo}>N</span><h1>Recrutement</h1><p>Code d'accès NeoDrive.</p><input type="password" value={code} onChange={e => setCode(e.target.value)} autoFocus /><button>Entrer</button>{msg ? <p style={{ color: "#b91c1c" }}>{msg}</p> : null}</form></main>;
   const count = (k: string) => dossiers.filter(d => k === "tous" || d.poste === k).length;
 
@@ -75,6 +99,12 @@ export default function RecrutementAdmin() {
 
   return <main className={s.page}>
     <div className={s.top}><div><h1>👥 Recrutement</h1><p>Note finale = 30 % CV + 70 % formulaire et tests. Mise à jour à chaque nouvelle candidature.</p></div><button className={s.ghost} onClick={() => load()}>↻ Actualiser</button></div>
+    <div className={s.seg} style={{ marginTop: 12 }}><button className={view === "top" ? s.on : ""} onClick={() => setView("top")}>🏆 Classement par poste</button><button className={view === "all" ? s.on : ""} onClick={() => setView("all")}>📂 Tous les dossiers</button></div>
+    {view === "top" ? <>
+      <p className={s.muted}>Classement mis à jour automatiquement à chaque formulaire reçu. Note finale = 30 % CV + 70 % tests et réponses. Les 3 premiers (en vert) sont à rappeler en priorité. Les écartés ne sont pas affichés.</p>
+      {(["closer", "coordinateur", "social"] as const).map(board)}
+    </> : null}
+    {view === "all" ? <>
     <div className={s.seg} style={{ marginTop: 12 }}>{(["tous", "closer", "coordinateur", "social"] as const).map(k => <button key={k} className={poste === k ? s.on : ""} onClick={() => setPoste(k)}>{k === "tous" ? "Tous" : POSTES[k].short} ({count(k)})</button>)}
       <button className={waOnly ? s.on : ""} onClick={() => setWaOnly(!waOnly)}>💬 WhatsApp à envoyer ({dossiers.filter(d => (poste === "tous" || d.poste === poste) && waTodo(d)).length})</button>
       <button onClick={() => setHideOut(!hideOut)}>{hideOut ? "Afficher les écartés" : "Masquer les écartés"}</button></div>
@@ -88,6 +118,7 @@ export default function RecrutementAdmin() {
       <p className={s.muted}>D'abord ceux qui ont rempli le formulaire (par note finale), puis les invités en attente (par note CV). Le bouton 💬 WhatsApp ouvre le message prêt à envoyer et coche automatiquement « Test envoyé par WhatsApp ». Filtre « 💬 WhatsApp à envoyer » : les invités qui n'ont ni rempli le formulaire ni reçu le WhatsApp. Depuis votre téléphone personnel, 10 par jour maximum.</p>
       {shown.filter(d => !top.includes(d)).map(card)}
     </section>
+    </> : null}
     {msg ? <p>{msg}</p> : null}
   </main>;
 }
