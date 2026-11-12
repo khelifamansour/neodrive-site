@@ -7,7 +7,8 @@ const card: React.CSSProperties = { background: "#fff", border: "1px solid #e7e2
 
 export default function Excellence({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
-  const [info, setInfo] = useState<{ name?: string; seconds?: number; count?: number; started?: boolean; finished?: boolean } | null>(null);
+  const [info, setInfo] = useState<{ name?: string; seconds?: number; count?: number; started?: boolean; finished?: boolean; reasoning?: { minutes: number; title: string; text: string } } | null>(null);
+  const [phase, setPhase] = useState<"qcm" | "redaction">("qcm"); const [txt, setTxt] = useState(""); const [rLeft, setRLeft] = useState(0); const rStart = useRef(0); const rPaste = useRef(0); const txtRef = useRef(""); txtRef.current = txt;
   const [qs, setQs] = useState<Q[] | null>(null); const [i, setI] = useState(0); const [left, setLeft] = useState(40);
   const [err, setErr] = useState(""); const [done, setDone] = useState(false); const [busy, setBusy] = useState(false);
   const answers = useRef<Record<string, { a: number; t: number }>>({}); const qStart = useRef(0); const blur = useRef(0); const sent = useRef(false);
@@ -18,14 +19,14 @@ export default function Excellence({ params }: { params: Promise<{ token: string
 
   const submit = async () => {
     if (sent.current) return; sent.current = true; setBusy(true);
-    const r = await fetch("/api/excellence", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, action: "submit", answers: answers.current, blur: blur.current }) }).catch(() => null);
+    const r = await fetch("/api/excellence", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, action: "submit", answers: answers.current, blur: blur.current, reasoning: txtRef.current, reasoning_sec: rStart.current ? Math.round((Date.now() - rStart.current) / 1000) : 0, reasoning_paste: rPaste.current }) }).catch(() => null);
     const j = await r?.json().catch(() => null); setBusy(false);
     if (j?.ok) setDone(true); else { sent.current = false; setErr("Envoi impossible : vérifiez votre connexion puis appuyez sur « Réessayer l'envoi »."); }
   };
   const next = (choice: number | null) => {
     if (!qs) return; const q = qs[i];
     if (choice !== null) answers.current[q.id] = { a: choice, t: Math.round((Date.now() - qStart.current) / 100) / 10 };
-    if (i + 1 >= qs.length) { setQs(null); submit(); return; }
+    if (i + 1 >= qs.length) { setQs(null); if (info?.reasoning) { setPhase("redaction"); rStart.current = Date.now(); setRLeft(info.reasoning.minutes * 60); } else submit(); return; }
     setI(i + 1); qStart.current = Date.now(); setLeft(secs);
   };
   // Compte à rebours par question : à 0, on passe à la suivante sans réponse.
@@ -34,6 +35,13 @@ export default function Excellence({ params }: { params: Promise<{ token: string
     const it = setInterval(() => { const s = Math.max(0, secs - Math.floor((Date.now() - qStart.current) / 1000)); setLeft(s); if (s <= 0) { clearInterval(it); next(null); } }, 250);
     return () => clearInterval(it);
   }, [qs, i]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Compte à rebours du problème rédigé : envoi automatique à la fin du temps.
+  useEffect(() => {
+    if (phase !== "redaction" || !info?.reasoning) return; const total = info.reasoning.minutes * 60;
+    const it = setInterval(() => { const s = Math.max(0, total - Math.floor((Date.now() - rStart.current) / 1000)); setRLeft(s); if (s <= 0) { clearInterval(it); submit(); } }, 500);
+    return () => clearInterval(it);
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const start = async () => {
     const r = await fetch("/api/excellence", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, action: "start" }) }).catch(() => null);
@@ -48,6 +56,13 @@ export default function Excellence({ params }: { params: Promise<{ token: string
     {done ? <section style={card}><h1 style={{ fontSize: 22 }}>✅ Merci, votre test est enregistré.</h1><p>Nous revenons vers vous très vite pour la suite de la sélection.</p></section>
     : busy || (sent.current && !done) ? <section style={card}><p>{busy ? "Envoi de vos réponses…" : ""}</p>{!busy ? <button onClick={submit} style={{ padding: 12, borderRadius: 10, border: 0, background: "#111", color: "#fff", fontWeight: 800 }}>Réessayer l'envoi</button> : null}</section>
     : !info || err ? (info || err ? null : <p>Chargement…</p>)
+    : phase === "redaction" && info.reasoning ? <section style={card}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, marginBottom: 6 }}><span>Dernière étape : {info.reasoning.title}</span><span style={{ color: rLeft <= 60 ? "#b91c1c" : "#111" }}>⏱ {Math.floor(rLeft / 60)}:{String(rLeft % 60).padStart(2, "0")}</span></div>
+      <p style={{ fontWeight: 600 }}>{info.reasoning.text}</p>
+      <textarea value={txt} onChange={e => setTxt(e.target.value)} onPaste={e => { e.preventDefault(); rPaste.current += 1; }} rows={10} placeholder="Rédigez votre méthode ici, étape par étape (sans copier-coller)…" style={{ width: "100%", boxSizing: "border-box", padding: 12, borderRadius: 12, border: "1px solid #d4d7db", font: "inherit" }} />
+      <small style={{ color: "#6b7280" }}>Le texte est envoyé automatiquement à la fin du temps. Le copier-coller est désactivé.</small>
+      <button onClick={submit} disabled={txt.trim().length < 20} style={{ width: "100%", marginTop: 10, padding: 14, borderRadius: 12, border: 0, background: "#111", color: "#fff", fontWeight: 800, fontSize: 16, opacity: txt.trim().length < 20 ? 0.5 : 1 }}>Envoyer ma réponse et terminer</button>
+    </section>
     : !q ? <section style={card}>
       <h1 style={{ fontSize: 24, lineHeight: 1.2 }}>Test d'excellence</h1>
       <p>Bonjour {info.name?.split(" ")[0]}, félicitations : vous faites partie des meilleurs candidats. Ce test est volontairement difficile.</p>
@@ -55,6 +70,7 @@ export default function Excellence({ params }: { params: Promise<{ token: string
         <li><b>{info.count} questions</b> : raisonnement, calcul mental, logique, français, puis des questions sur votre futur métier.</li>
         <li><b>{secs} secondes par question</b>, une question à la fois. À la fin du temps, on passe automatiquement à la suivante. <b>Impossible de revenir en arrière.</b></li>
         <li>La note tient compte de vos bonnes réponses <b>et de votre rapidité</b>.</li>
+        {info.reasoning ? <li>Pour finir : <b>un problème de raisonnement à rédiger en {info.reasoning.minutes} minutes</b>. Votre méthode et la qualité de votre explication comptent.</li> : null}
         <li>À faire <b>seul(e), sans calculatrice, sans aide ni outil d'IA</b>. Les sorties de la page sont enregistrées.</li>
         <li><b>Une seule tentative</b> : installez-vous au calme, avec une bonne connexion, avant de commencer.</li>
       </ul>

@@ -469,3 +469,10 @@ export function talentIndex(a: Record<string, any> | null | undefined, excellenc
   const base = ok.reduce((t, [v, w]) => t + v * w, 0) / ok.reduce((t, [, w]) => t + w, 0);
   return Math.max(0, Math.round(base - Math.min(20, 5 * (Number(a.paste_count) || 0))));
 }
+
+/** Problème ouvert à rédiger, à la fin du test (chronométré). */
+export const REASONING = {
+  minutes: 6,
+  title: "Problème des 8 pommes",
+  text: "Vous avez 8 pommes qui semblent identiques. Elles ont toutes exactement le même poids, sauf une, légèrement plus légère, sans que l'on puisse le voir à l'œil nu. Vous disposez d'une balance à deux plateaux (une balance à l'ancienne : le plateau le plus lourd descend, le plus léger monte). En utilisant la balance seulement 2 fois, comment trouvez-vous à coup sûr la pomme la plus légère ? Expliquez votre méthode étape par étape, en prévoyant tous les cas possibles, comme si vous l'expliquiez à un collègue.",
+};
