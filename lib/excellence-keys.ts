@@ -1,2 +1,2 @@
-/** Corrigé du test d'excellence (serveur uniquement). Index de la bonne réponse. */
-export const EXCELLENCE_KEY: Record<string, number> = { e1: 1, e2: 1, e3: 1, e4: 2, e5: 1, e6: 2, e7: 1, e8: 1, e9: 1, e10: 0, e11: 3, e12: 2, e13: 0, e14: 1, e15: 3, e16: 1 };
+/** Corrigé du test d'excellence (serveur uniquement) : index de la bonne réponse. */
+export const EXCELLENCE_KEY: Record<string, number> = {"g1": 2, "g2": 3, "g3": 2, "g4": 1, "g5": 1, "g6": 1, "g7": 1, "g8": 1, "g9": 2, "g10": 0, "g11": 1, "g12": 1, "g13": 0, "g14": 1, "g15": 2, "g16": 1, "c1": 1, "c2": 0, "c3": 2, "c4": 1, "c5": 1, "c6": 2, "c7": 1, "c8": 1, "k1": 2, "k2": 1, "k3": 1, "k4": 1, "k5": 2, "k6": 1, "k7": 1, "k8": 1, "s1": 2, "s2": 1, "s3": 1, "s4": 1, "s5": 2, "s6": 2, "s7": 1, "s8": 1};
