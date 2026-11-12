@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import s from "../planificateur/planif.module.css";
 import { COMMON, POSTES, type PosteKey } from "../../lib/hiring";
 import { supabase } from "../../lib/supabase";
+import { talentIndex } from "../../lib/excellence";
 import { MARKET, TEMPLATES, fmtDA, money, freelanceCharges, monthly, salariedCost, warnings, type OfferParams } from "../../lib/offers";
 
 type Row = Record<string, any>;
@@ -13,9 +14,9 @@ const tail = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 
 export default function RecrutementAdmin() {
   const [code, setCode] = useState(""); const [apps, setApps] = useState<Row[] | null>(null); const [invs, setInvs] = useState<Row[]>([]); const [msg, setMsg] = useState("");
-  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"top" | "all" | "offres">("top"); const [offers, setOffers] = useState<Row[]>([]); const [offerFor, setOfferFor] = useState<Dossier | null>(null); const [op, setOp] = useState<OfferParams | null>(null); const [created, setCreated] = useState<Row | null>(null); const [logs, setLogs] = useState<Row[]>([]); const [imp, setImp] = useState<{ poste: PosteKey; busy: boolean; text: string; rows: Row[] }>({ poste: "closer", busy: false, text: "", rows: [] });
+  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"top" | "all" | "offres">("top"); const [offers, setOffers] = useState<Row[]>([]); const [offerFor, setOfferFor] = useState<Dossier | null>(null); const [op, setOp] = useState<OfferParams | null>(null); const [created, setCreated] = useState<Row | null>(null); const [logs, setLogs] = useState<Row[]>([]); const [exc, setExc] = useState<Row[]>([]); const [imp, setImp] = useState<{ poste: PosteKey; busy: boolean; text: string; rows: Row[] }>({ poste: "closer", busy: false, text: "", rows: [] });
   const call = async (url: string, method: string, body: object, pc = code) => { const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
-  const load = async (pc = code) => { try { const [a, i] = await Promise.all([call("/api/candidatures", "PUT", { action: "list" }, pc), call("/api/candidatures/invite", "POST", { action: "list" }, pc)]); setApps(a.rows); setInvs(i.rows); call("/api/offres", "PUT", { action: "list" }, pc).then(o => setOffers(o.offers)).catch(() => null); call("/api/candidatures/log", "PUT", { action: "list" }, pc).then(o => setLogs(o.logs)).catch(() => null); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
+  const load = async (pc = code) => { try { const [a, i] = await Promise.all([call("/api/candidatures", "PUT", { action: "list" }, pc), call("/api/candidatures/invite", "POST", { action: "list" }, pc)]); setApps(a.rows); setInvs(i.rows); call("/api/offres", "PUT", { action: "list" }, pc).then(o => setOffers(o.offers)).catch(() => null); call("/api/candidatures/log", "PUT", { action: "list" }, pc).then(o => setLogs(o.logs)).catch(() => null); call("/api/excellence", "PUT", { action: "list" }, pc).then(o => setExc(o.tests)).catch(() => null); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
   useEffect(() => { try { const pc = sessionStorage.getItem("nd_pc"); if (pc) { setCode(pc); load(pc); } } catch { } // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -44,16 +45,16 @@ export default function RecrutementAdmin() {
   const th: React.CSSProperties = { padding: "7px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "center", whiteSpace: "nowrap", fontSize: 13 };
   const salaryK = (v: unknown) => { const n = Number(String(v ?? "").replace(/[^\d]/g, "")); return n >= 1000 ? `${Math.round(n / 1000)} k DA` : String(v ?? "?").slice(0, 14); };
   const board = (k: PosteKey) => {
-    const done = dossiers.filter(d => d.poste === k && d.app && !String(d.stage).startsWith("écarté")).sort((x, y) => y.score - x.score);
+    const done = dossiers.filter(d => d.poste === k && d.app && !String(d.stage).startsWith("écarté")).sort((x, y) => ((talent(y) ?? 0) + y.score) - ((talent(x) ?? 0) + x.score));
     const out = dossiers.filter(d => d.poste === k && d.app && String(d.stage).startsWith("écarté")).length;
     const wait = dossiers.filter(d => d.poste === k && !d.app && d.stage === "invité").sort((x, y) => (y.cvScore ?? 0) - (x.cvScore ?? 0)).slice(0, 5);
     return <section key={k} className={s.card}>
       <h2>{POSTES[k].short} — {done.length} formulaire(s) rempli(s){out ? ` · ${out} écarté(s)` : ""}</h2>
-      {done.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["#", "Candidat", "Note finale", "CV", "Français /10", "Logique /8", "Rédaction /20", "Énigmes", "Bac", "Durée", "Collages", "Prétention", "Plan d'action", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead>
+      {done.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["#", "Candidat", "Note finale", "Talent", "Excellence", "CV", "Français /10", "Logique /8", "Rédaction /20", "Énigmes", "Bac", "Durée", "Collages", "Prétention", "Plan d'action", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead>
         <tbody>{done.map((d, i) => { const a = d.app!; return <tr key={d.key} style={{ background: i < 3 ? "#f0fdf4" : undefined }}>
           <td style={th}><b>{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</b></td>
           <td style={{ ...th, textAlign: "left", whiteSpace: "normal", minWidth: 190 }}><b>{d.name}</b><br /><small style={{ color: "#5b6573" }}>{String(a.ai_summary || d.inv?.cv_summary || "").split(/(?<=\.)\s/)[0].slice(0, 140)}</small></td>
-          <td style={th}><b style={{ color: color(d.score), fontSize: 16 }}>{d.score}</b></td><td style={th}>{d.cvScore ?? "–"}</td>
+          <td style={th}><b style={{ color: color(d.score), fontSize: 16 }}>{d.score}</b></td><td style={th}><b style={{ color: color(talent(d)) }}>{talent(d) ?? "–"}</b></td><td style={th}>{excOf(d)?.finished_at ? <b>{excOf(d)!.score}</b> : excOf(d) ? "⏳" : "–"}</td><td style={th}>{d.cvScore ?? "–"}</td>
           <td style={th}>{a.test_french ?? "–"}</td><td style={th}>{a.test_logic ?? "–"}</td><td style={th}>{a.test_writing ?? "–"}</td>
           <td style={th}>{a.answers?.riddles_score ?? "–"}{a.riddle_sec ? <><br /><small>{a.riddle_sec} s</small></> : null}</td>
           <td style={th}>{a.bac_average ?? "?"}</td><td style={th}>{a.duration_sec ? `${Math.round(a.duration_sec / 60)} min` : "–"}</td>
@@ -72,6 +73,9 @@ export default function RecrutementAdmin() {
   const sendOffer = async (o: Row) => { try { const j = await call("/api/offres", "PUT", { action: "send", id: o.id }); setMsg(`✅ Offre envoyée (${j.via.join(" + ")})${j.errors?.length ? " — " + j.errors.join(", ") : ""}`); load(); } catch (e) { setMsg((e as Error).message); } };
   const waOffer = (o: Row) => { const link = `https://www.easydrive-auto.fr/offre/${o.token}`; call("/api/offres", "PUT", { action: "mark_whatsapp", id: o.id }).then(() => load()).catch(() => null); return `https://wa.me/${String(o.phone || "").replace(/\D/g, "").replace(/^0/, "213")}?text=${encodeURIComponent(`Bonjour ${String(o.full_name).split(" ")[0]}, c'est Mansour de NeoDrive. Suite à nos échanges, voici votre proposition de mission (${POSTES[o.poste as PosteKey]?.short}) : vous pouvez la consulter et la signer en ligne ici : ${link}`)}`; };
 
+  const excOf = (d: Dossier) => d.app ? exc.find(x => x.application_id === d.app!.id) : undefined;
+  const talent = (d: Dossier) => talentIndex(d.app, excOf(d)?.score ?? null);
+  const sendExc = async (d: Dossier, wa = false) => { if (!d.app) return; try { const j = await call("/api/excellence", "PUT", { action: "send", channels: wa ? "whatsapp" : "all", poste: d.poste, application_id: d.app.id, invitation_id: d.inv?.id, full_name: d.name, phone: d.phone, email: d.email }); if (wa) window.open(`https://wa.me/${String(d.phone).replace(/\D/g, "").replace(/^0/, "213")}?text=${encodeURIComponent(`Bonjour ${d.name.split(" ")[0]}, c'est Mansour de NeoDrive. Félicitations, vos résultats vous qualifient pour l'étape suivante : un test d'excellence de 12 minutes, à faire seul(e) et en une fois : ${j.link}`)}`, "_blank"); setMsg(`🎯 Test d'excellence envoyé${j.via?.length ? ` (${j.via.join(" + ")})` : " (WhatsApp)"}`); await call("/api/candidatures/log", "PUT", { action: "add", poste: d.poste, phone: d.phone, full_name: d.name, kind: "note", note: "Test d'excellence envoyé" }); load(); } catch (e) { setMsg((e as Error).message); } };
   const logsOf = (d: Dossier) => logs.filter(l => l.poste === d.poste && l.phone9 === tail(d.phone));
   const addLog = async (d: Dossier, kind: string, ask?: string) => { const note = ask ? prompt(ask) : ""; if (ask && note === null) return; try { await call("/api/candidatures/log", "PUT", { action: "add", poste: d.poste, phone: d.phone, full_name: d.name, kind, note }); if (d.app && (kind === "recruté" || kind === "écarté")) await update(d.app.id, { status: kind }); load(); } catch (e) { setMsg((e as Error).message); } };
   const daysAgo = (t?: string) => t ? Math.floor((Date.now() - new Date(t).getTime()) / 86400000) : 99;
@@ -84,6 +88,10 @@ export default function RecrutementAdmin() {
     if (o?.status === "refusée") return { text: `Offre refusée${o.refuse_reason ? ` (${o.refuse_reason})` : ""} : passer au candidat suivant`, color: "#fee2e2" };
     if (o && ["brouillon", "envoyée"].includes(o.status)) return o.status === "brouillon" ? { text: "Offre créée mais pas envoyée : l'envoyer", color: "#fef3c7" } : daysAgo(o.sent_at) >= 2 ? { text: `Offre envoyée il y a ${daysAgo(o.sent_at)} j sans réponse : relancer par WhatsApp ou l'appeler`, color: "#fef3c7" } : { text: "Offre envoyée : attendre sa signature (48 h)", color: "#eff6ff" };
     if (a) {
+      const ex = excOf(d); const ti = talent(d) ?? 0;
+      if (!ex && ti >= 55 && d.score >= 50) return { text: `🎯 Indice de talent ${ti} : lui envoyer le test d'excellence`, color: "#dcfce7" };
+      if (ex && !ex.finished_at) return daysAgo(ex.sent_at) >= 2 ? { text: "Test d'excellence non fait depuis 2 jours : relancer", color: "#fef3c7" } : { text: "Test d'excellence envoyé : attendre le résultat", color: "#eff6ff" };
+      if (ex?.finished_at && (ex.score ?? 0) < 50) return { text: `Test d'excellence ${ex.score}/100 : insuffisant, ne pas retenir`, color: "#f3f4f6" };
       const called = has("entretien") || has("appel"); const noAnswer = L.filter(l => l.kind === "pas de réponse").length;
       if (d.score >= 65) return called ? { text: "Entretien fait : s'il est convaincant, lui envoyer une offre (📝 Offre)", color: "#dcfce7" } : noAnswer >= 2 ? { text: `${noAnswer} appels sans réponse : envoyer un WhatsApp pour fixer un créneau`, color: "#fef3c7" } : { text: "🔥 L'appeler pour un entretien de 15 min (priorité)", color: "#dcfce7" };
       if (d.score >= 50) return called ? { text: "Entretien fait : à garder en réserve, décider après les meilleurs", color: "#eff6ff" } : { text: "Profil moyen : l'appeler seulement si les meilleurs ne donnent rien", color: "#eff6ff" };
@@ -94,6 +102,8 @@ export default function RecrutementAdmin() {
   };
   const planBox = (d: Dossier) => { const p = plan(d); const L = logsOf(d); return <div style={{ background: p.color, borderRadius: 12, padding: 10, display: "grid", gap: 6, fontSize: 14 }}>
     <div><b>🎯 Plan d'action :</b> {p.text}</div>
+    {d.app ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}><b>🧠 Indice de talent : {talent(d) ?? "—"}</b>{excOf(d)?.finished_at ? <span>· Test d'excellence : <b>{excOf(d)!.score}/100</b> ({excOf(d)!.correct}/16 en {Math.round((excOf(d)!.duration_sec || 0) / 60)} min{excOf(d)!.blur_count ? `, ⚠️ ${excOf(d)!.blur_count} sortie(s) d'onglet` : ""})</span> : excOf(d) ? <span>· Test d'excellence envoyé, pas encore fait</span> : null}
+      {!excOf(d)?.finished_at ? <><button className={s.ghost} style={{ padding: "3px 9px", fontSize: 13 }} onClick={() => sendExc(d)}>🎯 Test d'excellence (SMS + e-mail)</button><button className={s.ghost} style={{ padding: "3px 9px", fontSize: 13 }} onClick={() => sendExc(d, true)}>🎯 par WhatsApp</button></> : null}</div> : null}
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{([["appel", "📞 Appelé", "Notes de l'appel (facultatif)"], ["pas de réponse", "📵 Pas de réponse", ""], ["entretien", "🗣 Entretien fait", "Impression, salaire actuel, disponibilité…"], ["note", "📝 Note", "Note"], ["recruté", "✅ Recruté", "Date de début, conditions…"], ["écarté", "❌ Écarté", "Raison"]] as const).map(([k, l, q]) => <button key={k} className={s.ghost} style={{ padding: "3px 9px", fontSize: 13 }} onClick={() => addLog(d, k, q || undefined)}>{l}</button>)}</div>
     {L.length ? <div style={{ fontSize: 13, color: "#374151" }}>{L.slice(0, 6).map(l => <div key={l.id}>• {new Date(l.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — <b>{l.kind}</b>{l.note ? ` : ${l.note}` : ""}</div>)}</div> : <small style={{ color: "#6b7280" }}>Aucun contact enregistré.</small>}
   </div>; };
