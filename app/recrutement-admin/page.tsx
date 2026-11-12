@@ -30,8 +30,8 @@ export default function RecrutementAdmin() {
     for (const app of apps || []) if (!used.has(app.id)) out.push({ key: "a" + app.id, poste: app.poste, name: app.full_name, city: app.city || "", phone: app.phone, email: app.email || "", cvScore: null, app, inv: null, score: app.final_score ?? app.ai_score ?? 0, stage: app.status || "nouveau" });
     return out.sort((x, y) => (y.app ? 1 : 0) - (x.app ? 1 : 0) || y.score - x.score);
   }, [apps, invs]);
-  const waTodo = (d: Dossier) => !!d.inv && !d.app && !d.inv.whatsapp_at && d.stage === "invité";
-  const shown = dossiers.filter(d => (poste === "tous" || d.poste === poste) && (!hideOut || !String(d.stage).startsWith("écarté")) && (!waOnly || waTodo(d)));
+  const waTodo = (d: Dossier) => !!d.inv && !d.app && !d.inv.whatsapp_at && !!d.phone;
+  const shown = dossiers.filter(d => (poste === "tous" || d.poste === poste) && (waOnly || !hideOut || !String(d.stage).startsWith("écarté")) && (!waOnly || waTodo(d))).slice(0, waOnly ? 30 : undefined);
   const top = shown.filter(d => d.app && d.score >= 75 && !["recruté", "écarté", "écarté (IA)"].includes(d.stage));
   const update = async (id: number, patch: Row) => { setApps(rs => rs!.map(r => r.id === id ? { ...r, ...patch } : r)); try { await call("/api/candidatures", "PUT", { action: "update", id, patch }) } catch (e) { setMsg((e as Error).message) } };
   const openCv = async (path: string) => { try { const j = await call("/api/candidatures", "PUT", { action: "cv", path }); if (j.url) window.open(j.url, "_blank"); } catch { setMsg("CV indisponible") } };
@@ -113,9 +113,11 @@ export default function RecrutementAdmin() {
     } catch (e) { setImp(x => ({ ...x, busy: false, text: "❌ " + (e as Error).message })); }
   };
   const sendImported = async (all: boolean) => { const ids = imp.rows.filter(r => r.id && (all || !/^écart/i.test(r.verdict || ""))).map(r => r.id); if (!ids.length) return; if (!confirm(`Envoyer le test par SMS + e-mail à ${ids.length} candidat(s) ?`)) return; setImp(x => ({ ...x, busy: true, text: "Envoi des tests…" })); let ok = 0; for (let i = 0; i < ids.length; i += 25) { const j = await call("/api/candidatures/invite", "POST", { action: "send", ids: ids.slice(i, i + 25) }).catch(() => null); ok += (j?.results || []).filter((r: Row) => r.sms === "envoyé" || r.email === "envoyé").length; } setImp(x => ({ ...x, busy: false, text: `✅ Test envoyé à ${ok} candidat(s).` })); load(); };
+  const rescoreAll = async () => { setImp(x => ({ ...x, busy: true, text: "Analyse des CV non notés…" })); let n = 0; for (let g = 0; g < 80; g++) { const j = await call("/api/candidatures/import-zip", "PUT", { action: "rescore" }).catch(() => null); if (!j) break; n += j.results.length; setImp(x => ({ ...x, text: `Analyse… ${n} traités, ${j.remaining} restants` })); if (!j.remaining || !j.results.length) break; } setImp(x => ({ ...x, busy: false, text: `✅ Analyse terminée (${n} CV traités).` })); load(); };
   const importBox = () => <section className={s.card}><h2>📥 Importer un ZIP de CV (Emploitic)</h2><p className={s.muted}>Déposez le ZIP tel quel, même avec 100 CV : chaque CV est lu, noté par l'IA et rangé automatiquement. Les CV déjà présents sont ignorés.</p>
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}><select value={imp.poste} onChange={e => setImp(x => ({ ...x, poste: e.target.value as PosteKey }))} style={{ width: "auto" }}>{(["closer", "coordinateur", "social"] as const).map(k => <option key={k} value={k}>{POSTES[k].short}</option>)}</select>
-      <label className={s.primary} style={{ cursor: imp.busy ? "wait" : "pointer", opacity: imp.busy ? 0.6 : 1 }}>{imp.busy ? "En cours…" : "Choisir le fichier ZIP"}<input type="file" accept=".zip,application/zip" hidden disabled={imp.busy} onChange={e => importZip(e.target.files?.[0] || null)} /></label></div>
+      <label className={s.primary} style={{ cursor: imp.busy ? "wait" : "pointer", opacity: imp.busy ? 0.6 : 1 }}>{imp.busy ? "En cours…" : "Choisir le fichier ZIP"}<input type="file" accept=".zip,application/zip" hidden disabled={imp.busy} onChange={e => importZip(e.target.files?.[0] || null)} /></label><button className={s.ghost} disabled={imp.busy} onClick={rescoreAll}>🔄 Analyser les CV non notés</button></div>
+    <p className={s.muted} style={{ margin: 0 }}>Le poste choisi n'est qu'indicatif : l'IA note chaque CV pour les 3 postes et le range dans celui où il est le meilleur.</p>
     {imp.text ? <p><b>{imp.text}</b></p> : null}
     {imp.rows.some(r => r.id) && !imp.busy ? <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}><button className={s.primary} onClick={() => sendImported(false)}>📨 Envoyer le test aux nouveaux (sauf écartés)</button><button className={s.ghost} onClick={() => sendImported(true)}>📨 L'envoyer à tous les nouveaux</button></div> : null}
     {imp.rows.length ? <div style={{ maxHeight: 260, overflow: "auto", fontSize: 13.5 }}>{imp.rows.map((r, i) => <div key={i}>{r.status === "importé" ? `• ${r.full_name} — ${r.score ?? "?"} — ${r.verdict}` : `• ${r.name} — ${r.status}`}</div>)}</div> : null}
@@ -201,7 +203,7 @@ export default function RecrutementAdmin() {
     </section>
     <section className={s.card}>
       <h2>Tous les dossiers ({shown.length})</h2>
-      <p className={s.muted}>D'abord ceux qui ont rempli le formulaire (par note finale), puis les invités en attente (par note CV). Le bouton 💬 WhatsApp ouvre le message prêt à envoyer et coche automatiquement « Test envoyé par WhatsApp ». Filtre « 💬 WhatsApp à envoyer » : les invités qui n'ont ni rempli le formulaire ni reçu le WhatsApp. Depuis votre téléphone personnel, 10 par jour maximum.</p>
+      <p className={s.muted}>D'abord ceux qui ont rempli le formulaire (par note finale), puis les invités en attente (par note CV). Le bouton 💬 WhatsApp ouvre le message prêt à envoyer et coche automatiquement « Test envoyé par WhatsApp ». Filtre « 💬 WhatsApp à envoyer » : le lot du jour, soit les 30 meilleurs candidats (écartés compris) qui n'ont ni rempli le formulaire ni reçu de WhatsApp. Envoyez-en 20 à 30 par jour depuis votre téléphone personnel ; chaque envoi les retire de la liste.</p>
       {shown.filter(d => !top.includes(d)).map(card)}
     </section>
     </> : null}
