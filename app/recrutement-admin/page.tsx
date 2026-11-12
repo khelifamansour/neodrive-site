@@ -30,7 +30,8 @@ export default function RecrutementAdmin() {
     for (const app of apps || []) if (!used.has(app.id)) out.push({ key: "a" + app.id, poste: app.poste, name: app.full_name, city: app.city || "", phone: app.phone, email: app.email || "", cvScore: null, app, inv: null, score: app.final_score ?? app.ai_score ?? 0, stage: app.status || "nouveau" });
     return out.sort((x, y) => (y.app ? 1 : 0) - (x.app ? 1 : 0) || y.score - x.score);
   }, [apps, invs]);
-  const waTodo = (d: Dossier) => !!d.inv && !d.app && !d.inv.whatsapp_at && !!d.phone;
+  const waDone = new Set(invs.filter(i => i.whatsapp_at).map(i => tail(i.phone)));
+  const waTodo = (d: Dossier) => !!d.inv && !d.app && !d.inv.whatsapp_at && !!d.phone && !/doublon/i.test(d.inv.cv_verdict || "") && !waDone.has(tail(d.phone));
   const shown = dossiers.filter(d => (poste === "tous" || d.poste === poste) && (waOnly || !hideOut || !String(d.stage).startsWith("écarté")) && (!waOnly || waTodo(d))).slice(0, waOnly ? 30 : undefined);
   const top = shown.filter(d => d.app && d.score >= 75 && !["recruté", "écarté", "écarté (IA)"].includes(d.stage));
   const update = async (id: number, patch: Row) => { setApps(rs => rs!.map(r => r.id === id ? { ...r, ...patch } : r)); try { await call("/api/candidatures", "PUT", { action: "update", id, patch }) } catch (e) { setMsg((e as Error).message) } };
@@ -194,7 +195,7 @@ export default function RecrutementAdmin() {
     </> : null}
     {view === "all" ? <>
     <div className={s.seg} style={{ marginTop: 12 }}>{(["tous", "closer", "coordinateur", "social"] as const).map(k => <button key={k} className={poste === k ? s.on : ""} onClick={() => setPoste(k)}>{k === "tous" ? "Tous" : POSTES[k].short} ({count(k)})</button>)}
-      <button className={waOnly ? s.on : ""} onClick={() => setWaOnly(!waOnly)}>💬 WhatsApp à envoyer ({dossiers.filter(d => (poste === "tous" || d.poste === poste) && waTodo(d)).length})</button>
+      <button className={waOnly ? s.on : ""} onClick={() => setWaOnly(!waOnly)}>💬 WhatsApp du jour ({Math.min(30, dossiers.filter(d => (poste === "tous" || d.poste === poste) && waTodo(d)).length)} sur {dossiers.filter(d => (poste === "tous" || d.poste === poste) && waTodo(d)).length})</button>
       <button onClick={() => setHideOut(!hideOut)}>{hideOut ? "Afficher les écartés" : "Masquer les écartés"}</button></div>
     <section className={s.card} style={{ borderColor: "#86efac" }}>
       <h2>🔥 À contacter en priorité ({top.length})</h2>
