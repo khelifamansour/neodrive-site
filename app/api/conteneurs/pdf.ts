@@ -13,7 +13,7 @@ function render(build: (doc: any) => void) {
 
 function header(doc: any, title: string, s: Ship) {
   doc.font("Helvetica-Bold").fontSize(17).fillColor("#111").text(title, 40, 40);
-  doc.font("Helvetica").fontSize(9).fillColor("#555").text(`VIN detail of supplier invoice ${s.invoice_no || "-"} dated ${s.invoice_date || "-"} (original attached)`);
+  doc.font("Helvetica").fontSize(9).fillColor("#555").text(s.invoice_part ? `Container split of supplier invoice ${s.invoice_no || "-"} dated ${s.invoice_date || "-"} - ${s.invoice_part}` : `VIN detail of supplier invoice ${s.invoice_no || "-"} dated ${s.invoice_date || "-"} (original attached)`);
   const y = doc.y + 10;
   doc.fillColor("#111").font("Helvetica-Bold").fontSize(9).text("SELLER / EXPORTER", 40, y).font("Helvetica").text(SELLER.join("\n"), 40, y + 12, { width: 255 });
   doc.font("Helvetica-Bold").text("BUYER / IMPORTER", 310, y).font("Helvetica").text(BUYER.join("\n"), 310, y + 12, { width: 245 });
@@ -43,7 +43,7 @@ function table(doc: any, cols: { h: string; w: number; a?: string }[], rows: str
 
 function footer(doc: any, s: Ship, warn: string) {
   if (doc.y > 700) doc.addPage();
-  doc.x = 40; doc.font("Helvetica").fontSize(8).fillColor("#555").text(`Prepared by MK HOLDING (importer) from supplier invoice ${s.invoice_no || "-"}, the supplier packing list and the EU certificates of conformity (COC). Quantities, unit prices and amounts are identical to the supplier's original invoice, which remains the reference document.${warn}`, 40, doc.y, { width: 515 });
+  doc.x = 40; doc.font("Helvetica").fontSize(8).fillColor("#555").text(`Prepared by MK HOLDING (importer) from supplier invoice ${s.invoice_no || "-"}, the supplier packing list and the EU certificates of conformity (COC). ${s.invoice_part ? `The supplier invoice covers several containers arriving separately: this document lists only the goods of this shipment (${s.invoice_part}). Unit prices are identical to the supplier's original invoice, which remains the reference document; the parts together equal the original invoice total.` : "Quantities, unit prices and amounts are identical to the supplier's original invoice, which remains the reference document."}${warn}`, 40, doc.y, { width: 515 });
   doc.moveDown(1.5).fillColor("#111").fontSize(9).text("MK HOLDING - Mansour Khelifa, President", 40);
 }
 

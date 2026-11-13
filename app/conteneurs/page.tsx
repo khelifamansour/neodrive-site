@@ -5,7 +5,7 @@ import { DOC_TYPES, VERSIONS, portKey, vinValid, type ContainerInfo } from "../.
 
 type Row = Record<string, any>;
 const STATUS = ["en production", "en mer", "arrivé au port", "dédouané", "dépoté", "terminé"];
-const FIELDS: [string, string, string?][] = [["name", "Nom du dossier"], ["port", "Port d'arrivée"], ["vessel", "Navire / voyage"], ["bl_number", "N° connaissement (B/L)"], ["vehicles", "Nb de véhicules", "number"], ["loaded_at", "Date de départ", "date"], ["eta", "Arrivée prévue (ETA)", "date"], ["arrived_at", "Arrivée réelle", "date"], ["supplier", "Fournisseur"], ["invoice_no", "N° facture usine"], ["invoice_date", "Date facture usine", "date"], ["unit_price", "Prix unitaire véhicule (USD)", "number"], ["incoterm", "Incoterm"], ["model", "Désignation véhicule"]];
+const FIELDS: [string, string, string?][] = [["name", "Nom du dossier"], ["port", "Port d'arrivée"], ["vessel", "Navire / voyage"], ["bl_number", "N° connaissement (B/L)"], ["vehicles", "Nb de véhicules", "number"], ["loaded_at", "Date de départ", "date"], ["eta", "Arrivée prévue (ETA)", "date"], ["arrived_at", "Arrivée réelle", "date"], ["supplier", "Fournisseur"], ["invoice_no", "N° facture usine"], ["invoice_date", "Date facture usine", "date"], ["unit_price", "Prix unitaire véhicule (USD)", "number"], ["incoterm", "Incoterm"], ["model", "Désignation véhicule"], ["invoice_part", "Part de facture (si facture usine découpée)"]];
 const REQ = DOC_TYPES.filter(t => t.required);
 const SHORT: Record<string, string> = { facture: "Facture", colisage: "Colisage", coc: "COC", bl: "B/L", transport: "Fret" };
 const fmt = (d?: string) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "—";

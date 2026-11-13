@@ -11,7 +11,7 @@ export const maxDuration = 60;
 const BUCKET = "shipment-docs";
 const clean = (v: unknown, max = 500) => String(v ?? "").replace(/[<>]/g, "").trim().slice(0, max);
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const SHIP_FIELDS = ["name", "port", "supplier", "vessel", "bl_number", "containers", "vehicles", "loaded_at", "eta", "arrived_at", "status", "forwarder_email", "notes", "invoice_no", "invoice_date", "incoterm", "unit_price", "model", "extra_lines", "container_list"];
+const SHIP_FIELDS = ["name", "port", "supplier", "vessel", "bl_number", "containers", "vehicles", "loaded_at", "eta", "arrived_at", "status", "forwarder_email", "notes", "invoice_no", "invoice_date", "incoterm", "unit_price", "model", "extra_lines", "container_list", "invoice_part"];
 
 /** Dépôt de documents par le fondateur (multipart : passcode, shipment_id, doc_type, version, files[]). */
 export async function POST(req: Request) {
@@ -77,7 +77,7 @@ export async function PUT(req: Request) {
       const up = await db.storage.from(BUCKET).upload(path, buf, { contentType: "application/pdf" }); if (up.error) return NextResponse.json({ ok: false, error: up.error.message }, { status: 500 });
       const { data: old } = await db.from("shipment_docs").select("id,file_path").eq("shipment_id", b.id).eq("doc_type", type).eq("uploaded_by", "plateforme");
       if (old?.length) { await db.storage.from(BUCKET).remove(old.map(o => o.file_path)); await db.from("shipment_docs").delete().in("id", old.map(o => o.id)); }
-      await db.from("shipment_docs").insert({ shipment_id: b.id, doc_type: type, version: "corrigée", file_path: path, file_name: name, uploaded_by: "plateforme", ref: s.invoice_no, ai_note: `Version propre avec les ${veh.length} VIN et les COC, générée le ${new Date().toLocaleDateString("fr-FR")} à partir de la facture usine (montants identiques).` });
+      await db.from("shipment_docs").insert({ shipment_id: b.id, doc_type: type, version: "corrigée", file_path: path, file_name: name, uploaded_by: "plateforme", ref: s.invoice_no, ai_note: `Version propre avec les ${veh.length} VIN et les COC, générée le ${new Date().toLocaleDateString("fr-FR")} à partir de la facture usine (${s.invoice_part ? "part de la facture usine découpée par conteneur" : "montants identiques"}).` });
       out.push(path);
     }
     return NextResponse.json({ ok: true, paths: out });
