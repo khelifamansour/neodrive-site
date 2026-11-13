@@ -66,6 +66,9 @@ export async function POST(req: Request) {
       if (signature.length < 3 || !b.accept) return NextResponse.json({ ok: false, error: "Signature et confirmation requises." }, { status: 400 });
       c.status = "livre"; c.received_at = new Date().toISOString(); c.received_by = signature; c.reception_note = clean(b.note, 1000);
       await writeJson(sb, `${C}/${c.id}.json`, c);
+      // Suivi par VIN : le véhicule attribué à cette réservation passe « livrée »
+      const { data: veh } = await sb.from("shipment_vehicles").select("id,status,history").eq("client_id", c.id).neq("status", "livrée");
+      for (const v of veh || []) await sb.from("shipment_vehicles").update({ status: "livrée", delivered_at: c.received_at, updated_at: c.received_at, history: [...(Array.isArray(v.history) ? v.history : []), { at: c.received_at, stage: "livrée", by: signature, note: "accusé de réception signé par le client" }] }).eq("id", v.id);
       fetch(ALERT_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", Referer: SITE + "/reception", Origin: SITE }, body: JSON.stringify({ _subject: `✅ Livraison confirmée — ${c.prenom} ${c.nom} (${c.ville})`, client: `${c.prenom} ${c.nom}`, ville: `${c.code_postal} ${c.ville}`, modele: c.modele, signe_par: signature, remarque: c.reception_note || "aucune", date: new Date().toLocaleString("fr-FR") }) }).catch(() => null);
       return NextResponse.json({ ok: true });
     }

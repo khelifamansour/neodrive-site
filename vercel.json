@@ -56,6 +56,10 @@
     {
       "path": "/api/seo/client-questions",
       "schedule": "50 4 * * 1"
+    },
+    {
+      "path": "/api/conteneurs/relances",
+      "schedule": "45 7 * * 1-6"
     }
   ]
 }
