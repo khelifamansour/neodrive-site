@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail } from "../../../lib/brevo";
-import { DOC_TYPES, docLabel, isDocType, portKey } from "../../../lib/shipments";
+import { isDepot, isDocType, portKey } from "../../../lib/shipments";
 import { storeFiles } from "./store";
 import { invoicePdf, packingPdf } from "./pdf";
+import { sendDossier } from "./send";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 const BUCKET = "shipment-docs";
 const clean = (v: unknown, max = 500) => String(v ?? "").replace(/[<>]/g, "").trim().slice(0, max);
-const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const SHIP_FIELDS = ["name", "port", "supplier", "vessel", "bl_number", "containers", "vehicles", "loaded_at", "eta", "arrived_at", "status", "forwarder_email", "notes", "invoice_no", "invoice_date", "incoterm", "unit_price", "model", "extra_lines", "container_list", "invoice_part"];
+const SHIP_FIELDS = ["name", "port", "supplier", "vessel", "bl_number", "containers", "vehicles", "loaded_at", "eta", "arrived_at", "status", "forwarder_email", "notes", "invoice_no", "invoice_date", "incoterm", "unit_price", "model", "extra_lines", "container_list", "invoice_part", "factory_email", "auto_send", "depot"];
 
 /** Dépôt de documents par le fondateur (multipart : passcode, shipment_id, doc_type, version, files[]). */
 export async function POST(req: Request) {
@@ -35,6 +35,8 @@ export async function PUT(req: Request) {
   }
   if (b.action === "save") {
     const row: Record<string, unknown> = {}; for (const k of SHIP_FIELDS) if (k in (b.ship || {})) row[k] = b.ship[k] === "" ? null : b.ship[k];
+    if ("depot" in row && row.depot != null && !isDepot(row.depot)) row.depot = null;
+    if ("auto_send" in row) row.auto_send = !!row.auto_send;
     if (b.id) { const { error } = await db.from("shipments").update(row).eq("id", b.id); if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 }); return NextResponse.json({ ok: true }); }
     if (!row.name) return NextResponse.json({ ok: false, error: "Nom obligatoire" }, { status: 400 });
     const { data, error } = await db.from("shipments").insert(row).select("id").single(); if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
@@ -84,24 +86,8 @@ export async function PUT(req: Request) {
   }
   if (b.action === "send" && b.id) {
     if (!brevoReady()) return NextResponse.json({ ok: false, error: "Brevo non connecté" }, { status: 503 });
-    const { data: s } = await db.from("shipments").select("*").eq("id", b.id).single();
-    const { data: fw } = s ? await db.from("forwarders").select("*").eq("port", portKey(s.port)).maybeSingle() : { data: null };
-    const to = clean(b.to || fw?.email || s?.forwarder_email, 160); if (!s || !to) return NextResponse.json({ ok: false, error: "E-mail du transitaire manquant" }, { status: 400 });
-    const { data: docs } = await db.from("shipment_docs").select("*").eq("shipment_id", b.id);
-    // Pour chaque type : la version corrigée si elle existe, sinon l'originale ; les versions avec VIN générées par la plateforme sont toujours jointes en plus de l'original usine.
-    const pick = DOC_TYPES.flatMap(t => { const all = (docs || []).filter(d => d.doc_type === t.key); const gen = all.filter(d => d.uploaded_by === "plateforme"); const rest = all.filter(d => d.uploaded_by !== "plateforme"); const cor = rest.filter(d => d.version === "corrigée"); return [...gen, ...(cor.length ? cor : rest)]; });
-    const links = await Promise.all(pick.map(async d => ({ d, url: (await db.storage.from(BUCKET).createSignedUrl(d.file_path, 14 * 86400)).data?.signedUrl })));
-    const missing = DOC_TYPES.filter(t => t.required && !(docs || []).some(d => d.doc_type === t.key)).map(t => t.fr);
-    const vins = (await db.from("shipment_vehicles").select("vin").eq("shipment_id", b.id)).data || [];
-    if (!vins.length) missing.push("Liste des VIN par conteneur");
-    const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6"><p>Bonjour${fw?.contact && to === fw.email ? " " + esc(fw.contact) : ""},</p><p>Veuillez trouver ci-dessous les documents du dossier <b>${esc(s.name)}</b> pour le dédouanement.</p>
-<table style="border-collapse:collapse;font-size:14px">${[["Port d'arrivée", s.port], ["Navire / voyage", s.vessel], ["Connaissement (B/L)", s.bl_number], ["Conteneur(s)", s.containers], ["Véhicules", s.vehicles], ["Chargement", s.loaded_at], ["Arrivée prévue", s.eta]].map(([k, v]) => `<tr><td style="padding:3px 12px 3px 0;color:#666">${k}</td><td><b>${esc(v ?? "—")}</b></td></tr>`).join("")}</table>
-<p><b>Documents</b> (liens valables 14 jours) :</p><ul>${links.map(({ d, url }) => `<li>${esc(docLabel(d.doc_type))}${d.uploaded_by === "plateforme" ? " (détail par VIN)" : d.version === "corrigée" ? " (version corrigée)" : " (original usine)"} : <a href="${url}">${esc(d.file_name)}</a></li>`).join("")}</ul>
-${missing.length ? `<p style="color:#b91c1c">Documents à venir : ${esc(missing.join(", "))}.</p>` : ""}<p>Merci de nous confirmer la bonne réception et de nous indiquer s'il manque un élément.</p><p>Cordialement,<br>Mansour Khelifa<br>MK HOLDING – NeoDrive – 06 28 26 14 46</p></div>`;
-    await sendEmail(to, fw?.contact || "", `Dossier import ${s.name} – B/L ${s.bl_number || "?"} – MK HOLDING`, html);
-    for (const cc of String(fw?.cc || "").split(/[,; ]+/).filter(x => /@/.test(x) && x !== to)) await sendEmail(cc, "", `Dossier import ${s.name} – B/L ${s.bl_number || "?"} – MK HOLDING`, html).catch(() => null);
-    await db.from("shipments").update({ sent_at: new Date().toISOString(), forwarder_email: to }).eq("id", b.id);
-    return NextResponse.json({ ok: true, sent: links.length, missing });
+    try { const out = await sendDossier(db, Number(b.id), b.to); return NextResponse.json({ ok: true, sent: out.sent, missing: out.missing }); }
+    catch (e) { return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 400 }); }
   }
   return NextResponse.json({ ok: false, error: "Action inconnue" }, { status: 400 });
 }

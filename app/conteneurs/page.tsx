@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import s from "../planificateur/planif.module.css";
-import { DOC_TYPES, VERSIONS, portKey, vinValid, type ContainerInfo } from "../../lib/shipments";
+import { DEPOTS, DOC_TYPES, FACTORY_DOCS, VERSIONS, factoryChecks, portKey, vinValid, type ContainerInfo, type DocLite } from "../../lib/shipments";
 
 type Row = Record<string, any>;
 const STATUS = ["en production", "en mer", "arrivé au port", "dédouané", "dépoté", "terminé"];
-const FIELDS: [string, string, string?][] = [["name", "Nom du dossier"], ["port", "Port d'arrivée"], ["vessel", "Navire / voyage"], ["bl_number", "N° connaissement (B/L)"], ["vehicles", "Nb de véhicules", "number"], ["loaded_at", "Date de départ", "date"], ["eta", "Arrivée prévue (ETA)", "date"], ["arrived_at", "Arrivée réelle", "date"], ["supplier", "Fournisseur"], ["invoice_no", "N° facture usine"], ["invoice_date", "Date facture usine", "date"], ["unit_price", "Prix unitaire véhicule (USD)", "number"], ["incoterm", "Incoterm"], ["model", "Désignation véhicule"], ["invoice_part", "Part de facture (si facture usine découpée)"]];
+const FIELDS: [string, string, string?][] = [["name", "Nom du dossier"], ["port", "Port d'arrivée"], ["vessel", "Navire / voyage"], ["bl_number", "N° connaissement (B/L)"], ["vehicles", "Nb de véhicules", "number"], ["loaded_at", "Date de départ", "date"], ["eta", "Arrivée prévue (ETA)", "date"], ["arrived_at", "Arrivée réelle", "date"], ["supplier", "Fournisseur"], ["invoice_no", "N° facture usine"], ["invoice_date", "Date facture usine", "date"], ["unit_price", "Prix unitaire véhicule (USD)", "number"], ["incoterm", "Incoterm"], ["model", "Désignation véhicule"], ["invoice_part", "Part de facture (si facture usine découpée)"], ["factory_email", "E-mail de l'usine (relances automatiques)"]];
 const REQ = DOC_TYPES.filter(t => t.required);
 const SHORT: Record<string, string> = { facture: "Facture", colisage: "Colisage", coc: "COC", bl: "B/L", transport: "Fret" };
 const fmt = (d?: string) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "—";
@@ -25,6 +25,7 @@ export default function Conteneurs() {
   const openDoc = async (path: string) => { const j = await api({ action: "url", path }); if (j.url) window.open(j.url, "_blank"); };
   const fwFor = (sh: Row) => fws.find(f => f.port === portKey(sh.port));
   const send = (sh: Row) => { const fw = fwFor(sh); const to = prompt(`Envoyer le dossier au transitaire ${portKey(sh.port)} :`, fw?.email || sh.forwarder_email || ""); if (!to) return; run("send" + sh.id, async () => { const j = await api({ action: "send", id: sh.id, to }); return `✅ Dossier envoyé à ${to} (${j.sent} documents)${j.missing.length ? ` — signalés manquants : ${j.missing.join(", ")}` : ""}`; }); };
+  const factory = (sh: Row) => { const url = `${window.location.origin}/factory/${sh.factory_token}`; navigator.clipboard?.writeText(url).catch(() => null); setMsg(`🏭 Lien usine copié (portail en anglais : checklist + contrôles automatiques) : ${url}`); };
   const share = (sh: Row) => { const url = `${window.location.origin}/depot/${sh.share_token}`; navigator.clipboard?.writeText(url).catch(() => null); setMsg(`🔗 Lien de dépôt copié (usine / transitaire, FR-EN-中文) : ${url}`); };
 
   const info = (sh: Row) => {
@@ -47,7 +48,7 @@ export default function Conteneurs() {
 
   return <main className={s.page} style={{ maxWidth: 1200 }}>
     <div className={s.top}><div><h1>📦 Suivi des conteneurs</h1><p>{totalCont} conteneurs · {totalVeh} véhicules en cours. Cliquez sur une ligne pour ouvrir le dossier.</p></div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button className={s.ghost} onClick={() => setShowFw(!showFw)}>🚚 Transitaires</button><button className={s.ghost} onClick={() => { const n = prompt("Nom du dossier (ex. Le Havre – EVER ACE – nov. 2026)"); if (n) save(null, { name: n, status: "en mer" }); }}>+ Nouveau dossier</button></div></div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><a className={s.ghost} href="/vehicules">🚗 Véhicules & stock</a><button className={s.ghost} onClick={() => setShowFw(!showFw)}>🚚 Transitaires</button><button className={s.ghost} onClick={() => { const n = prompt("Nom du dossier (ex. Le Havre – EVER ACE – nov. 2026)"); if (n) save(null, { name: n, status: "en mer" }); }}>+ Nouveau dossier</button></div></div>
     {msg ? <p style={{ background: msg.startsWith("❌") ? "#fef2f2" : "#f0fdf4", padding: 10, borderRadius: 10, wordBreak: "break-word" }}>{msg}</p> : null}
 
     {showFw ? <section className={s.card}><h2>🚚 Transitaires par port</h2><p className={s.muted}>Le bouton « Envoyer au transitaire » utilise automatiquement le contact du port du dossier.</p>
@@ -80,6 +81,8 @@ export default function Conteneurs() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8, marginTop: 8 }}>
             {FIELDS.map(([k, l, type]) => <label key={k} className={s.field}>{l}<input type={type || "text"} step="any" defaultValue={sh[k] ?? ""} onBlur={e => String(e.target.value) !== String(sh[k] ?? "") && save(sh.id, { [k]: type === "number" ? Number(e.target.value) || null : e.target.value })} /></label>)}
             <label className={s.field}>Statut<select defaultValue={sh.status} onChange={e => save(sh.id, { status: e.target.value })}>{STATUS.map(x => <option key={x}>{x}</option>)}</select></label>
+            <label className={s.field}>Dépôt de destination<select defaultValue={sh.depot || ""} onChange={e => save(sh.id, { depot: e.target.value })}><option value="">à définir</option>{DEPOTS.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+            <label className={s.field}>Envoi automatique au transitaire quand l'usine a tout déposé<select defaultValue={sh.auto_send ? "1" : ""} onChange={e => save(sh.id, { auto_send: !!e.target.value })}><option value="1">Oui</option><option value="">Non (j'envoie moi-même)</option></select></label>
           </div>
           <label className={s.field}>Notes<textarea rows={3} defaultValue={sh.notes || ""} onBlur={e => e.target.value !== (sh.notes || "") && save(sh.id, { notes: e.target.value })} style={{ font: "inherit", padding: 10, borderRadius: 12, border: "1px solid #d4d7db" }} /></label>
         </details>
@@ -112,6 +115,12 @@ export default function Conteneurs() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button className={s.primary} disabled={busy === "gen" + sh.id} onClick={() => run("gen" + sh.id, async () => { await api({ action: "gen_docs", id: sh.id }); return "✅ Facture et liste de colisage avec VIN générées (voir le coffre-fort ci-dessous)"; })}>{busy === "gen" + sh.id ? "Génération…" : I.gen ? "🔄 Regénérer facture + colisage avec VIN" : "📄 Générer facture + colisage avec VIN"}</button>
             {I.d.filter(x => x.uploaded_by === "plateforme").map(x => <button key={x.id} className={s.ghost} onClick={() => openDoc(x.file_path)}>👁 {x.doc_type === "facture" ? "Facture" : "Colisage"}</button>)}</div>
         </div>
+
+        {(() => { const fc = factoryChecks(sh, I.d.filter(x => x.uploaded_by !== "plateforme") as DocLite[]); return <div style={box(fc.complete ? "#f0fdf4" : "#f8fafc")}><b>🏭 Portail usine : {FACTORY_DOCS.length - fc.missing.length}/{FACTORY_DOCS.length} pièces{sh.factory_complete_at ? ` · complet le ${new Date(sh.factory_complete_at).toLocaleDateString("fr-FR")}` : ""}</b>
+          {fc.missing.length ? <small>Manque : {fc.missing.map(k => DOC_TYPES.find(t => t.key === k)?.fr.split(" (")[0]).join(", ")}</small> : null}
+          {fc.issues.length ? <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14 }}>{fc.issues.map((i, k) => <li key={k} style={{ color: i.level === "error" ? "#b91c1c" : "#b45309" }}>{i.fr}</li>)}</ul> : <small>✅ Contrôles automatiques OK (VIN, quantités, totaux) sur les documents lus.</small>}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}><button className={s.ghost} onClick={() => factory(sh)}>🏭 Copier le lien usine</button><small className={s.muted}>{sh.factory_email ? `Relances automatiques à ${sh.factory_email}` : "Ajoutez l'e-mail de l'usine pour les relances automatiques"}</small></div>
+        </div>; })()}
 
         <div style={box("#fafaf9")}><b>🔒 Coffre-fort des documents</b>
           {DOC_TYPES.map(t => { const list = I.d.filter(x => x.doc_type === t.key); if (!list.length && !t.required) return null; return <div key={t.key}><b>{list.length ? "✅" : "❌"} {t.fr}</b>

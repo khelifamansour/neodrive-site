@@ -60,6 +60,10 @@
     {
       "path": "/api/equipe-admin?report=1",
       "schedule": "40 18 * * *"
+    },
+    {
+      "path": "/api/conteneurs/relances",
+      "schedule": "45 7 * * 1-6"
     }
   ]
 }
