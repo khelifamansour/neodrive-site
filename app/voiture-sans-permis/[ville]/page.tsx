@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getSeoCity, seoCities } from "../../../lib/seo-cities";
+import SocialLinks from "../../_components/SocialLinks";
 
 export function generateStaticParams() {
   return seoCities.map((city) => ({ ville: city.slug }));
@@ -116,6 +117,8 @@ export default async function CityPage({ params }: { params: Promise<{ ville: st
         <p>Demandez les photos, une vidéo réelle du véhicule et les disponibilités actuelles avant de vous déplacer.</p>
         <a href="https://wa.me/33628261446" style={{display:"inline-block",background:"#25d366",color:"#fff",padding:"13px 17px",borderRadius:12,textDecoration:"none",fontWeight:900}}>Contacter NeoDrive sur WhatsApp</a>
       </section>
+
+      <div style={{padding:"34px 0 6px"}}><SocialLinks/></div>
 
       <nav style={{marginTop:38,borderTop:"1px solid #e5e5e5",paddingTop:24}}>
         <strong>Autres villes :</strong>{" "}

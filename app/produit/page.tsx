@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import styles from "./produit.module.css";
+import SocialLinks from "../_components/SocialLinks";
 
 const BASE = "/neodrive-switch";
 
@@ -161,6 +162,8 @@ export default function Produit() {
           <a href="https://wa.me/33676192234?text=Bonjour%2C%20je%20souhaite%20conna%C3%AEtre%20les%20NeoDrive%20disponibles" target="_blank" rel="noreferrer">Voir les disponibilités</a>
         </div>
       </section>
+
+      <div style={{padding:"34px 0 42px"}}><SocialLinks/></div>
 
       {zoom && <div className={styles.overlay} onClick={() => setZoom(false)}><img src={source(current.path)} alt={current.alt} /><button aria-label="Fermer">×</button></div>}
     </main>

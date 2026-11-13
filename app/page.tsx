@@ -2,6 +2,7 @@
 
 import React from "react";
 import GoogleReviews from "./_components/GoogleReviews";
+import SocialLinks from "./_components/SocialLinks";
 
 export default function Home() {
   return (
@@ -181,6 +182,8 @@ export default function Home() {
           <a href="https://wa.me/33676192234" target="_blank" rel="noreferrer" className="primaryBtn">💬 WhatsApp</a>
         </div>
       </section>
+
+      <div style={{padding:"34px 0 42px"}}><SocialLinks/></div>
 
       <footer className="footer">
         <strong>NeoDrive</strong>

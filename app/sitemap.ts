@@ -35,6 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ["/carte-grise", "monthly", 0.85], ["/pieces", "weekly", 0.8], ["/sav", "weekly", 0.8],
     ["/blog/sav-voiture-sans-permis", "monthly", 0.75],
     ["/faq", "weekly", 0.8], ["/contact", "monthly", 0.85], ["/reservation", "weekly", 0.9],
+    ["/cgv", "yearly", 0.4], ["/mentions-legales", "yearly", 0.3],
   ] as const;
 
   const base: MetadataRoute.Sitemap = routes.map(([route, changeFrequency, priority]) => ({

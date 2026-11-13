@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import GoogleReviews from "../_components/GoogleReviews";
+import SocialLinks from "../_components/SocialLinks";
 import s from "./catalogue.module.css";
 
 export const metadata: Metadata = {
@@ -63,6 +64,7 @@ export default function CataloguePage() {
           <a className={s.secondary} href="/videos">🎬 Voir les vidéos</a>
         </div>
       </section>
+      <div style={{padding:"34px 0 42px"}}><SocialLinks/></div>
       <GoogleReviews />
     </main>
   );
