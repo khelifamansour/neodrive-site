@@ -1,0 +1,158 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 44px 16px 64px;
+  color: #1a1d21;
+  line-height: 1.7;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.kicker {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.6px;
+  color: #e8592a;
+  text-transform: uppercase;
+}
+
+.page h1 {
+  font-size: clamp(32px, 6vw, 48px);
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+  margin: 10px 0 12px;
+}
+
+.updated {
+  color: #646a73;
+  margin: 0 0 22px;
+  font-size: 14px;
+}
+
+.intro {
+  background: #f6f7f9;
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin: 0 0 26px;
+}
+
+.toc {
+  border: 1px solid #e3e5e8;
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin: 0 0 34px;
+}
+
+.toc strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.toc ol {
+  margin: 0;
+  padding-left: 22px;
+  columns: 2 260px;
+  column-gap: 28px;
+}
+
+.toc li {
+  break-inside: avoid;
+  padding: 2px 0;
+}
+
+.toc a,
+.page a {
+  color: #b8441d;
+}
+
+.page h2 {
+  font-size: 23px;
+  line-height: 1.25;
+  letter-spacing: -0.4px;
+  margin: 38px 0 10px;
+  scroll-margin-top: 110px;
+}
+
+.page h3 {
+  font-size: 17px;
+  margin: 22px 0 6px;
+}
+
+.page ul,
+.page ol {
+  padding-left: 22px;
+}
+
+.page li {
+  margin: 4px 0;
+}
+
+.box {
+  border: 1px solid #e3e5e8;
+  border-left: 4px solid #e8592a;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin: 16px 0;
+  background: #fffaf7;
+}
+
+.box p:first-child {
+  margin-top: 0;
+}
+
+.box p:last-child {
+  margin-bottom: 0;
+}
+
+.form {
+  border: 1px dashed #b9bec6;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 16px 0;
+  background: #fff;
+}
+
+.todo {
+  background: #fff2a8;
+  color: #6b4b00;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 6px;
+  white-space: normal;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 15px;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 9px 10px;
+  border-bottom: 1px solid #e6e8eb;
+}
+
+.table th {
+  width: 38%;
+  font-weight: 800;
+  color: #30353c;
+}
+
+@media (max-width: 560px) {
+  .table th,
+  .table td {
+    display: block;
+    width: 100%;
+    padding: 4px 0;
+    border-bottom: 0;
+  }
+
+  .table td {
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e6e8eb;
+  }
+}

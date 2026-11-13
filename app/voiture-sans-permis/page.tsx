@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { seoCities } from "../../lib/seo-cities";
+import SocialLinks from "../_components/SocialLinks";
 
 export const metadata: Metadata = {
   title: "Voiture sans permis en France | Prix, villes et livraison NeoDrive",
@@ -53,6 +54,7 @@ export default function VoitureSansPermisHub() {
           ].map(([label,url]) => <a key={url} href={url} style={{color:"#fff",border:"1px solid #444",padding:"10px 13px",borderRadius:999,textDecoration:"none",fontWeight:800}}>{label}</a>)}
         </div>
       </section>
+      <div style={{padding:"40px 0 0"}}><SocialLinks/></div>
     </main>
   );
 }
