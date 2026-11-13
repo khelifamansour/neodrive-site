@@ -36,13 +36,27 @@ async function handle(b: Record<string, any>) {
     }
     if (b.action === "update" && b.id) {
       const patch: Record<string, unknown> = {};
-      for (const k of ["status", "note", "price_note", "phone", "email", "zone", "city", "services"]) if (k in b.patch) patch[k] = String(b.patch[k] ?? "").slice(0, 1500);
+      for (const k of ["status", "note", "price_note", "phone", "email", "zone", "city", "services", "category"]) if (k in b.patch) patch[k] = String(b.patch[k] ?? "").slice(0, 1500);
+      if ("next_action_at" in b.patch) patch.next_action_at = b.patch.next_action_at ? new Date(String(b.patch.next_action_at)).toISOString() : null;
       const { error } = await db.from("logistics_partners").update(patch).eq("id", b.id);
       if (error) throw error;
       return NextResponse.json({ ok: true });
     }
+    /** Journal de suivi : appel, pas de réponse, WhatsApp, note. */
+    if (b.action === "log" && b.id) {
+      const kind = ["appel", "pas de réponse", "whatsapp", "note", "e-mail"].includes(String(b.kind)) ? String(b.kind) : "note";
+      const { data: p } = await db.from("logistics_partners").select("log,status").eq("id", b.id).single();
+      const now = new Date().toISOString(); const entry = { at: now, kind, text: String(b.text || "").slice(0, 1000) };
+      const patch: Record<string, unknown> = { log: [...((p?.log as unknown[]) || []), entry].slice(-50) };
+      if (kind === "appel" || kind === "pas de réponse") patch.last_call_at = now;
+      if (kind === "whatsapp") patch.whatsapp_at = now;
+      if (p?.status === "à contacter" && kind !== "note") patch.status = "contacté";
+      const { error } = await db.from("logistics_partners").update(patch).eq("id", b.id);
+      if (error) throw error;
+      return NextResponse.json({ ok: true, entry, status: patch.status || p?.status });
+    }
     if (b.action === "add") {
-      const row = { zone: String(b.row?.zone || "Nord"), name: String(b.row?.name || "").trim().slice(0, 200), city: String(b.row?.city || ""), services: String(b.row?.services || ""), phone: String(b.row?.phone || ""), email: String(b.row?.email || ""), website: String(b.row?.website || ""), note: String(b.row?.note || "") };
+      const row = { zone: String(b.row?.zone || "Nord"), name: String(b.row?.name || "").trim().slice(0, 200), city: String(b.row?.city || ""), services: String(b.row?.services || ""), phone: String(b.row?.phone || ""), email: String(b.row?.email || ""), website: String(b.row?.website || ""), note: String(b.row?.note || ""), category: String(b.row?.category || "") || null };
       if (!row.name) return NextResponse.json({ ok: false, error: "Nom obligatoire" }, { status: 400 });
       const { error } = await db.from("logistics_partners").insert(row);
       if (error) throw error;
