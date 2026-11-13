@@ -1,0 +1,18 @@
+name: Logistique - envoi groupé
+# Déclenche l'envoi groupé de /logistique avec un jeton à usage unique (30 min), quand l'interface n'est pas accessible.
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: "Jeton à usage unique (48 caractères hexadécimaux)"
+        required: true
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Appeler le site
+        env:
+          TOKEN: ${{ inputs.token }}
+        run: |
+          echo "$TOKEN" | grep -Eq '^[a-f0-9]{48}$' || { echo "jeton invalide"; exit 1; }
+          curl -sS --max-time 120 "https://www.easydrive-auto.fr/api/logistique?token=$TOKEN" | head -c 4000
