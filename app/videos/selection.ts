@@ -27,7 +27,7 @@ export type CuratedVideo = {
 export const SECTIONS: { key: SectionKey; title: string; intro: string }[] = [
   { key: "livraisons", title: "Livraisons à nos clients", intro: "La voiture arrive chez le client, il prend le volant." },
   { key: "presentations", title: "Présentations et essais", intro: "Le véhicule de près : extérieur, habitacle et conduite." },
-  { key: "arrivages", title: "Arrivages et stock", intro: "Conteneurs, camions et parc : nos voitures existent vraiment." },
+  { key: "arrivages", title: "Notre stock", intro: "Nos voitures en stock et en route vers nos clients." },
 ];
 
 export const CURATED: CuratedVideo[] = [
@@ -64,22 +64,10 @@ export const CURATED: CuratedVideo[] = [
   // ── Arrivages et stock ──────────────────────────────────────
   { match: "NeoDrive vidéo 1", key: "parc-stock", section: "arrivages", category: "Stock", seen: true,
     title: "Des dizaines de NeoDrive en stock", description: "Notre parc : les voitures alignées, prêtes à partir." },
-  { match: "NeoDrive vidéo 3", key: "sortie-conteneur", section: "arrivages", category: "Arrivage", seen: true,
-    title: "Sortie du conteneur", description: "Une NeoDrive est sortie du conteneur au chariot élévateur." },
-  { match: "NeoDrive vidéo 2", key: "dechargement", section: "arrivages", category: "Arrivage", seen: true,
-    title: "Déchargement au chariot élévateur", description: "Les voitures sont posées une à une sur le parc." },
   { match: "1000160287.mp4", key: "1000160287", section: "arrivages", category: "Transport", seen: true,
     title: "Camion porte-voitures chargé", description: "NeoDrive rouges et grises sur le camion de transport." },
   { match: "1000160304.mp4", key: "1000160304", section: "arrivages", category: "Transport", seen: true,
     title: "NeoDrive sur le camion", description: "Une voiture sur le plateau du porte-voitures." },
   { match: "1000160267.mp4", key: "1000160267", section: "arrivages", category: "Transport", seen: true,
     title: "Arrivée des camions", description: "Les porte-voitures arrivent sur notre parc." },
-  { match: "1000160327.mp4", key: "1000160327", section: "arrivages", category: "Arrivage", seen: false,
-    title: "Journée d'arrivage : séquence 1", description: "Tournage du même jour que l'arrivée des camions." },
-  { match: "1000160303.mp4", key: "1000160303", section: "arrivages", category: "Arrivage", seen: false,
-    title: "Journée d'arrivage : séquence 2", description: "Tournage du même jour que l'arrivée des camions." },
-  { match: "1000160315.mp4", key: "1000160315", section: "arrivages", category: "Arrivage", seen: false,
-    title: "Journée d'arrivage : séquence 3", description: "Tournage du même jour que l'arrivée des camions." },
-  { match: "1000160280.mp4", key: "1000160280", section: "arrivages", category: "Arrivage", seen: false,
-    title: "Journée d'arrivage : séquence 4", description: "Tournage du même jour que l'arrivée des camions." },
 ];

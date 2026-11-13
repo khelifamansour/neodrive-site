@@ -47,6 +47,8 @@ export default async function VideoWatchPage({ params }: { params: Promise<{ id:
   // Vidéo présente dans la galerie : on l'ouvre directement sur /videos (lecture sur la même page).
   const anchor = anchorForTitle(video.title);
   if (anchor) redirect(`/videos#${anchor}`);
+  // Les vidéos retirées de la sélection (ex. déchargement de conteneur) ne sont plus montrées.
+  redirect("/videos");
   const title = videoTitle(video);
 
   return (

@@ -60,7 +60,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.72,
   }));
 
-  const videos: MetadataRoute.Sitemap = (videoRows || []).filter(v => v.id).map(v => ({
+  // Seule la galerie /videos est référencée : les pages vidéo individuelles redirigent vers elle.
+  const videos: MetadataRoute.Sitemap = (videoRows || []).filter(() => false).map(v => ({
     url: `${SITE}/videos/${v.id}`,
     lastModified: new Date(v.created_at || Date.now()),
     changeFrequency: "monthly",
