@@ -56,6 +56,10 @@
     {
       "path": "/api/seo/client-questions",
       "schedule": "50 4 * * 1"
+    },
+    {
+      "path": "/api/equipe-admin?report=1",
+      "schedule": "40 18 * * *"
     }
   ]
 }
