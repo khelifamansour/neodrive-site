@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { anchorForTitle } from "../data";
 
 export const dynamic = "force-dynamic";
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
@@ -43,6 +44,9 @@ export default async function VideoWatchPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const video = await getVideo(id);
   if (!video) notFound();
+  // Vidéo présente dans la galerie : on l'ouvre directement sur /videos (lecture sur la même page).
+  const anchor = anchorForTitle(video.title);
+  if (anchor) redirect(`/videos#${anchor}`);
   const title = videoTitle(video);
 
   return (
