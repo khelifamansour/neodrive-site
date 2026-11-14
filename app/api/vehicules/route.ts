@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAuthorized } from "../../../lib/integrations";
+import { authorizeSection } from "../../../lib/access";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { listJson, readJson, writeJson } from "../../../lib/datastore";
 import { driverKey } from "../../../lib/driver-link";
@@ -15,7 +15,7 @@ const clean = (v: unknown, n = 120) => String(v ?? "").replace(/[<>]/g, "").trim
 /** Stock entrant et suivi véhicule par véhicule (code d'accès NeoDrive). */
 export async function PUT(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
-  if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  if (!(await authorizeSection(req, b.passcode, "vehicules"))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
   const db = crmDatabase();
   try {
     if (b.action === "list") {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
+import { applyStoredSecrets } from "../../../lib/integrations";
+import { authorizeSection } from "../../../lib/access";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail, sendSms, OWNER_EMAIL } from "../../../lib/brevo";
 import { isPoste } from "../../../lib/hiring";
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
 /** Espace recrutement (code d'accès) : list, create, send, cancel. */
 export async function PUT(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
-  if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  if (!(await authorizeSection(req, b.passcode, "recrutement"))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
   await applyStoredSecrets();
   const db = crmDatabase();
   if (b.action === "list") { const { data } = await db.from("job_offers").select("*").order("created_at", { ascending: false }); return NextResponse.json({ ok: true, offers: data || [] }); }

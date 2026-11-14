@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
+import { applyStoredSecrets } from "../../../lib/integrations";
+import { authorizeSection } from "../../../lib/access";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail, sendSms, OWNER_EMAIL } from "../../../lib/brevo";
 import { EXCELLENCE_MINUTES, EXCELLENCE_SECONDS, REASONING, questionsFor } from "../../../lib/excellence";
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
 /** Espace recrutement : créer et envoyer un test (send), ou lister (list). */
 export async function PUT(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
-  if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  if (!(await authorizeSection(req, b.passcode, "recrutement"))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
   const db = crmDatabase();
   if (b.action === "list") { const { data } = await db.from("excellence_tests").select("id,token,poste,application_id,invitation_id,full_name,phone,sent_at,started_at,finished_at,correct,score,qcm_score,duration_sec,blur_count,late,reasoning_text,reasoning_sec,reasoning_paste,reasoning_score,reasoning_feedback").order("created_at", { ascending: false }); return NextResponse.json({ ok: true, tests: data || [] }); }
   if (b.action === "send") {

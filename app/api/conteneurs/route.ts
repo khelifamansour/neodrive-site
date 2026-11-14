@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
+import { applyStoredSecrets } from "../../../lib/integrations";
+import { authorizeSection } from "../../../lib/access";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail } from "../../../lib/brevo";
 import { isDepot, isDocType, portKey } from "../../../lib/shipments";
@@ -16,17 +17,21 @@ const SHIP_FIELDS = ["name", "port", "supplier", "vessel", "bl_number", "contain
 /** Dépôt de documents par le fondateur (multipart : passcode, shipment_id, doc_type, version, files[]). */
 export async function POST(req: Request) {
   const fd = await req.formData().catch(() => null);
-  if (!fd || !isAuthorized(req, String(fd.get("passcode") || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  const acc = fd ? await authorizeSection(req, String(fd.get("passcode") || ""), "conteneurs") : null;
+  if (!fd || !acc) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
   await applyStoredSecrets();
   const id = Number(fd.get("shipment_id")); if (!id) return NextResponse.json({ ok: false, error: "Dossier manquant" }, { status: 400 });
-  const out = await storeFiles(id, fd, "Mansour");
+  const out = await storeFiles(id, fd, acc.name);
   return NextResponse.json({ ok: true, ...out });
 }
 
 /** Actions JSON (code d'accès NeoDrive). */
 export async function PUT(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
-  if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  const acc = await authorizeSection(req, b.passcode, "conteneurs");
+  if (!acc) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  // Suppressions et envoi du dossier au transitaire : fondateur uniquement.
+  if (acc.who !== "owner" && (b.action === "doc_delete" || b.action === "vehicle_delete" || b.action === "send")) return NextResponse.json({ ok: false, error: "Réservé au fondateur." }, { status: 403 });
   await applyStoredSecrets();
   const db = crmDatabase();
   if (b.action === "list") {

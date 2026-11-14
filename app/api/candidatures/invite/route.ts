@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { applyStoredSecrets, isAuthorized } from "../../../../lib/integrations";
+import { applyStoredSecrets } from "../../../../lib/integrations";
+import { authorizeSection } from "../../../../lib/access";
 import { crmDatabase } from "../../../../lib/crm-agent";
 import { brevoReady, sendEmail, sendSms } from "../../../../lib/brevo";
 import { POSTES, isPoste } from "../../../../lib/hiring";
@@ -51,7 +52,7 @@ export async function GET(req: Request) {
 /** Espace de tri : liste des invitations, ou envoi (code d'accès NeoDrive). */
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
-  if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  if (!(await authorizeSection(req, b.passcode, "recrutement"))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
   if (b.action === "wa" && b.id) { await crmDatabase().from("job_invitations").update({ whatsapp_at: b.done === false ? null : new Date().toISOString() }).eq("id", Number(b.id)); return NextResponse.json({ ok: true }); }
   if (b.action === "send") return NextResponse.json(await send((b.ids || []).map(Number).slice(0, 60)));
   const db = crmDatabase();

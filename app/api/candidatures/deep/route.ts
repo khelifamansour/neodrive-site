@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { applyStoredSecrets, isAuthorized } from "../../../../lib/integrations";
+import { applyStoredSecrets } from "../../../../lib/integrations";
+import { authorizeSection } from "../../../../lib/access";
 import { crmDatabase } from "../../../../lib/crm-agent";
 import { POSTES, isPoste } from "../../../../lib/hiring";
 
@@ -54,7 +55,7 @@ async function run(ids?: number[]) {
 
 export async function PUT(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
-  if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  if (!(await authorizeSection(req, b.passcode, "recrutement"))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
   if (b.action === "list") { const { data } = await crmDatabase().from("cv_deep").select("*"); return NextResponse.json({ ok: true, rows: data || [] }); }
   if (b.action === "run") { await applyStoredSecrets(); return NextResponse.json({ ok: true, ...(await run((b.ids || []).map(Number).filter(Boolean))) }); }
   return NextResponse.json({ ok: false, error: "Action inconnue" }, { status: 400 });

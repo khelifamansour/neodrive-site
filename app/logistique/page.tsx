@@ -59,7 +59,7 @@ export default function LogistiquePage() {
   const [busy, setBusy] = useState(""); const [msg, setMsg] = useState(""); const [results, setResults] = useState<{ name: string; email?: string; sms?: string }[]>([]);
   const api = async (body: object, pc = code) => { const r = await fetch("/api/logistique", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false, error: "Erreur" })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
   const load = async (pc = code) => { setBusy("load"); setMsg(""); try { const j = await api({ action: "list" }, pc); setList(j.partners || []); setAuthed(true); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } finally { setBusy("") } };
-  useEffect(() => { try { const pc = sessionStorage.getItem("nd_pc"); if (pc) { setCode(pc); load(pc); } } catch { } // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { let pc = ""; try { pc = sessionStorage.getItem("nd_pc") || "" } catch { } setCode(pc); load(pc).then(() => { if (!pc) setMsg("") }); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const zones = useMemo(() => ["Tous", ...Array.from(new Set(list.map(p => p.zone)))], [list]);
   const shown = useMemo(() => list.filter(p => (zone === "Tous" || p.zone === zone) && (status === "Tous" || p.status === status) && (!q || `${p.name} ${p.city} ${p.services} ${p.category}`.toLowerCase().includes(q.toLowerCase()))), [list, zone, status, q]);
@@ -75,7 +75,7 @@ export default function LogistiquePage() {
     setBusy("send"); setMsg(""); try { const j = await api({ action: "send", ids: [...sel], subject, emailBody, smsBody }); setResults(j.results || []); setSel(new Set()); await load(); setMsg("✅ Envoi terminé."); } catch (e) { setMsg((e as Error).message) } finally { setBusy("") }
   };
 
-  if (!authed) return <main className={s.page}><form className={s.login} onSubmit={e => { e.preventDefault(); load(); }}><span className={s.logo}>N</span><h1>Logistique</h1><p>Code d’accès NeoDrive (le même que l’ERP).</p><input type="password" value={code} onChange={e => setCode(e.target.value)} placeholder="Code" autoFocus /><button disabled={busy === "load"}>{busy === "load" ? "…" : "Entrer"}</button>{msg ? <p style={{ color: "#b91c1c" }}>{msg}</p> : null}</form></main>;
+  if (!authed) return <main className={s.page}><form className={s.login} onSubmit={e => { e.preventDefault(); load(); }}><span className={s.logo}>N</span><h1>Logistique</h1><p>Code d’accès NeoDrive (le même que l’ERP).</p><input type="password" value={code} onChange={e => setCode(e.target.value)} placeholder="Code" autoFocus /><button disabled={busy === "load"}>{busy === "load" ? "…" : "Entrer"}</button><p style={{ fontSize: 13, marginTop: 12 }}><a href="/organisation" style={{ color: "inherit" }}>Membre de l’équipe ? Connectez-vous avec votre code sur la page Organisation</a></p>{msg ? <p style={{ color: "#b91c1c" }}>{msg}</p> : null}</form></main>;
 
   const count = (z: string) => list.filter(p => z === "Tous" || p.zone === z).length;
   return <main className={s.page}>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAuthorized } from "../../../lib/integrations";
+import { authorizeSection } from "../../../lib/access";
 import { dataClient, listJson, readJson, removeJson, writeJson } from "../../../lib/datastore";
 import { DEFAULT_HUBS, type Hub, type PlanClient, type PlanTour } from "../../../lib/planif";
 import { deliveryPriceForDepartment } from "../../../lib/neodrive-pricing";
@@ -75,7 +75,10 @@ export async function POST(req: Request) {
 
     // Public : prix moyen national des carburants (données publiques)
     if (b.action === "fuel") return NextResponse.json(await fuelPrices());
-    if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+    const acc = await authorizeSection(req, b.passcode, "tournees");
+    if (!acc) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+    // Suppressions et simulation : fondateur uniquement.
+    if (acc.who !== "owner" && (b.action === "demo" || b.action === "demo_clear" || b.action === "delete_tour" || (b.action === "client_status" && b.delete))) return NextResponse.json({ ok: false, error: "Réservé au fondateur." }, { status: 403 });
 
     if (b.action === "list") {
       const [clients, tours, hubs] = await Promise.all([listJson<PlanClient>(sb, C), listJson<PlanTour>(sb, T), readHubs(sb)]);

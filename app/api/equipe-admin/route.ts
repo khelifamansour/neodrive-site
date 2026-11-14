@@ -4,12 +4,14 @@ import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail, OWNER_EMAIL } from "../../../lib/brevo";
 import { ACTION_FR, ROLES, endSessions, newCode, sha } from "../../../lib/team";
+import { SECTIONS, isSection } from "../../../lib/access";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 const clean = (v: unknown, n = 200) => String(v ?? "").replace(/[<>]/g, "").trim().slice(0, n);
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const parisDayStart = (d = new Date()) => { const p = new Date(d.toLocaleString("en-US", { timeZone: "Europe/Paris" })); const off = d.getTime() - p.getTime(); p.setHours(0, 0, 0, 0); return new Date(p.getTime() + off); };
+const pickSections = (v: unknown) => [...new Set((Array.isArray(v) ? v : []).filter(isSection))];
 const hm = (s: number) => `${Math.floor(s / 3600)} h ${String(Math.round((s % 3600) / 60)).padStart(2, "0")}`;
 
 /** Statistiques d'un membre depuis une date. */
@@ -42,7 +44,7 @@ export async function PUT(req: Request) {
   const db = crmDatabase(); const id = Number(b.id) || 0;
 
   if (b.action === "list") {
-    const { data: members } = await db.from("team_members").select("id,name,role,phone,email,active,expires_at,revoked_at,last_seen_at,can_see_numbers,ringover_number,max_views_per_hour,note,created_at").order("created_at", { ascending: false });
+    const { data: members } = await db.from("team_members").select("id,name,role,phone,email,active,expires_at,revoked_at,last_seen_at,can_see_numbers,ringover_number,max_views_per_hour,note,created_at,sections").order("created_at", { ascending: false });
     const since = parisDayStart();
     const out = await Promise.all((members || []).map(async m => {
       const { count } = await db.from("leads").select("id", { count: "exact", head: true }).eq("assigned_to", String(m.id));
@@ -51,13 +53,13 @@ export async function PUT(req: Request) {
       return { ...m, assigned: count || 0, online: Boolean(open?.length), today: { ...s, acts: undefined } };
     }));
     const { count: free } = await db.from("leads").select("id", { count: "exact", head: true }).is("assigned_to", null);
-    return NextResponse.json({ ok: true, members: out, roles: ROLES, freeLeads: free || 0 });
+    return NextResponse.json({ ok: true, members: out, roles: ROLES, sections: SECTIONS, freeLeads: free || 0 });
   }
 
   if (b.action === "create") {
     const name = clean(b.name, 80); if (name.length < 2) return NextResponse.json({ ok: false, error: "Nom manquant" }, { status: 400 });
     const days = Math.min(Math.max(Number(b.days) || 7, 1), 365); const code = newCode();
-    const { data, error } = await db.from("team_members").insert({ name, role: ROLES[b.role] ? b.role : "closer", phone: clean(b.phone, 30) || null, email: clean(b.email, 160) || null, code_hash: sha(code), expires_at: new Date(Date.now() + days * 86400e3).toISOString(), can_see_numbers: Boolean(b.can_see_numbers), ringover_number: clean(b.ringover_number, 30) || null, max_views_per_hour: Math.min(Math.max(Number(b.max_views) || 60, 5), 500), note: clean(b.note, 500) || null }).select("id").single();
+    const { data, error } = await db.from("team_members").insert({ name, role: ROLES[b.role] ? b.role : "closer", phone: clean(b.phone, 30) || null, email: clean(b.email, 160) || null, code_hash: sha(code), expires_at: new Date(Date.now() + days * 86400e3).toISOString(), can_see_numbers: Boolean(b.can_see_numbers), ringover_number: clean(b.ringover_number, 30) || null, max_views_per_hour: Math.min(Math.max(Number(b.max_views) || 60, 5), 500), note: clean(b.note, 500) || null, sections: pickSections(b.sections) }).select("id").single();
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, id: data.id, code });
   }
@@ -74,6 +76,8 @@ export async function PUT(req: Request) {
     if ("max_views" in b) patch.max_views_per_hour = Math.min(Math.max(Number(b.max_views) || 60, 5), 500);
     await db.from("team_members").update(patch).eq("id", id); return NextResponse.json({ ok: true });
   }
+  // Sections visibles par le membre (page /organisation et outils autorisés). Effet immédiat, sans reconnexion.
+  if (b.action === "sections") { const sections = pickSections(b.sections); const { error } = await db.from("team_members").update({ sections }).eq("id", id); if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 }); return NextResponse.json({ ok: true, sections }); }
   if (b.action === "assign") {
     const n = Math.min(Math.max(Number(b.n) || 20, 1), 200);
     let q = db.from("leads").select("id").is("assigned_to", null).is("opted_out_at", null).order("created_at", { ascending: false }).limit(n);

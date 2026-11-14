@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "crypto";
 import { crmDatabase } from "./crm-agent";
 
 export const TEAM_COOKIE = "nd_team";
-export const ROLES: Record<string, string> = { closer: "Closer / conseiller", logistique: "Coordination logistique", social: "Réseaux sociaux", autre: "Autre" };
+export const ROLES: Record<string, string> = { closer: "Closer / conseiller", logistique: "Coordination logistique", social: "Réseaux sociaux", livreur: "Livreur / chauffeur", autre: "Autre" };
 export const CALL_RESULTS = ["Injoignable", "Messagerie", "À rappeler", "Intéressé", "Devis envoyé", "Réservation", "Pas intéressé", "Mauvais numéro"] as const;
 
 export const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -45,4 +45,4 @@ export async function endSessions(memberId: number) {
   await crmDatabase().from("team_sessions").update({ ended_at: new Date().toISOString() }).eq("member_id", memberId).is("ended_at", null);
 }
 
-export const ACTION_FR: Record<string, string> = { login: "Connexion", logout: "Déconnexion", view_lead: "Fiche ouverte", call: "Appel", call_result: "Compte-rendu d'appel", whatsapp: "Message WhatsApp", report: "Rapport du jour", blocked: "Blocage (trop de fiches)", login_failed: "Code refusé" };
+export const ACTION_FR: Record<string, string> = { login: "Connexion", logout: "Déconnexion", view_lead: "Fiche ouverte", call: "Appel", call_result: "Compte-rendu d'appel", whatsapp: "Message WhatsApp", report: "Rapport du jour", blocked: "Blocage (trop de fiches)", login_failed: "Code refusé", idea_add: "Idée proposée", content_download: "Contenu téléchargé" };

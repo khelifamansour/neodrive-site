@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAuthorized } from "../../../../lib/integrations";
+import { authorizeSection } from "../../../../lib/access";
 import { crmDatabase } from "../../../../lib/crm-agent";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,9 @@ const KINDS = ["appel", "pas de réponse", "entretien", "note", "recruté", "éc
 /** Journal du recrutement par candidat (appels, entretiens, décisions). Code d'accès NeoDrive. */
 export async function PUT(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
-  if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  const acc = await authorizeSection(req, b.passcode, "recrutement");
+  if (!acc) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  if (acc.who !== "owner" && b.action === "delete") return NextResponse.json({ ok: false, error: "Réservé au fondateur." }, { status: 403 });
   const db = crmDatabase();
   if (b.action === "list") { const { data } = await db.from("recruit_log").select("*").order("created_at", { ascending: false }).limit(2000); return NextResponse.json({ ok: true, logs: data || [] }); }
   if (b.action === "add") {

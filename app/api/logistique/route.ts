@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAuthorized } from "../../../lib/integrations";
+import { authorizeSection } from "../../../lib/access";
 import { crmDatabase, normalizePhone } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail, sendSms } from "../../../lib/brevo";
 
@@ -22,7 +22,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
-  if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  const acc = await authorizeSection(req, b.passcode, "logistique");
+  if (!acc) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  // Envoi groupé (e-mails + SMS aux prestataires) : fondateur uniquement.
+  if (acc.who !== "owner" && b.action === "send") return NextResponse.json({ ok: false, error: "Réservé au fondateur." }, { status: 403 });
   return handle(b);
 }
 

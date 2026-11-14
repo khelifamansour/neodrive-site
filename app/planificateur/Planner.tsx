@@ -37,7 +37,7 @@ export function Planner({demo=false}:{demo?:boolean}){
  const api=async(body:object,pc=code)=>{if(demo)return demoApi(body as Record<string,unknown>);const r=await fetch("/api/planificateur",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:pc,...body})});const j=await r.json().catch(()=>({ok:false,error:"Erreur"}));if(r.status===401)setAuthed(false);if(!j.ok)throw new Error(j.error||"Erreur");return j;};
  const loadFuel=async(pc=code)=>{try{const j=await api({action:"fuel"},pc);if(j.prices){setLive(j.prices);setParams(p=>({...p,fuelPrice:Math.round((j.prices[p.fuel]||p.fuelPrice)*1000)/1000}));}}catch{/* prix par défaut */}};
  const load=async(pc=code)=>{setBusy("load");try{const j=await api({action:"list"},pc);setClients(j.clients);setTours(j.tours.sort((a:PlanTour,b:PlanTour)=>a.created_at.localeCompare(b.created_at)));setHubs(j.hubs);setAuthed(true);if(!live)loadFuel(pc);if(!demo)try{sessionStorage.setItem("nd_pc",pc)}catch{}}catch(e){setMsg((e as Error).message)}finally{setBusy("")}};
- useEffect(()=>{if(demo){load("");return;}try{const pc=sessionStorage.getItem("nd_pc");if(pc){setCode(pc);load(pc);}}catch{}
+ useEffect(()=>{if(demo){load("");return;}let pc="";try{pc=sessionStorage.getItem("nd_pc")||""}catch{}setCode(pc);load(pc).then(()=>{if(!pc)setMsg("")});
   // eslint-disable-next-line react-hooks/exhaustive-deps
  },[]);
  const run=async(label:string,fn:()=>Promise<void>)=>{setBusy(label);setMsg("");try{await fn();}catch(e){setMsg((e as Error).message)}finally{setBusy("")}};
@@ -89,7 +89,7 @@ export function Planner({demo=false}:{demo?:boolean}){
  const setFuel=(f:CostParams["fuel"])=>{const d=FUELS.find(x=>x.id===f)!;setParams(p=>({...p,fuel:f,consumption:d.conso,fuelPrice:Math.round((live?.[f]||d.price)*1000)/1000}));};
  const P=(k:keyof CostParams,label:string,step=0.01)=><label className={s.param}><span>{label}</span><input type="number" step={step} value={params[k] as number} onChange={e=>setParams(p=>({...p,[k]:Number(e.target.value)||0}))}/></label>;
 
- if(!authed)return <main className={s.page}><form className={s.login} onSubmit={e=>{e.preventDefault();load();}}><span className={s.logo}>N</span><h1>Tournées</h1><p>Code d’accès NeoDrive (le même que l’ERP).</p><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code" autoFocus/><button disabled={busy==="load"}>{busy==="load"?"…":"Entrer"}</button>{msg?<p className={s.err}>{msg}</p>:null}</form></main>;
+ if(!authed)return <main className={s.page}><form className={s.login} onSubmit={e=>{e.preventDefault();load();}}><span className={s.logo}>N</span><h1>Tournées</h1><p>Code d’accès NeoDrive (le même que l’ERP).</p><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code" autoFocus/><button disabled={busy==="load"}>{busy==="load"?"…":"Entrer"}</button><p style={{ fontSize: 13, marginTop: 12 }}><a href="/organisation" style={{ color: "inherit" }}>Membre de l’équipe ? Connectez-vous avec votre code sur la page Organisation</a></p>{msg?<p className={s.err}>{msg}</p>:null}</form></main>;
 
  const visible=clients.filter(c=>filter==="tous"||c.status==="a_planifier");
  const waiting=clients.filter(c=>c.status==="a_planifier").length;

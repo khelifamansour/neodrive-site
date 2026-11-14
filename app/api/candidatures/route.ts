@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
+import { applyStoredSecrets } from "../../../lib/integrations";
+import { authorizeSection } from "../../../lib/access";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail, sendSms, OWNER_EMAIL } from "../../../lib/brevo";
 import { COMMON, POSTES, WRITING_PROMPT, FRENCH_TEST, LOGIC_TEST, isPoste, type PosteKey } from "../../../lib/hiring";
@@ -93,7 +94,7 @@ export async function POST(req: Request) {
 /** Espace de tri (code d'accès NeoDrive). */
 export async function PUT(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
-  if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  if (!(await authorizeSection(req, b.passcode, "recrutement"))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
   const db = crmDatabase();
   if (b.action === "list") {
     const { data, error } = await db.from("job_applications").select("*").order("final_score", { ascending: false, nullsFirst: false }).order("ai_score", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }).limit(500);

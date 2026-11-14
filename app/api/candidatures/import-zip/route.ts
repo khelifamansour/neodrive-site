@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { unzipSync } from "fflate";
-import { applyStoredSecrets, isAuthorized } from "../../../../lib/integrations";
+import { applyStoredSecrets } from "../../../../lib/integrations";
+import { authorizeSection } from "../../../../lib/access";
 import { crmDatabase } from "../../../../lib/crm-agent";
 import { POSTES, isPoste, type PosteKey } from "../../../../lib/hiring";
 
@@ -69,7 +70,7 @@ export async function GET(req: Request) {
 /** Import d'un ZIP de CV Emploitic déposé dans le stockage : lit, note et enregistre les CV par lots (code d'accès). */
 export async function PUT(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
-  if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  if (!(await authorizeSection(req, b.passcode, "recrutement"))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
   const db = crmDatabase();
   if (b.action === "init") {
     const path = `imports/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.zip`;

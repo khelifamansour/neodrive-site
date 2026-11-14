@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
+import { applyStoredSecrets } from "../../../lib/integrations";
+import { authorizeSection } from "../../../lib/access";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { defaultAd } from "../../../lib/oldstock";
 
@@ -12,7 +13,9 @@ const safe = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/
 /** Ancien stock (code d'accès NeoDrive). */
 export async function PUT(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, any>;
-  if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  const acc = await authorizeSection(req, b.passcode, "stock");
+  if (!acc) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+  if (acc.who !== "owner" && (b.action === "delete" || b.action === "media_delete")) return NextResponse.json({ ok: false, error: "Réservé au fondateur." }, { status: 403 });
   const db = crmDatabase();
   if (b.action === "list") {
     const [{ data: rows }, { data: media }] = await Promise.all([db.from("old_stock").select("*").order("id"), db.from("old_stock_media").select("*").order("id")]);

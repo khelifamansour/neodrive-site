@@ -14,7 +14,7 @@ export default function Vehicules() {
   const [open, setOpen] = useState<number | null>(null); const [showDone, setShowDone] = useState(false);
   const api = async (url: string, body: object, pc = code) => { const r = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
   const load = async (pc = code) => { try { const j = await api("/api/vehicules", { action: "list" }, pc); setD(j); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
-  useEffect(() => { try { const pc = sessionStorage.getItem("nd_pc"); if (pc) { setCode(pc); load(pc); } } catch { } // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { let pc = ""; try { pc = sessionStorage.getItem("nd_pc") || "" } catch { } setCode(pc); load(pc).then(() => { if (!pc) setMsg("") }); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const run = async (key: string, fn: () => Promise<string | void>) => { setBusy(key); try { const m = await fn(); if (m) setMsg(m); await load(); } catch (e) { setMsg("❌ " + (e as Error).message) } setBusy(""); };
   const setV = (id: number, patch: object) => run("v" + id, async () => { await api("/api/vehicules", { action: "set", id, ...patch }); });
@@ -33,7 +33,7 @@ export default function Vehicules() {
     return { vs, grid, waiting, stageCount: Object.fromEntries(STAGES.map(st => [st, vs.filter(v => v.stage === st).length])) as Record<string, number> };
   }, [d]);
 
-  if (!d || !V) return <main className={s.page}><form className={s.login} onSubmit={e => { e.preventDefault(); load(); }}><span className={s.logo}>N</span><h1>Véhicules & stock entrant</h1><p>Code d'accès NeoDrive.</p><input type="password" value={code} onChange={e => setCode(e.target.value)} autoFocus /><button>Entrer</button>{msg ? <p style={{ color: "#b91c1c" }}>{msg}</p> : null}</form></main>;
+  if (!d || !V) return <main className={s.page}><form className={s.login} onSubmit={e => { e.preventDefault(); load(); }}><span className={s.logo}>N</span><h1>Véhicules & stock entrant</h1><p>Code d'accès NeoDrive.</p><input type="password" value={code} onChange={e => setCode(e.target.value)} autoFocus /><button>Entrer</button><p style={{ fontSize: 13, marginTop: 12 }}><a href="/organisation" style={{ color: "inherit" }}>Membre de l’équipe ? Connectez-vous avec votre code sur la page Organisation</a></p>{msg ? <p style={{ color: "#b91c1c" }}>{msg}</p> : null}</form></main>;
   const freeClients = (v: Row) => (d.clients as Row[]).filter(c => c.status !== "livre" && (c.id === v.client_id || !V.vs.some(x => x.client_id === c.id)));
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const photo = (path: string) => api("/api/vehicules", { action: "photo_url", path }).then(j => j.url && window.open(j.url, "_blank")).catch(e => setMsg("❌ " + e.message));

@@ -40,7 +40,7 @@ export default function PilotagePage(){
  const monthOpts=Array.from({length:18},(_,i)=>addMonths(start,i-4));
 
  return <main className={s.page}>
-  <header className={s.top}><div><h1>Pilotage NeoDrive</h1><p>Coûts · commandes · trésorerie</p></div><div className={s.topBtns}><button onClick={save} disabled={!dirty||!!busy} className={dirty?p.saveOn:""}>{busy==="save"?"…":dirty?"💾 Enregistrer":"✓ Enregistré"}</button></div></header>
+  <header className={s.top}><div><h1>Pilotage NeoDrive</h1><p>Coûts · commandes · trésorerie</p></div><div className={s.topBtns}><a href="/organisation" style={{alignSelf:"center",color:"inherit",fontWeight:700,fontSize:14,marginRight:8}}>Organisation</a><button onClick={save} disabled={!dirty||!!busy} className={dirty?p.saveOn:""}>{busy==="save"?"…":dirty?"💾 Enregistrer":"✓ Enregistré"}</button></div></header>
   {msg?<p className={msg.startsWith("✅")?s.ok:s.err}>{msg}</p>:null}
 
   {/* Résumé toujours visible */}

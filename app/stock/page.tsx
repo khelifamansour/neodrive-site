@@ -16,7 +16,7 @@ export default function Stock() {
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(""); const [open, setOpen] = useState<number | null>(null); const [filter, setFilter] = useState<typeof FILTERS[number]>("tous");
   const api = async (body: object, pc = code) => { const r = await fetch("/api/stock", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
   const load = async (pc = code) => { try { const j = await api({ action: "list" }, pc); setRows(j.rows); setMedia(j.media); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
-  useEffect(() => { try { const pc = sessionStorage.getItem("nd_pc"); if (pc) { setCode(pc); load(pc); } } catch { } // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { let pc = ""; try { pc = sessionStorage.getItem("nd_pc") || "" } catch { } setCode(pc); load(pc).then(() => { if (!pc) setMsg("") }); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const run = async (k: string, fn: () => Promise<string | void>) => { setBusy(k); try { const m = await fn(); if (m) setMsg(m); await load(); } catch (e) { setMsg("❌ " + (e as Error).message) } setBusy(""); };
   const save = (id: number | null, row: StockRow) => run("save", async () => { const j = await api({ action: "save", id, row }); if (!id && j.id) setOpen(j.id); });
@@ -42,7 +42,7 @@ export default function Stock() {
     setBusy("");
   };
 
-  if (!rows) return <main className={s.page}><form className={s.login} onSubmit={e => { e.preventDefault(); load(); }}><span className={s.logo}>N</span><h1>Ancien stock</h1><p>Code d'accès NeoDrive.</p><input type="password" value={code} onChange={e => setCode(e.target.value)} autoFocus /><button>Entrer</button>{msg ? <p style={{ color: "#b91c1c" }}>{msg}</p> : null}</form></main>;
+  if (!rows) return <main className={s.page}><form className={s.login} onSubmit={e => { e.preventDefault(); load(); }}><span className={s.logo}>N</span><h1>Ancien stock</h1><p>Code d'accès NeoDrive.</p><input type="password" value={code} onChange={e => setCode(e.target.value)} autoFocus /><button>Entrer</button><p style={{ fontSize: 13, marginTop: 12 }}><a href="/organisation" style={{ color: "inherit" }}>Membre de l’équipe ? Connectez-vous avec votre code sur la page Organisation</a></p>{msg ? <p style={{ color: "#b91c1c" }}>{msg}</p> : null}</form></main>;
 
   const active = rows.filter(r => r.status !== "vendu");
   const cgMissing = active.filter(r => r.cg_status === "manquante").length;
