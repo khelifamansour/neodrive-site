@@ -21,14 +21,16 @@ export type ShippingMode = "retrait" | "envoi";
 export const SHIPPING_LABEL: Record<ShippingMode, string> = { retrait: "Retrait", envoi: "Envoi en colis" };
 export const SHIPPING_NOTE = "Envoi en colis ou sur palette selon les pièces : le forfait d'envoi est calculé automatiquement dans le panier";
 /** Forfaits d'envoi par classe de pièce (TTC). La commande prend la classe la plus élevée ; au-delà de 30 kg au total, envoi sur palette. */
-export type ShipClass = "petit" | "moyen" | "lourd" | "volumineux" | "palette" | "devis";
+export type ShipClass = "petit" | "moyen" | "lourd" | "adr" | "volumineux" | "palette" | "palette_adr" | "devis";
 export const SHIP_CLASSES: Record<ShipClass, { label: string; ttc: number | null; rank: number }> = {
   petit: { label: "Petit colis", ttc: 15, rank: 1 },
   moyen: { label: "Colis moyen", ttc: 25, rank: 2 },
   lourd: { label: "Colis lourd (messagerie)", ttc: 50, rank: 3 },
-  volumineux: { label: "Colis volumineux", ttc: 90, rank: 4 },
-  palette: { label: "Palette", ttc: 180, rank: 5 },
-  devis: { label: "Envoi sur devis", ttc: null, rank: 6 },
+  adr: { label: "Messagerie, marchandise dangereuse", ttc: 96, rank: 4 },
+  volumineux: { label: "Colis volumineux", ttc: 90, rank: 5 },
+  palette: { label: "Palette", ttc: 180, rank: 6 },
+  palette_adr: { label: "Palette, marchandise dangereuse", ttc: 270, rank: 7 },
+  devis: { label: "Envoi sur devis", ttc: null, rank: 8 },
 };
 const HEAVY = /essieu|pont|diff[ée]rentiel|moteur|batterie|pare.?choc|porte|capot|si[èe]ge|pare.?brise|vitre|lunette|jante|roue|pneu|amortisseur|carrosserie/i;
 const classOf = (l: { name: string; ship_class?: string | null }): ShipClass => (l.ship_class && l.ship_class in SHIP_CLASSES ? l.ship_class as ShipClass : HEAVY.test(l.name) ? "lourd" : "petit");
@@ -39,7 +41,9 @@ export function shippingHtFor(lines: { name: string; qty?: number; ship_class?: 
   let best: ShipClass = "petit";
   for (const l of lines) { const c = classOf(l); if (SHIP_CLASSES[c].rank > SHIP_CLASSES[best].rank) best = c; }
   const kg = lines.reduce((t, l) => t + (Number(l.weight_kg) || 1) * (l.qty || 1), 0);
-  if (best !== "devis" && kg > 30 && SHIP_CLASSES[best].rank < SHIP_CLASSES.palette.rank) best = "palette";
+  const hasAdr = lines.some(l => { const c = classOf(l); return c === "adr" || c === "palette_adr"; });
+  if (best !== "devis" && kg > 30 && SHIP_CLASSES[best].rank < SHIP_CLASSES.palette.rank) best = hasAdr ? "palette_adr" : "palette";
+  if (best === "palette" && hasAdr) best = "palette_adr";
   const t = SHIP_CLASSES[best].ttc; if (t === null) return null;
   return Math.round((t / (1 + TVA_RATE)) * 100) / 100;
 }

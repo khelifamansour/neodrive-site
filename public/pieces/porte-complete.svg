@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#f4f5f7"/>
+  <!-- Porte complète de voiture sans permis (vue extérieure, côté gauche) -->
+  <path d="M95 60 L265 60 Q300 62 312 95 L322 175 L322 330 Q322 345 307 345 L110 345 Q95 345 95 330 Z" fill="#c9ccd1" stroke="#4b5563" stroke-width="5" stroke-linejoin="round"/>
+  <!-- vitre -->
+  <path d="M115 78 L258 78 Q286 80 295 106 L303 168 L115 168 Z" fill="#a8c7e6" stroke="#4b5563" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M140 90 L190 90 L150 150 L128 150 Z" fill="#ffffff" opacity="0.45"/>
+  <!-- joint et baguette -->
+  <line x1="105" y1="176" x2="315" y2="176" stroke="#374151" stroke-width="6" stroke-linecap="round"/>
+  <line x1="110" y1="285" x2="312" y2="285" stroke="#9ca3af" stroke-width="5" stroke-linecap="round"/>
+  <!-- poignée et serrure -->
+  <rect x="245" y="200" width="52" height="14" rx="7" fill="#374151"/>
+  <circle cx="282" cy="230" r="6" fill="#374151"/>
+  <!-- charnières -->
+  <rect x="88" y="105" width="12" height="28" rx="3" fill="#6b7280"/>
+  <rect x="88" y="250" width="12" height="28" rx="3" fill="#6b7280"/>
+  <text x="200" y="378" font-family="Arial, sans-serif" font-size="18" font-weight="700" text-anchor="middle" fill="#111827">Porte complète · prête à poser</text>
+</svg>
