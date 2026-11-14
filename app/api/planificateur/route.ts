@@ -4,6 +4,8 @@ import { dataClient, listJson, readJson, removeJson, writeJson } from "../../../
 import { DEFAULT_HUBS, type Hub, type PlanClient, type PlanTour } from "../../../lib/planif";
 import { deliveryPriceForDepartment } from "../../../lib/neodrive-pricing";
 import { ALERT_ENDPOINT } from "../../../lib/sav";
+import { driverKey } from "../../../lib/driver-link";
+import { addEvent, listEvents, purgeOldPositions } from "../../../lib/tour-live";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -155,6 +157,42 @@ export async function POST(req: Request) {
       }
       await writeJson(sb, `${T}/${t.id}.json`, t);
       return NextResponse.json({ ok: true, hubs: await readHubs(sb) });
+    }
+    // ── Planning : heure (et date) de départ, modifiable même après validation
+    if (b.action === "tour_depart") {
+      const id = clean(b.id, 80);
+      const t = await readJson<PlanTour>(sb, `${T}/${id}.json`);
+      if (!t) return NextResponse.json({ ok: false, error: "Tournée introuvable" }, { status: 404 });
+      const time = clean(b.time, 5), date = clean(b.date, 10);
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return NextResponse.json({ ok: false, error: "Heure de départ invalide (ex. 07:30)." }, { status: 400 });
+      t.departTime = time; if (/^\d{4}-\d{2}-\d{2}$/.test(date)) t.date = date;
+      await writeJson(sb, `${T}/${t.id}.json`, t);
+      return NextResponse.json({ ok: true, tour: t });
+    }
+    // ── Suivi en direct d'une tournée (journal, dernière position, lien chauffeur)
+    if (b.action === "live") {
+      const id = clean(b.id, 80);
+      const t = await readJson<PlanTour>(sb, `${T}/${id}.json`);
+      if (!t) return NextResponse.json({ ok: false, error: "Tournée introuvable" }, { status: 404 });
+      await purgeOldPositions(sb).catch(e => console.error("[PLANIF] purge", e));
+      const [events, clients] = await Promise.all([listEvents(sb, [t.id], !!b.track), Promise.all(t.clientIds.map(cid => readJson<PlanClient>(sb, `${C}/${cid}.json`)))]);
+      return NextResponse.json({ ok: true, tour: t, events, clients: clients.filter(Boolean), driverLink: driverKey(t.id) });
+    }
+    // ── Carte compacte (Organisation) : tournées validées récentes ou en cours
+    if (b.action === "live_summary") {
+      const soon = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10), past = new Date(Date.now() - 12 * 86400000).toISOString().slice(0, 10);
+      const tours = (await listJson<PlanTour>(sb, T)).filter(t => t.status === "valide" && t.stops?.length && t.date >= past && t.date <= soon).sort((a, z) => a.date.localeCompare(z.date)).slice(0, 8);
+      const events = await listEvents(sb, tours.map(t => t.id));
+      return NextResponse.json({ ok: true, tours: tours.map(t => ({ id: t.id, name: t.name, date: t.date, departTime: t.departTime || "", driver: t.driver, clientIds: t.clientIds, stops: t.stops })), events });
+    }
+    // ── « Prévenir le client » : le message WhatsApp est ouvert par l'utilisateur ; on le note seulement
+    if (b.action === "log_notify") {
+      const id = clean(b.id, 80), cid = clean(b.client_id, 80);
+      const t = await readJson<PlanTour>(sb, `${T}/${id}.json`);
+      if (!t || !t.clientIds.includes(cid)) return NextResponse.json({ ok: false, error: "Tournée ou client introuvable" }, { status: 404 });
+      const si = t.stops?.findIndex(s => s.kind === "client" && s.id === cid) ?? -1;
+      const event = await addEvent(sb, { tour_id: t.id, kind: "prevenir", client_id: cid, stop_index: si >= 0 ? si : null, note: clean(b.note, 300) || null, author: acc.name });
+      return NextResponse.json({ ok: true, event });
     }
     if (b.action === "delete_tour") {
       const id = clean(b.id, 80);

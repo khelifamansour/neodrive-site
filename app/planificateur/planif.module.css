@@ -76,3 +76,28 @@
 .wRow{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-top:1px solid #f0f0f0;font-size:14.5px}.wRow:first-child{border-top:0}.wRow span:last-child{white-space:nowrap}
 .minus{color:#b42318}.final{background:#ecfdf3;color:#067647;font-size:16px}
 .perCli{list-style:none;margin:0;padding:0;display:grid;gap:8px}.perCli li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border:1px solid #eee;border-radius:12px}.perCli small{display:block;color:#5b6573;font-size:12.5px;margin-top:2px}.perCli strong{font-size:17px;white-space:nowrap}
+/* Planning du livreur (calendrier) */
+.days{display:grid;gap:12px}
+.day{border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;background:#fff}
+.dayHead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding:10px 14px;background:#16202e;color:#fff}.dayHead b{text-transform:capitalize}.dayHead small{opacity:.8;font-weight:700}
+.tl{list-style:none;margin:0;padding:6px;display:grid;gap:4px}
+.tl li{display:grid;grid-template-columns:54px 26px 1fr;gap:8px;align-items:start;padding:8px;border-radius:10px;background:#f6f7f8}
+.tl time{font-weight:900;font-variant-numeric:tabular-nums;font-size:14px}.tl time small{display:block;color:#7a8594;font-weight:700;font-size:12px}
+.tl b{display:block;font-size:14.5px}.tl li small{display:block;color:#5b6573;font-size:12.5px;margin-top:2px}
+.tlIcon{font-size:18px;line-height:1.2}
+.tlPause{background:#fff7d6!important;border:1px dashed #e0b400}.tlPause b{color:#7a5a00}
+.tlNight{background:#eef0ff!important;border:1px solid #c7cdfa}.tlNight b{color:#3730a3}
+.tlTask{background:#fff1e6!important}
+.tlWait{background:#f1f5f9!important;color:#475569}
+.tlNow{outline:3px solid #16a34a;outline-offset:-1px}
+.tlDone{opacity:.55}
+/* Chauffeur et suivi en direct */
+.statusBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.statusBtns button{padding:16px 10px;border-radius:14px;border:1.5px solid #ddd5ca;background:#fff;font-weight:900;font-size:16px}
+.statusBtns .go{background:#16a34a;color:#fff;border-color:#16a34a}.statusBtns .stop{background:#fff7d6;border-color:#e0b400}.statusBtns .bad{color:#b42318;border-color:#f4c7c3}
+.nextCard{border:2px solid #e8592a;border-radius:18px;padding:14px;display:grid;gap:10px;background:#fffaf5}
+.nextCard h3{font-size:22px!important;margin:0!important}
+.geo{background:#eef4ff;color:#1e3a8a;border-radius:14px;padding:12px;display:grid;gap:8px;font-size:14.5px;line-height:1.45}.geo div{display:flex;gap:8px;flex-wrap:wrap}
+.log{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:340px;overflow:auto}.log li{display:flex;gap:8px;padding:7px 10px;border-radius:10px;background:#f6f7f8;font-size:13.5px}.log time{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.late{color:#b42318;font-weight:900}.ontime{color:#067647;font-weight:900}
+.remain{list-style:none;margin:0;padding:0;display:grid;gap:6px}.remain li{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border:1px solid #eee;border-radius:12px}.remain small{display:block;color:#7a8594}
+.remain a,.remain button{padding:8px 12px;border-radius:10px;background:#25d366;color:#fff;font-weight:800;text-decoration:none;border:0;font-size:14px}

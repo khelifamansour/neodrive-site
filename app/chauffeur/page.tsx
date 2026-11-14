@@ -4,9 +4,10 @@ import { useSearchParams } from "next/navigation";
 import s from "../planificateur/planif.module.css";
 import { supabase } from "../../lib/supabase";
 import { STAGE_ICON, vinValid, type Stage } from "../../lib/shipments";
+import TourDay, { type TourData } from "./TourDay";
 
 type Client = { id: string; name: string; adresse: string; telephone: string; modele: string; couleur: string; status: string; received_at: string | null; reception: string | null };
-type Veh = { id: number; vin: string; container?: string; depot?: string | null; client_id?: string | null; client_name?: string | null; tour_id?: string | null; shipment: string; stage: Stage; delivered_at?: string | null };
+type Veh = { id: number; vin: string; container?: string; depot?: string | null; client_id?: string | null; client_name?: string | null; tour_id?: string | null; shipment: string; stage: Stage; delivered_at?: string | null; has_plate?: boolean };
 type Match = { vin: string; valid: boolean; vehicle: Veh | null; suggestions: Veh[] };
 const big: React.CSSProperties = { fontSize: 18, padding: 16, width: "100%", textAlign: "center", cursor: "pointer" };
 
@@ -22,7 +23,8 @@ async function shrink(file: File): Promise<Blob> {
 
 function Driver() {
   const k = useSearchParams().get("k") || "";
-  const [data, setData] = useState<{ tour: any; clients: Client[]; depots: { id: string; name: string }[]; vehicles: Veh[] } | null>(null);
+  const [data, setData] = useState<{ tour: any; clients: Client[]; depots: { id: string; name: string }[]; vehicles: Veh[]; events?: TourData["events"] } | null>(null);
+  const [deliverId, setDeliverId] = useState<string | null>(null); const [vplate, setVplate] = useState<Record<number, string>>({});
   const [err, setErr] = useState(""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
   const [depot, setDepot] = useState(""); const [photo, setPhoto] = useState(""); const [match, setMatch] = useState<Match | null>(null); const [vin, setVin] = useState(""); const [client, setClient] = useState(""); const [driver, setDriver] = useState("");
   const call = async (body: object) => { const r = await fetch("/api/chauffeur", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ k, driver, ...body }) }); const j = await r.json().catch(() => ({ ok: false, error: "Connexion impossible" })); if (!j.ok && !j.conflict) throw new Error(j.error || "Erreur"); return j; };
@@ -50,7 +52,7 @@ function Driver() {
   });
   const deliver = (v: Veh, f?: File) => run("dl" + v.id, async () => {
     const path = f ? await uploadPhoto(f) : null;
-    const j = await call({ action: "deliver", vehicle_id: v.id, path }); await load();
+    const j = await call({ action: "deliver", vehicle_id: v.id, path, plate_path: vplate[v.id] || null }); await load();
     if (j.reception) { if (confirm("✅ Livraison enregistrée. Faire signer l'accusé de réception au client maintenant ?")) window.location.href = j.reception; }
     return `✅ ${v.vin} livré`;
   });
@@ -64,6 +66,7 @@ function Driver() {
   return <main className={s.page} style={{ maxWidth: 560 }}>
     <div className={s.top}><div><h1>🚚 {data.tour ? data.tour.name || "Tournée" : "Chargement / livraison"}</h1><p>{data.tour ? `${data.tour.date || ""} · ${data.tour.driver || ""} · ` : ""}{loaded.length} chargé(s) · {delivered.length} livré(s)</p></div></div>
     {msg ? <p className={msg.startsWith("❌") || msg.startsWith("⚠️") ? s.err : s.ok}>{msg}</p> : null}
+    {data.tour ? <TourDay data={{ tour: data.tour, clients: data.clients, vehicles: data.vehicles, events: data.events || [] }} call={call} upload={uploadPhoto} reload={load} onMsg={setMsg} deliverId={deliverId} setDeliverId={setDeliverId} /> : null}
 
     <section className={s.card}>
       <h2>1. Charger un véhicule</h2>
@@ -94,8 +97,14 @@ function Driver() {
         <b>{x.client_name || "Sans client"}</b>
         {c ? <small>{c.adresse}{c.telephone ? <> · <a href={`tel:${c.telephone}`}>{c.telephone}</a></> : null}</small> : null}
         <small style={{ fontFamily: "monospace" }}>{x.vin}</small>
-        <label className={s.primary} style={big}>{busy === "dl" + x.id ? "…" : "📷 Livré : photo du véhicule chez le client"}<input type="file" accept="image/*" capture="environment" hidden disabled={!!busy} onChange={e => { deliver(x, e.target.files?.[0]); e.target.value = ""; }} /></label>
-        <div style={{ display: "flex", gap: 8 }}><button className={s.ghost} style={{ flex: 1 }} disabled={!!busy} onClick={() => deliver(x)}>Livré sans photo</button><button className={s.ghost} disabled={!!busy} onClick={() => undo(x)}>Annuler</button></div>
+        {data.tour && x.client_id && data.tour.stops?.some((p: { id: string }) => p.id === x.client_id) ? <>
+          <button className={s.primary} style={big} disabled={!!busy} onClick={() => { setDeliverId(x.client_id || null); setTimeout(() => document.getElementById("livraison")?.scrollIntoView({ behavior: "smooth" }), 50); }}>✅ Livré (photo de la plaque VIN)</button>
+          <button className={s.ghost} disabled={!!busy} onClick={() => undo(x)}>Annuler le chargement</button>
+        </> : <>
+          {data.tour && !x.has_plate ? <label className={s.ghost} style={{ cursor: "pointer" }}>{busy === "vp" + x.id ? "Envoi…" : vplate[x.id] ? "✅ Plaque VIN photographiée" : "📷 Photo de la plaque VIN (obligatoire)"}<input type="file" accept="image/*" capture="environment" hidden disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) run("vp" + x.id, async () => { const p = await uploadPhoto(f); setVplate(v => ({ ...v, [x.id]: p })); return "✅ Photo de la plaque VIN prête."; }); }} /></label> : null}
+          <label className={s.primary} style={big}>{busy === "dl" + x.id ? "…" : "📷 Livré : photo du véhicule chez le client"}<input type="file" accept="image/*" capture="environment" hidden disabled={!!busy || (!!data.tour && !x.has_plate && !vplate[x.id])} onChange={e => { deliver(x, e.target.files?.[0]); e.target.value = ""; }} /></label>
+          <div style={{ display: "flex", gap: 8 }}><button className={s.ghost} style={{ flex: 1 }} disabled={!!busy || (!!data.tour && !x.has_plate && !vplate[x.id])} onClick={() => deliver(x)}>Livré sans photo</button><button className={s.ghost} disabled={!!busy} onClick={() => undo(x)}>Annuler</button></div>
+        </>}
       </div>; })}
     </section>
 

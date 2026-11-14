@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import LiveCard from "../planificateur/LiveCard";
 
 /** Une tuile = un outil. `section` : section requise pour un membre ; "owner" : fondateur seulement ; "any" : tout membre avec au moins une section. */
 type Tile = { href: string; icon: string; title: string; text: string; section: string };
@@ -112,6 +113,7 @@ export default function Organisation() {
             <span><b style={{ fontSize: 17, display: "block", marginBottom: 4 }}>{t.title}{t.section === "owner" ? <span style={{ fontSize: 11, fontWeight: 600, color: C.brand, marginLeft: 6 }}>FONDATEUR</span> : null}</b><span style={{ color: C.mute, fontSize: 14, lineHeight: 1.4 }}>{t.text}</span></span>
           </a>)}
         </div> : <div style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 18, padding: 18, marginTop: 18 }}>Aucune section n’est encore ouverte pour vous. Demandez à Mansour de cocher vos sections.</div>}
+        {me.who === "owner" || me.sections.includes("tournees") ? <LiveCard /> : null}
         <p style={{ color: C.mute, fontSize: 13, marginTop: 24 }}>Une question, un blocage ? Écrivez à Mansour sur WhatsApp. Pensez à vous déconnecter sur un ordinateur partagé.</p>
       </>}
     </div>
