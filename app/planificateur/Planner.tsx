@@ -6,6 +6,9 @@ import {VEHICLES,departmentFromPostalCode,deliveryPriceForDepartment} from "../.
 import {TRAILERS,DEFAULT_PARAMS,FUELS,splitTrips,type Stop,planRoute,estimateKm,computeCosts,mapsUrl,type Hub,type PlanClient,type PlanTour,type CostParams} from "../../lib/planif";
 import {waNumber} from "../../lib/sav";
 import {demoApi} from "./demoApi";
+import LiveTrack from "./LiveTrack";
+import {ScheduleKpis,ScheduleRulesNote,ScheduleView,downloadIcs} from "./Schedule";
+import {dayOf,hhmm,plannedSchedule} from "../../lib/schedule";
 
 const eur=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
 const STATUS:Record<PlanClient["status"],string>={a_planifier:"À planifier",planifie:"Planifié",livre:"Livré"};
@@ -18,6 +21,24 @@ const carPrice=(m:string)=>Object.values(VEHICLES).find(v=>v.label===m)?.price||
 type Eco={carCost:number;storage:number;ads:number;gear:number;sav:number;social:number};
 const ECO0:Eco={carCost:2800,storage:50,ads:150,gear:50,sav:100,social:43};
 const hm=(h:number)=>`${Math.floor(h)} h ${String(Math.round((h%1)*60)).padStart(2,"0")}`;
+
+/** Planning du livreur : heure de départ → calendrier jour par jour avec pauses recommandées et nuits. */
+function TourPlanning({t,busy,onSave}:{t:PlanTour;busy:boolean;onSave:(date:string,time:string)=>void}){
+ const [date,setDate]=useState(t.date);const [time,setTime]=useState(t.departTime||"08:00");
+ useEffect(()=>{setDate(t.date);setTime(t.departTime||"08:00");},[t.date,t.departTime]);
+ const sched=plannedSchedule(t.stops||[],date,time);
+ const dirty=date!==t.date||time!==(t.departTime||"");
+ return <section className={s.dash}>
+  <h3>🗓️ Planning du livreur</h3>
+  <div className={s.grid2}><label className={s.field}><span>Jour de départ</span><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label><label className={s.field}><span>Heure de départ</span><input type="time" value={time} onChange={e=>setTime(e.target.value)}/></label></div>
+  {dirty||!t.departTime?<button className={s.primary} disabled={busy||!/^\d{2}:\d{2}$/.test(time)} onClick={()=>onSave(date,time)}>{busy?"…":t.departTime?"Enregistrer le nouveau départ":"Enregistrer l’heure de départ"}</button>:null}
+  {!t.departTime?<p className={s.muted}>Pas encore d’heure enregistrée : le planning ci-dessous part à {time.replace(":","h")}. Le livreur le voit dès que l’heure est enregistrée.</p>:null}
+  <ScheduleKpis sched={sched}/>
+  <ScheduleView sched={sched}/>
+  <ScheduleRulesNote/>
+  <button className={s.ghost} onClick={()=>downloadIcs(sched,t.stops||[],t.name,t.id)}>📅 Ajouter à mon agenda (.ics)</button>
+ </section>;
+}
 
 export function Planner({demo=false}:{demo?:boolean}){
  const [code,setCode]=useState("");const [authed,setAuthed]=useState(demo);
@@ -37,7 +58,8 @@ export function Planner({demo=false}:{demo?:boolean}){
  const api=async(body:object,pc=code)=>{if(demo)return demoApi(body as Record<string,unknown>);const r=await fetch("/api/planificateur",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:pc,...body})});const j=await r.json().catch(()=>({ok:false,error:"Erreur"}));if(r.status===401)setAuthed(false);if(!j.ok)throw new Error(j.error||"Erreur");return j;};
  const loadFuel=async(pc=code)=>{try{const j=await api({action:"fuel"},pc);if(j.prices){setLive(j.prices);setParams(p=>({...p,fuelPrice:Math.round((j.prices[p.fuel]||p.fuelPrice)*1000)/1000}));}}catch{/* prix par défaut */}};
  const load=async(pc=code)=>{setBusy("load");try{const j=await api({action:"list"},pc);setClients(j.clients);setTours(j.tours.sort((a:PlanTour,b:PlanTour)=>a.created_at.localeCompare(b.created_at)));setHubs(j.hubs);setAuthed(true);if(!live)loadFuel(pc);if(!demo)try{sessionStorage.setItem("nd_pc",pc)}catch{}}catch(e){setMsg((e as Error).message)}finally{setBusy("")}};
- useEffect(()=>{if(demo){load("");return;}let pc="";try{pc=sessionStorage.getItem("nd_pc")||""}catch{}setCode(pc);load(pc).then(()=>{if(!pc)setMsg("")});
+ useEffect(()=>{try{const id=new URLSearchParams(window.location.search).get("tour");if(id)setOpen(id);}catch{/* lien direct */}
+  if(demo){load("");return;}let pc="";try{pc=sessionStorage.getItem("nd_pc")||""}catch{}setCode(pc);load(pc).then(()=>{if(!pc)setMsg("")});
   // eslint-disable-next-line react-hooks/exhaustive-deps
  },[]);
  const run=async(label:string,fn:()=>Promise<void>)=>{setBusy(label);setMsg("");try{await fn();}catch(e){setMsg((e as Error).message)}finally{setBusy("")}};
@@ -82,7 +104,8 @@ export function Planner({demo=false}:{demo?:boolean}){
  });
  const validate=(t:PlanTour)=>{if(!t.stops)return;saveTour({...t,status:"valide"},`✅ ${t.name} validée : le stock des hubs est mis à jour.`);};
  const removeTour=(t:PlanTour)=>{if(confirm(`Supprimer ${t.name} ? Ses clients repassent « à planifier »${t.status==="valide"?" et le stock est restitué":""}.`))run("del",async()=>{await api({action:"delete_tour",id:t.id});await load();});};
- const roadmap=(t:PlanTour)=>`${t.name} — ${new Date(t.date).toLocaleDateString("fr-FR")}${t.driver?` · ${t.driver}`:""}\n\n`+splitTrips(t.stops||[]).map(v=>`━━ VOYAGE ${v.n} ━━\n📦 ${v.hub.name} : ${v.hub.action}\n   ${nav(v.hub)}\n`+v.clients.map(p=>`🚗 ${p.name}\n   📞 ${p.phone||"—"}\n   📍 ${p.label}\n   ${nav(p)}`).join("\n")+(v.next?`\n➡️ Ensuite : ${v.next.name}${v.next.legKm?` (${v.next.legKm} km)`:""}`:"")).join("\n\n")+`\n\nItinéraire : ${mapsUrl(t.stops||[])}`;
+ const setDepart=(t:PlanTour,date:string,time:string)=>run("dep-"+t.id,async()=>{if(demo||t.status==="brouillon"){patch(t,{date,departTime:time});if(demo)await api({action:"save_tour",tour:{...t,date,departTime:time}});else await api({action:"tour_depart",id:t.id,date,time});}else{await api({action:"tour_depart",id:t.id,date,time});patch(t,{date,departTime:time});}setMsg(`✅ Départ enregistré : ${new Date(date+"T12:00:00Z").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",timeZone:"UTC"})} à ${time.replace(":","h")}.`);});
+ const roadmap=(t:PlanTour)=>{const sc=plannedSchedule(t.stops||[],t.date,t.departTime);const eta=(p:Stop)=>{const i=(t.stops||[]).indexOf(p);const e=sc.etas.find(x=>x.stopIndex===i);return e?`   🕒 vers ${hhmm(e.arrive)} (jour ${dayOf(e.arrive)+1})\n`:"";};return `${t.name} — ${new Date(t.date).toLocaleDateString("fr-FR")}${t.departTime?` · départ ${t.departTime.replace(":","h")}`:""}${t.driver?` · ${t.driver}`:""}\n\n`+splitTrips(t.stops||[]).map(v=>`━━ VOYAGE ${v.n} ━━\n📦 ${v.hub.name} : ${v.hub.action}\n   ${nav(v.hub)}\n`+v.clients.map(p=>`🚗 ${p.name}\n${eta(p)}   📞 ${p.phone||"—"}\n   📍 ${p.label}\n   ${nav(p)}`).join("\n")+(v.next?`\n➡️ Ensuite : ${v.next.name}${v.next.legKm?` (${v.next.legKm} km)`:""}`:"")).join("\n\n")+`\n\nItinéraire : ${mapsUrl(t.stops||[])}`;};
  const copy=(t:PlanTour)=>navigator.clipboard?.writeText(roadmap(t)).then(()=>setMsg("✅ Feuille de route copiée : collez-la dans WhatsApp pour le livreur."));
  const runDemo=()=>run("demo",async()=>{const j=await api({action:"demo"});await load();setMsg(`✅ Simulation chargée : ${j.created} client${j.created>1?"s":""} test ajouté${j.created>1?"s":""}, 20 voitures dans chaque hub. Cliquez sur « 🤖 Proposer automatiquement ».`);});
  const demoClear=()=>{if(confirm("Supprimer tous les clients TEST ?"))run("demo",async()=>{const j=await api({action:"demo_clear"});await load();setMsg(`✅ ${j.deleted} client${j.deleted>1?"s":""} test supprimé${j.deleted>1?"s":""}.`);});};
@@ -161,6 +184,8 @@ export function Planner({demo=false}:{demo?:boolean}){
        </div>})}
        {v.next?<p className={s.after}>➡️ Ensuite : <b>{v.next.id===v.hub.id?"retour à ":""}{v.next.name}</b>{v.next.legKm?` · ${v.next.legKm} km remorque vide`:""}{v.next.action==="Retour au hub"?" (fin de tournée)":` pour ${v.next.action.toLowerCase()}`}</p>:null}
       </section>)}</div>;})()}
+      <TourPlanning t={t} busy={busy==="dep-"+t.id} onSave={(d,h)=>setDepart(t,d,h)}/>
+      {locked&&!demo?<LiveTrack tour={t} api={api}/>:null}
       {!locked?<><div className={s.seg}><button className={params.mode==="carte"?s.on:""} onClick={()=>setParams(p=>({...p,mode:"carte"}))}>Carte NeoDrive</button><button className={params.mode==="remboursement"?s.on:""} onClick={()=>setParams(p=>({...p,mode:"remboursement"}))}>Remboursement sur tickets</button></div>
       <label className={s.field}><span>Véhicule tracteur : Dacia Duster — carburant</span><select value={params.fuel} onChange={e=>setFuel(e.target.value as CostParams["fuel"])}>{FUELS.map(f=><option key={f.id} value={f.id}>{f.label}{live?.[f.id]?` · ${live[f.id].toFixed(3)} €/L aujourd’hui`:""}</option>)}</select></label>
       <p className={s.muted}>{live?"Prix moyen national du jour (données officielles prix-carburants.gouv.fr). ":"Prix du jour indisponible : prix par défaut. "}Consommation majorée pour la remorque chargée.</p>

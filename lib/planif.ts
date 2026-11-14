@@ -9,6 +9,8 @@ export type PlanClient = Point & {
   modele: string; couleur: string; total: number | null;
   status: "a_planifier" | "planifie" | "livre"; tour_id?: string | null; note?: string;
   token?: string; received_at?: string; received_by?: string; reception_note?: string;
+  /** Heure à laquelle le livreur a appuyé sur « Livré ». */
+  delivered_at?: string;
 };
 export type Stop = { kind: "depot" | "client"; id: string; name: string; label: string; lat: number; lng: number; load: number; loaded?: number; action: string; phone?: string; address?: string; legKm?: number; legH?: number };
 export type Fuel = "gazole" | "e10" | "sp95" | "e85" | "gpl";
@@ -26,6 +28,8 @@ export type PlanTour = {
   hubId: string; trailer: number; clientIds: string[];
   status: "brouillon" | "valide" | "termine";
   stops?: Stop[]; path?: [number, number][]; km?: number; hours?: number; precise?: boolean; costs?: Costs; params?: CostParams; warning?: string;
+  /** Heure de départ prévue « HH:MM » (heure de Paris) le jour `date` : base du planning du livreur. */
+  departTime?: string;
 };
 
 export const DEFAULT_HUBS: Hub[] = [
