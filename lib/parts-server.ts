@@ -8,7 +8,7 @@ import { eur, orderTotals, SHIPPING_LABEL, STATUS_TEXT, TVA_RATE, type Part, typ
 
 export const SELLER = {
   name: "MK HOLDING - NeoDrive",
-  lines: ["31 rue Jean Nougaro, 31600 Muret, France", "SIREN 908 645 393", "Tél. 06 89 78 17 10", "contact.neodrivefrance@gmail.com"],
+  lines: ["31600 Muret, France", "SIREN 908 645 393", "Tél. 06 89 78 17 10", "contact.neodrivefrance@gmail.com"],
   owner: "Mansour Khelifa",
 };
 /** Coordonnées bancaires déjà publiées sur le site (/preparer-ma-livraison, /facturation). */
@@ -74,8 +74,8 @@ export function proformaPdf(o: PartsOrder): Promise<Buffer> {
     };
     row(cols.map(c => c.h), true, "#f1f1f1");
     o.lines.forEach(l => row([l.sku, l.name, String(l.qty), eur(l.unit_ht), eur(l.qty * l.unit_ht)]));
-    if (o.shipping_mode === "envoi") row(["", "Frais d'envoi", "1", o.shipping_ht === null ? "à confirmer" : eur(o.shipping_ht), o.shipping_ht === null ? "à confirmer" : eur(o.shipping_ht)]);
-    else row(["", "Retrait à Muret", "1", eur(0), eur(0)]);
+    if (o.shipping_mode === "envoi") row(["", "Frais d'envoi (forfait colis)", "1", o.shipping_ht === null ? "à confirmer" : eur(o.shipping_ht), o.shipping_ht === null ? "à confirmer" : eur(o.shipping_ht)]);
+    else row(["", "Retrait", "1", eur(0), eur(0)]);
 
     // Totaux
     const t = orderTotals(o.lines, o.shipping_ht);
@@ -105,12 +105,12 @@ const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&a
 function linesHtml(o: PartsOrder) {
   const t = orderTotals(o.lines, o.shipping_ht);
   const rows = o.lines.map(l => `<tr><td style="padding:6px;border-bottom:1px solid #eee">${l.image_url ? `<img src="${SITE}${esc(l.image_url)}" alt="" width="56" style="border-radius:6px;vertical-align:middle;margin-right:8px">` : ""}${esc(l.name)}<br><small style="color:#777">Réf. ${esc(l.sku)}</small></td><td style="padding:6px;border-bottom:1px solid #eee;text-align:center">${l.qty}</td><td style="padding:6px;border-bottom:1px solid #eee;text-align:right">${eur(l.qty * l.unit_ht)}</td></tr>`).join("");
-  const ship = o.shipping_mode === "envoi" ? (o.shipping_ht === null ? `<p style="color:#b45309">Envoi par transporteur : frais d'envoi confirmés sur la facture pro forma.</p>` : `<p>Frais d'envoi : ${eur(o.shipping_ht)} HT</p>`) : `<p>Retrait à Muret (31600).</p>`;
+  const ship = o.shipping_mode === "envoi" ? (o.shipping_ht === null ? `<p style="color:#b45309">Envoi par transporteur : frais d'envoi confirmés sur la facture pro forma.</p>` : `<p>Frais d'envoi : ${eur(o.shipping_ht)} HT</p>`) : `<p>Retrait.</p>`;
   return `<table style="width:100%;border-collapse:collapse;font-size:14px"><tr style="background:#f5f5f5"><th style="padding:6px;text-align:left">Pièce</th><th style="padding:6px">Qté</th><th style="padding:6px;text-align:right">Total HT</th></tr>${rows}</table>${ship}<p style="text-align:right">Total HT : <b>${eur(t.total_ht)}</b><br>TVA 20 % : ${eur(t.tva)}<br>Total TTC : <b style="font-size:17px">${eur(t.total_ttc)}</b></p>`;
 }
 
 function customerHtml(o: PartsOrder) {
-  return `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#111"><h2>Merci pour votre commande ${esc(o.order_number)}</h2><p>Bonjour ${esc(o.customer_first_name)},</p><p>Nous avons bien reçu votre commande de pièces détachées NeoDrive. Vous trouverez la <b>facture pro forma</b> en pièce jointe.</p>${linesHtml(o)}<h3>Paiement par virement</h3><p>Titulaire : ${BANK.holder}<br>Banque : ${BANK.bank}<br>IBAN : <b>${BANK.iban}</b><br>BIC : ${BANK.bic}<br>Référence à indiquer : <b>${esc(o.order_number)}</b></p><p style="color:#555;font-size:13px">Ce sont nos seules coordonnées bancaires. En cas de doute, appelez-nous au 06 89 78 17 10 avant de payer.</p><p><a href="${statusUrl(o.public_token)}" style="display:inline-block;background:#111;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Suivre ma commande</a></p><p>À bientôt,<br>L'équipe NeoDrive<br>31 rue Jean Nougaro, 31600 Muret</p></div>`;
+  return `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#111"><h2>Merci pour votre commande ${esc(o.order_number)}</h2><p>Bonjour ${esc(o.customer_first_name)},</p><p>Nous avons bien reçu votre commande de pièces détachées NeoDrive. Vous trouverez la <b>facture pro forma</b> en pièce jointe.</p>${linesHtml(o)}<h3>Paiement par virement</h3><p>Titulaire : ${BANK.holder}<br>Banque : ${BANK.bank}<br>IBAN : <b>${BANK.iban}</b><br>BIC : ${BANK.bic}<br>Référence à indiquer : <b>${esc(o.order_number)}</b></p><p style="color:#555;font-size:13px">Ce sont nos seules coordonnées bancaires. En cas de doute, appelez-nous au 06 89 78 17 10 avant de payer.</p><p><a href="${statusUrl(o.public_token)}" style="display:inline-block;background:#111;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Suivre ma commande</a></p><p>À bientôt,<br>L'équipe NeoDrive</p></div>`;
 }
 
 function ownerHtml(o: PartsOrder) {

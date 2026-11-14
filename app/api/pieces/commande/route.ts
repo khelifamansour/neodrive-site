@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { orderTotals, type HistoryEntry, type OrderLine, type ShippingMode } from "../../../../lib/parts";
+import { orderTotals, shippingHtFor, type HistoryEntry, type OrderLine, type ShippingMode } from "../../../../lib/parts";
 import { db, normOrder, ORDER_COLUMNS, sendProforma } from "../../../../lib/parts-server";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
   const first = clean(b.first_name, 80), last = clean(b.last_name, 80), phone = clean(b.phone, 40), email = clean(b.email, 160).toLowerCase();
   const address = clean(b.address, 400), vin = clean(b.vin, 40).replace(/\s+/g, "").toUpperCase(), message = clean(b.message, 2000);
-  const mode: ShippingMode = b.shipping_mode === "envoi" ? "envoi" : "retrait";
+  const mode: ShippingMode = "envoi"; // envoi uniquement (pas de retrait sur place)
   if (!first || !last) return NextResponse.json({ ok: false, error: "Indiquez votre nom et votre prénom." }, { status: 400 });
   if (phone.replace(/\D/g, "").length < 9) return NextResponse.json({ ok: false, error: "Numéro de téléphone invalide." }, { status: 400 });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ ok: false, error: "Adresse e-mail invalide." }, { status: 400 });
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
   let sb;
   try { sb = db(); } catch { return NextResponse.json({ ok: false, error: "Service momentanément indisponible. Appelez-nous au 06 89 78 17 10." }, { status: 503 }); }
-  const { data: parts, error: pe } = await sb.from("parts").select("sku,name,sale_price,image_url,active").in("sku", [...wanted.keys()]);
+  const { data: parts, error: pe } = await sb.from("parts").select("sku,name,category,sale_price,image_url,active").in("sku", [...wanted.keys()]);
   if (pe) return NextResponse.json({ ok: false, error: "Catalogue indisponible, réessayez." }, { status: 500 });
   const lines: OrderLine[] = []; const missing: string[] = [];
   for (const [sku, qty] of wanted) {
@@ -40,13 +40,14 @@ export async function POST(req: Request) {
   }
   if (missing.length) return NextResponse.json({ ok: false, error: `Pièce(s) plus disponible(s) en ligne : ${missing.join(", ")}. Retirez-les du panier.`, missing }, { status: 409 });
 
-  const t = orderTotals(lines, null);
+  const shipHt = shippingHtFor(lines.map(l => ({ name: l.name, category: parts?.find(x => x.sku === l.sku)?.category })));
+  const t = orderTotals(lines, shipHt);
   const now = new Date().toISOString();
   const history: HistoryEntry[] = [{ at: now, by: "Client (site)", action: "Commande créée", to: "nouvelle" }];
   const { data: row, error } = await sb.from("parts_orders").insert({
     customer_first_name: first, customer_last_name: last, customer_phone: phone, customer_email: email,
     shipping_address: address || null, vin: vin || null, lines, total_ht: t.total_ht, tva: t.tva, total_ttc: t.total_ttc,
-    shipping_mode: mode, shipping_ht: mode === "retrait" ? 0 : null, status: "nouvelle", customer_message: message || null, history,
+    shipping_mode: mode, shipping_ht: shipHt, status: "nouvelle", customer_message: message || null, history,
   }).select(ORDER_COLUMNS).single();
   if (error || !row) return NextResponse.json({ ok: false, error: "La commande n'a pas pu être enregistrée. Réessayez ou appelez-nous." }, { status: 500 });
   const order = normOrder(row);

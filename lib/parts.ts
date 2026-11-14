@@ -18,8 +18,18 @@ export const STATUS_TEXT: Record<OrderStatus, string> = {
 };
 
 export type ShippingMode = "retrait" | "envoi";
-export const SHIPPING_LABEL: Record<ShippingMode, string> = { retrait: "Retrait à Muret (31600)", envoi: "Envoi par transporteur" };
-export const SHIPPING_NOTE = "Frais d'envoi confirmés sur la facture pro forma";
+export const SHIPPING_LABEL: Record<ShippingMode, string> = { retrait: "Retrait", envoi: "Envoi en colis" };
+export const SHIPPING_NOTE = "Envoi en colis : 15 € TTC pour les petites pièces, 50 € TTC pour les pièces lourdes ou encombrantes";
+/** Forfaits d'envoi TTC : petites pièces 15 €, pièces lourdes ou encombrantes 50 € (un seul forfait par commande, le plus élevé). */
+export const SHIP_SMALL_TTC = 15, SHIP_HEAVY_TTC = 50;
+const HEAVY = /essieu|pont|diff[ée]rentiel|moteur|batterie|pare.?choc|porte|capot|hayon|si[èe]ge|pare.?brise|vitre|lunette|jante|roue|pneu|amortisseur|ch[âa]ssis|carrosserie|aile|toit|tableau de bord|planche de bord|direction|cr[ée]maill[èe]re|suspension|ressort|bras/i;
+export const isHeavyPart = (name: string, category?: string | null) => HEAVY.test(`${name} ${category || ""}`);
+/** Frais d'envoi HT d'une commande. */
+export function shippingHtFor(lines: { name: string; category?: string | null }[]) {
+  if (!lines.length) return 0;
+  const t = lines.some(l => isHeavyPart(l.name, l.category)) ? SHIP_HEAVY_TTC : SHIP_SMALL_TTC;
+  return Math.round((t / (1 + TVA_RATE)) * 100) / 100;
+}
 
 export type Part = { id?: string; sku: string; name: string; category: string | null; sale_price: number | null; image_url: string | null };
 export type OrderLine = { sku: string; name: string; qty: number; unit_ht: number; image_url: string | null };

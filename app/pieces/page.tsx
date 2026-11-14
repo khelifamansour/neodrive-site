@@ -8,7 +8,7 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Pièces détachées NeoDrive : catalogue et commande en ligne",
-  description: "Toutes les pièces détachées NeoDrive avec photo, référence et prix : électricité, carrosserie, freinage, éclairage, vitrage… Commande en ligne, retrait à Muret ou envoi.",
+  description: "Toutes les pièces détachées NeoDrive avec photo, référence et prix : électricité, carrosserie, freinage, éclairage, vitrage… Commande en ligne et envoi en colis partout en France.",
   alternates: { canonical: "/pieces" },
 };
 

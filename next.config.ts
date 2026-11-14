@@ -7,7 +7,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  serverExternalPackages: ["pdfkit"],
   outputFileTracingIncludes: {
+    "/api/**": ["./node_modules/pdfkit/js/data/**"],
     "/api/video/local-create": ["./node_modules/@ffmpeg-installer/linux-x64/ffmpeg"],
   },
 };

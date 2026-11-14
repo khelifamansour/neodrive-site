@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { CART_KEY, eur, orderTotals, SHIPPING_NOTE, ttc, type Part, type ShippingMode } from "../../lib/parts";
+import { CART_KEY, eur, orderTotals, shippingHtFor, SHIPPING_NOTE, ttc, type Part, type ShippingMode } from "../../lib/parts";
 import s from "./pieces.module.css";
 
 type Cart = Record<string, number>;
@@ -22,7 +22,7 @@ export default function Catalogue({ parts }: { parts: Part[] }) {
   const [open, setOpen] = useState(false);
   const [added, setAdded] = useState("");
   const [form, setForm] = useState({ first_name: "", last_name: "", phone: "", email: "", address: "", vin: "", message: "", website: "" });
-  const [mode, setMode] = useState<ShippingMode>("retrait");
+  const [mode, setMode] = useState<ShippingMode>("envoi");
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState<{ order_number: string; token: string; emailSent: boolean } | null>(null);
@@ -41,7 +41,7 @@ export default function Catalogue({ parts }: { parts: Part[] }) {
 
   const lines = Object.entries(cart).map(([sku, n]) => { const p = bySku.get(sku)!; return { sku, name: p.name, qty: n, unit_ht: p.sale_price || 0, image_url: p.image_url }; }).filter(l => bySku.has(l.sku));
   const count = lines.reduce((t, l) => t + l.qty, 0);
-  const totals = orderTotals(lines, mode === "retrait" ? 0 : null);
+  const totals = orderTotals(lines, shippingHtFor(lines.map(l => ({ name: l.name, category: bySku.get(l.sku)?.category }))));
 
   const add = (p: Part) => {
     const n = qty[p.sku] || 1;
@@ -148,8 +148,7 @@ export default function Catalogue({ parts }: { parts: Part[] }) {
                   </div>
                   <fieldset className={s.modes}>
                     <legend>Livraison *</legend>
-                    <label className={mode === "retrait" ? s.modeOn : s.mode}><input type="radio" name="mode" checked={mode === "retrait"} onChange={() => setMode("retrait")} /> <span><b>Retrait à Muret</b><small>31 rue Jean Nougaro, 31600 Muret · sans frais d’envoi</small></span></label>
-                    <label className={mode === "envoi" ? s.modeOn : s.mode}><input type="radio" name="mode" checked={mode === "envoi"} onChange={() => setMode("envoi")} /> <span><b>Envoi</b><small>{SHIPPING_NOTE}</small></span></label>
+                    <label className={mode === "envoi" ? s.modeOn : s.mode}><input type="radio" name="mode" checked={mode === "envoi"} onChange={() => setMode("envoi")} /> <span><b>Envoi en colis</b><small>{SHIPPING_NOTE}</small></span></label>
                   </fieldset>
                   <label>Adresse de livraison {mode === "envoi" ? "*" : "(facultatif)"}<textarea rows={2} required={mode === "envoi"} autoComplete="street-address" placeholder="N°, rue, code postal, ville" {...field("address")} /></label>
                   <label>Numéro de série / VIN de la voiture (facultatif)<input placeholder="Ex. LJ5…" {...field("vin")} /></label>
