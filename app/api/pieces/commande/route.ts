@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
   let sb;
   try { sb = db(); } catch { return NextResponse.json({ ok: false, error: "Service momentanément indisponible. Appelez-nous au 06 89 78 17 10." }, { status: 503 }); }
-  const { data: parts, error: pe } = await sb.from("parts").select("sku,name,category,sale_price,image_url,active").in("sku", [...wanted.keys()]);
+  const { data: parts, error: pe } = await sb.from("parts").select("sku,name,category,sale_price,image_url,active,ship_class,weight_kg").in("sku", [...wanted.keys()]);
   if (pe) return NextResponse.json({ ok: false, error: "Catalogue indisponible, réessayez." }, { status: 500 });
   const lines: OrderLine[] = []; const missing: string[] = [];
   for (const [sku, qty] of wanted) {
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   }
   if (missing.length) return NextResponse.json({ ok: false, error: `Pièce(s) plus disponible(s) en ligne : ${missing.join(", ")}. Retirez-les du panier.`, missing }, { status: 409 });
 
-  const shipHt = shippingHtFor(lines.map(l => ({ name: l.name, category: parts?.find(x => x.sku === l.sku)?.category })));
+  const shipHt = shippingHtFor(lines.map(l => { const p = parts?.find(x => x.sku === l.sku); return { name: l.name, qty: l.qty, ship_class: p?.ship_class, weight_kg: p?.weight_kg === null || p?.weight_kg === undefined ? null : Number(p.weight_kg) }; }));
   const t = orderTotals(lines, shipHt);
   const now = new Date().toISOString();
   const history: HistoryEntry[] = [{ at: now, by: "Client (site)", action: "Commande créée", to: "nouvelle" }];

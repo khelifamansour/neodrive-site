@@ -22,9 +22,9 @@ export const statusUrl = (token: string) => `${SITE}/pieces/commande/${token}`;
 /** Catalogue public (pièces actives). Si la base est indisponible, liste tirée du catalogue PDF. */
 export async function loadCatalogue(): Promise<{ parts: Part[]; source: "db" | "pdf" }> {
   try {
-    const { data, error } = await db().from("parts").select("id,sku,name,category,sale_price,image_url,notes").eq("active", true).order("category").order("name").limit(1000);
+    const { data, error } = await db().from("parts").select("id,sku,name,category,sale_price,image_url,notes,ship_class,weight_kg,sort_order").eq("active", true).order("sort_order").order("category").order("name").limit(1000);
     if (error) throw error;
-    if (data?.length) return { parts: data.map(p => ({ ...p, sale_price: p.sale_price === null ? null : Number(p.sale_price) })), source: "db" };
+    if (data?.length) return { parts: data.map(p => ({ ...p, sale_price: p.sale_price === null ? null : Number(p.sale_price), weight_kg: p.weight_kg === null ? null : Number(p.weight_kg) })), source: "db" };
   } catch (e) { console.error("[pieces] catalogue", (e as Error).message); }
   return { parts: (seed as Part[]).map(p => ({ sku: p.sku, name: p.name, category: p.category, sale_price: p.sale_price, image_url: p.image_url })), source: "pdf" };
 }

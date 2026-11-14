@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { CART_KEY, eur, orderTotals, shippingHtFor, SHIPPING_NOTE, ttc, type Part, type ShippingMode } from "../../lib/parts";
+import { CART_KEY, eur, orderTotals, shippingHtFor, shipLabel, SHIPPING_NOTE, ttc, type Part, type ShippingMode } from "../../lib/parts";
 import s from "./pieces.module.css";
 
 type Cart = Record<string, number>;
@@ -41,7 +41,8 @@ export default function Catalogue({ parts }: { parts: Part[] }) {
 
   const lines = Object.entries(cart).map(([sku, n]) => { const p = bySku.get(sku)!; return { sku, name: p.name, qty: n, unit_ht: p.sale_price || 0, image_url: p.image_url }; }).filter(l => bySku.has(l.sku));
   const count = lines.reduce((t, l) => t + l.qty, 0);
-  const totals = orderTotals(lines, shippingHtFor(lines.map(l => ({ name: l.name, category: bySku.get(l.sku)?.category }))));
+  const shipHt = shippingHtFor(lines.map(l => { const p = bySku.get(l.sku); return { name: l.name, qty: l.qty, ship_class: p?.ship_class, weight_kg: p?.weight_kg }; }));
+  const totals = orderTotals(lines, shipHt);
 
   const add = (p: Part) => {
     const n = qty[p.sku] || 1;
@@ -82,7 +83,7 @@ export default function Catalogue({ parts }: { parts: Part[] }) {
               <h3>{p.name}</h3>
               <small className={s.ref}>Réf. {p.sku}</small>
               {p.sale_price !== null ? <>
-                <div className={s.price}><b>{eur(p.sale_price)} HT</b><span>{eur(ttc(p.sale_price))} TTC</span></div>
+                <div className={s.price}><b>{eur(p.sale_price)} HT</b><span>{eur(ttc(p.sale_price))} TTC</span></div><small style={{ color: "#6b7280", fontSize: 12 }}>🚚 {shipLabel(p)}</small>
                 <div className={s.buy}>
                   <div className={s.qty}>
                     <button type="button" aria-label="Moins" onClick={() => setQty({ ...qty, [p.sku]: Math.max(1, (qty[p.sku] || 1) - 1) })}>−</button>
@@ -130,6 +131,7 @@ export default function Catalogue({ parts }: { parts: Part[] }) {
                   ))}
                 </ul>
                 <div className={s.totals}>
+                  <div><span>Envoi (forfait, HT)</span><b>{shipHt === null ? "sur devis" : eur(shipHt)}</b></div>
                   <div><span>Total HT</span><b>{eur(totals.total_ht)}</b></div>
                   <div><span>TVA 20 %</span><span>{eur(totals.tva)}</span></div>
                   <div className={s.big}><span>Total TTC</span><b>{eur(totals.total_ttc)}</b></div>

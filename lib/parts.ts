@@ -19,19 +19,32 @@ export const STATUS_TEXT: Record<OrderStatus, string> = {
 
 export type ShippingMode = "retrait" | "envoi";
 export const SHIPPING_LABEL: Record<ShippingMode, string> = { retrait: "Retrait", envoi: "Envoi en colis" };
-export const SHIPPING_NOTE = "Envoi en colis : 15 € TTC pour les petites pièces, 50 € TTC pour les pièces lourdes ou encombrantes";
-/** Forfaits d'envoi TTC : petites pièces 15 €, pièces lourdes ou encombrantes 50 € (un seul forfait par commande, le plus élevé). */
-export const SHIP_SMALL_TTC = 15, SHIP_HEAVY_TTC = 50;
-const HEAVY = /essieu|pont|diff[ée]rentiel|moteur|batterie|pare.?choc|porte|capot|hayon|si[èe]ge|pare.?brise|vitre|lunette|jante|roue|pneu|amortisseur|ch[âa]ssis|carrosserie|aile|toit|tableau de bord|planche de bord|direction|cr[ée]maill[èe]re|suspension|ressort|bras/i;
-export const isHeavyPart = (name: string, category?: string | null) => HEAVY.test(`${name} ${category || ""}`);
-/** Frais d'envoi HT d'une commande. */
-export function shippingHtFor(lines: { name: string; category?: string | null }[]) {
+export const SHIPPING_NOTE = "Envoi en colis ou sur palette selon les pièces : le forfait d'envoi est calculé automatiquement dans le panier";
+/** Forfaits d'envoi par classe de pièce (TTC). La commande prend la classe la plus élevée ; au-delà de 30 kg au total, envoi sur palette. */
+export type ShipClass = "petit" | "moyen" | "lourd" | "volumineux" | "palette" | "devis";
+export const SHIP_CLASSES: Record<ShipClass, { label: string; ttc: number | null; rank: number }> = {
+  petit: { label: "Petit colis", ttc: 15, rank: 1 },
+  moyen: { label: "Colis moyen", ttc: 25, rank: 2 },
+  lourd: { label: "Colis lourd (messagerie)", ttc: 50, rank: 3 },
+  volumineux: { label: "Colis volumineux", ttc: 90, rank: 4 },
+  palette: { label: "Palette", ttc: 180, rank: 5 },
+  devis: { label: "Envoi sur devis", ttc: null, rank: 6 },
+};
+const HEAVY = /essieu|pont|diff[ée]rentiel|moteur|batterie|pare.?choc|porte|capot|si[èe]ge|pare.?brise|vitre|lunette|jante|roue|pneu|amortisseur|carrosserie/i;
+const classOf = (l: { name: string; ship_class?: string | null }): ShipClass => (l.ship_class && l.ship_class in SHIP_CLASSES ? l.ship_class as ShipClass : HEAVY.test(l.name) ? "lourd" : "petit");
+export const shipLabel = (l: { name: string; ship_class?: string | null }) => { const c = SHIP_CLASSES[classOf(l)]; return c.ttc === null ? c.label : `${c.label} : ${c.ttc} € TTC`; };
+/** Frais d'envoi HT d'une commande (null = à chiffrer sur devis). */
+export function shippingHtFor(lines: { name: string; qty?: number; ship_class?: string | null; weight_kg?: number | null }[]) {
   if (!lines.length) return 0;
-  const t = lines.some(l => isHeavyPart(l.name, l.category)) ? SHIP_HEAVY_TTC : SHIP_SMALL_TTC;
+  let best: ShipClass = "petit";
+  for (const l of lines) { const c = classOf(l); if (SHIP_CLASSES[c].rank > SHIP_CLASSES[best].rank) best = c; }
+  const kg = lines.reduce((t, l) => t + (Number(l.weight_kg) || 1) * (l.qty || 1), 0);
+  if (best !== "devis" && kg > 30 && SHIP_CLASSES[best].rank < SHIP_CLASSES.palette.rank) best = "palette";
+  const t = SHIP_CLASSES[best].ttc; if (t === null) return null;
   return Math.round((t / (1 + TVA_RATE)) * 100) / 100;
 }
 
-export type Part = { id?: string; sku: string; name: string; category: string | null; sale_price: number | null; image_url: string | null };
+export type Part = { id?: string; sku: string; name: string; category: string | null; sale_price: number | null; image_url: string | null; ship_class?: string | null; weight_kg?: number | null; sort_order?: number | null };
 export type OrderLine = { sku: string; name: string; qty: number; unit_ht: number; image_url: string | null };
 export type HistoryEntry = { at: string; by: string; action: string; from?: string; to?: string; note?: string };
 
