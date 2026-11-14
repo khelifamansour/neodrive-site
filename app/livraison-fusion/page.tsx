@@ -168,7 +168,7 @@ export default function LivraisonFusionPage() {
           </div>
           <div className="heroActions">
             <a className="primary" href="#simulateur">Calculer mon tarif</a>
-            <a className="secondary" href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20un%20tarif%20de%20livraison%20NeoDrive">Nous contacter</a>
+            <a className="secondary" href="https://wa.me/33676192234?text=Bonjour%2C%20je%20souhaite%20un%20tarif%20de%20livraison%20NeoDrive">Nous contacter</a>
           </div>
         </div>
 
@@ -330,7 +330,7 @@ export default function LivraisonFusionPage() {
 
       <section className="cta">
         <div><span>VOTRE NEODRIVE, SANS SURPRISE</span><h2>Connaissez votre tarif avant de réserver.</h2><p>Calculez votre livraison ou contactez-nous directement pour confirmer votre destination.</p></div>
-        <div className="ctaButtons"><a href="#simulateur">Calculer mon tarif</a><a href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20confirmer%20mon%20tarif%20de%20livraison%20NeoDrive">WhatsApp</a></div>
+        <div className="ctaButtons"><a href="#simulateur">Calculer mon tarif</a><a href="https://wa.me/33676192234?text=Bonjour%2C%20je%20souhaite%20confirmer%20mon%20tarif%20de%20livraison%20NeoDrive">WhatsApp</a></div>
       </section>
 
       <style jsx>{`

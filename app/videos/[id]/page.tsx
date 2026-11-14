@@ -67,7 +67,7 @@ export default async function VideoWatchPage({ params }: { params: Promise<{ id:
         <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:14}}>
           <a href="/produit" style={{padding:20,border:"1px solid #ddd",borderRadius:17,textDecoration:"none",color:"#111"}}><strong>Voir la voiture NeoDrive</strong><br/><span style={{color:"#666"}}>Versions, équipements et informations produit →</span></a>
           <a href="/voiture-sans-permis" style={{padding:20,border:"1px solid #ddd",borderRadius:17,textDecoration:"none",color:"#111"}}><strong>Voiture sans permis par ville</strong><br/><span style={{color:"#666"}}>Livraison et pages locales →</span></a>
-          <a href="https://wa.me/33628261446" style={{padding:20,border:"1px solid #bdeaca",borderRadius:17,textDecoration:"none",color:"#111",background:"#f2fff6"}}><strong>Demander une vidéo précise</strong><br/><span style={{color:"#39734a"}}>Contact direct sur WhatsApp →</span></a>
+          <a href="https://wa.me/33676192234" style={{padding:20,border:"1px solid #bdeaca",borderRadius:17,textDecoration:"none",color:"#111",background:"#f2fff6"}}><strong>Demander une vidéo précise</strong><br/><span style={{color:"#39734a"}}>Contact direct sur WhatsApp →</span></a>
         </section>
 
         <section style={{marginTop:36,padding:26,borderRadius:20,background:"#f5f5f5"}}>

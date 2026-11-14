@@ -39,7 +39,7 @@ export default function LightMobility() {
           </div>
           <div className="actions">
             <a className="primary" href="#galerie">Voir toutes les photos</a>
-            <a className="whatsapp" href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20des%20informations%20sur%20le%20NeoDrive%20Cam%C3%A9l%C3%A9on%201500" target="_blank" rel="noreferrer">Demander le tarif</a>
+            <a className="whatsapp" href="https://wa.me/33676192234?text=Bonjour%2C%20je%20souhaite%20des%20informations%20sur%20le%20NeoDrive%20Cam%C3%A9l%C3%A9on%201500" target="_blank" rel="noreferrer">Demander le tarif</a>
           </div>
         </div>
         <div className="heroVisual">
@@ -91,13 +91,13 @@ export default function LightMobility() {
         <div className="specPanel">
           <span>FICHE TECHNIQUE</span>
           <div className="specGrid">{specs.map(([value, label]) => <div key={label}><b>{value}</b><small>{label}</small></div>)}</div>
-          <a href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20recevoir%20la%20fiche%20du%20NeoDrive%20Cam%C3%A9l%C3%A9on%201500" target="_blank" rel="noreferrer">Recevoir la fiche complète →</a>
+          <a href="https://wa.me/33676192234?text=Bonjour%2C%20je%20souhaite%20recevoir%20la%20fiche%20du%20NeoDrive%20Cam%C3%A9l%C3%A9on%201500" target="_blank" rel="noreferrer">Recevoir la fiche complète →</a>
         </div>
       </section>
 
       <section className="cta">
         <div><span>DISPONIBILITÉ & TARIF</span><h2>Le Caméléon vous intéresse ?</h2><p>Échangez directement avec NeoDrive pour connaître la configuration proposée, le tarif et les prochaines disponibilités.</p></div>
-        <a href="https://wa.me/33628261446?text=Bonjour%2C%20je%20souhaite%20conna%C3%AEtre%20le%20prix%20et%20la%20disponibilit%C3%A9%20du%20NeoDrive%20Cam%C3%A9l%C3%A9on%201500" target="_blank" rel="noreferrer">Contacter NeoDrive</a>
+        <a href="https://wa.me/33676192234?text=Bonjour%2C%20je%20souhaite%20conna%C3%AEtre%20le%20prix%20et%20la%20disponibilit%C3%A9%20du%20NeoDrive%20Cam%C3%A9l%C3%A9on%201500" target="_blank" rel="noreferrer">Contacter NeoDrive</a>
       </section>
 
       <p className="legal">*Données issues de la fiche technique du fabricant, à confirmer selon la version commercialisée et son homologation. L’autonomie réelle varie selon la vitesse, la charge, la température et les conditions d’utilisation. La vitesse autorisée, l’immatriculation, le permis requis et l’utilisation sur voie publique dépendent de la version homologuée.</p>

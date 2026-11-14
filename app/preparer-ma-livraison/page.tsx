@@ -4,7 +4,7 @@ import s from "./livraison.module.css";
 
 const RIB: [string, string][] = [["Bénéficiaire", "MK HOLDING"], ["IBAN", "FR76 2823 3000 0142 1307 1051 008"], ["BIC", "REVOFRP2"]];
 
-const WHATSAPP = "https://wa.me/33628261446?text=" + encodeURIComponent("Bonjour, j’ai une question sur la livraison de ma NeoDrive.");
+const WHATSAPP = "https://wa.me/33676192234?text=" + encodeURIComponent("Bonjour, j’ai une question sur la livraison de ma NeoDrive.");
 
 const DRIVE = [
   ["Vérifiez le disjoncteur", "Sur le côté du véhicule, le disjoncteur doit être enclenché (en position ON). S’il est baissé, relevez-le."],

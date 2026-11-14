@@ -11,7 +11,7 @@ export default function VoitureSansPermisOccasionPage() {
           Mais sur la durée, une voiture neuve électrique peut parfois être un
           choix plus sûr et plus économique.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta">
           Comparer avec NeoDrive
         </a>
       </section>
@@ -185,7 +185,7 @@ export default function VoitureSansPermisOccasionPage() {
           Avant d’acheter, comparez avec une NeoDrive neuve. Recevez les photos,
           vidéos, prix, disponibilités et solutions de financement.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta big">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta big">
           Recevoir les informations
         </a>
       </section>

@@ -115,7 +115,7 @@ Exigences éditoriales: les photos et témoignages doivent être authentiques; p
     const videoBlock = video?.public_url && video?.id ? `<section><h2>Voir une NeoDrive réelle en vidéo</h2><p>Cette vidéo provient de notre bibliothèque réelle de véhicules et complète les informations du guide.</p><video controls preload="metadata" playsinline style="width:100%;max-height:650px;background:#000;border-radius:16px"><source src="${safeHtml(String(video.public_url))}" type="video/mp4"></video><p><a href="/videos/${safeHtml(String(video.id))}">Ouvrir la page dédiée à cette vidéo</a> · <a href="/videos">Voir toutes les vidéos NeoDrive</a></p></section>` : "";
     const relatedArticles = (recentArticles || []).slice(0, 4).map((item: any) => `<li><a href="/blog/${safeHtml(String(item.slug))}">${safeHtml(String(item.title))}</a></li>`).join("");
     const links = relatedArticles ? `<section><h2>Autres guides NeoDrive</h2><ul>${relatedArticles}</ul></section>` : "";
-    const content = `${image}${String(out.content || "")}${videoBlock}${links}<p><a href="https://wa.me/33628261446">Demander les photos, vidéos et tarifs NeoDrive sur WhatsApp</a></p>`;
+    const content = `${image}${String(out.content || "")}${videoBlock}${links}<p><a href="https://wa.me/33676192234">Demander les photos, vidéos et tarifs NeoDrive sur WhatsApp</a></p>`;
 
     const { data, error } = await sb.from("seo_articles").insert({ slug, title: out.title, meta_description: description, excerpt: description, description, content, target_keyword: chosen?.primary_keyword || topic, topic, keywords: Array.isArray(out.keywords) ? out.keywords : [], status: "published", published_at: now, publish_source: triggerSource }).select().single();
     if (error) return fail(error.message, 500);

@@ -23,8 +23,8 @@ Merci d'avance pour votre retour.
 
 Mansour Khelifa
 NeoDrive – MK HOLDING
-06 28 26 14 46 – www.easydrive-auto.fr`;
-const DEFAULT_SMS = "Bonjour, NeoDrive (voitures sans permis) recherche un prestataire pour le dépotage de conteneurs 40' et le stockage de véhicules (1 à 3 mois). Pouvez-vous nous faire une offre ? Contact : 06 28 26 14 46 ou contact.neodrivefrance@gmail.com Merci, Mansour Khelifa";
+06 89 78 17 10 – www.easydrive-auto.fr`;
+const DEFAULT_SMS = "Bonjour, NeoDrive (voitures sans permis) recherche un prestataire pour le dépotage de conteneurs 40' et le stockage de véhicules (1 à 3 mois). Pouvez-vous nous faire une offre ? Contact : 06 89 78 17 10 ou contact.neodrivefrance@gmail.com Merci, Mansour Khelifa";
 
 /** Modèle « stockage seul » pour les parkings, fermes, gardiennage autour de Gennevilliers et dans l'Oise. */
 const STORAGE_SUBJECT = "Recherche d'un espace de stockage pour 20 à 40 petites voitures (1 à 3 mois)";
@@ -43,8 +43,8 @@ Merci d'avance pour votre retour.
 
 Mansour Khelifa
 NeoDrive – MK HOLDING
-06 28 26 14 46 – www.easydrive-auto.fr`;
-const STORAGE_SMS = "Bonjour, NeoDrive (voitures sans permis electriques) cherche un espace de stockage pour 20 a 40 petites voitures (2,5 x 1,3 m) pendant 1 a 3 mois, exterieur securise ou hangar. Avez-vous de la place ? Mansour 06 28 26 14 46";
+06 89 78 17 10 – www.easydrive-auto.fr`;
+const STORAGE_SMS = "Bonjour, NeoDrive (voitures sans permis electriques) cherche un espace de stockage pour 20 a 40 petites voitures (2,5 x 1,3 m) pendant 1 a 3 mois, exterieur securise ou hangar. Avez-vous de la place ? Mansour 06 89 78 17 10";
 const WA_TEXT = "Bonjour, je suis Mansour de NeoDrive (voitures sans permis électriques). Nous cherchons un espace de stockage pour 20 à 40 petites voitures (2,50 × 1,30 m) pendant 1 à 3 mois, extérieur sécurisé ou hangar, avec accès remorque. Auriez-vous de la place, et à quel tarif ? Merci !";
 const waNum = (p: string | null) => { const d = String(p || "").replace(/\D/g, "").replace(/^0033/, "33").replace(/^0/, "33"); return d.length >= 11 ? d : ""; };
 const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("fr-FR") : "";

@@ -11,7 +11,7 @@ export default function FiatTopolinoOuNeoDrivePage() {
           prix, les équipements, le confort, le coffre, le SAV et le coût sur la
           durée.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta">
           Comparer avec NeoDrive
         </a>
       </section>
@@ -209,7 +209,7 @@ export default function FiatTopolinoOuNeoDrivePage() {
           Contactez-nous sur WhatsApp pour recevoir les photos, vidéos, prix,
           disponibilités et solutions de financement NeoDrive.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta big">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta big">
           Recevoir les informations
         </a>
       </section>

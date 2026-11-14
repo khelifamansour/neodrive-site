@@ -17,7 +17,7 @@ export default function VoitureSansPermisHub() {
         <p style={{fontSize:19,color:"#555",maxWidth:820}}>NeoDrive est une marque toulousaine de voiture sans permis électrique. Nos véhicules peuvent être présentés à distance avec de vraies photos et vidéos puis livrés partout en France selon les disponibilités et le planning logistique.</p>
         <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:24}}>
           <a href="/produit" style={{padding:"14px 18px",borderRadius:12,background:"#111",color:"#fff",textDecoration:"none",fontWeight:900}}>Voir la NeoDrive</a>
-          <a href="https://wa.me/33628261446" style={{padding:"14px 18px",borderRadius:12,background:"#25d366",color:"#fff",textDecoration:"none",fontWeight:900}}>Recevoir photos et disponibilité</a>
+          <a href="https://wa.me/33676192234" style={{padding:"14px 18px",borderRadius:12,background:"#25d366",color:"#fff",textDecoration:"none",fontWeight:900}}>Recevoir photos et disponibilité</a>
         </div>
       </section>
 

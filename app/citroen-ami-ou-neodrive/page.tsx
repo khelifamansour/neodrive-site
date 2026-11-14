@@ -11,7 +11,7 @@ export default function CitroenAmiOuNeoDrivePage() {
           Vous hésitez entre une Citroën Ami, une Fiat Topolino ou une NeoDrive ?
           Voici les différences importantes à regarder avant d’acheter.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta">
           Recevoir les photos NeoDrive
         </a>
       </section>
@@ -163,7 +163,7 @@ export default function CitroenAmiOuNeoDrivePage() {
           Contactez-nous sur WhatsApp. Nous pouvons vous envoyer les photos,
           vidéos, prix, disponibilités et solutions de financement.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta big">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta big">
           Comparer avec NeoDrive
         </a>
       </section>

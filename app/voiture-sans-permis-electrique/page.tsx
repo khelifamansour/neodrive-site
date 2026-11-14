@@ -9,7 +9,7 @@ export default function VoitureSansPermisElectriquePage() {
           NeoDrive propose une alternative moderne aux voitures sans permis
           d’occasion, à la Citroën Ami et à la Fiat Topolino.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta">
           Recevoir les photos et disponibilités
         </a>
       </section>
@@ -169,7 +169,7 @@ export default function VoitureSansPermisElectriquePage() {
           Contactez-nous sur WhatsApp pour recevoir les photos, vidéos,
           disponibilités et solutions de financement.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta big">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta big">
           Contacter NeoDrive
         </a>
       </section>

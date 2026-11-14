@@ -11,7 +11,7 @@ export default function QuelleVoitureSansPermisChoisirPage() {
           Ligier ou NeoDrive : voici les critères importants pour faire le bon
           choix.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta">
           Demander conseil sur WhatsApp
         </a>
       </section>
@@ -191,7 +191,7 @@ export default function QuelleVoitureSansPermisChoisirPage() {
           Contactez NeoDrive sur WhatsApp. Nous pouvons vous envoyer les photos,
           vidéos, prix, disponibilités et solutions de financement.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta big">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta big">
           Recevoir les informations
         </a>
       </section>

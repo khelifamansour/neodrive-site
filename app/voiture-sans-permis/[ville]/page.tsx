@@ -60,7 +60,7 @@ export default async function CityPage({ params }: { params: Promise<{ ville: st
         <p style={{fontSize:19,color:"#555",maxWidth:850}}>{city.intro}</p>
         <div style={{display:"flex",gap:11,flexWrap:"wrap",marginTop:24}}>
           <a href="/produit" style={{background:"#111",color:"#fff",padding:"14px 18px",borderRadius:12,textDecoration:"none",fontWeight:900}}>Voir la NeoDrive</a>
-          <a href="https://wa.me/33628261446" style={{background:"#25d366",color:"#fff",padding:"14px 18px",borderRadius:12,textDecoration:"none",fontWeight:900}}>Recevoir une vidéo personnalisée</a>
+          <a href="https://wa.me/33676192234" style={{background:"#25d366",color:"#fff",padding:"14px 18px",borderRadius:12,textDecoration:"none",fontWeight:900}}>Recevoir une vidéo personnalisée</a>
         </div>
       </section>
 
@@ -115,7 +115,7 @@ export default async function CityPage({ params }: { params: Promise<{ ville: st
       <section style={{padding:28,borderRadius:22,background:"#111",color:"#fff"}}>
         <h2 style={{marginTop:0,fontSize:30}}>Vous êtes à {city.city} ?</h2>
         <p>Demandez les photos, une vidéo réelle du véhicule et les disponibilités actuelles avant de vous déplacer.</p>
-        <a href="https://wa.me/33628261446" style={{display:"inline-block",background:"#25d366",color:"#fff",padding:"13px 17px",borderRadius:12,textDecoration:"none",fontWeight:900}}>Contacter NeoDrive sur WhatsApp</a>
+        <a href="https://wa.me/33676192234" style={{display:"inline-block",background:"#25d366",color:"#fff",padding:"13px 17px",borderRadius:12,textDecoration:"none",fontWeight:900}}>Contacter NeoDrive sur WhatsApp</a>
       </section>
 
       <div style={{padding:"34px 0 6px"}}><SocialLinks/></div>

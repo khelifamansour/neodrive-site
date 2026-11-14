@@ -10,7 +10,7 @@ export default function PrixVoitureSansPermisPage() {
           Neuve, d’occasion, électrique ou thermique : le prix d’une voiture sans
           permis varie beaucoup. Voici les éléments à comparer avant d’acheter.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta">
           Demander le prix NeoDrive
         </a>
       </section>
@@ -191,7 +191,7 @@ export default function PrixVoitureSansPermisPage() {
           Contactez-nous sur WhatsApp pour recevoir les tarifs, photos, vidéos,
           disponibilités et solutions de financement.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta big">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta big">
           Recevoir les tarifs
         </a>
       </section>

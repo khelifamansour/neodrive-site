@@ -54,6 +54,6 @@ export default async function Page({params}:{params:Promise<{slug:string}>}){
         {photos.map((photo,i)=><figure key={photo.id} style={{margin:0}}><img src={photo.public_url} alt={`Photo NeoDrive — voiture sans permis électrique, vue ${i+1}`} loading="lazy" style={{width:"100%",height:230,objectFit:"contain",borderRadius:12,background:"#f5f5f5"}}/></figure>)}
       </div></section>}
     {related.length>0 && <section style={{marginTop:36}}><h2>Autres guides pour choisir votre voiture sans permis</h2><ul>{related.map(r=><li key={r.slug}><a href={`/blog/${r.slug}`}>{r.title}</a></li>)}</ul></section>}
-    <section style={{marginTop:32,padding:22,borderRadius:16,background:"#f5f5f5"}}><h2>Découvrez NeoDrive</h2><p>Voiture sans permis électrique deux places, gamme à partir de 3 990 € TTC.</p><p><a href="/produit">Voir les véhicules NeoDrive</a> · <a href="/offres/voiture-sans-permis-3990-euros">Comparer les prix</a> · <a href="/citroen-ami-ou-neodrive">Alternative à la Citroën Ami</a> · <a href="https://wa.me/33628261446">Nous contacter sur WhatsApp</a></p></section>
+    <section style={{marginTop:32,padding:22,borderRadius:16,background:"#f5f5f5"}}><h2>Découvrez NeoDrive</h2><p>Voiture sans permis électrique deux places, gamme à partir de 3 990 € TTC.</p><p><a href="/produit">Voir les véhicules NeoDrive</a> · <a href="/offres/voiture-sans-permis-3990-euros">Comparer les prix</a> · <a href="/citroen-ami-ou-neodrive">Alternative à la Citroën Ami</a> · <a href="https://wa.me/33676192234">Nous contacter sur WhatsApp</a></p></section>
   </main>;
 }

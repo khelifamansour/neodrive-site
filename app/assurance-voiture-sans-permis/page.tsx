@@ -11,7 +11,7 @@ export default function AssuranceVoitureSansPermisPage() {
           le coût de l’assurance, les garanties utiles et les différences entre
           une voiture électrique neuve et un véhicule d’occasion.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta">
           Demander une information
         </a>
       </section>
@@ -185,7 +185,7 @@ export default function AssuranceVoitureSansPermisPage() {
           Contactez NeoDrive sur WhatsApp pour recevoir les photos, vidéos,
           tarifs, disponibilités, financement et informations assurance.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta big">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta big">
           Contacter NeoDrive
         </a>
       </section>

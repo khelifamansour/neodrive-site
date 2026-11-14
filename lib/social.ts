@@ -3,7 +3,7 @@ export const SOCIAL = {
   facebook: "https://www.facebook.com/profile.php?id=61591548669494",
   instagram: "https://www.instagram.com/neodrivefrance/",
   tiktok: "https://www.tiktok.com/@neodrive72",
-  whatsapp: "https://wa.me/33628261446",
+  whatsapp: "https://wa.me/33676192234",
 } as const;
 
 export const SOCIAL_LINKS = ([

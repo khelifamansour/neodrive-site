@@ -17,7 +17,7 @@ const NO_PREFILL:Prefill={name:"",phone:"",email:"",vin:"",category:"",descripti
 const CLIENT_STEPS=[{label:"Demande reçue",keys:["nouveau"]},{label:"En cours de traitement",keys:["en_cours","attente_pieces","attente_ingenieur","attente_client"]},{label:"Résolu",keys:["resolu","cloture"]}];
 const isVid=(f:File)=>f.type.startsWith("video/");
 const fileType=(f:File)=>f.type||(/\.(heic|heif)$/i.test(f.name)?"image/heic":"");
-const WHATSAPP="https://wa.me/33628261446?text="+encodeURIComponent("Bonjour, j’ai besoin d’une assistance technique pour ma NeoDrive.");
+const WHATSAPP="https://wa.me/33676192234?text="+encodeURIComponent("Bonjour, j’ai besoin d’une assistance technique pour ma NeoDrive.");
 const mb=(n:number)=>(n/1024/1024).toFixed(n<1024*1024*10?1:0)+" Mo";
 const fmt=(d:string)=>new Date(d).toLocaleString("fr-FR",{day:"2-digit",month:"long",hour:"2-digit",minute:"2-digit"});
 

@@ -155,7 +155,7 @@ export default function BatterieLithiumOuPlombPage() {
       <section className={styles.ctaSection}>
         <h2>Vous hésitez entre plusieurs versions ?</h2>
         <p>Expliquez-nous vos trajets et votre usage. NeoDrive peut vous orienter vers la configuration la plus cohérente parmi les véhicules actuellement proposés.</p>
-        <a className={styles.cta} href="https://wa.me/33628261446" target="_blank" rel="noopener noreferrer">Parler avec NeoDrive</a>
+        <a className={styles.cta} href="https://wa.me/33676192234" target="_blank" rel="noopener noreferrer">Parler avec NeoDrive</a>
       </section>
     </main>
   );

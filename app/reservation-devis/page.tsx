@@ -5,7 +5,7 @@ import s from "./reservation.module.css";
 import GoogleReviews from "../_components/GoogleReviews";
 
 const euro=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n);
-const WHATSAPP="https://wa.me/33628261446?text="+encodeURIComponent("Bonjour, j'ai une question sur la réservation de ma NeoDrive.");
+const WHATSAPP="https://wa.me/33676192234?text="+encodeURIComponent("Bonjour, j'ai une question sur la réservation de ma NeoDrive.");
 
 const MODELS:Record<VehicleKey,{img:string;tagline:string;badge?:string}>={
  essentielle:{img:"/reservation/essentielle.svg",tagline:"L’essentiel au meilleur prix"},

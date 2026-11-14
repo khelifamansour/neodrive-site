@@ -10,7 +10,7 @@ export default function MeilleureVoitureSansPermisElectriquePage() {
           Citroën Ami, Fiat Topolino, voitures sans permis d’occasion ou NeoDrive :
           voici les critères essentiels pour choisir une voiture électrique sans permis.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta">
           Découvrir NeoDrive
         </a>
       </section>
@@ -169,7 +169,7 @@ export default function MeilleureVoitureSansPermisElectriquePage() {
           Contactez NeoDrive pour recevoir les photos, vidéos, tarifs,
           disponibilités et solutions de financement.
         </p>
-        <a href="https://wa.me/33628261446" target="_blank" className="cta big">
+        <a href="https://wa.me/33676192234" target="_blank" className="cta big">
           Recevoir les informations
         </a>
       </section>
