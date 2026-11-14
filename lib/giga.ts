@@ -16,6 +16,7 @@ import type { PlanClient, PlanTour } from "./planif";
 import { cleanSettings, compute, type RawData } from "./rentabilite";
 import { OWNER_EMAIL, SITE, brevoReady, sendEmail } from "./brevo";
 import { applyStoredSecrets } from "./integrations";
+import { activePlan, planForAI, type Plan } from "./giga-plan";
 
 export const GIGA_TABLE = "giga_reports";
 const RESEARCH_MODEL = process.env.GIGA_RESEARCH_MODEL || "gpt-4.1-mini";
@@ -27,6 +28,7 @@ const RUNNING_STALE_MS = 15 * 60 * 1000;
 export type Opportunite = { titre: string; pourquoi: string; actions: string[]; impact_estime: string; effort: string; horizon: string; sources?: string[] };
 export type Menace = { titre: string; pourquoi: string; parade?: string; sources?: string[] };
 export type ProduitATester = { produit: string; prix_usine_estime: string; prix_vente_estime: string; marge_estimee: string; sources: string[]; note?: string };
+export type PlanAction = { produit: string; statut_actuel: string; conseil: string; pourquoi: string; prochaines_actions: string[] };
 export type Scenario = { nom: string; horizon_annees: number | string; ca_cible: string; etapes: string[]; hypotheses: string[]; risques: string[] };
 export type GigaReport = {
   resume: string[];
@@ -37,6 +39,9 @@ export type GigaReport = {
   marketing: { idee: string; canal?: string; pourquoi?: string; sources?: string[] }[];
   scenarios: Scenario[];
   priorites_2_semaines: string[];
+  plan_annee?: number;
+  plan_resume: string;
+  plan_action: PlanAction[];
   sources: string[];
   _meta?: { web_search: boolean; tool?: string; topics: { id: string; titre: string; ok: boolean; error?: string }[]; email?: string; models: { research: string; synthesis: string } };
 };
@@ -184,12 +189,12 @@ export type Snapshot = Awaited<ReturnType<typeof buildSnapshot>>;
 
 /* ───────────── 2. Recherche externe (OpenAI + recherche web) ───────────── */
 
-const CONTEXT = `NeoDrive (MK HOLDING, Muret, Haute-Garonne, France) importe de Chine des voitures sans permis électriques (catégorie L6e, 45 km/h) et les vend en direct aux particuliers partout en France (environ 7 à 8 voitures par mois, marge d'environ 1 500 € par voiture, frais fixes très faibles, gamme à partir de 3 990 € TTC). Projets de nouvelles gammes : dumpers / brouettes électriques, mini-chargeuses, débroussailleuses radiocommandées, chariots plateformes, tables élévatrices, gerbeurs électriques, utilitaire NeoDrive Pro Pick-Up, tricycles, scooter Caméléon. Ambition du fondateur : utiliser la trésorerie des voitures pour bâtir une entreprise bien plus grande (scénarios jusqu'à 100–200 M€ de chiffre d'affaires).`;
+const CONTEXT = `NeoDrive (MK HOLDING, Muret, Haute-Garonne, France) importe de Chine des voitures sans permis électriques (catégorie L6e, 45 km/h) et les vend en direct aux particuliers partout en France (environ 7 à 8 voitures par mois, marge d'environ 1 500 € par voiture, frais fixes très faibles, gamme à partir de 3 990 € TTC). Stratégie produits « arbitrage conteneur » : glisser d'autres produits chinois autour des voitures dans chaque conteneur (fret presque gratuit), les vendre en vidéo → WhatsApp → livraison sur plateau. Produits du plan annuel : pièces de voiturettes toutes marques, mini-chargeuse électrique, balayeuse autoportée électrique, débroussailleuse télécommandée électrique, cellule camping pour pick-up, brouette et dumper électriques, perruques en cheveux humains, diable monte-escalier, produits de saison, portique de lavage sans contact. Ambition du fondateur : utiliser la trésorerie des voitures pour bâtir une entreprise bien plus grande (scénarios jusqu'à 100–200 M€ de chiffre d'affaires).`;
 
 export const TOPICS: { id: string; titre: string; q: string }[] = [
   { id: "vsp_marche", titre: "Marché voiture sans permis et concurrents", q: "Actualité récente (3 derniers mois) du marché français de la voiture sans permis : immatriculations, tendances, nouveaux modèles. Prix publics actuels de Aixam, Ligier/Microcar, Citroën Ami, Fiat Topolino, Mobilize Duo, et des importateurs de modèles chinois en France. Donne des prix en € TTC quand tu les trouves." },
   { id: "reglementation", titre: "Réglementation", q: "Changements récents ou annoncés en France/UE concernant les quadricycles L6e/L7e, le permis AM / BSR, l'âge minimum, l'assurance des voitures sans permis, le bonus écologique / prime pour les véhicules électriques légers, l'homologation des véhicules importés de Chine, et les droits de douane UE sur les véhicules électriques chinois." },
-  { id: "machines", titre: "Utilitaires électriques et petites machines", q: "Marché en France des petites machines électriques : dumpers / brouettes électriques, mini-chargeuses, débroussailleuses radiocommandées, chariots plateformes, tables élévatrices, gerbeurs électriques, petits utilitaires électriques type pick-up L7e. Taille de marché, clients (paysagistes, BTP, agriculteurs, collectivités), prix de vente en France, distributeurs et concurrents." },
+  { id: "machines", titre: "Produits du plan annuel", q: "Marché en France des produits suivants : mini-chargeuses électriques, balayeuses autoportées électriques, débroussailleuses télécommandées (dont entretien des parcs solaires), cellules camping pour pick-up, dumpers / brouettes électriques, perruques en cheveux humains, portiques de lavage sans contact, pièces détachées de voitures sans permis. Taille de marché, clients (paysagistes, BTP, agriculteurs, collectivités), prix de vente en France, distributeurs et concurrents." },
   { id: "sourcing", titre: "Tendances Alibaba / AliExpress / Made-in-China", q: "D'après des articles et résultats de recherche (sans visiter les fiches produits), quels produits électriques de ces familles sont en tendance chez les fabricants chinois (Alibaba, Made-in-China, AliExpress) : mini dumpers électriques, débroussailleuses radiocommandées, gerbeurs électriques, tables élévatrices, mini voitures électriques basse vitesse, tricycles électriques cargo. Fourchettes de prix usine (FOB, en USD) quand elles sont citées." },
   { id: "macro", titre: "Conjoncture française", q: "Derniers chiffres pour la France : inflation (INSEE), taux des crédits à la consommation et des crédits auto, prix des carburants (gazole, SP95), chômage, moral des ménages. Que disent-ils de la demande pour un petit véhicule électrique économique ?" },
   { id: "social", titre: "Réseaux sociaux", q: "Tendances actuelles sur TikTok, Instagram Reels et YouTube Shorts autour des voitures sans permis, des mini véhicules électriques et des petites machines électriques (formats viraux, influenceurs, hashtags, angles qui marchent auprès des jeunes de 14-18 ans, des parents et des seniors) en France." },
@@ -242,10 +247,12 @@ const SHAPE = `{
  "marketing": [{"idee": "", "canal": "", "pourquoi": "", "sources": ["URL"]}],
  "scenarios": [{"nom": "", "horizon_annees": 3, "ca_cible": "", "etapes": [""], "hypotheses": [""], "risques": [""]}],
  "priorites_2_semaines": ["5 maximum, très concrètes"],
+ "plan_resume": "2 à 3 phrases : où en est le plan de l'année et ce qui compte maintenant",
+ "plan_action": [{"produit": "nom exact du produit du plan", "statut_actuel": "", "conseil": "lancer|continuer|accélérer|corriger|mettre en pause|arrêter", "pourquoi": "", "prochaines_actions": ["2 à 4 actions concrètes pour les 2 prochaines semaines (fournisseurs, devis, échantillon, pub, prévente)"]}],
  "sources": ["toutes les URL citées"]
 }`;
 
-export async function synthesize(client: OpenAI, snapshot: Snapshot, notes: ResearchNote[]) {
+export async function synthesize(client: OpenAI, snapshot: Snapshot, notes: ResearchNote[], plan: Plan | null = null) {
   const web = notes.some(n => n.ok && n.tool);
   const research = notes.map(n => `### ${n.titre}${n.ok ? "" : " (ÉCHEC : " + (n.error || "") + ")"}\n${n.text || "(rien)"}\nSources : ${n.sources.map(s => s.url).join(" ; ") || "aucune"}`).join("\n\n");
   const input = `${CONTEXT}
@@ -261,19 +268,21 @@ Règles :
 - 4 à 7 opportunités, 3 à 6 menaces, 3 à 6 produits à tester (prix usine en USD FOB et prix de vente France en € TTC, marge par unité), 4 à 6 idées marketing.
 - Scénarios : au moins 4 — « Consolider les voitures » (1–2 ans), « 10 M€ », « 50 M€ », « 100–200 M€ ». Sois honnête sur ce que chacun exige : produits, pays, réseau de distribution (concessionnaires, agents, B2B), financement (fonds propres, dette, levée), équipe, stocks, SAV. Donne des ordres de grandeur réalistes (ex. 10 M€ ≈ X voitures/an ou mix produits) marqués « estimation ».
 - priorites_2_semaines : 5 actions maximum, concrètes, faisables par une très petite équipe.
+${plan ? `- PLAN DE L'ANNÉE ${plan.annee} : le fondateur suit un plan annuel de produits (ci-dessous, avec le statut de chaque produit et de ses fournisseurs). Remplis plan_action pour CHAQUE produit du plan (même nom), dans l'ordre du classement : conseil honnête selon le statut, la saison, les chiffres internes et l'actualité. Les priorités des 2 semaines doivent inclure les 1 à 2 actions les plus importantes du plan. N'invente pas de fournisseur : propose plutôt les mots-clés et critères pour en trouver.` : "- Aucun plan annuel : plan_action = [] et plan_resume = \"\"."}
 - Réponds uniquement en json valide, exactement avec cette forme :
 ${SHAPE}
 
 === PHOTO INTERNE (json) ===
 ${JSON.stringify(snapshot).slice(0, 45000)}
 
-=== NOTES DE RECHERCHE WEB ===
+${plan ? `=== PLAN DE L'ANNÉE ${plan.annee} (json) ===\n${JSON.stringify(planForAI(plan)).slice(0, 20000)}\n\n` : ""}=== NOTES DE RECHERCHE WEB ===
 ${research.slice(0, 40000)}`;
-  const resp = await client.responses.create({ model: SYNTH_MODEL, input, max_output_tokens: 8000, text: { format: { type: "json_object" } } }, { timeout: 140_000, maxRetries: 0 });
+  const resp = await client.responses.create({ model: SYNTH_MODEL, input, max_output_tokens: 12000, text: { format: { type: "json_object" } } }, { timeout: 140_000, maxRetries: 0 });
   const raw = resp.output_text || "";
   let report: GigaReport;
   try { report = JSON.parse(raw); } catch { const m = raw.match(/\{[\s\S]*\}/); if (!m) throw new Error("Réponse IA illisible"); report = JSON.parse(m[0]); }
-  return { report: normalize(report), tokens: resp.usage?.total_tokens || 0 };
+  const out = normalize(report); if (plan) out.plan_annee = plan.annee;
+  return { report: out, tokens: resp.usage?.total_tokens || 0 };
 }
 
 const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? v as T[] : v ? [v as T] : []);
@@ -289,9 +298,39 @@ export function normalize(r: Partial<GigaReport> | null | undefined): GigaReport
     marketing: arr<GigaReport["marketing"][number] | string>(x.marketing).map(m => typeof m === "string" ? { idee: m } : { ...m, sources: strs(m.sources) }),
     scenarios: arr<Scenario>(x.scenarios).map(s => ({ ...s, etapes: strs(s.etapes), hypotheses: strs(s.hypotheses), risques: strs(s.risques) })),
     priorites_2_semaines: strs(x.priorites_2_semaines).slice(0, 5),
+    plan_annee: typeof x.plan_annee === "number" ? x.plan_annee : undefined,
+    plan_resume: typeof x.plan_resume === "string" ? x.plan_resume : "",
+    plan_action: arr<PlanAction>(x.plan_action).filter(a => a && typeof a === "object").map(a => ({ produit: String(a.produit || ""), statut_actuel: String(a.statut_actuel || ""), conseil: String(a.conseil || ""), pourquoi: String(a.pourquoi || ""), prochaines_actions: strs(a.prochaines_actions).slice(0, 6) })),
     sources: strs(x.sources),
     _meta: x._meta as GigaReport["_meta"],
   };
+}
+
+/* ───────────── 3 bis. Plan de l'année suivante ───────────── */
+
+/** Propose le plan de l'année `year` à partir du plan précédent et des derniers rapports (l'IA garde les fournisseurs des produits conservés). */
+export async function generateNextPlan(db: SupabaseClient, prev: Plan, year: number): Promise<Plan> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("Clé OpenAI absente (OPENAI_API_KEY)");
+  const { data } = await db.from(GIGA_TABLE).select("period,report").eq("status", "done").order("created_at", { ascending: false }).limit(6);
+  const reports = (data || []).map(r => { const x = normalize(r.report); return { periode: r.period, resume: x.resume, plan_action: x.plan_action, produits_a_tester: x.produits_a_tester.map(p => p.produit + " : " + p.marge_estimee), opportunites: x.opportunites.map(o => o.titre) }; });
+  const client = new OpenAI({ apiKey });
+  const input = `${CONTEXT}
+
+Tu es « Giga Analyse ». Prépare le PLAN PRODUITS DE L'ANNÉE ${year} du fondateur, en français simple, à partir du plan ${prev.annee} (avec le statut réel de chaque produit et de ses fournisseurs) et des derniers rapports.
+Règles : garde les produits « validés » ou prometteurs (avec leurs fournisseurs tels quels), arrête ou mets « plus tard » ceux qui ont échoué, ajoute 2 à 4 nouveaux produits seulement si les rapports les justifient. Classe 8 à 12 produits (rang, note sur 100, verdict TOP|TEST|BON). Chiffres = estimations marquées « (estimation) ». N'invente aucun fournisseur : pour un nouveau produit, fournisseurs = [] et mots_cles = mots-clés de recherche en anglais. Statut des nouveaux produits : "a_lancer". Calendrier mois par mois de l'année ${year}. Garde les règles et la liste des interdits.
+Réponds uniquement en json valide avec exactement la même forme que le plan précédent (champs annee, titre, resume, objectifs, produits, calendrier, chargement, regles, plus_tard, interdits, source).
+
+=== PLAN ${prev.annee} (json) ===
+${JSON.stringify(prev).slice(0, 40000)}
+
+=== DERNIERS RAPPORTS (json) ===
+${JSON.stringify(reports).slice(0, 25000)}`;
+  const resp = await client.responses.create({ model: SYNTH_MODEL, input, max_output_tokens: 14000, text: { format: { type: "json_object" } } }, { timeout: 200_000, maxRetries: 0 });
+  const raw = resp.output_text || "";
+  let plan: Plan;
+  try { plan = JSON.parse(raw); } catch { const m = raw.match(/\{[\s\S]*\}/); if (!m) throw new Error("Réponse IA illisible"); plan = JSON.parse(m[0]); }
+  return { ...plan, annee: year, source: `Proposé par Giga Analyse le ${new Date().toLocaleDateString("fr-FR")} à partir du plan ${prev.annee} et des derniers rapports. À relire et corriger.` };
 }
 
 /* ───────────── 4. Exécution complète ───────────── */
@@ -312,8 +351,9 @@ export async function executeRun(db: SupabaseClient, id: string, opts: { email?:
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("Clé OpenAI absente (OPENAI_API_KEY)");
     const client = new OpenAI({ apiKey });
+    const plan = await activePlan(db).catch(() => null);
     const notes = await research(client);
-    const { report, tokens } = await synthesize(client, internal, notes);
+    const { report, tokens } = await synthesize(client, internal, notes, plan);
     const web = notes.some(n => n.ok && n.tool);
     const allSources = [...new Set([...report.sources, ...notes.flatMap(n => n.sources.map(s => s.url))])].slice(0, 120);
     report.sources = allSources;
@@ -346,6 +386,7 @@ export function emailHtml(id: string, r: GigaReport, period = periodLabel()) {
 <p style="color:#f05a28;font-weight:800;margin:0">🧠 GIGA ANALYSE · ${esc(period)}</p>
 <h2 style="margin:6px 0 12px">Ce qu’il faut retenir</h2><ul style="padding-left:18px">${li(r.resume.slice(0, 5))}</ul>
 ${r.priorites_2_semaines.length ? `<h3 style="margin:18px 0 8px">✅ Priorités des 2 prochaines semaines</h3><ol style="padding-left:18px">${li(r.priorites_2_semaines)}</ol>` : ""}
+${r.plan_action.length ? `<h3 style="margin:18px 0 8px">🎯 Plan ${esc(r.plan_annee || "")} : quoi faire maintenant</h3>${r.plan_resume ? `<p style="color:#444">${esc(r.plan_resume)}</p>` : ""}<ul style="padding-left:18px">${r.plan_action.slice(0, 6).map(a => `<li style="margin:0 0 6px"><b>${esc(a.produit)}</b> · ${esc(a.conseil)} — ${esc(a.prochaines_actions[0] || a.pourquoi)}</li>`).join("")}</ul>` : ""}
 ${opps ? `<h3 style="margin:18px 0 8px">🚀 Opportunités</h3>${opps}` : ""}
 ${threats ? `<h3 style="margin:18px 0 8px">⚠️ Menaces</h3><ul style="padding-left:18px">${threats}</ul>` : ""}
 ${r._meta && !r._meta.web_search ? `<p style="color:#b42318">La recherche web n’a pas fonctionné cette fois : le rapport s’appuie surtout sur les chiffres internes.</p>` : ""}

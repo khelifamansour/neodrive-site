@@ -9,6 +9,7 @@ import type { GigaReport } from "../../../lib/giga";
 type Row = { id: string; created_at: string; period: string | null; status: string; error: string | null; cost_tokens: number | null; report: GigaReport | null; internal: unknown; sources: { sujet: string; sources: { url: string; title?: string }[] }[] | null };
 
 const effortClass = (e: string) => { const t = (e || "").toLowerCase(); return t.includes("faible") ? c.e_faible : t.includes("fort") || t.includes("élev") ? c.e_fort : t.includes("moyen") ? c.e_moyen : ""; };
+const conseilClass = (t: string) => { const x = t.toLowerCase(); return /arr|pause/.test(x) ? c.e_fort : /corrig/.test(x) ? c.e_moyen : /acc|lanc|contin/.test(x) ? c.e_faible : ""; };
 const List = ({ items }: { items?: string[] }) => items?.length ? <ul>{items.map((x, i) => <li key={i}>{x}</li>)}</ul> : <p className={c.small}>—</p>;
 
 export default function GigaReportPage() {
@@ -56,6 +57,18 @@ export default function GigaReportPage() {
     {r.priorites_2_semaines.length ? <section className={c.section}>
       <h2 className={c.h2}>✅ Priorités des 2 prochaines semaines</h2>
       <ol className={c.prio}>{r.priorites_2_semaines.map((p, i) => <li key={i}>{p}</li>)}</ol>
+    </section> : null}
+
+    {r.plan_action?.length ? <section className={c.section}>
+      <h2 className={c.h2}>🎯 Plan {r.plan_annee || ""} : quoi faire maintenant</h2>
+      {r.plan_resume ? <p className={c.oppWhy} style={{ marginBottom: 10 }}>{r.plan_resume}</p> : null}
+      <div className={c.grid2}>{r.plan_action.map((a, i) => <article key={i} className={c.opp}>
+        <h3 className={c.oppTitle}>{a.produit}</h3>
+        <div className={c.pills}>{a.conseil ? <span className={`${c.pill} ${conseilClass(a.conseil)}`}>{a.conseil}</span> : null}{a.statut_actuel ? <span className={c.pill}>{a.statut_actuel}</span> : null}</div>
+        {a.pourquoi ? <p className={c.oppWhy}>{a.pourquoi}</p> : null}
+        {a.prochaines_actions.length ? <ul className={c.actions}>{a.prochaines_actions.map((x, j) => <li key={j}>{x}</li>)}</ul> : null}
+      </article>)}</div>
+      <p className={`${c.small} ${c.noPrint}`} style={{ marginTop: 8 }}><Link href="/giga/plan">📋 Ouvrir le plan de l’année (statuts, fournisseurs)</Link></p>
     </section> : null}
 
     {r.chiffres_cles.length ? <section className={c.section}>

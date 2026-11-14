@@ -34,6 +34,10 @@ export default function GigaList() {
     <p className={c.kicker}>NeoDrive · Intelligence</p>
     <h1 className={c.h1}>🧠 Giga Analyse</h1>
     <p className={c.muted}>Toutes les 2 semaines (le 1er et le 15 du mois), l’IA lit vos chiffres (prospects, Hana, SAV, pièces, stock, rentabilité) et l’actualité du marché, puis vous envoie un rapport : opportunités, menaces, produits à tester et chemins de croissance.</p>
+    <Link href="/giga/plan" className={`${c.card} ${c.row}`} style={{ marginTop: 16 }}>
+      <div className={c.rowMain}><p className={c.rowTitle}>📋 Plan produits de l’année</p><p className={c.rowText}>Produits classés, fournisseurs, calendrier et chargement des conteneurs. Chaque analyse vous dit quoi faire ensuite sur ce plan.</p></div>
+      <span className={c.badge} style={{ background: "#f05a28", color: "#fff" }}>Ouvrir →</span>
+    </Link>
     {who === "owner" ? <div style={{ marginTop: 16 }}>
       <button className={`${c.btn} ${c.btnBrand}`} onClick={run} disabled={busy || running}>{running ? <><span className={c.spin} /> Analyse en cours…</> : busy ? "…" : "⚡ Lancer une analyse maintenant"}</button>
     </div> : null}
