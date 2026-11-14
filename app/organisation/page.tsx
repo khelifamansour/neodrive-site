@@ -13,6 +13,7 @@ const TILES: Tile[] = [
   { href: "/contenu", icon: "🎬", title: "Contenu", text: "Photos, vidéos, catalogue et documents à télécharger.", section: "contenu" },
   { href: "/recrutement-admin", icon: "🤝", title: "Recrutement", text: "Les candidatures, les tests et les offres d’emploi.", section: "recrutement" },
   { href: "/equipe", icon: "📞", title: "Prospects", text: "Vos clients à rappeler, les appels et les messages WhatsApp.", section: "crm" },
+  { href: "/clients", icon: "⭐", title: "Clients et avis", text: "Prendre des nouvelles des clients livrés et leur demander un avis Google.", section: "clients" },
   { href: "/stock", icon: "🔧", title: "Ancien stock", text: "Les voitures d’occasion à remettre en état et à vendre.", section: "stock" },
   { href: "/idees", icon: "💡", title: "Idées et développement", text: "Proposez une idée pour améliorer NeoDrive, suivez son avancement.", section: "any" },
   { href: "/academy", icon: "🎓", title: "NeoDrive Academy", text: "La formation de l’équipe (bientôt disponible).", section: "academy" },

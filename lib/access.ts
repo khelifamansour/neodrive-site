@@ -14,6 +14,7 @@ export const SECTIONS = {
   stock: "Ancien stock",
   academy: "NeoDrive Academy",
   crm: "Prospects (espace équipe)",
+  clients: "Clients et avis",
 } as const;
 export type SectionKey = keyof typeof SECTIONS;
 export const isSection = (s: unknown): s is SectionKey => typeof s === "string" && s in SECTIONS;
