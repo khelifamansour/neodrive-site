@@ -1,31 +1,38 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { stageOf, timelinePath, type SavTimeline } from "../../../../lib/sav";
-import { readJson } from "../../../../lib/datastore";
+import { SAV_STATUSES, statusOf, CHANNEL_LABEL, type SavAttachment } from "../../../../lib/sav-center";
+import { findCustomerTicket, importLegacy, signMedia } from "../../../../lib/sav-server";
 
 export const dynamic = "force-dynamic";
-const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 
-/** Suivi client : référence + e-mail → statut et historique (sans les notes internes). */
+/** Suivi client : référence + e-mail → statut, historique et conversation (sans les notes internes). */
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
-  const ref = String(b.reference || "").trim().toUpperCase(), email = String(b.email || "").trim().toLowerCase();
-  if (!ref || !email) return NextResponse.json({ ok: false, error: "Référence et e-mail requis." }, { status: 400 });
-  const sk = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!sk) return NextResponse.json({ ok: false, error: "Configuration manquante" }, { status: 503 });
-  const sb = createClient(SB, sk, { auth: { persistSession: false } });
-  const { data, error } = await sb.from("sav_tickets").select("public_reference,status,category,vin,ai_diagnosis,resolution,created_at,updated_at").eq("public_reference", ref).eq("customer_email", email).maybeSingle();
-  if (error) return NextResponse.json({ ok: false, error: "Service momentanément indisponible." }, { status: 500 });
-  if (!data) return NextResponse.json({ ok: false, error: "Aucune demande ne correspond à cette référence et cet e-mail." }, { status: 404 });
-  let events: SavTimeline["events"] = [];
-  const tl = await readJson<SavTimeline>(sb, timelinePath(ref));
-  if (tl?.events) events = tl.events;
-  if (!events.length) events = [{ at: data.created_at, stage: data.status === "resolved" || data.status === "closed" ? "resolved" : "received", note: data.resolution || undefined }];
-  const current = stageOf(events[events.length - 1].stage);
+  const found = await findCustomerTicket(b.reference, b.email);
+  if ("error" in found) return NextResponse.json({ ok: false, error: found.error }, { status: found.status });
+  const { sb, ticket: t } = found;
+  if (!t.legacy_imported_at) { await importLegacy(sb, t).catch(() => null); }
+  const { data: fresh } = await sb.from("sav_tickets").select("sav_status,closed_at").eq("id", t.id).maybeSingle();
+  const st = statusOf(fresh?.sav_status || t.sav_status);
+  const [{ data: msgs }, { data: events }] = await Promise.all([
+    sb.from("sav_messages").select("id,created_at,direction,channel,author,body,attachments").eq("ticket_id", t.id).in("direction", ["in", "out"]).order("created_at", { ascending: true }),
+    sb.from("sav_events").select("created_at,kind,to_value").eq("ticket_id", t.id).in("kind", ["created", "status"]).order("created_at", { ascending: true }),
+  ]);
+  const messages = [];
+  for (const m of msgs || []) {
+    messages.push({
+      id: m.id, at: m.created_at, from: m.direction === "in" ? "client" : "neodrive", channel: CHANNEL_LABEL[m.channel] || m.channel,
+      // Prénom seulement pour l'équipe NeoDrive
+      author: m.direction === "out" ? String(m.author || "NeoDrive").replace(/\s*\(.*\)$/, "").split(" ")[0] : "Vous",
+      body: m.body, media: await signMedia(sb, m.attachments as SavAttachment[]),
+    });
+  }
   return NextResponse.json({
     ok: true,
-    ticket: { reference: data.public_reference, category: data.category, vin: data.vin, created_at: data.created_at, advice: data.ai_diagnosis },
-    stage: { key: current.key, label: current.label, message: current.client },
-    events: events.map(e => ({ at: e.at, stage: e.stage, label: stageOf(e.stage).label, note: e.note || "" })),
+    ticket: { reference: t.public_reference, category: t.category, vin: t.vin, created_at: t.created_at, closed_at: fresh?.closed_at || null, advice: t.ai_diagnosis, resolution: t.resolution, parts: t.requested_parts || [] },
+    stage: { key: st.key, label: st.client, message: st.clientMsg },
+    steps: SAV_STATUSES.map(s => ({ key: s.key, label: s.client })),
+    events: (events || []).map(e => ({ at: e.created_at, label: e.kind === "created" ? "Demande reçue" : statusOf(e.to_value).client })),
+    messages,
+    media: await signMedia(sb, t.attachments as SavAttachment[]),
   });
 }

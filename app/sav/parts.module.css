@@ -1,0 +1,16 @@
+.box { display: grid; gap: 8px; }
+.box input { padding: 13px; border: 1px solid #d4d7db; border-radius: 10px; font: inherit; font-size: 16px; width: 100%; box-sizing: border-box; }
+.note { margin: 0; font-size: 14px; color: #6b7280; font-weight: 500; }
+.chosen, .results ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.chosen li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: #fff7ed; border: 1px solid #fed7aa; }
+.chosen li > span:not(.noimg), .results li button > span:not(.noimg) { flex: 1; display: grid; gap: 2px; min-width: 0; font-weight: 700; font-size: 14px; }
+.chosen small, .results small { font-weight: 500; color: #6b7280; font-size: 12.5px; }
+.chosen img, .results img, .noimg { width: 46px; height: 46px; border-radius: 9px; object-fit: cover; background: #f3f4f6; flex: none; display: grid; place-items: center; font-size: 20px; }
+.chosen button { border: 0; background: #111; color: #fff; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 16px; }
+.results { border: 1px solid #e5e7eb; border-radius: 14px; padding: 8px; max-height: 340px; overflow: auto; display: grid; gap: 8px; background: #fff; }
+.results li button { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 6px 8px; border: 1px solid transparent; border-radius: 10px; background: #fff; cursor: pointer; font: inherit; color: #111; }
+.results li button:hover { background: #f9fafb; }
+.results li button.on { border-color: #ff6a00; background: #fff7ed; }
+.results i { font-style: normal; font-weight: 900; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #f3f4f6; flex: none; }
+.results .on i { background: #ff6a00; color: #fff; }
+.done { justify-self: end; border: 0; background: none; color: #111; font-weight: 800; text-decoration: underline; cursor: pointer; font: inherit; font-size: 14px; }

@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { SAV_MEDIA_BUCKET, SAV_MAX_FILES, SAV_MAX_PHOTO, SAV_MAX_VIDEO } from "../../../../lib/sav";
+import { findCustomerTicket } from "../../../../lib/sav-server";
 
 export const dynamic = "force-dynamic";
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 const safeName = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(-80);
 
-/** Réserve une référence SAV et des URL d'envoi signées : photos et vidéos partent directement vers le stockage privé (pas de limite de taille Vercel). */
+/**
+ * Réserve une référence SAV et des URL d'envoi signées : photos et vidéos partent directement vers le stockage privé (pas de limite de taille Vercel).
+ * Avec { reference, email } : envoi de fichiers pour une réponse du client sur un ticket existant.
+ */
 export async function POST(req: Request) {
   const sk = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!sk) return NextResponse.json({ ok: false, error: "Configuration serveur incomplète" }, { status: 503 });
-  const body = await req.json().catch(() => null) as { files?: { name: string; type: string; size: number }[] } | null;
+  const body = await req.json().catch(() => null) as { files?: { name: string; type: string; size: number }[]; reference?: string; email?: string } | null;
   const files = Array.isArray(body?.files) ? body!.files : [];
   if (files.length > SAV_MAX_FILES) return NextResponse.json({ ok: false, error: `${SAV_MAX_FILES} fichiers maximum.` }, { status: 400 });
   for (const f of files) {
@@ -20,8 +24,14 @@ export async function POST(req: Request) {
     const max = isVideo ? SAV_MAX_VIDEO : SAV_MAX_PHOTO;
     if (!(f.size > 0) || f.size > max) return NextResponse.json({ ok: false, error: `${f.name} dépasse ${Math.round(max / 1024 / 1024)} Mo.` }, { status: 400 });
   }
-  const ref = `SAV-${new Date().getFullYear()}-${String(Date.now()).slice(-7)}`;
-  const folder = `sav/${ref}-${crypto.randomUUID()}`;
+  let ref = `SAV-${new Date().getFullYear()}-${String(Date.now()).slice(-7)}`;
+  let folder = `sav/${ref}-${crypto.randomUUID()}`;
+  if (body?.reference) {
+    const found = await findCustomerTicket(body.reference, body.email);
+    if ("error" in found) return NextResponse.json({ ok: false, error: found.error }, { status: found.status });
+    ref = found.ticket.public_reference;
+    folder = `sav/${ref}-reponse-${crypto.randomUUID()}`;
+  }
   const sb = createClient(SB, sk, { auth: { persistSession: false } });
   // Espace privé dédié aux médias SAV (créé automatiquement au premier envoi)
   if (files.length) {
