@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
-import { ALERT_ENDPOINT, SAV_MEDIA_BUCKET, timelinePath, waNumber, type SavTimeline } from "../../../../lib/sav";
-import { writeJson } from "../../../../lib/datastore";
+import { ALERT_ENDPOINT, SAV_MEDIA_BUCKET, waNumber } from "../../../../lib/sav";
+import { partImage } from "../../../../lib/sav-center";
+import { addEvent } from "../../../../lib/sav-server";
 
 export const dynamic="force-dynamic";
 export const maxDuration=60;
@@ -49,13 +50,18 @@ export async function POST(req:Request){
  let vehicle:{id:string;vin:string;internal_ref:string;model:string;version:string}|null=null;
  if(vin){const {data}=await sb.from("vehicles").select("id,vin,internal_ref,model,version,current_customer_id").or(`vin.eq.${vin},chassis_number.eq.${vin}`).maybeSingle();vehicle=data||null;}
  const {data:customer}=await sb.from("customers").select("id").eq("email",email).maybeSingle();
- const ai=await triage({category,description,errorCode,vin});
- const {data:ticket,error}=await sb.from("sav_tickets").insert({ticket_number:ref,public_reference:ref,customer_id:customer?.id||null,vehicle_id:vehicle?.id||null,customer_name:name,customer_email:email,customer_phone:phone,vin:vin||vehicle?.vin||null,category:category||"autre",description,symptom:description,error_code:errorCode||null,status:"open",priority:"normal",ai_diagnosis:ai.diagnosis,ai_confidence:ai.confidence,attachments}).select("id,ticket_number,public_reference,status,ai_diagnosis,vin,created_at").single();
+ // Pièces choisies par le client (copie figée : nom et photo restent lisibles même si le catalogue change)
+ const partIds=(Array.isArray(b.part_ids)?b.part_ids:clean(b.part_ids).split(",")).map(x=>clean(x)).filter(x=>/^[0-9a-f-]{36}$/.test(x)).slice(0,12);
+ let requestedParts:{id:string;sku:string|null;name:string;category:string|null;image_url:string|null}[]=[];
+ if(partIds.length){const {data}=await sb.from("parts").select("id,sku,name,category,image_url").in("id",partIds);requestedParts=(data||[]).map(p=>({id:p.id,sku:p.sku,name:p.name,category:p.category,image_url:partImage(p.image_url)}));}
+ const partsText=requestedParts.map(p=>`${p.name}${p.sku?` (${p.sku})`:""}`).join(", ");
+ const ai=await triage({category,description:description+(partsText?`\nPièces citées par le client : ${partsText}`:""),errorCode,vin});
+ const createdAt=new Date().toISOString();
+ const {data:ticket,error}=await sb.from("sav_tickets").insert({ticket_number:ref,public_reference:ref,customer_id:customer?.id||null,vehicle_id:vehicle?.id||null,customer_name:name,customer_email:email,customer_phone:phone,vin:vin||vehicle?.vin||null,category:category||"autre",description,symptom:description,error_code:errorCode||null,status:"open",sav_status:"nouveau",priority:"normal",ai_diagnosis:ai.diagnosis,ai_confidence:ai.confidence,attachments,requested_parts:requestedParts,status_changed_at:createdAt,last_customer_message_at:createdAt,legacy_imported_at:createdAt}).select("id,ticket_number,public_reference,status,ai_diagnosis,vin,created_at").single();
  if(error)return NextResponse.json({ok:false,error:error.message},{status:500});
 
- // Historique de suivi
- const timeline:SavTimeline={ref,folder,events:[{at:new Date().toISOString(),stage:"received",note:"Votre demande est bien enregistrée. Un technicien NeoDrive revient vers vous."}]};
- await writeJson(sb,timelinePath(ref),timeline).catch(e=>console.error("[SAV] timeline",e));
+ // Historique (tableau sav_events)
+ await addEvent(sb,ticket.id,{kind:"created",to:"nouveau",author:name,note:b.source==="whatsapp"?"Demande créée via le lien WhatsApp":"Demande créée sur le site"});
 
  // Alerte NeoDrive
  const links:string[]=[];
@@ -65,7 +71,7 @@ export async function POST(req:Request){
   reference:ref,client:name,telephone:phone,email,
   whatsapp_client:phone?`https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(`Bonjour ${name.split(" ")[0]}, NeoDrive au sujet de votre demande ${ref}.`)}`:"",
   vin:vin||"non renseigné",vehicule_reconnu:vehicle?`${vehicle.model||""} ${vehicle.version||""} (${vehicle.internal_ref||vehicle.vin})`:"non",
-  categorie:category||"autre",code_erreur:errorCode||"aucun",description,
+  categorie:category||"autre",code_erreur:errorCode||"aucun",description,pieces:partsText||"aucune",
   pre_diagnostic:ai.diagnosis,
   medias:links.length?links.join("\n"):"aucun",
   suivi_admin:`${SITE}/sav/admin`,

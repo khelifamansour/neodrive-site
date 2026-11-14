@@ -64,6 +64,10 @@
     {
       "path": "/api/conteneurs/relances",
       "schedule": "45 7 * * 1-6"
+    },
+    {
+      "path": "/api/sav/digest",
+      "schedule": "50 6 * * *"
     }
   ]
 }
