@@ -15,6 +15,7 @@ const v=change.value||{};if(change.field!=="messages"||String(v.metadata?.phone_
 for(const m of v.messages||[]){if(m.type!=="text"||!m.text?.body||!m.id||!m.from)continue;
 if(!token||!key||!db||!service){console.error("Missing credentials");continue}
 const headers={apikey:service,authorization:"Bearer "+service,"content-type":"application/json"};
+const bl=await fetch(db+"/rest/v1/whatsapp_blacklist?phone=eq."+encodeURIComponent(String(m.from).replace(/\D/g,""))+"&select=phone",{headers}).catch(()=>null);if(bl&&bl.ok&&(await bl.json()).length){console.log("Blacklisted number, no reply");continue}
 const inserted=await fetch(db+"/rest/v1/whatsapp_ai_processed",{method:"POST",headers:{...headers,prefer:"return=minimal"},body:JSON.stringify({message_id:m.id,phone:m.from,user_text:String(m.text.body).slice(0,2000)})});
 if(inserted.status===409)continue;if(!inserted.ok){console.error("Database insert",inserted.status);continue}
 try{const prof=(v.contacts||[]).find((c:any)=>c.wa_id===m.from);await fetch("https://www.easydrive-auto.fr/api/crm/wa-inbound",{method:"POST",headers:{authorization:"Bearer "+service,"content-type":"application/json"},body:JSON.stringify({phone:m.from,name:prof?.profile?.name||"",text:String(m.text.body).slice(0,500),fromAd:!!m.referral})})}catch(err){console.error("CRM sync",String(err))}
