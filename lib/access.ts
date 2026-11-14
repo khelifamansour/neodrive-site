@@ -16,6 +16,7 @@ export const SECTIONS = {
   crm: "Prospects (espace équipe)",
   clients: "Clients et avis",
   rentabilite: "Rentabilité (estimation)",
+  giga: "Giga Analyse",
 } as const;
 export type SectionKey = keyof typeof SECTIONS;
 export const isSection = (s: unknown): s is SectionKey => typeof s === "string" && s in SECTIONS;

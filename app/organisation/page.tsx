@@ -21,6 +21,7 @@ const TILES: Tile[] = [
   { href: "/equipe-admin", icon: "👥", title: "Équipe et accès", text: "Créer les accès, choisir les sections, couper un accès.", section: "owner" },
   { href: "/pilotage", icon: "📊", title: "Pilotage financier", text: "Chiffre d’affaires, marges et trésorerie.", section: "owner" },
   { href: "/rentabilite", icon: "💰", title: "Rentabilité (estimation)", text: "Coût de revient, marge par voiture et résultat du mois.", section: "rentabilite" },
+  { href: "/giga", icon: "🧠", title: "Giga Analyse", text: "Toutes les 2 semaines : opportunités, menaces et pistes de croissance.", section: "giga" },
 ];
 type Me = { who: "owner" | "member"; name: string; role: string; roleLabel?: string; sections: string[]; expires_at?: string | null };
 
