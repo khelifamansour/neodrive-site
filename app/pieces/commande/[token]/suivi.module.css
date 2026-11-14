@@ -1,0 +1,30 @@
+.page { max-width: 720px; margin: auto; padding: 32px 16px 60px; color: #111; background: #fff; }
+.kicker { font-size: 12px; font-weight: 900; letter-spacing: 1.6px; color: #ff5a1f; }
+.page h1 { font-size: clamp(30px, 7vw, 44px); margin: 6px 0; letter-spacing: -1px; }
+.sub { color: #666; margin: 0 0 18px; }
+.status, .statusOff { border-radius: 14px; padding: 14px 16px; background: #fff6f2; border: 1px solid #ffd2bf; }
+.statusOff { background: #f4f4f4; border-color: #ddd; }
+.status b, .statusOff b { font-size: 20px; }
+.status p, .statusOff p { margin: 4px 0 0; color: #444; }
+.steps { list-style: none; padding: 0; margin: 16px 0; display: grid; gap: 6px; }
+.steps li { display: flex; align-items: center; gap: 10px; color: #999; font-size: 15px; }
+.steps li span { width: 26px; height: 26px; border-radius: 50%; background: #eee; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; }
+.steps .on { color: #111; font-weight: 700; }
+.steps .on span { background: #ff5a1f; color: #fff; }
+.box { border: 1px solid #e6e6e6; border-radius: 16px; padding: 14px 16px; margin: 16px 0; }
+.box h2 { font-size: 19px; margin: 0 0 10px; }
+.box p { line-height: 1.6; }
+.box small { color: #666; }
+.lines { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.lines li { display: grid; grid-template-columns: 60px 1fr auto; gap: 10px; align-items: center; }
+.lines img, .noimg { width: 60px; height: 48px; object-fit: contain; background: #f4f4f4; border-radius: 8px; display: block; }
+.lines small { display: block; color: #777; font-size: 12px; }
+.totals { background: #f6f6f6; border-radius: 12px; padding: 10px 12px; margin-top: 12px; display: grid; gap: 4px; }
+.totals div { display: flex; justify-content: space-between; gap: 10px; }
+.big { font-size: 18px; }
+.note { color: #b45309; font-size: 14px; margin: 6px 0 0; }
+.btn { display: block; text-align: center; margin-top: 12px; padding: 13px; border-radius: 12px; background: #111; color: #fff; text-decoration: none; font-weight: 800; }
+.history { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.history small { color: #777; margin-right: 6px; }
+.help { color: #555; line-height: 1.8; }
+.help a { color: #111; font-weight: 700; }

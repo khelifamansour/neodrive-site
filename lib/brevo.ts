@@ -21,8 +21,11 @@ async function brevo(path: string, body: unknown) {
   return j;
 }
 
-export async function sendEmail(to: string, toName: string, subject: string, html: string) {
-  const j = await brevo("smtp/email", { sender: { name: "NeoDrive", email: senderEmail() }, replyTo: { email: process.env.BREVO_REPLY_TO || "contact.neodrivefrance@gmail.com", name: "NeoDrive" }, to: [{ email: to, ...(toName ? { name: toName } : {}) }], subject, htmlContent: html });
+/** Pièce jointe Brevo : nom du fichier + contenu encodé en base64. */
+export type EmailAttachment = { name: string; content: string };
+
+export async function sendEmail(to: string, toName: string, subject: string, html: string, attachments?: EmailAttachment[]) {
+  const j = await brevo("smtp/email", { sender: { name: "NeoDrive", email: senderEmail() }, replyTo: { email: process.env.BREVO_REPLY_TO || "contact.neodrivefrance@gmail.com", name: "NeoDrive" }, to: [{ email: to, ...(toName ? { name: toName } : {}) }], subject, htmlContent: html, ...(attachments?.length ? { attachment: attachments } : {}) });
   return j?.messageId || null;
 }
 
