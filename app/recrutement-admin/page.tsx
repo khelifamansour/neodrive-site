@@ -115,6 +115,8 @@ export default function RecrutementAdmin() {
           <div><b>Parcours</b> ({Math.round((D.total_experience_months || 0) / 12 * 10) / 10} ans, {D.avg_tenure_months ?? "?"} mois en moyenne par employeur, {D.short_stints ?? 0} poste(s) de moins d'un an) :</div>
           {(D.jobs || []).map((j: Row, i: number) => <div key={i}>• {j.role} — <b>{j.company}</b> ({j.start || "?"} → {j.end || "?"}, {j.months ?? "?"} mois)</div>)}
           <div><b>Formation :</b> {(D.education || []).map((e: Row) => `${e.degree} – ${e.school}${e.year ? ` (${e.year})` : ""}`).join(" · ") || "—"}</div>
+          <div><b>Âge :</b> {D.age ?? "?"} · <b>Fiabilité du CV :</b> <b style={{ color: color(D.fiabilite) }}>{D.fiabilite ?? "–"}</b>/100 · <b>Références :</b> {D.references_count ?? 0}{(D.references || []).length ? ` (${(D.references as Row[]).map(r => `${r.name || "?"}${r.company ? ", " + r.company : ""}${r.has_contact ? " ☎" : ""}`).join(" ; ")})` : ""}{D.bac_cv ? <> · <b>Bac sur le CV :</b> {[D.bac_cv.stream, D.bac_cv.year, D.bac_cv.average ? `${D.bac_cv.average}/20` : "", D.bac_cv.mention].filter(Boolean).join(" ")}</> : null}{d.app?.last_employer?.reference ? <> · <b>Référence du formulaire :</b> {d.app.last_employer.reference} {d.app.last_employer.reference_tel || ""}</> : null}</div>
+          {D.lie_signals?.length ? <div style={{ color: "#b91c1c" }}><b>🚩 Possible exagération ou mensonge :</b> {D.lie_signals.join(" · ")}</div> : null}
           {D.flags?.length ? <div style={{ color: "#b45309" }}><b>⚠️ Signaux d'alerte :</b> {D.flags.join(" · ")}</div> : null}
           {D.verify?.length ? <div><b>🔎 À vérifier en entretien / auprès des références :</b> {D.verify.join(" · ")}</div> : null}
         </div></details> : null}

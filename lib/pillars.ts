@@ -13,7 +13,7 @@ const pct = (v: unknown, max: number) => v == null || v === "" ? null : Math.max
  * Expérience  = pertinence de l'expérience pour le poste (IA, analyse approfondie du CV).
  * Stabilité   = durée moyenne par employeur (24 mois = 100), −12 par poste de moins de 12 mois au-delà du premier ; débutant sans instabilité = 60.
  * Formation   = niveau et prestige de l'établissement (IA).
- * Cohérence   = cohérence du CV : dates, chevauchements, trous, entreprises plausibles (IA).
+ * Cohérence   = moyenne de la cohérence du CV (dates, chevauchements, trous) et de sa fiabilité (risque d'exagération ou de mensonge, références vérifiables) (IA).
  * Copier-coller : −5 par collage (max −20) sur la note globale.
  */
 export function pillars(app: R, exc: R, deep: R) {
@@ -27,7 +27,7 @@ export function pillars(app: R, exc: R, deep: R) {
     const avg = Number(deep.avg_tenure_months) || 0; const short = Math.max(0, (Number(deep.short_stints) || 0) - 1); const total = Number(deep.total_experience_months) || 0;
     stabilite = total < 24 && short === 0 ? 60 : Math.max(0, Math.min(100, Math.round(avg / 24 * 100 - short * 12)));
   }
-  const formation = deep?.prestige ?? null; const coherence = deep?.coherence ?? null;
+  const formation = deep?.prestige ?? null; const coherence = wavg([[deep?.coherence ?? null, 1], [deep?.fiabilite ?? null, 1]]);
   const p: Record<PillarKey, number | null> = { intelligence, francais, experience, stabilite, formation, coherence };
   const g = wavg((Object.keys(PILLAR_WEIGHTS) as PillarKey[]).map(k => [p[k], PILLAR_WEIGHTS[k]]));
   const global = g == null ? null : Math.max(0, g - Math.min(20, 5 * (Number(app?.paste_count) || 0)));

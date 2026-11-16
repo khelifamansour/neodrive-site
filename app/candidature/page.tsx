@@ -88,7 +88,7 @@ export default function CandidaturePage() {
         <label className={s.check}><input type="checkbox" name="ref_consent" value="oui" /> J'accepte que NeoDrive contacte cette référence.</label>
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Test de français (10 questions)</p>
         {FRENCH_TEST.map(mcq)}
-        <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Test de logique (8 questions, sans calculatrice)</p>
+        <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Test de logique (8 questions, sans calculatrice ni aide extérieure)</p>
         {LOGIC_TEST.map(mcq)}
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Énigmes chronométrées</p>
         <div className={s.full} style={{ border: "2px solid #f97316", borderRadius: 14, padding: 14, background: "#fff7ed" }}>
@@ -100,7 +100,7 @@ export default function CandidaturePage() {
           <input type="hidden" name="riddle_sec" value={riddleSec} />
         </div>
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Rédaction</p>
-        <label className={s.full}>{WRITING_PROMPT} *<textarea name="writing" rows={8} required minLength={150} onPaste={noPaste} /></label>
+        <label className={s.full}>{WRITING_PROMPT} *<textarea name="writing" rows={12} required minLength={500} onPaste={noPaste} /></label>
         <input type="hidden" name="started_at" value={startedAt} /><input type="hidden" name="paste_count" value={pastes} />
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Questions et mises en situation</p>
         {POSTES[poste].questions.map(field)}
