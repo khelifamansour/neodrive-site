@@ -80,11 +80,7 @@ function summary(doc: any, s: Ship, d: DocSet) {
 function footer(doc: any, d: DocSet) {
   if (doc.y > 700) doc.addPage();
   doc.x = 40; doc.font("Helvetica").fontSize(7.5).fillColor("#000").text(`Prepared by MK HOLDING (importer) from supplier invoice ${d.invoice_no}, the supplier packing list, the supplier spare-parts list and the EU certificates of conformity (COC). ${d.invoice_part ? "The supplier invoice covers goods shipped in several containers: this document lists only the goods of this container. Unit prices are identical to the supplier's original invoice, which remains the reference document; all parts together equal the original invoice total." : "Quantities, unit prices and amounts are identical to the supplier's original invoice, which remains the reference document."} HS codes of spare parts as declared by the supplier, subject to validation by the customs broker.`, 40, doc.y, { width: 515 });
-  if (doc.y > 720) doc.addPage();
-  const y = doc.y + 18;
-  doc.font("Helvetica").fontSize(9).fillColor("#000").text(`Place and date: Muret, France - ${new Date().toLocaleDateString("en-GB")}`, 40, y);
-  doc.text("For MK HOLDING (importer)", 330, y).text("Mansour Khelifa, President", 330, y + 12);
-  doc.moveTo(330, y + 52).lineTo(555, y + 52).lineWidth(0.5).stroke("#000"); doc.fontSize(8).text("Signature and company stamp", 330, y + 55);
+  doc.moveDown(1.2).font("Helvetica").fontSize(9).fillColor("#000").text(`MK HOLDING (importer) - Muret, France - ${new Date().toLocaleDateString("en-GB")}`, 40);
 }
 
 // Le nom chinois reste dans les données (Helvetica ne sait pas l'afficher, et la douane française n'en a pas besoin).
