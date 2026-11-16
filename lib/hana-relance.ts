@@ -53,8 +53,9 @@ export async function conseillerTemplate(create = false) {
       { type: "BODY", text: CONSEILLER_BODY, example: { body_text: [["Marie"]] } },
       { type: "FOOTER", text: "Répondez STOP pour ne plus être contacté" },
       { type: "BUTTONS", buttons: [
-        { type: "QUICK_REPLY", text: "Oui, rappelez-moi" },
+        // Meta impose de regrouper les boutons par type : lien d'abord, puis réponses rapides.
         { type: "URL", text: "Voir le catalogue", url: `${SITE}/catalogue` },
+        { type: "QUICK_REPLY", text: "Oui, rappelez-moi" },
         { type: "QUICK_REPLY", text: "STOP" },
       ] },
     ];
@@ -153,5 +154,6 @@ export async function hanaRelances(opts: { limit?: number; dry?: boolean } = {})
       if (e?.fatal) { stopped = e.message; break; }
     }
   }
-  return { sent: results.filter(r => r.sent).length, callbacks: callbacks.length, template: tpl?.status, stopped, results };
+  const waiting = results.filter(r => r.skipped).length;
+  return { sent: results.filter(r => r.sent).length, callbacks: callbacks.length, template: tpl?.status, templateReason: tpl?.reason || null, waiting, stopped, results: results.filter(r => !r.skipped) };
 }
