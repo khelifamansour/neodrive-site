@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   if (!isPoste(poste)) return NextResponse.json({ ok: false, error: "Poste inconnu." }, { status: 400 });
   const questions = [...COMMON, ...POSTES[poste].questions];
   const answers: Record<string, string> = {};
-  for (const q of questions) { answers[q.id] = clean(fd.get(q.id)); if (q.required && !answers[q.id]) return NextResponse.json({ ok: false, error: `Merci de répondre : « ${q.label.slice(0, 60)}… »` }, { status: 400 }); }
+  for (const q of questions) { answers[q.id] = clean(fd.get(q.id)); if (q.required && !answers[q.id] && !(q.id === "presentation" && !fd.has("presentation"))) return NextResponse.json({ ok: false, error: `Merci de répondre : « ${q.label.slice(0, 60)}… »` }, { status: 400 }); }
   const row: Record<string, any> = {
     poste, full_name: clean(fd.get("full_name"), 120), email: clean(fd.get("email"), 160), phone: clean(fd.get("phone"), 40), city: clean(fd.get("city"), 80),
     education: clean(fd.get("education"), 300), experience_years: clean(fd.get("experience_years"), 20),
