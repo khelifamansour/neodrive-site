@@ -12,7 +12,7 @@ const SITE = "https://www.easydrive-auto.fr";
 
 /** Relais Supabase (fonction neodrive-wa-send) : utilise le jeton Meta de Hana, qui est à jour. */
 const RELAY_URL = "https://tzlsdjzcxdjaatcpwqwn.supabase.co/functions/v1/neodrive-wa-send";
-async function relay(action: string, payload: Record<string, unknown>) {
+export async function relay(action: string, payload: Record<string, unknown>) {
   // Pause de sécurité : numéro WhatsApp en vérification chez Meta (7/11/2026). Aucun envoi sortant sauf si WHATSAPP_SENDING=on.
   if ((action === "send-template" || action === "send-text") && process.env.WHATSAPP_SENDING !== "on") {
     throw Object.assign(new Error("Envois WhatsApp en pause (compte en vérification)"), { fatal: true });
@@ -78,7 +78,7 @@ async function packageOnlyStatus(create: boolean) {
   });
 }
 
-async function templateStatus(name: string, create: boolean, components: any[] | (() => Promise<any[]>), category = "MARKETING") {
+export async function templateStatus(name: string, create: boolean, components: any[] | (() => Promise<any[]>), category = "MARKETING") {
   const r = await relay("template-status", { name });
   if (!r.ok) throw new Error(r.j?.error?.message || r.j?.error || "Lecture du modèle impossible");
   const found = (r.j.data || []).find((x: any) => x.name === name);
@@ -255,7 +255,7 @@ export async function sendOwnerTestPackage() {
 /* ---------- Copie et résumé pour le fondateur sur son WhatsApp ---------- */
 const RAPPORT_TEMPLATE = "neodrive_rapport_envois";
 const RAPPORT_BODY = "📊 Envois NeoDrive du {{1}} : {{2}}. Le détail est dans le CRM.";
-const LABEL: Record<string, string> = { package: "Package WhatsApp", relance1: "Relance J+1 (vidéo livraison)", relance2: "Relance J+3 (catalogue)", relance3: "Relance J+7 (dernier message)", email1: "E-mail catalogue + vidéos", email2: "E-mail prix livré", email3: "E-mail financement (propriétaire, pas locataire)", email4: "E-mail livraisons clients (confiance)", sms: "SMS de bienvenue", sms_mid: "Relance SMS J+2 (catalogue + vidéos)", sms2: "Relance SMS J+5", missed_sms: "SMS appel manqué", sms_campaign: "Campagne SMS rappel (anciens contacts)" };
+const LABEL: Record<string, string> = { package: "Package WhatsApp", relance1: "Relance J+1 (vidéo livraison)", relance2: "Relance J+3 (catalogue)", relance3: "Relance J+7 (dernier message)", email1: "E-mail catalogue + vidéos", email2: "E-mail prix livré", email3: "E-mail financement (propriétaire, pas locataire)", email4: "E-mail livraisons clients (confiance)", sms: "SMS de bienvenue", sms_mid: "Relance SMS J+2 (catalogue + vidéos)", sms2: "Relance SMS J+5", missed_sms: "SMS appel manqué", sms_campaign: "Campagne SMS rappel (anciens contacts)", hana_relance: "Relance conversation Hana (conseiller)" };
 const fmtTel = (t: string) => { const n = normalizePhone(t); return n.startsWith("33") ? ("0" + n.slice(2)).replace(/(\d{2})(?=\d)/g, "$1 ") : n; };
 
 /** Après chaque envoi : une copie de chaque type de message envoyé + la liste des clients, sur le WhatsApp du fondateur. */
