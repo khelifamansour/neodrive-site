@@ -128,29 +128,70 @@ export default function RecrutementAdmin() {
     {L.length ? <div style={{ fontSize: 13, color: "#374151" }}>{L.slice(0, 6).map(l => <div key={l.id}>• {new Date(l.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — <b>{l.kind}</b>{l.note ? ` : ${l.note}` : ""}</div>)}</div> : <small style={{ color: "#6b7280" }}>Aucun contact enregistré.</small>}
   </div>; };
 
-  // Sélection stricte : seuils relevés selon le niveau ; on ne garde que les 7 meilleurs par poste.
-  const LV = { 1: { g: 65, min: 45, fr: 60, iq: 55, paste: 2, wr: 0 }, 2: { g: 72, min: 55, fr: 70, iq: 65, paste: 1, wr: 12 }, 3: { g: 80, min: 65, fr: 80, iq: 75, paste: 0, wr: 14 } } as const;
-  const why = (d: Dossier): string | null => {
-    const t = LV[lvl]; const P = pil(d); const a = d.app!;
-    if ((P.global ?? 0) < t.g) return `note < ${t.g}`;
-    if (P.francais != null && P.francais < t.fr) return `français < ${t.fr}`;
-    if (P.intelligence != null && P.intelligence < t.iq) return `intelligence < ${t.iq}`;
-    const low = (Object.keys(PILLAR_WEIGHTS) as PillarKey[]).find(k => P[k] != null && (P[k] as number) < t.min); if (low) return `${PILLAR_LABEL[low]} < ${t.min}`;
-    if ((Number(a.paste_count) || 0) > t.paste) return "copier-coller";
-    if (t.wr && a.test_writing != null && Number(a.test_writing) < t.wr) return `rédaction < ${t.wr}/20`;
-    return null;
+  // Classement « Talents » : portes éliminatoires (règles fixes, pas l'avis de l'IA), puis score talent pondéré selon les critères de Mansour.
+  const LV = {
+    1: { fr: 60, wr: 10, ten: 12, short: 1, fia: 50, paste: 2, bac: 11 },
+    2: { fr: 70, wr: 12, ten: 18, short: 1, fia: 60, paste: 1, bac: 12 },
+    3: { fr: 80, wr: 14, ten: 24, short: 1, fia: 75, paste: 0, bac: 14 },
+  } as const;
+  type Gate = { k: string; ok: boolean | null; why: string };
+  const gates = (d: Dossier): Gate[] => {
+    const t = LV[lvl]; const P = pil(d); const a = d.app || {}; const D = deepOf(d); const hasD = !!D && !D.missing;
+    const wr = a.test_writing != null ? Number(a.test_writing) : null; const bac = a.bac_average != null ? Number(a.bac_average) : null; const paste = Number(a.paste_count) || 0;
+    const frBad = (P.francais != null && P.francais < t.fr) || (wr != null && wr < t.wr);
+    const avg = Number(D?.avg_tenure_months) || 0; const short = Number(D?.short_stints) || 0; const total = Number(D?.total_experience_months) || 0;
+    const debutant = total < 24 && short === 0;
+    const stabOk = !hasD ? null : short <= t.short && (debutant || avg >= t.ten);
+    const fia = hasD && D.fiabilite != null ? Number(D.fiabilite) : null;
+    return [
+      { k: "Formulaire", ok: !!d.app, why: d.app ? "rempli" : "test pas fait" },
+      { k: "Français", ok: P.francais == null && wr == null ? null : !frBad, why: frBad ? (wr != null && wr < t.wr ? `rédaction ${wr}/20 < ${t.wr}` : `français ${P.francais} < ${t.fr}`) : `français ${P.francais ?? "?"}, rédaction ${wr ?? "?"}/20` },
+      { k: "Stabilité", ok: stabOk, why: !hasD ? "analyse CV manquante" : stabOk ? (debutant ? "débutant sans instabilité" : `${avg} mois en moyenne par employeur`) : short > t.short ? `${short} postes de moins d'un an` : `${avg} mois en moyenne < ${t.ten}` },
+      { k: "Fiabilité", ok: paste > t.paste ? false : fia == null ? null : fia >= t.fia, why: paste > t.paste ? `${paste} copier-coller` : fia == null ? "analyse CV manquante" : fia >= t.fia ? `CV fiable (${fia})` : `CV peu fiable (${fia} < ${t.fia})` },
+      { k: "Bac", ok: bac == null ? null : bac >= t.bac, why: bac == null ? "moyenne non donnée" : bac >= t.bac ? `${bac}/20` : `${bac}/20 < ${t.bac}` },
+    ];
+  };
+  const english = (d: Dossier) => /anglais[^.\n]{0,40}(courant|bilingue|fluent|c1|c2|b2|avanc|tr[eè]s bon|excellent)|english[^.\n]{0,20}(fluent|c1|c2|b2|advanced)/i.test(JSON.stringify(d.app?.answers || {}) + " " + JSON.stringify(deepOf(d) || {}));
+  const PARTS = [["Français", "francais", 30], ["Intelligence", "intelligence", 25], ["Stabilité", "stabilite", 20], ["Formation", "formation", 15], ["Fiabilité", "coherence", 10]] as const;
+  const talentScore = (d: Dossier) => { const P = pil(d); const ok = PARTS.filter(([, k]) => P[k] != null); if (!ok.length) return 0; const v = ok.reduce((n, [, k, w]) => n + (P[k] as number) * w, 0) / ok.reduce((n, [, , w]) => n + w, 0); return Math.min(100, Math.round(v + (english(d) ? 3 : 0))); };
+  const pourquoi = (d: Dossier) => { const P = pil(d); const ok = PARTS.filter(([, k]) => P[k] != null).map(([l, k]) => [l, P[k] as number] as const).sort((x, y) => y[1] - x[1]); if (!ok.length) return "Pas encore assez de données."; const best = ok.slice(0, 2).map(([l, v]) => `${l} ${v}`).join(", "); const weak = ok.length > 2 ? ok[ok.length - 1] : null; return `Forces : ${best}${english(d) ? ", bon anglais" : ""}${weak ? ` · Point faible : ${weak[0]} ${weak[1]}` : ""}`; };
+  const [det, setDet] = useState<string | null>(null);
+  const chip = (txt: string, bg: string) => <span style={{ background: bg, borderRadius: 999, padding: "2px 8px", fontSize: 12.5, whiteSpace: "nowrap" }}>{txt}</span>;
+  const talentRow = (d: Dossier, rank: number, near: boolean) => {
+    const a = d.app || {}; const D = deepOf(d); const P = pil(d); const G = gates(d); const sc = talentScore(d); const cvPath = a.cv_path || d.inv?.cv_path;
+    const missing = !D || D.missing || P.francais == null; const failed = G.find(g => g.ok === false);
+    const action = near && failed ? { t: `❌ Ne pas appeler : ${failed.k.toLowerCase()} (${failed.why})`, bg: "#f3f4f6" } : missing ? { t: "⏳ Données incomplètes : lancer « 🔬 Analyse approfondie » (ou le relancer pour finir le test) avant de l'appeler", bg: "#fef3c7" } : rank <= 3 ? { t: "🔥 Appeler aujourd'hui (entretien de 15 min)", bg: "#dcfce7" } : { t: "📞 Appeler seulement si les 3 premiers ne conviennent pas", bg: "#eff6ff" };
+    return <article key={d.key} style={{ border: "1px solid #ece6dd", borderRadius: 14, padding: 12, display: "grid", gap: 7, background: !near && rank <= 3 ? "#f0fdf4" : "#fff" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+        <b style={{ fontSize: 16 }}>{near ? "•" : ["🥇", "🥈", "🥉"][rank - 1] || `${rank}.`} {d.name}</b>
+        <span style={{ fontSize: 13, color: "#5b6573" }}>{D?.age ? `${D.age} ans · ` : ""}{d.city || "?"}</span>
+        <b style={{ fontSize: 20, color: color(sc) }}>{sc}<small style={{ fontSize: 12, color: "#9ca3af" }}>/100</small></b>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{G.map(g => <span key={g.k} title={g.why}>{chip(`${g.ok === true ? "✅" : g.ok === false ? "❌" : "❔"} ${g.k} : ${g.why}`, g.ok === true ? "#dcfce7" : g.ok === false ? "#fee2e2" : "#f3f4f6")}</span>)}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{(Object.keys(PILLAR_WEIGHTS) as PillarKey[]).map(k => <span key={k}>{chip(`${PILLAR_LABEL[k]} ${P[k] ?? "–"}`, "#f8fafc")}</span>)}</div>
+      <div style={{ fontSize: 13, color: "#374151" }}>🇫🇷 {a.test_french ?? "–"}/10 · 🧠 logique {a.test_logic ?? "–"}/8 · ✍️ rédaction {a.test_writing ?? "–"}/20 · 🧩 énigmes {a.answers?.riddles_score ?? "–"}{a.riddle_sec ? ` (${a.riddle_sec} s)` : ""} · 🎓 bac {a.bac_average ?? "?"}/20 · ⚓ {D?.avg_tenure_months ?? "?"} mois/employeur · 🛡 fiabilité {D?.fiabilite ?? "–"} · 📇 {D?.references_count ?? 0} réf.{english(d) ? " · 🇬🇧 anglais" : ""}</div>
+      <div style={{ fontSize: 13.5 }}><b>Pourquoi :</b> {pourquoi(d)}</div>
+      <div style={{ background: action.bg, borderRadius: 10, padding: "7px 10px", fontWeight: 700, fontSize: 14 }}>{action.t}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {cvPath ? <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openCv(cvPath)}>📄 CV</button> : null}
+        {d.phone ? <a className={s.ghost} style={{ padding: "4px 10px", textDecoration: "none" }} href={wa(d)} target="_blank" rel="noreferrer">💬 WhatsApp</a> : null}
+        {d.phone ? <a className={s.ghost} style={{ padding: "4px 10px", textDecoration: "none" }} href={`tel:${String(d.phone).replace(/[^\d+]/g, "")}`}>📞 Appeler</a> : null}
+        <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => setDet(det === d.key ? null : d.key)}>{det === d.key ? "Masquer" : "Détails"}</button>
+      </div>
+      {det === d.key ? card(d) : null}
+    </article>;
   };
   const eliteView = () => <>
-    <section className={s.card}><h2>🎯 Top 7 par poste</h2>
-      <p className={s.muted}>Seuls les candidats qui ont rempli le formulaire. Chaque niveau relève les exigences : note NeoDrive, français, intelligence, aucun pilier faible, pas de copier-coller, rédaction.</p>
-      <div className={s.seg}>{([1, 2, 3] as const).map(l => <button key={l} className={lvl === l ? s.on : ""} onClick={() => setLvl(l)}>{["", "Standard", "Strict", "Très strict"][l]} (≥ {LV[l].g})</button>)}</div></section>
+    <section className={s.card}><h2>🏅 Talents : top 10 par poste</h2>
+      <p className={s.muted}>Méthode en 2 temps, sans tenir compte de l'avis de l'IA. 1) Les portes : un candidat est éliminé s'il échoue à une seule d'entre elles (français et rédaction, stabilité chez ses employeurs, fiabilité du CV et copier-coller, moyenne au bac). Une porte « ❔ » veut dire que l'information manque : elle n'élimine pas, mais il faut lancer l'analyse approfondie. 2) Le classement : les survivants sont triés par un score talent = français 30 % + intelligence (tests et bac) 25 % + stabilité 20 % + formation 15 % + fiabilité 10 %, avec +3 pour un bon anglais. On garde les 10 meilleurs ; les 3 premiers sont à appeler en priorité.</p>
+      <div className={s.seg}>{([1, 2, 3] as const).map(l => <button key={l} className={lvl === l ? s.on : ""} onClick={() => setLvl(l)}>{["", "Standard", "Strict", "Très strict"][l]}</button>)}</div>
+      <p className={s.muted} style={{ margin: 0 }}>Niveau actuel : français ≥ {LV[lvl].fr} et rédaction ≥ {LV[lvl].wr}/20 · au moins {LV[lvl].ten} mois en moyenne par employeur (ou débutant stable) · CV fiable ≥ {LV[lvl].fia} · {LV[lvl].paste} copier-coller maximum · bac ≥ {LV[lvl].bac}/20.</p></section>
     {(["closer", "coordinateur", "social"] as const).map(k => {
-      const pool = dossiers.filter(d => d.poste === k && d.app && !String(d.stage).startsWith("écarté") && d.stage !== "recruté").sort((x, y) => (pil(y).global ?? 0) - (pil(x).global ?? 0));
-      const ok = pool.filter(d => !why(d)); const best = ok.slice(0, 7);
-      const reasons: Record<string, number> = {}; pool.filter(d => why(d)).forEach(d => { const r = why(d)!; reasons[r] = (reasons[r] || 0) + 1; });
-      return <section key={k} className={s.card}><h2>{POSTES[k].short} : {best.length} retenu(s) sur {pool.length}</h2>
-        {Object.keys(reasons).length ? <p className={s.muted} style={{ margin: 0 }}>Non retenus : {Object.entries(reasons).map(([r, n]) => `${n} × ${r}`).join(" · ")}</p> : null}
-        {best.length ? best.map((d, i) => <div key={d.key}><b>{["🥇", "🥈", "🥉"][i] || `${i + 1}.`} {d.name} — {pil(d).global}/100</b>{card(d)}</div>) : <p className={s.muted}>Personne ne passe ce niveau. Baissez d'un cran ou attendez de nouveaux formulaires.</p>}
+      const pool = dossiers.filter(d => d.poste === k && d.app && !String(d.stage).startsWith("écarté") && d.stage !== "recruté").map(d => ({ d, sc: talentScore(d), fails: gates(d).filter(g => g.ok === false).length })).sort((x, y) => y.sc - x.sc);
+      const best = pool.filter(x => !x.fails).slice(0, 10); const near = pool.filter(x => x.fails === 1).slice(0, 15);
+      return <section key={k} className={s.card}><h2>{POSTES[k].short} : {best.length} talent(s) retenu(s) sur {pool.length} formulaire(s)</h2>
+        {best.length ? best.map((x, i) => talentRow(x.d, i + 1, false)) : <p className={s.muted}>Personne ne passe toutes les portes à ce niveau. Baissez d'un cran ou attendez de nouveaux formulaires.</p>}
+        {near.length ? <details><summary style={{ cursor: "pointer", fontWeight: 700 }}>Presque ({near.length}) : éliminés sur une seule porte</summary><div style={{ display: "grid", gap: 8, marginTop: 8 }}>{near.map(x => talentRow(x.d, 0, true))}</div></details> : null}
       </section>; })}
   </>;
   const importZip = async (file: File | null) => {
@@ -240,7 +281,7 @@ export default function RecrutementAdmin() {
 
   return <main className={s.page}>
     <div className={s.top}><div><h1>👥 Recrutement</h1><p>Note finale = 30 % CV + 70 % formulaire et tests. Mise à jour à chaque nouvelle candidature.</p></div><button className={s.ghost} onClick={() => load()}>↻ Actualiser</button></div>
-    <div className={s.seg} style={{ marginTop: 12 }}><button className={view === "top" ? s.on : ""} onClick={() => setView("top")}>🏆 Classement par poste</button><button className={view === "elite" ? s.on : ""} onClick={() => setView("elite")}>🎯 Top 7 (sélection stricte)</button><button className={view === "all" ? s.on : ""} onClick={() => setView("all")}>📂 Tous les dossiers</button><button className={view === "offres" ? s.on : ""} onClick={() => setView("offres")}>📝 Offres ({offers.length})</button></div>
+    <div className={s.seg} style={{ marginTop: 12 }}><button className={view === "top" ? s.on : ""} onClick={() => setView("top")}>🏆 Classement par poste</button><button className={view === "elite" ? s.on : ""} onClick={() => setView("elite")}>🏅 Talents (top 10)</button><button className={view === "all" ? s.on : ""} onClick={() => setView("all")}>📂 Tous les dossiers</button><button className={view === "offres" ? s.on : ""} onClick={() => setView("offres")}>📝 Offres ({offers.length})</button></div>
     {offerPanel()}
     {view !== "offres" ? importBox() : null}
     {view === "elite" ? eliteView() : null}
