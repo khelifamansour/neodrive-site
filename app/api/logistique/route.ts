@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authorizeSection } from "../../../lib/access";
 import { crmDatabase, normalizePhone } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail, sendSms } from "../../../lib/brevo";
+import { queueStorageWhatsApp, sendStorageWhatsApp } from "../../../lib/logistics-wa";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -14,9 +15,16 @@ const isMobile = (p: string) => /^33[67]\d{8}$/.test(normalizePhone(p) || "");
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("token") || "";
   if (!/^[a-f0-9]{48}$/.test(token)) return NextResponse.json({ ok: false }, { status: 401 });
-  const { data } = await crmDatabase().from("admin_once_tokens").update({ used_at: new Date().toISOString() }).eq("token", token).eq("purpose", "logistique-send").is("used_at", null).gt("expires_at", new Date().toISOString()).select("payload");
-  const payload = (data?.[0] as { payload?: Record<string, unknown> } | undefined)?.payload;
+  const { data } = await crmDatabase().from("admin_once_tokens").update({ used_at: new Date().toISOString() }).eq("token", token).in("purpose", ["logistique-send", "logistique-wa"]).is("used_at", null).gt("expires_at", new Date().toISOString()).select("payload,purpose");
+  const row = data?.[0] as { payload?: Record<string, unknown>; purpose?: string } | undefined;
+  const payload = row?.payload;
   if (!payload) return NextResponse.json({ ok: false }, { status: 401 });
+  // « logistique-wa » : met en file les portables des prestataires (payload.ids) pour un message WhatsApp de Hana, puis envoie si le modèle est approuvé.
+  if (row?.purpose === "logistique-wa") {
+    const q = await queueStorageWhatsApp(((payload.ids as unknown[]) || []).map(Number));
+    const s = await sendStorageWhatsApp();
+    return NextResponse.json({ ok: true, ...q, ...s });
+  }
   return handle({ ...payload, action: "send" });
 }
 

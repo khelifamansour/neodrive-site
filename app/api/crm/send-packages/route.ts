@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 import { notifyOwner, sendDailyPackages, sendRelances, whatsappSentToday } from "../../../../lib/package-sender";
 import { hanaRelances } from "../../../../lib/hana-relance";
+import { sendStorageWhatsApp } from "../../../../lib/logistics-wa";
 import { copyToOwner, sendCampaignSms, sendEmailsAndSms, sendMissedCallSms } from "../../../../lib/multichannel";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,11 @@ export async function GET(req: Request) {
     if (process.env.WHATSAPP_SENDING === "on" && process.env.HANA_RELANCES === "on" && String(process.env.HANA_RELANCE_HOURS || "10,16").split(",").map(Number).includes(hour)) {
       try { hana = await hanaRelances(); console.log("[HANA-RELANCE]", { sent: hana.sent, callbacks: hana.callbacks, template: hana.template, stopped: hana.stopped }); } catch (e) { console.error("[HANA-RELANCE] error", e); }
     }
+    // Prospection WhatsApp des lieux de stockage (file logistics_wa), 9 h – 18 h.
+    let storage: any = null;
+    if (process.env.WHATSAPP_SENDING === "on" && hour >= 9 && hour <= 18) {
+      try { storage = await sendStorageWhatsApp(); if (storage.sent || storage.waiting) console.log("[STOCKAGE-WA]", { sent: storage.sent, template: storage.template, waiting: storage.waiting }); } catch (e) { console.error("[STOCKAGE-WA] error", e); }
+    }
     let mails: any = null;
     try { mails = await sendEmailsAndSms(); console.log("[EMAIL-SMS]", { sent: mails.sent, failed: mails.failed, skipped: mails.skipped, stopped: mails.stopped }); } catch (e) { console.error("[EMAIL-SMS] error", e); }
     let missed: any = null;
@@ -41,7 +47,7 @@ export async function GET(req: Request) {
     try { campaign = await sendCampaignSms(); if (campaign.sent || campaign.results?.length) console.log("[CAMPAIGN]", { sent: campaign.sent, remaining: campaign.remaining, skipped: campaign.skipped }); } catch (e) { console.error("[CAMPAIGN] error", e); }
     let owner: any = null;
     try { owner = await notifyOwner([...((r as any).results || []), ...(relances?.results || []), ...(hana?.results || []), ...(mails?.results || []), ...(missed?.results || []), ...(campaign?.results || [])], copyToOwner); console.log("[OWNER]", owner); } catch (e) { console.error("[OWNER] error", e); }
-    return NextResponse.json({ ok: true, ...r, relances, hana, mails, owner });
+    return NextResponse.json({ ok: true, ...r, relances, hana, storage, mails, owner });
   }
   catch (e) { console.error("[PACKAGES] error", e); return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 500 }); }
 }
