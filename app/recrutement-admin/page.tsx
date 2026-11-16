@@ -15,7 +15,7 @@ const tail = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 
 export default function RecrutementAdmin() {
   const [code, setCode] = useState(""); const [apps, setApps] = useState<Row[] | null>(null); const [invs, setInvs] = useState<Row[]>([]); const [msg, setMsg] = useState("");
-  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"top" | "all" | "offres">("top"); const [offers, setOffers] = useState<Row[]>([]); const [offerFor, setOfferFor] = useState<Dossier | null>(null); const [op, setOp] = useState<OfferParams | null>(null); const [created, setCreated] = useState<Row | null>(null); const [logs, setLogs] = useState<Row[]>([]); const [exc, setExc] = useState<Row[]>([]); const [deep, setDeep] = useState<Row[]>([]); const [imp, setImp] = useState<{ poste: PosteKey; busy: boolean; text: string; rows: Row[] }>({ poste: "closer", busy: false, text: "", rows: [] });
+  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"top" | "all" | "offres" | "elite">("top"); const [lvl, setLvl] = useState<1 | 2 | 3>(2); const [offers, setOffers] = useState<Row[]>([]); const [offerFor, setOfferFor] = useState<Dossier | null>(null); const [op, setOp] = useState<OfferParams | null>(null); const [created, setCreated] = useState<Row | null>(null); const [logs, setLogs] = useState<Row[]>([]); const [exc, setExc] = useState<Row[]>([]); const [deep, setDeep] = useState<Row[]>([]); const [imp, setImp] = useState<{ poste: PosteKey; busy: boolean; text: string; rows: Row[] }>({ poste: "closer", busy: false, text: "", rows: [] });
   const call = async (url: string, method: string, body: object, pc = code) => { const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
   const load = async (pc = code) => { try { const [a, i] = await Promise.all([call("/api/candidatures", "PUT", { action: "list" }, pc), call("/api/candidatures/invite", "POST", { action: "list" }, pc)]); setApps(a.rows); setInvs(i.rows); call("/api/offres", "PUT", { action: "list" }, pc).then(o => setOffers(o.offers)).catch(() => null); call("/api/candidatures/log", "PUT", { action: "list" }, pc).then(o => setLogs(o.logs)).catch(() => null); call("/api/excellence", "PUT", { action: "list" }, pc).then(o => setExc(o.tests)).catch(() => null); call("/api/candidatures/deep", "PUT", { action: "list" }, pc).then(o => setDeep(o.rows)).catch(() => null); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
   useEffect(() => { let pc = ""; try { pc = sessionStorage.getItem("nd_pc") || "" } catch { } setCode(pc); load(pc).then(() => { if (!pc) setMsg("") }); // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,6 +126,31 @@ export default function RecrutementAdmin() {
     {L.length ? <div style={{ fontSize: 13, color: "#374151" }}>{L.slice(0, 6).map(l => <div key={l.id}>• {new Date(l.created_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — <b>{l.kind}</b>{l.note ? ` : ${l.note}` : ""}</div>)}</div> : <small style={{ color: "#6b7280" }}>Aucun contact enregistré.</small>}
   </div>; };
 
+  // Sélection stricte : seuils relevés selon le niveau ; on ne garde que les 7 meilleurs par poste.
+  const LV = { 1: { g: 65, min: 45, fr: 60, iq: 55, paste: 2, wr: 0 }, 2: { g: 72, min: 55, fr: 70, iq: 65, paste: 1, wr: 12 }, 3: { g: 80, min: 65, fr: 80, iq: 75, paste: 0, wr: 14 } } as const;
+  const why = (d: Dossier): string | null => {
+    const t = LV[lvl]; const P = pil(d); const a = d.app!;
+    if ((P.global ?? 0) < t.g) return `note < ${t.g}`;
+    if (P.francais != null && P.francais < t.fr) return `français < ${t.fr}`;
+    if (P.intelligence != null && P.intelligence < t.iq) return `intelligence < ${t.iq}`;
+    const low = (Object.keys(PILLAR_WEIGHTS) as PillarKey[]).find(k => P[k] != null && (P[k] as number) < t.min); if (low) return `${PILLAR_LABEL[low]} < ${t.min}`;
+    if ((Number(a.paste_count) || 0) > t.paste) return "copier-coller";
+    if (t.wr && a.test_writing != null && Number(a.test_writing) < t.wr) return `rédaction < ${t.wr}/20`;
+    return null;
+  };
+  const eliteView = () => <>
+    <section className={s.card}><h2>🎯 Top 7 par poste</h2>
+      <p className={s.muted}>Seuls les candidats qui ont rempli le formulaire. Chaque niveau relève les exigences : note NeoDrive, français, intelligence, aucun pilier faible, pas de copier-coller, rédaction.</p>
+      <div className={s.seg}>{([1, 2, 3] as const).map(l => <button key={l} className={lvl === l ? s.on : ""} onClick={() => setLvl(l)}>{["", "Standard", "Strict", "Très strict"][l]} (≥ {LV[l].g})</button>)}</div></section>
+    {(["closer", "coordinateur", "social"] as const).map(k => {
+      const pool = dossiers.filter(d => d.poste === k && d.app && !String(d.stage).startsWith("écarté") && d.stage !== "recruté").sort((x, y) => (pil(y).global ?? 0) - (pil(x).global ?? 0));
+      const ok = pool.filter(d => !why(d)); const best = ok.slice(0, 7);
+      const reasons: Record<string, number> = {}; pool.filter(d => why(d)).forEach(d => { const r = why(d)!; reasons[r] = (reasons[r] || 0) + 1; });
+      return <section key={k} className={s.card}><h2>{POSTES[k].short} : {best.length} retenu(s) sur {pool.length}</h2>
+        {Object.keys(reasons).length ? <p className={s.muted} style={{ margin: 0 }}>Non retenus : {Object.entries(reasons).map(([r, n]) => `${n} × ${r}`).join(" · ")}</p> : null}
+        {best.length ? best.map((d, i) => <div key={d.key}><b>{["🥇", "🥈", "🥉"][i] || `${i + 1}.`} {d.name} — {pil(d).global}/100</b>{card(d)}</div>) : <p className={s.muted}>Personne ne passe ce niveau. Baissez d'un cran ou attendez de nouveaux formulaires.</p>}
+      </section>; })}
+  </>;
   const importZip = async (file: File | null) => {
     if (!file) return; const poste = imp.poste; setImp(x => ({ ...x, busy: true, rows: [], text: "Envoi du fichier…" }));
     try {
@@ -213,9 +238,10 @@ export default function RecrutementAdmin() {
 
   return <main className={s.page}>
     <div className={s.top}><div><h1>👥 Recrutement</h1><p>Note finale = 30 % CV + 70 % formulaire et tests. Mise à jour à chaque nouvelle candidature.</p></div><button className={s.ghost} onClick={() => load()}>↻ Actualiser</button></div>
-    <div className={s.seg} style={{ marginTop: 12 }}><button className={view === "top" ? s.on : ""} onClick={() => setView("top")}>🏆 Classement par poste</button><button className={view === "all" ? s.on : ""} onClick={() => setView("all")}>📂 Tous les dossiers</button><button className={view === "offres" ? s.on : ""} onClick={() => setView("offres")}>📝 Offres ({offers.length})</button></div>
+    <div className={s.seg} style={{ marginTop: 12 }}><button className={view === "top" ? s.on : ""} onClick={() => setView("top")}>🏆 Classement par poste</button><button className={view === "elite" ? s.on : ""} onClick={() => setView("elite")}>🎯 Top 7 (sélection stricte)</button><button className={view === "all" ? s.on : ""} onClick={() => setView("all")}>📂 Tous les dossiers</button><button className={view === "offres" ? s.on : ""} onClick={() => setView("offres")}>📝 Offres ({offers.length})</button></div>
     {offerPanel()}
-    {view === "top" ? importBox() : null}
+    {view !== "offres" ? importBox() : null}
+    {view === "elite" ? eliteView() : null}
     {view === "offres" ? <section className={s.card}><h2>📝 Offres envoyées</h2>{offers.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["Candidat", "Poste", "Fixe", "Commission", "Statut", "Envoyée", "Vue", "Signée", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead><tbody>{offers.map(o => <tr key={o.id}><td style={{ ...th, textAlign: "left" }}><b>{o.full_name}</b></td><td style={th}>{POSTES[o.poste as PosteKey]?.short}</td><td style={th}>{fmtDA(o.params?.fixe || 0)}</td><td style={th}>{o.params?.commission ? fmtDA(o.params.commission) : "—"}</td><td style={th}><b>{o.status}</b>{o.refuse_reason ? <><br /><small>{o.refuse_reason}</small></> : null}</td><td style={th}>{o.sent_at ? `${new Date(o.sent_at).toLocaleDateString("fr-FR")} (${o.sent_via})` : "—"}</td><td style={th}>{o.viewed_at ? new Date(o.viewed_at).toLocaleDateString("fr-FR") : "—"}</td><td style={th}>{o.signed_at ? `${new Date(o.signed_at).toLocaleDateString("fr-FR")} · ${o.signature_name}` : "—"}</td><td style={th}><a href={`https://www.easydrive-auto.fr/offre/${o.token}`} target="_blank" rel="noreferrer">👁</a>{!["signée", "annulée"].includes(o.status) ? <> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => sendOffer(o)}>📨</button> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => window.open(waOffer(o), "_blank")}>💬</button> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={async () => { if (confirm("Annuler cette offre ?")) { await call("/api/offres", "PUT", { action: "cancel", id: o.id }); load(); } }}>✕</button></> : null}</td></tr>)}</tbody></table></div> : <p className={s.muted}>Aucune offre pour l'instant. Cliquez sur « 📝 Offre » à côté d'un candidat.</p>}</section> : null}
     {view === "top" ? <>
       <p className={s.muted}>Classement mis à jour automatiquement à chaque formulaire reçu. Note finale = 30 % CV + 70 % tests et réponses. Les 3 premiers (en vert) sont à rappeler en priorité. Les écartés ne sont pas affichés.</p>
