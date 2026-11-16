@@ -4,6 +4,7 @@ import { crmDatabase } from "../../../lib/crm-agent";
 import { isAuthorized } from "../../../lib/integrations";
 import { GIGA_TABLE, buildSnapshot, displayStatus, executeRun, generateNextPlan, normalize, startRun } from "../../../lib/giga";
 import { getPlan, listPlans, normalizePlan, savePlan } from "../../../lib/giga-plan";
+import { getForecast, saveForecast } from "../../../lib/forecast";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -13,6 +14,7 @@ export const maxDuration = 300;
  * GET (tâche planifiée, CRON_SECRET) : lance une analyse complète et envoie l'e-mail au fondateur.
  *   ?dry=1 : renvoie seulement la photo interne (aucun appel IA, aucun e-mail, rien d'enregistré).
  * POST { passcode, action: "list" | "get" | "run" } : "list"/"get" pour la section « giga », "run" fondateur seulement.
+ * Prévisionnel : "forecast_get" | "forecast_save" {data} (fondateur seulement).
  * Plans annuels : "plan_list" | "plan_get" {year} | "plan_save" {year, plan} (section « giga ») | "plan_next" {from} (fondateur).
  */
 export async function GET(req: Request) {
@@ -53,6 +55,14 @@ export async function POST(req: Request) {
       // L'analyse (2 à 4 minutes) continue après la réponse ; la page se met à jour toute seule.
       after(() => executeRun(db, s.id).then(() => undefined));
       return NextResponse.json({ ok: true, id: s.id, started: true });
+    }
+    if (b.action === "forecast_get" || b.action === "forecast_save") {
+      if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Le prévisionnel est réservé au fondateur." }, { status: 403 });
+      if (b.action === "forecast_get") return NextResponse.json({ ok: true, ...(await getForecast(db)), who: acc.who });
+      if (!b.data) return NextResponse.json({ ok: false, error: "Données manquantes" }, { status: 400 });
+      const data = await saveForecast(db, b.data);
+      await logSection(acc, "giga_previsionnel_modifie", {});
+      return NextResponse.json({ ok: true, data });
     }
     if (b.action === "plan_list") return NextResponse.json({ ok: true, plans: await listPlans(db), who: acc.who });
     if (b.action === "plan_get") {

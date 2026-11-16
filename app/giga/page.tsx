@@ -38,6 +38,10 @@ export default function GigaList() {
       <div className={c.rowMain}><p className={c.rowTitle}>📋 Plan produits de l’année</p><p className={c.rowText}>Produits classés, fournisseurs, calendrier et chargement des conteneurs. Chaque analyse vous dit quoi faire ensuite sur ce plan.</p></div>
       <span className={c.badge} style={{ background: "#f05a28", color: "#fff" }}>Ouvrir →</span>
     </Link>
+    {who === "owner" ? <Link href="/giga/previsionnel" className={`${c.card} ${c.row}`} style={{ marginTop: 12 }}>
+      <div className={c.rowMain}><p className={c.rowTitle}>📈 Prévisionnel 2027</p><p className={c.rowText}>Trésorerie mois par mois, véhicules à commander, recrutements, étapes, plan moyen ou agressif. À mettre à jour chaque fin de mois avec les ventes réelles.</p></div>
+      <span className={c.badge} style={{ background: "#f05a28", color: "#fff" }}>Ouvrir →</span>
+    </Link> : null}
     {who === "owner" ? <div style={{ marginTop: 16 }}>
       <button className={`${c.btn} ${c.btnBrand}`} onClick={run} disabled={busy || running}>{running ? <><span className={c.spin} /> Analyse en cours…</> : busy ? "…" : "⚡ Lancer une analyse maintenant"}</button>
     </div> : null}

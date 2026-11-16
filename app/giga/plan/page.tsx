@@ -65,6 +65,7 @@ export default function GigaPlanPage() {
       <Link href="/giga" className={c.back}>← Giga Analyse</Link>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {plans.map(p => <button key={p.year} className={`${c.btn} ${p.year === year ? c.btnBrand : c.btnGhost}`} onClick={() => { if (dirty && !confirm("Modifications non enregistrées : changer d'année quand même ?")) return; loadPlan(p.year, pc).catch(e => setMsg((e as Error).message)); }}>{p.year}</button>)}
+        {who === "owner" ? <Link href="/giga/previsionnel" className={`${c.btn} ${c.btnGhost}`}>📈 Prévisionnel</Link> : null}
         <button className={`${c.btn} ${c.btnGhost}`} onClick={() => window.print()}>🖨️ Imprimer</button>
       </div>
     </div>
