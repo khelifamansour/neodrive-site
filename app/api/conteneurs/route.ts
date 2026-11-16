@@ -5,7 +5,7 @@ import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail } from "../../../lib/brevo";
 import { isDepot, isDocType, portKey } from "../../../lib/shipments";
 import { storeFiles } from "./store";
-import { invoicePdf, packingPdf } from "./pdf";
+import { genDocs } from "./gen";
 import { sendDossier } from "./send";
 
 export const dynamic = "force-dynamic";
@@ -74,20 +74,8 @@ export async function PUT(req: Request) {
     return NextResponse.json({ ok: true });
   }
   if (b.action === "gen_docs" && b.id) {
-    const { data: s } = await db.from("shipments").select("*").eq("id", b.id).single();
-    const { data: veh } = await db.from("shipment_vehicles").select("vin,container").eq("shipment_id", b.id).order("vin");
-    if (!s || !veh?.length) return NextResponse.json({ ok: false, error: "Ajoutez d'abord les numéros de série (VIN)" }, { status: 400 });
-    if (!s.invoice_no || !s.unit_price) return NextResponse.json({ ok: false, error: "Renseignez le n° de facture usine et le prix unitaire" }, { status: 400 });
-    const out: string[] = [];
-    for (const [type, buf, label] of [["facture", await invoicePdf(s, veh), "Invoice"], ["colisage", await packingPdf(s, veh), "Packing-list"]] as const) {
-      const name = `${label}-VIN-${s.invoice_no}.pdf`; const path = `${b.id}/gen-${type}-${Date.now()}.pdf`;
-      const up = await db.storage.from(BUCKET).upload(path, buf, { contentType: "application/pdf" }); if (up.error) return NextResponse.json({ ok: false, error: up.error.message }, { status: 500 });
-      const { data: old } = await db.from("shipment_docs").select("id,file_path").eq("shipment_id", b.id).eq("doc_type", type).eq("uploaded_by", "plateforme");
-      if (old?.length) { await db.storage.from(BUCKET).remove(old.map(o => o.file_path)); await db.from("shipment_docs").delete().in("id", old.map(o => o.id)); }
-      await db.from("shipment_docs").insert({ shipment_id: b.id, doc_type: type, version: "corrigée", file_path: path, file_name: name, uploaded_by: "plateforme", ref: s.invoice_no, ai_note: `Version propre avec les ${veh.length} VIN et les COC, générée le ${new Date().toLocaleDateString("fr-FR")} à partir de la facture usine (${s.invoice_part ? "part de la facture usine découpée par conteneur" : "montants identiques"}).` });
-      out.push(path);
-    }
-    return NextResponse.json({ ok: true, paths: out });
+    const r = await genDocs(db, Number(b.id));
+    return NextResponse.json(r, { status: r.ok ? 200 : (r.status || 400) });
   }
   if (b.action === "send" && b.id) {
     if (!brevoReady()) return NextResponse.json({ ok: false, error: "Brevo non connecté" }, { status: 503 });

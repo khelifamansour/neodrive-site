@@ -109,11 +109,11 @@ export default function Conteneurs() {
           </form>
         </div>
 
-        <div style={box("#fff7ed")}><b>📄 Facture et liste de colisage propres, avec les VIN et les COC</b>
+        <div style={box("#fff7ed")}><b>📄 Facture, liste de colisage et pièces détachées, avec les VIN et les COC</b>
           <small>Générées à partir de la facture usine (mêmes quantités, prix et montants), avec une ligne par véhicule, son VIN et sa référence COC, et la liste de colisage conteneur par conteneur. Elles sont jointes à l'envoi en plus des originaux de l'usine.</small>
           {I.unassigned ? <small style={{ color: "#b45309" }}>⚠️ {I.unassigned} VIN sans conteneur : ils apparaîtront dans « container to be confirmed ». Attribuez-les avant de générer la version définitive.</small> : null}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button className={s.primary} disabled={busy === "gen" + sh.id} onClick={() => run("gen" + sh.id, async () => { await api({ action: "gen_docs", id: sh.id }); return "✅ Facture et liste de colisage avec VIN générées (voir le coffre-fort ci-dessous)"; })}>{busy === "gen" + sh.id ? "Génération…" : I.gen ? "🔄 Regénérer facture + colisage avec VIN" : "📄 Générer facture + colisage avec VIN"}</button>
-            {I.d.filter(x => x.uploaded_by === "plateforme").map(x => <button key={x.id} className={s.ghost} onClick={() => openDoc(x.file_path)}>👁 {x.doc_type === "facture" ? "Facture" : "Colisage"}</button>)}</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button className={s.primary} disabled={busy === "gen" + sh.id} onClick={() => run("gen" + sh.id, async () => { await api({ action: "gen_docs", id: sh.id }); return "✅ Facture, colisage et liste des pièces générés (voir le coffre-fort ci-dessous)"; })}>{busy === "gen" + sh.id ? "Génération…" : I.gen ? "🔄 Regénérer facture + colisage avec VIN" : "📄 Générer facture + colisage avec VIN"}</button>
+            {I.d.filter(x => x.uploaded_by === "plateforme").map(x => <button key={x.id} className={s.ghost} title={x.file_name} onClick={() => openDoc(x.file_path)}>👁 {x.doc_type === "facture" ? "Facture" : x.doc_type === "pieces" ? "Pièces détachées" : "Colisage"}{x.ref && x.ref !== sh.invoice_no ? ` (${x.ref})` : ""}</button>)}</div>
         </div>
 
         {(() => { const fc = factoryChecks(sh, I.d.filter(x => x.uploaded_by !== "plateforme") as DocLite[]); return <div style={box(fc.complete ? "#f0fdf4" : "#f8fafc")}><b>🏭 Portail usine : {FACTORY_DOCS.length - fc.missing.length}/{FACTORY_DOCS.length} pièces{sh.factory_complete_at ? ` · complet le ${new Date(sh.factory_complete_at).toLocaleDateString("fr-FR")}` : ""}</b>
