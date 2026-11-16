@@ -5,6 +5,7 @@ import { isAuthorized } from "../../../lib/integrations";
 import { GIGA_TABLE, buildSnapshot, displayStatus, executeRun, generateNextPlan, normalize, startRun } from "../../../lib/giga";
 import { getPlan, listPlans, normalizePlan, savePlan } from "../../../lib/giga-plan";
 import { getForecast, saveForecast } from "../../../lib/forecast";
+import { runMeta } from "../../../lib/meta-realiste";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -15,6 +16,7 @@ export const maxDuration = 300;
  *   ?dry=1 : renvoie seulement la photo interne (aucun appel IA, aucun e-mail, rien d'enregistré).
  * POST { passcode, action: "list" | "get" | "run" } : "list"/"get" pour la section « giga », "run" fondateur seulement.
  * Prévisionnel : "forecast_get" | "forecast_save" {data} (fondateur seulement).
+ * Méta-analyse réaliste : "meta_get" (fondateur seulement ; calcul fait côté serveur).
  * Plans annuels : "plan_list" | "plan_get" {year} | "plan_save" {year, plan} (section « giga ») | "plan_next" {from} (fondateur).
  */
 export async function GET(req: Request) {
@@ -55,6 +57,10 @@ export async function POST(req: Request) {
       // L'analyse (2 à 4 minutes) continue après la réponse ; la page se met à jour toute seule.
       after(() => executeRun(db, s.id).then(() => undefined));
       return NextResponse.json({ ok: true, id: s.id, started: true });
+    }
+    if (b.action === "meta_get") {
+      if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "La méta-analyse réaliste est réservée au fondateur." }, { status: 403 });
+      return NextResponse.json({ ok: true, ...runMeta() });
     }
     if (b.action === "forecast_get" || b.action === "forecast_save") {
       if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Le prévisionnel est réservé au fondateur." }, { status: 403 });

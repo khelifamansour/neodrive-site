@@ -55,6 +55,7 @@ export default function PrevisionnelPage() {
     <div className={`${c.top} ${c.noPrint}`}>
       <Link href="/giga" className={c.back}>← Giga Analyse</Link>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Link href="/giga/meta-realiste" className={`${c.btn} ${c.btnGhost}`}>🎯 Méta-analyse réaliste</Link>
         <Link href="/giga/plan" className={`${c.btn} ${c.btnGhost}`}>📋 Plan produits</Link>
         <button className={`${c.btn} ${c.btnGhost}`} onClick={() => window.print()}>🖨️ Imprimer</button>
         <button className={`${c.btn} ${c.btnBrand}`} onClick={save} disabled={busy || !dirty}>{busy ? "…" : dirty ? "💾 Enregistrer" : "Enregistré"}</button>

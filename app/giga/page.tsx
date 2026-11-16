@@ -42,6 +42,10 @@ export default function GigaList() {
       <div className={c.rowMain}><p className={c.rowTitle}>📈 Prévisionnel 2027</p><p className={c.rowText}>Trésorerie mois par mois, véhicules à commander, recrutements, étapes, plan moyen ou agressif. À mettre à jour chaque fin de mois avec les ventes réelles.</p></div>
       <span className={c.badge} style={{ background: "#f05a28", color: "#fff" }}>Ouvrir →</span>
     </Link> : null}
+    {who === "owner" ? <Link href="/giga/meta-realiste" className={`${c.card} ${c.row}`} style={{ marginTop: 12 }}>
+      <div className={c.rowMain}><p className={c.rowTitle}>🎯 Méta-analyse réaliste 2027</p><p className={c.rowText}>Ta situation réelle + les produits de la méta-analyse : scénarios comparés, produit par produit, plan mois par mois et sensibilité.</p></div>
+      <span className={c.badge} style={{ background: "#141414", color: "#fff" }}>Ouvrir →</span>
+    </Link> : null}
     {who === "owner" ? <div style={{ marginTop: 16 }}>
       <button className={`${c.btn} ${c.btnBrand}`} onClick={run} disabled={busy || running}>{running ? <><span className={c.spin} /> Analyse en cours…</> : busy ? "…" : "⚡ Lancer une analyse maintenant"}</button>
     </div> : null}
