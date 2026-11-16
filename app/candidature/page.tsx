@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import s from "../devenir-partenaire/partenaire.module.css";
-import { COMMON, POSTES, FRENCH_TEST, LOGIC_TEST, WRITING_PROMPT, RIDDLES, BAC_SUBJECTS, isPoste, type Mcq, type PosteKey, type Question } from "../../lib/hiring";
+import { COMMON, POSTES, FRENCH_TEST, LOGIC_TEST, WRITING_PROMPT, RIDDLES, BAC_SUBJECTS, BAC_OPTIONAL, isPoste, type Mcq, type PosteKey, type Question } from "../../lib/hiring";
 
 export default function CandidaturePage() {
   const [poste, setPoste] = useState<PosteKey | "">("");
@@ -74,7 +74,9 @@ export default function CandidaturePage() {
         <label>Baccalauréat : filière *<input name="bac_stream" required placeholder="Sciences expérimentales, Gestion…" /></label>
         <label>Année du bac *<input name="bac_year" required inputMode="numeric" placeholder="2018" /></label>
         <label>Moyenne générale au bac (sur 20) *<input name="bac_average" required inputMode="decimal" placeholder="12,45" /></label>
-        {BAC_SUBJECTS.map(([id, l]) => <label key={id}>Note au bac en {l} (sur 20) *<input name={id} required inputMode="decimal" /></label>)}
+        <p className={s.full} style={{ margin: "4px 0 0", fontSize: 14 }}>Notes du bac obligatoires (même approximatives). Sans votre moyenne et ces notes, la candidature ne peut pas être étudiée.</p>
+        {BAC_SUBJECTS.map(([id, l]) => <label key={id}>Note au bac en {l} (sur 20) *<input name={id} required inputMode="decimal" pattern="[0-9]{1,2}([.,][0-9]{1,2})?" /></label>)}
+        {BAC_OPTIONAL.map(([id, l]) => <label key={id}>Note au bac en {l} (sur 20, si vous l'avez passée)<input name={id} inputMode="decimal" pattern="[0-9]{1,2}([.,][0-9]{1,2})?" /></label>)}
         <label>Matière principale de votre filière *<input name="bac_main_subject" required placeholder="Sciences naturelles, Gestion…" /></label>
         <label>Note dans cette matière (sur 20) *<input name="bac_main_grade" required inputMode="decimal" /></label>
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Votre dernière expérience professionnelle</p>

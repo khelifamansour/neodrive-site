@@ -4,6 +4,7 @@ export type PosteKey = "closer" | "coordinateur" | "social";
 export type Question = { id: string; label: string; type: "text" | "long" | "choice"; options?: string[]; required?: boolean };
 
 export const COMMON: Question[] = [
+  { id: "presentation", label: "Présentez-vous en 6 à 10 lignes, avec vos propres mots : votre parcours, vos 3 principales qualités, un vrai défaut, et pourquoi ce poste vous correspond.", type: "long", required: true },
   { id: "freelance_ok", label: "La mission est en prestataire freelance (vous facturez NeoDrive chaque mois, ce n'est pas un contrat salarié). Acceptez-vous ce statut ?", type: "choice", options: ["Oui", "Oui, mais j'ai besoin d'aide pour le statut", "Non"], required: true },
   { id: "billing_structure", label: "Avez-vous déjà une structure pour facturer ?", type: "choice", options: ["Oui, auto-entrepreneur", "Oui, registre de commerce / société", "Pas encore, mais je peux la créer", "Non"], required: true },
   { id: "availability", label: "Êtes-vous disponible du lundi au samedi aux horaires français, en sachant que le planning peut varier et inclure ponctuellement le dimanche selon les besoins de l'entreprise ?", type: "choice", options: ["Oui", "Oui, sauf certains jours", "Non"], required: true },
@@ -90,3 +91,5 @@ export const RIDDLES = [
   { id: "ri3", q: "Énigme 3 : un vendeur vend 2 voitures à 6 000 € chacune. Sur la première, il gagne 20 % de son prix d'achat ; sur la seconde, il perd 20 % de son prix d'achat. Quel est son résultat total, en euros (écrivez seulement le nombre) ?" },
 ];
 export const BAC_SUBJECTS = [["bac_maths", "Mathématiques"], ["bac_francais", "Français"], ["bac_arabe", "Arabe"], ["bac_anglais", "Anglais"]] as const;
+/** Matières facultatives (selon la filière). */
+export const BAC_OPTIONAL = [["bac_physique", "Physique"], ["bac_philo", "Philosophie"]] as const;

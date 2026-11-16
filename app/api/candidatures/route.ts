@@ -5,7 +5,7 @@ import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail, sendSms, OWNER_EMAIL } from "../../../lib/brevo";
 import { COMMON, POSTES, WRITING_PROMPT, FRENCH_TEST, LOGIC_TEST, isPoste, type PosteKey } from "../../../lib/hiring";
 import { FRENCH_KEY, LOGIC_KEY, RIDDLE_KEY } from "../../../lib/hiring-keys";
-import { BAC_SUBJECTS, RIDDLES } from "../../../lib/hiring";
+import { BAC_SUBJECTS, BAC_OPTIONAL, RIDDLES } from "../../../lib/hiring";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -53,8 +53,11 @@ export async function POST(req: Request) {
   const avg = Number(String(fd.get("bac_average") || "").replace(",", ".")); row.bac_average = Number.isFinite(avg) && avg > 0 && avg <= 20 ? avg : null;
   const started = Number(fd.get("started_at")); row.duration_sec = started > 0 ? Math.max(0, Math.round((Date.now() - started) / 1000)) : null;
   row.paste_count = Math.min(999, Number(fd.get("paste_count")) || 0);
-  const grade = (v: unknown) => { const n = Number(String(v ?? "").replace(",", ".")); return Number.isFinite(n) && n >= 0 && n <= 20 ? n : null; };
-  row.bac_grades = Object.fromEntries([...BAC_SUBJECTS.map(([id, l]) => [l, grade(fd.get(id))]), [clean(fd.get("bac_main_subject"), 60) || "Matière principale", grade(fd.get("bac_main_grade"))]]);
+  const grade = (v: unknown) => { const t = String(v ?? "").trim(); if (!t) return null; const n = Number(t.replace(",", ".")); return Number.isFinite(n) && n >= 0 && n <= 20 ? n : null; };
+  if (row.bac_average == null) return NextResponse.json({ ok: false, error: "Merci d'indiquer votre moyenne générale au bac (sur 20), même approximative." }, { status: 400 });
+  const missing = BAC_SUBJECTS.filter(([id]) => grade(fd.get(id)) == null).map(([, l]) => l);
+  if (missing.length) return NextResponse.json({ ok: false, error: `Merci d'indiquer vos notes au bac en : ${missing.join(", ")} (sur 20, même approximatives).` }, { status: 400 });
+  row.bac_grades = Object.fromEntries([...BAC_SUBJECTS.map(([id, l]) => [l, grade(fd.get(id))]), ...BAC_OPTIONAL.map(([id, l]) => [l, grade(fd.get(id))]).filter(([, v]) => v != null), [clean(fd.get("bac_main_subject"), 60) || "Matière principale", grade(fd.get("bac_main_grade"))]]);
   for (const r of RIDDLES) answers[r.id] = clean(fd.get(r.id), 40);
   const riddles = RIDDLES.filter(r => answers[r.id].replace(/\D/g, "") === RIDDLE_KEY[r.id]).length;
   row.riddle_ok = riddles === RIDDLES.length; answers.riddles_score = `${riddles}/${RIDDLES.length}`;
