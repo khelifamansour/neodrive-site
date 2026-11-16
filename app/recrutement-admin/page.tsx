@@ -157,28 +157,46 @@ export default function RecrutementAdmin() {
   const pourquoi = (d: Dossier) => { const P = pil(d); const ok = PARTS.filter(([, k]) => P[k] != null).map(([l, k]) => [l, P[k] as number] as const).sort((x, y) => y[1] - x[1]); if (!ok.length) return "Pas encore assez de données."; const best = ok.slice(0, 2).map(([l, v]) => `${l} ${v}`).join(", "); const weak = ok.length > 2 ? ok[ok.length - 1] : null; return `Forces : ${best}${english(d) ? ", bon anglais" : ""}${weak ? ` · Point faible : ${weak[0]} ${weak[1]}` : ""}`; };
   const [det, setDet] = useState<string | null>(null);
   const chip = (txt: string, bg: string) => <span style={{ background: bg, borderRadius: 999, padding: "2px 8px", fontSize: 12.5, whiteSpace: "nowrap" }}>{txt}</span>;
+  const lvlTxt = (n: number) => n >= 80 ? "excellent" : n >= 65 ? "bon" : n >= 50 ? "moyen" : "faible";
+  const criteres = (d: Dossier) => {
+    const a = d.app || {}; const D = deepOf(d); const P = pil(d); const hasD = !!D && !D.missing; const ex = excOf(d);
+    const bac = a.bac_average != null ? Number(a.bac_average) : null; const maths = a.bac_grades?.["Mathématiques"];
+    const school = hasD ? (D.school_main || [D.education?.[0]?.degree, D.education?.[0]?.school].filter(Boolean).join(", ")) : "";
+    const lies = hasD ? (D.lie_signals || []).length : 0; const years = hasD ? Math.round((Number(D.total_experience_months) || 0) / 12 * 10) / 10 : null;
+    const row = (label: string, v: number | null, detail: string, extra = "") => ({ label, v, txt: v == null ? `pas encore évalué${detail ? ` (${detail})` : ""}` : `${lvlTxt(v)}${extra ? `, ${extra}` : ""}${detail ? ` (${detail})` : ""}` });
+    return [
+      row("🇫🇷 Français", P.francais, [a.test_french != null ? `test ${a.test_french}/10` : "", a.test_writing != null ? `rédaction ${a.test_writing}/20` : ""].filter(Boolean).join(", "), a.test_writing != null ? (Number(a.test_writing) >= 16 ? "écrit propre, peu de fautes" : Number(a.test_writing) < 10 ? "beaucoup de fautes à l'écrit" : "") : ""),
+      row("🧠 Intelligence", P.intelligence, [a.test_logic != null ? `logique ${a.test_logic}/8` : "", a.answers?.riddles_score ? `énigmes ${a.answers.riddles_score}` : "", ex?.finished_at ? `QCM excellence ${ex.score}` : ""].filter(Boolean).join(", "), a.test_logic != null && Number(a.test_logic) <= 4 ? "logique faible" : ""),
+      row("⚓ Stabilité", P.stabilite, hasD ? `${D.avg_tenure_months ?? "?"} mois en moyenne par employeur, ${D.short_stints ?? 0} poste(s) de moins d'un an` : "analyse CV à lancer", hasD && (Number(D.short_stints) || 0) >= 2 ? "instable" : ""),
+      row("🎓 École / formation", P.formation, school || (a.education ? String(a.education).slice(0, 60) : "")),
+      row("🛡 Fiabilité du CV", P.coherence, hasD ? `${lies} signal(aux) de mensonge, ${D.references_count ?? 0} référence(s)` : "analyse CV à lancer", lies >= 2 ? "à vérifier de près" : ""),
+      row("📜 Bac", bac == null ? null : Math.max(0, Math.min(100, Math.round((bac - 10) / 8 * 100))), bac == null ? "moyenne non donnée" : `moyenne ${bac}/20${maths != null ? `, maths ${maths}/20` : ""}${a.bac_stream ? `, ${a.bac_stream}` : ""}`),
+      row("💼 Expérience", P.experience, years != null ? `${years} an(s) d'expérience` : (a.experience_years ? `${a.experience_years} an(s) déclarés` : "")),
+    ];
+  };
   const talentRow = (d: Dossier, rank: number, near: boolean) => {
     const a = d.app || {}; const D = deepOf(d); const P = pil(d); const G = gates(d); const sc = talentScore(d); const cvPath = a.cv_path || d.inv?.cv_path;
     const missing = !D || D.missing || P.francais == null; const failed = G.find(g => g.ok === false);
     const action = near && failed ? { t: `❌ Ne pas appeler : ${failed.k.toLowerCase()} (${failed.why})`, bg: "#f3f4f6" } : missing ? { t: "⏳ Données incomplètes : lancer « 🔬 Analyse approfondie » (ou le relancer pour finir le test) avant de l'appeler", bg: "#fef3c7" } : rank <= 3 ? { t: "🔥 Appeler aujourd'hui (entretien de 15 min)", bg: "#dcfce7" } : { t: "📞 Appeler seulement si les 3 premiers ne conviennent pas", bg: "#eff6ff" };
-    return <article key={d.key} style={{ border: "1px solid #ece6dd", borderRadius: 14, padding: 12, display: "grid", gap: 7, background: !near && rank <= 3 ? "#f0fdf4" : "#fff" }}>
+    const open1 = det === d.key; const stop = (e: React.MouseEvent) => e.stopPropagation();
+    return <article key={d.key} onClick={() => setDet(open1 ? null : d.key)} style={{ cursor: "pointer", border: open1 ? "2px solid #2563eb" : "1px solid #ece6dd", borderRadius: 16, padding: 14, display: "grid", gap: 8, background: !near && rank <= 3 ? "#f0fdf4" : "#fff" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
         <b style={{ fontSize: 16 }}>{near ? "•" : ["🥇", "🥈", "🥉"][rank - 1] || `${rank}.`} {d.name}</b>
         <span style={{ fontSize: 13, color: "#5b6573" }}>{D?.age ? `${D.age} ans · ` : ""}{d.city || "?"}</span>
         <b style={{ fontSize: 20, color: color(sc) }}>{sc}<small style={{ fontSize: 12, color: "#9ca3af" }}>/100</small></b>
       </div>
+      <div style={{ background: action.bg, borderRadius: 10, padding: "7px 10px", fontWeight: 700, fontSize: 14 }}>{action.t}</div>
+      <div style={{ display: "grid", gap: 3, fontSize: 13.5 }}>{criteres(d).map(c => <div key={c.label}><b>{c.label} {c.v ?? "–"}{c.v != null ? "/100" : ""}</b> <span style={{ color: c.v == null ? "#6b7280" : color(c.v) }}>— {c.txt}</span></div>)}</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{G.map(g => <span key={g.k} title={g.why}>{chip(`${g.ok === true ? "✅" : g.ok === false ? "❌" : "❔"} ${g.k} : ${g.why}`, g.ok === true ? "#dcfce7" : g.ok === false ? "#fee2e2" : "#f3f4f6")}</span>)}</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>{(Object.keys(PILLAR_WEIGHTS) as PillarKey[]).map(k => <span key={k}>{chip(`${PILLAR_LABEL[k]} ${P[k] ?? "–"}`, "#f8fafc")}</span>)}</div>
       <div style={{ fontSize: 13, color: "#374151" }}>🇫🇷 {a.test_french ?? "–"}/10 · 🧠 logique {a.test_logic ?? "–"}/8 · ✍️ rédaction {a.test_writing ?? "–"}/20 · 🧩 énigmes {a.answers?.riddles_score ?? "–"}{a.riddle_sec ? ` (${a.riddle_sec} s)` : ""} · 🎓 bac {a.bac_average ?? "?"}/20 · ⚓ {D?.avg_tenure_months ?? "?"} mois/employeur · 🛡 fiabilité {D?.fiabilite ?? "–"} · 📇 {D?.references_count ?? 0} réf.{english(d) ? " · 🇬🇧 anglais" : ""}</div>
       <div style={{ fontSize: 13.5 }}><b>Pourquoi :</b> {pourquoi(d)}</div>
-      <div style={{ background: action.bg, borderRadius: 10, padding: "7px 10px", fontWeight: 700, fontSize: 14 }}>{action.t}</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }} onClick={stop}>
         {cvPath ? <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openCv(cvPath)}>📄 CV</button> : null}
         {d.phone ? <a className={s.ghost} style={{ padding: "4px 10px", textDecoration: "none" }} href={wa(d)} target="_blank" rel="noreferrer">💬 WhatsApp</a> : null}
         {d.phone ? <a className={s.ghost} style={{ padding: "4px 10px", textDecoration: "none" }} href={`tel:${String(d.phone).replace(/[^\d+]/g, "")}`}>📞 Appeler</a> : null}
-        <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => setDet(det === d.key ? null : d.key)}>{det === d.key ? "Masquer" : "Détails"}</button>
+        <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => setDet(open1 ? null : d.key)}>{open1 ? "Fermer" : "Tout voir (notes, réponses, CV)"}</button>
       </div>
-      {det === d.key ? card(d) : null}
+      {open1 ? <div onClick={stop} style={{ cursor: "auto" }}>{card(d)}</div> : <small style={{ color: "#6b7280" }}>Touchez la case pour tout voir : notes, réponses, analyse du CV.</small>}
     </article>;
   };
   const eliteView = () => <>
