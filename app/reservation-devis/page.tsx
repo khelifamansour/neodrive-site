@@ -145,7 +145,7 @@ export default function ReservationDevis(){
    const response=await fetch("https://formspree.io/f/xjgjrqqg",{method:"POST",body:data,headers:{Accept:"application/json"}});
    if(!response.ok)throw new Error("La transmission a échoué. Réessayez ou contactez NeoDrive.");
    // Ajout automatique au planificateur de livraisons (sans bloquer le client en cas d'échec)
-   fetch("/api/planificateur",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"reservation",...customer,code_postal:postal,modele:VEHICLES[model].label,total,code_promo:promo?.code||""})}).catch(()=>null);
+   fetch("/api/planificateur",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"reservation",...customer,code_postal:postal,modele:VEHICLES[model].label,total,delivery_price:quote.delivery.status==="estimated"?quote.delivery.price:null,code_promo:promo?.code||"",remise:discount})}).catch(()=>null);
    setSent(true);
    if(typeof window!=="undefined")window.scrollTo({top:0,behavior:"smooth"});
   }catch(e){setSendError(e instanceof Error?e.message:"Erreur d'envoi");}

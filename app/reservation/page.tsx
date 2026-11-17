@@ -140,6 +140,17 @@ const totalTTC =
         action="https://formspree.io/f/xjgjrqqg"
         method="POST"
         encType="multipart/form-data"
+        onSubmit={(e) => {
+          // Copie en base (suivi des réservations) sans bloquer l'envoi Formspree
+          try {
+            const fd = new FormData(e.currentTarget);
+            const o: Record<string, unknown> = { action: "submit" };
+            fd.forEach((v, k) => { if (typeof v === "string") o[k] = v; });
+            o.total = totalTTC; o.delivery_price = noDelivery ? 0 : transport; o.quantite = quantity;
+            o.options = noDelivery ? "Retrait sur place" : "";
+            fetch("/api/reservations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(o), keepalive: true }).catch(() => null);
+          } catch { /* l'e-mail part quand même */ }
+        }}
       >
 
         <input type="hidden" name="_subject" value="Nouvelle réservation véhicule" />

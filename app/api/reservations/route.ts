@@ -1,0 +1,107 @@
+import { NextResponse } from "next/server";
+import { authorizeSection, logSection } from "../../../lib/access";
+import { dataClient, listJson, writeJson } from "../../../lib/datastore";
+import { buildClient, PLAN_CLIENTS } from "../../../lib/planif-server";
+import type { PlanClient } from "../../../lib/planif";
+import { cleanReservation, saveReservation, type Reservation } from "../../../lib/reservations";
+import { normalizePhone } from "../../../lib/crm-agent";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+// Limite simple par adresse IP (formulaire public)
+const hits = new Map<string, number[]>();
+function tooMany(req: Request) {
+  const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "?";
+  const now = Date.now(); const list = (hits.get(ip) || []).filter(t => now - t < 3600_000);
+  list.push(now); hits.set(ip, list);
+  return list.length > 8;
+}
+
+export async function POST(req: Request) {
+  const b = await req.json().catch(() => ({})) as Record<string, unknown>;
+  const sb = dataClient();
+  if (!sb) return NextResponse.json({ ok: false, error: "Configuration manquante" }, { status: 503 });
+  try {
+    // ── Public : formulaire /reservation
+    if (b.action === "submit") {
+      if (b.website) return NextResponse.json({ ok: true }); // pot de miel anti-robot
+      if (tooMany(req)) return NextResponse.json({ ok: false, error: "Trop de demandes, réessayez plus tard." }, { status: 429 });
+      const r = cleanReservation(b);
+      if (!r.nom || !normalizePhone(r.telephone)) return NextResponse.json({ ok: false, error: "Nom et téléphone obligatoires." }, { status: 400 });
+      // Doublon : même téléphone et même modèle dans les 10 dernières minutes
+      const since = new Date(Date.now() - 600_000).toISOString();
+      const { data: dup } = await sb.from("reservations").select("id").eq("telephone", r.telephone).eq("modele", r.modele).gte("created_at", since).limit(1);
+      if (dup?.length) return NextResponse.json({ ok: true, id: dup[0].id, duplicate: true });
+      const saved = await saveReservation(sb, b, "site_formulaire");
+      return NextResponse.json({ ok: true, id: saved.id });
+    }
+
+    const acc = await authorizeSection(req, b.passcode, "tournees");
+    if (!acc) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
+
+    if (b.action === "list") {
+      const { data, error } = await sb.from("reservations").select("*").order("created_at", { ascending: false }).limit(1000);
+      if (error) throw new Error(error.message);
+      return NextResponse.json({ ok: true, reservations: data || [] });
+    }
+    if (b.action === "add") {
+      const r = cleanReservation(b);
+      if (!r.nom) return NextResponse.json({ ok: false, error: "Le nom est obligatoire." }, { status: 400 });
+      const saved = await saveReservation(sb, b, "manuel");
+      // La date de réservation d'origine (ex. e-mail Formspree) peut être indiquée
+      const d = String(b.created_on || "");
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) await sb.from("reservations").update({ created_at: `${d}T12:00:00Z` }).eq("id", saved.id);
+      await logSection(acc, "reservation_ajout", { id: saved.id });
+      return NextResponse.json({ ok: true, id: saved.id });
+    }
+    if (b.action === "update") {
+      const id = Number(b.id); if (!id) return NextResponse.json({ ok: false, error: "id manquant" }, { status: 400 });
+      const r = cleanReservation(b);
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      for (const k of ["statut", "priorite", "notes", "date_promise", "acompte", "nom", "prenom", "telephone", "email", "adresse", "code_postal", "ville", "departement", "modele", "couleur", "total", "delivery_price", "quantite"] as const) if (k in b || (k === "departement" && "code_postal" in b)) patch[k] = r[k];
+      const { error } = await sb.from("reservations").update(patch).eq("id", id);
+      if (error) throw new Error(error.message);
+      await logSection(acc, "reservation_modif", { id, statut: patch.statut });
+      return NextResponse.json({ ok: true });
+    }
+    if (b.action === "delete") {
+      if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Réservé au fondateur." }, { status: 403 });
+      await sb.from("reservations").delete().eq("id", Number(b.id));
+      return NextResponse.json({ ok: true });
+    }
+    // Envoi au planificateur de tournées (clients « à planifier »)
+    if (b.action === "to_planner") {
+      const ids = (Array.isArray(b.ids) ? b.ids : []).map(Number).filter(Boolean).slice(0, 100);
+      const { data } = await sb.from("reservations").select("*").in("id", ids);
+      const done: number[] = []; const errors: string[] = [];
+      for (const r of (data || []) as Reservation[]) {
+        if (r.plan_client_id) { done.push(r.id); continue; }
+        const c = await buildClient({ ...r, note: [r.notes, r.date_promise ? `Date promise : ${r.date_promise}` : ""].filter(Boolean).join(" · ") }, "reservation");
+        if ("error" in c) { errors.push(`${r.prenom} ${r.nom} : ${c.error}`); continue; }
+        await writeJson(sb, `${PLAN_CLIENTS}/${c.id}.json`, c);
+        await sb.from("reservations").update({ plan_client_id: c.id, statut: r.statut === "Nouvelle" || r.statut === "Confirmée" ? "Planifiée" : r.statut, updated_at: new Date().toISOString() }).eq("id", r.id);
+        done.push(r.id);
+      }
+      return NextResponse.json({ ok: true, done: done.length, errors });
+    }
+    // Reprise des réservations déjà présentes dans le planificateur (formulaire devis)
+    if (b.action === "import_planner") {
+      const clients = (await listJson<PlanClient>(sb, PLAN_CLIENTS)).filter(c => !(c.note || "").startsWith("TEST") && c.prenom !== "TEST");
+      const { data: have } = await sb.from("reservations").select("plan_client_id").not("plan_client_id", "is", null);
+      const known = new Set((have || []).map(h => h.plan_client_id));
+      let added = 0;
+      for (const c of clients) {
+        if (known.has(c.id)) continue;
+        const saved = await saveReservation(sb, { ...c, notes: c.note || "", statut: c.status === "livre" ? "Livrée" : c.status === "planifie" ? "Planifiée" : "Confirmée" }, c.source === "manuel" ? "planificateur" : "site_devis", { plan_client_id: c.id });
+        await sb.from("reservations").update({ created_at: c.created_at }).eq("id", saved.id);
+        added++;
+      }
+      return NextResponse.json({ ok: true, added });
+    }
+    return NextResponse.json({ ok: false, error: "Action inconnue" }, { status: 400 });
+  } catch (e) {
+    console.error("[RESERVATIONS]", e);
+    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Erreur" }, { status: 500 });
+  }
+}
