@@ -15,7 +15,7 @@ const tail = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 
 export default function RecrutementAdmin() {
   const [code, setCode] = useState(""); const [apps, setApps] = useState<Row[] | null>(null); const [invs, setInvs] = useState<Row[]>([]); const [msg, setMsg] = useState("");
-  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"top" | "all" | "offres" | "elite">("top"); const [lvl, setLvl] = useState<1 | 2 | 3>(2); const [offers, setOffers] = useState<Row[]>([]); const [offerFor, setOfferFor] = useState<Dossier | null>(null); const [op, setOp] = useState<OfferParams | null>(null); const [created, setCreated] = useState<Row | null>(null); const [logs, setLogs] = useState<Row[]>([]); const [exc, setExc] = useState<Row[]>([]); const [deep, setDeep] = useState<Row[]>([]); const [imp, setImp] = useState<{ poste: PosteKey; busy: boolean; text: string; rows: Row[] }>({ poste: "closer", busy: false, text: "", rows: [] });
+  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"jour" | "top" | "all" | "offres" | "elite">("jour"); const [lvl, setLvl] = useState<1 | 2 | 3>(2); const [offers, setOffers] = useState<Row[]>([]); const [offerFor, setOfferFor] = useState<Dossier | null>(null); const [op, setOp] = useState<OfferParams | null>(null); const [created, setCreated] = useState<Row | null>(null); const [logs, setLogs] = useState<Row[]>([]); const [exc, setExc] = useState<Row[]>([]); const [deep, setDeep] = useState<Row[]>([]); const [imp, setImp] = useState<{ poste: PosteKey; busy: boolean; text: string; rows: Row[] }>({ poste: "closer", busy: false, text: "", rows: [] });
   const call = async (url: string, method: string, body: object, pc = code) => { const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
   const load = async (pc = code) => { try { const [a, i] = await Promise.all([call("/api/candidatures", "PUT", { action: "list" }, pc), call("/api/candidatures/invite", "POST", { action: "list" }, pc)]); setApps(a.rows); setInvs(i.rows); call("/api/offres", "PUT", { action: "list" }, pc).then(o => setOffers(o.offers)).catch(() => null); call("/api/candidatures/log", "PUT", { action: "list" }, pc).then(o => setLogs(o.logs)).catch(() => null); call("/api/excellence", "PUT", { action: "list" }, pc).then(o => setExc(o.tests)).catch(() => null); call("/api/candidatures/deep", "PUT", { action: "list" }, pc).then(o => setDeep(o.rows)).catch(() => null); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
   useEffect(() => { let pc = ""; try { pc = sessionStorage.getItem("nd_pc") || "" } catch { } setCode(pc); load(pc).then(() => { if (!pc) setMsg("") }); // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,6 +159,7 @@ export default function RecrutementAdmin() {
   const talentScore = (d: Dossier) => { const P = pilT(d); const ok = PARTS.filter(([, k]) => P[k] != null); if (!ok.length) return 0; const v = ok.reduce((n, [, k, w]) => n + (P[k] as number) * w, 0) / ok.reduce((n, [, , w]) => n + w, 0); return Math.min(100, Math.round(v + (english(d) ? 3 : 0))); };
   const pourquoi = (d: Dossier) => { const P = pilT(d); const ok = PARTS.filter(([, k]) => P[k] != null).map(([l, k]) => [l, P[k] as number] as const).sort((x, y) => y[1] - x[1]); if (!ok.length) return "Pas encore assez de données."; const best = ok.slice(0, 2).map(([l, v]) => `${l} ${v}`).join(", "); const weak = ok.length > 2 ? ok[ok.length - 1] : null; return `Forces : ${best}${english(d) ? ", bon anglais" : ""}${weak ? ` · Point faible : ${weak[0]} ${weak[1]}` : ""}`; };
   const [det, setDet] = useState<string | null>(null);
+  const [more, setMore] = useState<Record<string, boolean>>({}); const [dos, setDos] = useState<Dossier | null>(null); const [callNote, setCallNote] = useState<Record<string, string>>({}); const [busyKey, setBusyKey] = useState<string | null>(null);
   const chip = (txt: string, bg: string) => <span style={{ background: bg, borderRadius: 999, padding: "2px 8px", fontSize: 12.5, whiteSpace: "nowrap" }}>{txt}</span>;
   const lvlTxt = (n: number) => n >= 80 ? "excellent" : n >= 65 ? "bon" : n >= 50 ? "moyen" : "faible";
   const criteres = (d: Dossier) => {
@@ -215,6 +216,111 @@ export default function RecrutementAdmin() {
         {near.length ? <details><summary style={{ cursor: "pointer", fontWeight: 700 }}>Presque ({near.length}) : éliminés sur une seule porte</summary><div style={{ display: "grid", gap: 8, marginTop: 8 }}>{near.map(x => talentRow(x.d, 0, true))}</div></details> : null}
       </section>; })}
   </>;
+
+  // ── Feuille d'appels du jour : meilleurs talents (français 35 / intelligence 35 / bac 30) pas encore appelés ──
+  const intl = (p: unknown) => { const d = String(p ?? "").replace(/\D/g, ""); return d.startsWith("00") ? d.slice(2) : d.startsWith("0") ? "213" + d.slice(1) : d; };
+  const isCalled = (d: Dossier) => logsOf(d).some(l => ["appel", "entretien", "recruté", "écarté"].includes(l.kind)) || !!excOf(d);
+  const lastLog = (d: Dossier) => logsOf(d).filter(l => l.kind !== "pas de réponse").sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
+  const preCall = (d: Dossier) => `https://wa.me/${intl(d.phone)}?text=${encodeURIComponent(`Bonjour ${d.name.split(" ")[0]}, ici Mansour, fondateur de NeoDrive. Félicitations : votre candidature fait partie des meilleures que nous avons reçues. J'aimerais vous appeler pour un premier échange d'une dizaine de minutes. Quand êtes-vous disponible aujourd'hui ou demain ?`)}`;
+  const reasons = (d: Dossier) => {
+    const a = d.app || {}; const why: string[] = []; const check: string[] = []; const P = pilT(d);
+    const fr = Number(a.test_french), lo = Number(a.test_logic), wr = Number(a.test_writing), bac = Number(String(a.bac_average ?? "").replace(",", "."));
+    if (fr >= 9) why.push(`français excellent (${fr}/10)`); if (wr >= 15) why.push(`très bonne rédaction (${wr}/20)`); if (lo >= 7) why.push(`logique solide (${lo}/8)`);
+    if (a.riddle_ok) why.push("énigme réussie"); if (bac >= 14) why.push(`bon bac (${bac}/20)`); if (excOf(d)?.finished_at && (excOf(d)!.score ?? 0) >= 70) why.push(`test d'excellence ${excOf(d)!.score}/100`);
+    if (!why.length) { const best = PARTS.filter(([, k]) => P[k] != null).sort((x, y) => (P[y[1]] as number) - (P[x[1]] as number))[0]; if (best) why.push(`meilleur point : ${best[0].toLowerCase()} (${P[best[1]]})`); }
+    if (!(bac > 0)) check.push("demander sa moyenne au bac"); if (a.test_logic != null && lo <= 5) check.push(`logique faible (${lo}/8) : le tester à l'oral`);
+    if (a.test_writing != null && wr < 12) check.push(`rédaction moyenne (${wr}/20)`); if (Number(a.paste_count) > 0) check.push(`${a.paste_count} copier-coller : vérifier qu'il a fait le test seul`);
+    if (a.riddle_ok === false) check.push("énigme ratée"); if (!a.cv_path && !d.inv?.cv_path) check.push("pas de CV : le demander");
+    if (a.salary_expectation) check.push(`prétention : ${a.salary_expectation}`);
+    return { why: why.slice(0, 3), check: check.slice(0, 4) };
+  };
+  const logCall = async (d: Dossier, kind: "appel" | "pas de réponse" | "écarté") => {
+    setBusyKey(d.key); try { await call("/api/candidatures/log", "PUT", { action: "add", poste: d.poste, phone: d.phone, full_name: d.name, kind, note: callNote[d.key] || "" }); if (d.app && kind === "écarté") await update(d.app.id, { status: "écarté" }); if (d.app && kind === "appel" && ["nouveau", "à appeler"].includes(d.app.status || "nouveau")) await update(d.app.id, { status: "test téléphone" }); setCallNote(n => ({ ...n, [d.key]: "" })); setMsg(kind === "appel" ? `✅ ${d.name} : appel noté` : kind === "écarté" ? `${d.name} écarté(e)` : `📵 ${d.name} : pas de réponse noté`); await load(); } catch (e) { setMsg((e as Error).message); } finally { setBusyKey(null); }
+  };
+  const QUESTIONS = ["Un client français vous appelle, furieux : sa voiture a 2 semaines de retard. Que lui dites-vous ?", "Vous avez 6 clients à livrer dans 4 villes avec une remorque de 2 voitures. Comment organisez-vous la tournée ?", "Pourquoi vous, plutôt qu'un autre candidat ?"];
+  const callCard = (d: Dossier, rank: number) => {
+    const a = d.app || {}; const sc = talentScore(d); const R = reasons(d); const cvPath = a.cv_path || d.inv?.cv_path; const D = deepOf(d);
+    const school = D && !D.missing ? (D.school_main || [D.education?.[0]?.degree, D.education?.[0]?.school].filter(Boolean).join(", ")) : "";
+    const noAns = logsOf(d).filter(l => l.kind === "pas de réponse").length;
+    return <article key={d.key} style={{ border: "1px solid #ece6dd", borderRadius: 14, padding: 12, display: "grid", gap: 8, background: "#fff" }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <b style={{ minWidth: 58, height: 58, borderRadius: 14, display: "grid", placeItems: "center", color: "#fff", background: color(sc), fontSize: 22 }}>{sc}</b>
+        <div style={{ flex: 1, minWidth: 0 }}><b style={{ fontSize: 16 }}>#{rank} {d.name}</b><br /><small style={{ color: "#5b6573" }}>{POSTES[d.poste]?.short}{d.city ? ` · ${d.city}` : ""} · note talent /100{noAns ? ` · 📵 ${noAns} appel(s) sans réponse` : ""}</small></div>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 15 }}>
+        <b style={{ fontVariantNumeric: "tabular-nums" }}>{d.phone}</b>
+        <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => { navigator.clipboard?.writeText(String(d.phone)).then(() => setMsg(`📋 Numéro de ${d.name} copié`)).catch(() => setMsg("Copie impossible")); }}>📋 Copier</button>
+        <a className={s.ghost} style={{ padding: "4px 10px" }} href={`tel:+${intl(d.phone)}`}>📞 Appeler</a>
+        <a className={s.ghost} style={{ padding: "4px 10px" }} href={`https://wa.me/${intl(d.phone)}`} target="_blank" rel="noreferrer">💬 WhatsApp</a>
+        <a className={s.ghost} style={{ padding: "4px 10px" }} href={preCall(d)} target="_blank" rel="noreferrer">✉️ Message avant l'appel</a>
+      </div>
+      <div style={{ fontSize: 14, lineHeight: 1.5 }}>
+        <div>🎓 {school || a.education || "formation non précisée"} · Bac {a.bac_average ? `${a.bac_average}/20` : "❔"}{a.bac_stream ? ` (${a.bac_stream})` : ""}</div>
+        <div>🇫🇷 {a.test_french ?? "–"}/10 · 🧠 logique {a.test_logic ?? "–"}/8 · ✍️ rédaction {a.test_writing ?? "–"}/20 · 🧩 énigme {a.riddle_ok ? "✅" : a.riddle_ok === false ? "❌" : "–"} · {Number(a.paste_count) ? <span style={{ color: "#b91c1c" }}>⚠️ {a.paste_count} copier-coller</span> : "0 copier-coller"}</div>
+      </div>
+      {R.why.length ? <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "6px 10px", fontSize: 14 }}><b>👍 Pourquoi l'appeler :</b> {R.why.join(" · ")}</div> : null}
+      {R.check.length ? <div style={{ background: "#fffbeb", borderRadius: 10, padding: "6px 10px", fontSize: 14 }}><b>🔎 À vérifier pendant l'appel :</b> {R.check.join(" · ")}</div> : null}
+      <details style={{ fontSize: 14 }}><summary style={{ cursor: "pointer" }}>❓ 3 questions à poser</summary><ol style={{ margin: "6px 0 0", paddingLeft: 20 }}>{QUESTIONS.map(q => <li key={q}>{q}</li>)}</ol><small style={{ color: "#6b7280" }}>Un profil brillant répond vite, clairement, et pose lui-même des questions.</small></details>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {cvPath ? <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openCv(cvPath)}>📄 CV</button> : <span style={{ fontSize: 13, color: "#6b7280" }}>Pas de CV</span>}
+        <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => setDos(d)}>🗂 Dossier complet</button>
+      </div>
+      <input value={callNote[d.key] || ""} onChange={e => setCallNote(n => ({ ...n, [d.key]: e.target.value }))} placeholder="Note de l'appel (impression, disponibilité, prétention…)" />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <button className={s.primary} disabled={busyKey === d.key} onClick={() => logCall(d, "appel")}>✅ Appelé — à suivre</button>
+        <button className={s.ghost} disabled={busyKey === d.key} onClick={async () => { setBusyKey(d.key); await sendExc(d); await load(); setBusyKey(null); }}>📝 Envoyer le test d'excellence</button>
+        <button className={s.ghost} disabled={busyKey === d.key} onClick={() => logCall(d, "pas de réponse")}>📵 Pas de réponse</button>
+        <button className={s.ghost} style={{ color: "#b91c1c" }} disabled={busyKey === d.key} onClick={() => { if (confirm(`Écarter ${d.name} ?`)) logCall(d, "écarté"); }}>❌ Écarter</button>
+      </div>
+    </article>;
+  };
+  const dossierPanel = () => { const d = dos; if (!d) return null; const a = d.app || {}; const D = deepOf(d); const ex = excOf(d);
+    const item = (label: string, val: unknown) => <div><small style={{ color: "#7a8594" }}>{label}</small><div style={{ whiteSpace: "pre-wrap" }}>{val == null || val === "" ? "—" : String(val)}</div></div>;
+    return <div onClick={() => setDos(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 50, display: "grid", placeItems: "start center", overflowY: "auto", padding: "16px 10px" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: 16, width: "min(760px, 100%)", display: "grid", gap: 10, fontSize: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}><h2 style={{ margin: 0 }}>🗂 {d.name}</h2><button className={s.ghost} onClick={() => setDos(null)}>Fermer ✕</button></div>
+        <div>{POSTES[d.poste]?.short} · {d.city || "ville ?"} · {d.phone}{d.email ? ` · ${d.email}` : ""} · note talent <b style={{ color: color(talentScore(d)) }}>{talentScore(d)}</b>/100</div>
+        <div style={{ background: "#f8fafc", borderRadius: 10, padding: 10 }}>🇫🇷 Français {a.test_french ?? "–"}/10 · 🧠 Logique {a.test_logic ?? "–"}/8 · ✍️ Rédaction {a.test_writing ?? "–"}/20 · 🧩 Énigme {a.riddle_ok ? "réussie" : a.riddle_ok === false ? "ratée" : "–"}{a.riddle_sec ? ` (${a.riddle_sec} s)` : ""} · Copier-coller {a.paste_count ?? 0} · Durée {a.duration_sec ? `${Math.round(a.duration_sec / 60)} min` : "–"}{ex?.finished_at ? ` · Test d'excellence ${ex.score}/100` : ex ? " · Test d'excellence envoyé" : ""}</div>
+        {item("Bac", [a.bac_stream, a.bac_year, a.bac_average ? `${a.bac_average}/20` : "moyenne non donnée"].filter(Boolean).join(" · "))}
+        {item("Notes au bac", a.bac_grades ? Object.entries(a.bac_grades).map(([k, v]) => `${k} ${v ?? "?"}`).join(" · ") : null)}
+        {item("Formation", a.education)}{item("Expérience (années)", a.experience_years)}{item("Prétention", a.salary_expectation)}{item("Disponibilité", a.availability)}{item("Statut freelance", [a.freelance_ok, a.billing_structure].filter(Boolean).join(" · "))}
+        {item("Dernier employeur", a.last_employer ? `${a.last_employer.entreprise} – ${a.last_employer.poste} (${a.last_employer.dates}) · départ : ${a.last_employer.depart} · ${a.last_employer.raison} · Référence : ${a.last_employer.reference || "—"} ${a.last_employer.reference_tel || ""}` : null)}
+        <hr />
+        <b>🤖 Analyse IA du formulaire</b>{item("Résumé", a.ai_summary)}{item("Points forts", a.ai_strengths)}{item("Risques", a.ai_risks)}{item("Questions d'entretien suggérées", a.ai_questions)}
+        {D && !D.missing ? <><hr /><b>🔬 Analyse approfondie du CV</b>{item("Résumé", D.summary)}{item("Parcours", (D.jobs || []).map((j: Row) => `• ${j.role} — ${j.company} (${j.start || "?"} → ${j.end || "?"})`).join("\n"))}{item("Formation", (D.education || []).map((e: Row) => `${e.degree} – ${e.school}${e.year ? ` (${e.year})` : ""}`).join(" · "))}{item("Fiabilité du CV", D.fiabilite != null ? `${D.fiabilite}/100` : null)}{D.lie_signals?.length ? item("🚩 Possible exagération", D.lie_signals.join(" · ")) : null}{D.verify?.length ? item("À vérifier", D.verify.join(" · ")) : null}</> : null}
+        <hr /><b>✍️ Test de rédaction</b><div style={{ whiteSpace: "pre-wrap", background: "#fafaf9", borderRadius: 10, padding: 10 }}>{a.answers?.writing || "—"}</div>
+        <hr /><b>📝 Toutes ses réponses</b>
+        {[...COMMON, ...(POSTES[d.poste]?.questions || [])].map(q => <div key={q.id}><small style={{ color: "#7a8594" }}>{q.label}</small><div style={{ whiteSpace: "pre-wrap" }}>{a.answers?.[q.id] || "—"}</div></div>)}
+        {(() => { const known = new Set<string>([...COMMON, ...(POSTES[d.poste]?.questions || [])].map(q => q.id).concat(["writing"])); const extra = Object.entries(a.answers || {}).filter(([k, v]) => !known.has(k) && v != null && typeof v !== "object" && String(v).length > 0); return extra.length ? <details><summary style={{ cursor: "pointer" }}>Autres réponses enregistrées ({extra.length})</summary>{extra.map(([k, v]) => item(k, v))}</details> : null; })()}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{(a.cv_path || d.inv?.cv_path) ? <button className={s.ghost} onClick={() => openCv(a.cv_path || d.inv?.cv_path)}>📄 Ouvrir le CV</button> : null}<button className={s.ghost} onClick={() => setDos(null)}>Fermer</button></div>
+      </div>
+    </div>; };
+  const callView = () => {
+    const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }); const Today = today.charAt(0).toUpperCase() + today.slice(1);
+    const pools = (["closer", "coordinateur", "social"] as const).map(k => ({ k, list: dossiers.filter(d => d.poste === k && d.app && !String(d.stage).startsWith("écarté") && d.stage !== "recruté" && !isCalled(d)).map(d => ({ d, sc: talentScore(d) })).sort((x, y) => y.sc - x.sc) }));
+    const total = pools.reduce((n, p) => n + Math.min(p.list.length, more[p.k] ? 10 : 3), 0);
+    const called = dossiers.filter(d => d.app && isCalled(d)).map(d => ({ d, l: lastLog(d) })).sort((x, y) => String(y.l?.created_at || "").localeCompare(String(x.l?.created_at || "")));
+    return <>
+      <section className={s.card} style={{ borderColor: "#86efac" }}>
+        <h2>📞 À appeler aujourd'hui · {Today}</h2>
+        <p className={s.muted} style={{ margin: 0 }}><b>{total}</b> candidat(s) à appeler · classés par note talent (français 35 %, intelligence 35 %, bac 30 %, sans l'expérience). Conseil : envoyez d'abord le message WhatsApp « avant l'appel », puis appelez en fin de journée. Après l'appel, notez-le : la personne quitte la liste et passe dans « Appelés ».</p>
+        {msg ? <p style={{ margin: "6px 0 0" }}><b>{msg}</b></p> : null}
+      </section>
+      {pools.map(({ k, list }) => <section key={k} className={s.card}>
+        <h2>{POSTES[k].short} : {list.length ? `top ${Math.min(list.length, more[k] ? 10 : 3)} sur ${list.length}` : "personne à appeler"}</h2>
+        {list.slice(0, more[k] ? 10 : 3).map((x, i) => callCard(x.d, i + 1))}
+        {list.length > 3 ? <button className={s.ghost} onClick={() => setMore(m => ({ ...m, [k]: !m[k] }))}>{more[k] ? "Voir moins" : `Voir plus (jusqu'à ${Math.min(10, list.length)})`}</button> : null}
+      </section>)}
+      <section className={s.card}>
+        <h2>✅ Appelés ({called.length})</h2>
+        {called.length ? <div style={{ display: "grid", gap: 6, fontSize: 14 }}>{called.map(({ d, l }) => <div key={d.key} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", borderBottom: "1px solid #f1f1f1", paddingBottom: 6 }}>
+          <b style={{ color: color(talentScore(d)) }}>{talentScore(d)}</b><b>{d.name}</b><small>{POSTES[d.poste]?.short}</small>
+          <small>{l ? `${new Date(l.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} — ${l.kind}${l.note ? ` : ${l.note}` : ""}` : excOf(d) ? `test d'excellence ${excOf(d)!.finished_at ? `${excOf(d)!.score}/100` : "envoyé"}` : ""}</small>
+          {excOf(d) && l ? <small>· test d'excellence {excOf(d)!.finished_at ? `${excOf(d)!.score}/100` : "envoyé"}</small> : null}
+          <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => setDos(d)}>🗂 Dossier</button><a href={`tel:+${intl(d.phone)}`}>📞</a></div>)}</div> : <p className={s.muted}>Personne n'a encore été appelé.</p>}
+      </section>
+    </>;
+  };
   const importZip = async (file: File | null) => {
     if (!file) return; const poste = imp.poste; setImp(x => ({ ...x, busy: true, rows: [], text: "Envoi du fichier…" }));
     try {
@@ -302,9 +408,11 @@ export default function RecrutementAdmin() {
 
   return <main className={s.page}>
     <div className={s.top}><div><h1>👥 Recrutement</h1><p>Note finale = 30 % CV + 70 % formulaire et tests. Mise à jour à chaque nouvelle candidature.</p></div><button className={s.ghost} onClick={() => load()}>↻ Actualiser</button></div>
-    <div className={s.seg} style={{ marginTop: 12 }}><button className={view === "top" ? s.on : ""} onClick={() => setView("top")}>🏆 Classement par poste</button><button className={view === "elite" ? s.on : ""} onClick={() => setView("elite")}>🏅 Talents (top 10)</button><button className={view === "all" ? s.on : ""} onClick={() => setView("all")}>📂 Tous les dossiers</button><button className={view === "offres" ? s.on : ""} onClick={() => setView("offres")}>📝 Offres ({offers.length})</button></div>
+    <div className={s.seg} style={{ marginTop: 12 }}><button className={view === "jour" ? s.on : ""} onClick={() => setView("jour")}>📞 À appeler aujourd'hui</button><button className={view === "top" ? s.on : ""} onClick={() => setView("top")}>🏆 Classement par poste</button><button className={view === "elite" ? s.on : ""} onClick={() => setView("elite")}>🏅 Talents (top 10)</button><button className={view === "all" ? s.on : ""} onClick={() => setView("all")}>📂 Tous les dossiers</button><button className={view === "offres" ? s.on : ""} onClick={() => setView("offres")}>📝 Offres ({offers.length})</button></div>
     {offerPanel()}
-    {view !== "offres" ? importBox() : null}
+    {view !== "offres" && view !== "jour" ? importBox() : null}
+    {dossierPanel()}
+    {view === "jour" ? callView() : null}
     {view === "elite" ? eliteView() : null}
     {view === "offres" ? <section className={s.card}><h2>📝 Offres envoyées</h2>{offers.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["Candidat", "Poste", "Fixe", "Commission", "Statut", "Envoyée", "Vue", "Signée", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead><tbody>{offers.map(o => <tr key={o.id}><td style={{ ...th, textAlign: "left" }}><b>{o.full_name}</b></td><td style={th}>{POSTES[o.poste as PosteKey]?.short}</td><td style={th}>{fmtDA(o.params?.fixe || 0)}</td><td style={th}>{o.params?.commission ? fmtDA(o.params.commission) : "—"}</td><td style={th}><b>{o.status}</b>{o.refuse_reason ? <><br /><small>{o.refuse_reason}</small></> : null}</td><td style={th}>{o.sent_at ? `${new Date(o.sent_at).toLocaleDateString("fr-FR")} (${o.sent_via})` : "—"}</td><td style={th}>{o.viewed_at ? new Date(o.viewed_at).toLocaleDateString("fr-FR") : "—"}</td><td style={th}>{o.signed_at ? `${new Date(o.signed_at).toLocaleDateString("fr-FR")} · ${o.signature_name}` : "—"}</td><td style={th}><a href={`https://www.easydrive-auto.fr/offre/${o.token}`} target="_blank" rel="noreferrer">👁</a>{!["signée", "annulée"].includes(o.status) ? <> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => sendOffer(o)}>📨</button> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => window.open(waOffer(o), "_blank")}>💬</button> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={async () => { if (confirm("Annuler cette offre ?")) { await call("/api/offres", "PUT", { action: "cancel", id: o.id }); load(); } }}>✕</button></> : null}</td></tr>)}</tbody></table></div> : <p className={s.muted}>Aucune offre pour l'instant. Cliquez sur « 📝 Offre » à côté d'un candidat.</p>}</section> : null}
     {view === "top" ? <>
