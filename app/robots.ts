@@ -20,6 +20,8 @@ export default function robots(): MetadataRoute.Robots {
         "/idees",
         "/academy",
         "/reservations-admin",
+        "/livreur",
+        "/livreur-admin",
       ],
     },
     sitemap: "https://www.easydrive-auto.fr/sitemap.xml",

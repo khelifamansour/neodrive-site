@@ -8,6 +8,7 @@ import {waNumber} from "../../lib/sav";
 import {demoApi} from "./demoApi";
 import LiveTrack from "./LiveTrack";
 import HoursAdmin from "./HoursAdmin";
+import TourLock from "./TourLock";
 import {ScheduleKpis,ScheduleRulesNote,ScheduleView,downloadIcs} from "./Schedule";
 import {dayOf,hhmm,plannedSchedule} from "../../lib/schedule";
 
@@ -143,7 +144,7 @@ export function Planner({demo=false}:{demo?:boolean}){
    {!visible.length?<p className={s.muted}>Aucun client {filter==="a_planifier"?"à planifier":""}. Les réservations du site arrivent ici automatiquement.</p>:null}
    <ul className={s.clients}>{visible.map(c=>{const t=tours.find(x=>x.id===c.tour_id);return <li key={c.id} className={sel.includes(c.id)?s.selected:""}>
     {c.status==="a_planifier"?<input type="checkbox" checked={sel.includes(c.id)} onChange={()=>setSel(v=>v.includes(c.id)?v.filter(x=>x!==c.id):[...v,c.id])}/>:<span className={s.badge}>{t?t.name:STATUS[c.status]}</span>}
-    <div className={s.cinfo}><b>{c.prenom} {c.nom}</b><small>{c.code_postal} {c.ville} · {c.modele||"NeoDrive"}{c.total?` · ${eur(c.total)}`:""}{c.telephone?` · ${c.telephone}`:""}</small>{c.note?<small>📝 {c.note}</small>:null}{c.received_at?<small className={s.okTxt}>✅ Réception signée par {c.received_by} le {new Date(c.received_at).toLocaleDateString("fr-FR")}{c.reception_note?` · « ${c.reception_note} »`:""}</small>:null}</div>
+    <div className={s.cinfo}><b>{c.prenom} {c.nom}{c.retour&&c.status==="a_planifier"?<span className={s.badge} style={{marginLeft:6,background:"#fef0c7",color:"#93370d"}}>↩️ À livrer au retour</span>:null}</b><small>{c.code_postal} {c.ville} · {c.modele||"NeoDrive"}{c.total?` · ${eur(c.total)}`:""}{c.telephone?` · ${c.telephone}`:""}</small>{c.note?<small>📝 {c.note}</small>:null}{c.received_at?<small className={s.okTxt}>✅ Réception signée par {c.received_by} le {new Date(c.received_at).toLocaleDateString("fr-FR")}{c.reception_note?` · « ${c.reception_note} »`:""}</small>:null}</div>
     <div className={s.cact}>{c.telephone?<a href={`https://wa.me/${waNumber(c.telephone)}?text=${encodeURIComponent(`Bonjour ${c.prenom}, votre NeoDrive arrive bientôt 🚗 Voici comment préparer la livraison (paiement, prise en main, carte grise) : ${PREP}`)}`} target="_blank" rel="noreferrer" title="Envoyer le lien de préparation">📲</a>:null}{c.telephone&&c.status!=="a_planifier"&&!c.received_at?<a href={`https://wa.me/${waNumber(c.telephone)}?text=${encodeURIComponent(`Bonjour ${c.prenom}, merci d’avoir reçu votre NeoDrive ! Pouvez-vous confirmer la réception ici (1 minute) : ${recLink(c)}`)}`} target="_blank" rel="noreferrer" title="Envoyer l’accusé de réception">🧾</a>:null}<button onClick={()=>navigator.clipboard?.writeText(recLink(c)).then(()=>setMsg("✅ Lien d’accusé de réception copié."))} title="Copier le lien d’accusé de réception">🔗</button>{c.status==="planifie"?<button onClick={()=>setStatus(c.id,"livre")} title="Marquer livré">✓</button>:null}<button onClick={()=>removeClient(c.id)} title="Supprimer">🗑</button></div>
    </li>})}</ul>
    {sel.length?<div className={s.assign}><span>{sel.length} sélectionné{sel.length>1?"s":""} →</span><select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Choisir une tournée…</option>{drafts.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><button disabled={!target||!!busy} onClick={assign}>Ajouter</button><button onClick={newTour} disabled={!!busy}>＋ Nouvelle tournée</button></div>:null}
@@ -155,7 +156,7 @@ export function Planner({demo=false}:{demo?:boolean}){
    <p className={s.muted}>Automatique : le logiciel prend tous les clients à planifier, part de Lamasquère avec la remorque 2 voitures et choisit à chaque fois le hub de recharge le plus avantageux (retour Lamasquère ou montée vers Boran-sur-Oise). Vous vérifiez, modifiez si besoin, puis validez.</p>
    {!tours.length?<p className={s.muted}>Créez une tournée, puis cochez des clients et ajoutez-les.</p>:null}
    {tours.map(t=>{const tc=clients.filter(c=>t.clientIds.includes(c.id));const isOpen=open===t.id;const locked=t.status!=="brouillon";return <article key={t.id} className={`${s.tour} ${locked?s.locked:""}`}>
-    <button className={s.tourHead} onClick={()=>setOpen(isOpen?null:t.id)}><b>{t.name}</b><span className={s.badge}>{t.status==="brouillon"?"Brouillon":"Validée"}</span><small>{new Date(t.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})} · {tc.length} client{tc.length>1?"s":""}{t.km?` · ${t.km} km · ${eur(t.costs?.total||0)}`:""}</small></button>
+    <button className={s.tourHead} onClick={()=>setOpen(isOpen?null:t.id)}><b>{t.name}</b><span className={s.badge}>{t.status==="brouillon"?"Brouillon":"Validée"}</span>{t.closed_at?<span className={s.badge} style={{background:"#fef0c7",color:"#93370d"}}>🔒 Clôturée</span>:null}<small>{new Date(t.date).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})} · {tc.length} client{tc.length>1?"s":""}{t.km?` · ${t.km} km · ${eur(t.costs?.total||0)}`:""}</small></button>
     {isOpen?<div className={s.tourBody}>
      <div className={s.grid2}>
       <label className={s.field}><span>Nom</span><input disabled={locked} value={t.name} onChange={e=>patch(t,{name:e.target.value})}/></label>
@@ -186,7 +187,7 @@ export function Planner({demo=false}:{demo?:boolean}){
        {v.next?<p className={s.after}>➡️ Ensuite : <b>{v.next.id===v.hub.id?"retour à ":""}{v.next.name}</b>{v.next.legKm?` · ${v.next.legKm} km remorque vide`:""}{v.next.action==="Retour au hub"?" (fin de tournée)":` pour ${v.next.action.toLowerCase()}`}</p>:null}
       </section>)}</div>;})()}
       <TourPlanning t={t} busy={busy==="dep-"+t.id} onSave={(d,h)=>setDepart(t,d,h)}/>
-      {locked&&!demo?<><LiveTrack tour={t} api={api}/><HoursAdmin tour={t} api={api}/></>:null}
+      {locked&&!demo?<><TourLock tour={t} clients={clients} api={api} reload={()=>load()} onMsg={setMsg}/><LiveTrack tour={t} api={api}/><HoursAdmin tour={t} api={api}/></>:null}
       {!locked?<><div className={s.seg}><button className={params.mode==="carte"?s.on:""} onClick={()=>setParams(p=>({...p,mode:"carte"}))}>Carte NeoDrive</button><button className={params.mode==="remboursement"?s.on:""} onClick={()=>setParams(p=>({...p,mode:"remboursement"}))}>Remboursement sur tickets</button></div>
       <label className={s.field}><span>Véhicule tracteur : Dacia Duster — carburant</span><select value={params.fuel} onChange={e=>setFuel(e.target.value as CostParams["fuel"])}>{FUELS.map(f=><option key={f.id} value={f.id}>{f.label}{live?.[f.id]?` · ${live[f.id].toFixed(3)} €/L aujourd’hui`:""}</option>)}</select></label>
       <p className={s.muted}>{live?"Prix moyen national du jour (données officielles prix-carburants.gouv.fr). ":"Prix du jour indisponible : prix par défaut. "}Consommation majorée pour la remorque chargée.</p>

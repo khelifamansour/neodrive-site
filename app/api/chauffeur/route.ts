@@ -5,7 +5,7 @@ import { checkDriverKey } from "../../../lib/driver-link";
 import { PHOTO_BUCKET, PLAN_CLIENTS, PLAN_TOURS, clientName, matchVin, patchVehicle, readClient } from "../../../lib/fleet";
 import { DEPOTS, isDepot, normVin, vehicleStage, vinDistance } from "../../../lib/shipments";
 import { plannedSchedule, tourProgress } from "../../../lib/schedule";
-import { addEvent, cleanGeo, deliverVehicle, isEventKind, listEvents, stopIndexOf } from "../../../lib/tour-live";
+import { OFFICE_KINDS, addEvent, cleanGeo, deliverVehicle, isEventKind, listEvents, stopIndexOf } from "../../../lib/tour-live";
 import type { PlanClient, PlanTour } from "../../../lib/planif";
 import { readVinPhoto } from "../conteneurs/extract";
 import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType } from "../../../lib/driver-hours";
@@ -35,13 +35,13 @@ export async function POST(req: Request) {
       q = t ? q.eq("tour_id", tour) : q.eq("status", "chargée");
       const { data: veh } = await q;
       const events = t ? await listEvents(db, [tour]) : [];
-      return NextResponse.json({ ok: true, tour: t ? { id: t.id, name: t.name, date: t.date, driver: t.driver, hubId: t.hubId, status: t.status, departTime: t.departTime || "", stops: t.stops || [], km: t.km || 0, rate: t.driverRate || DEFAULT_DRIVER_RATE, estH: estimateHours(t) } : null, clients, depots: DEPOTS, events, vehicles: (veh || []).map((v: any) => ({ ...v, has_plate: !!v.plate_photo, plate_photo: undefined, shipment: v.shipments?.name || "", stage: vehicleStage(v, v.shipments), shipments: undefined })) });
+      return NextResponse.json({ ok: true, tour: t ? { id: t.id, name: t.name, date: t.date, driver: t.driver, hubId: t.hubId, status: t.status, departTime: t.departTime || "", stops: t.stops || [], km: t.km || 0, rate: t.driverRate || DEFAULT_DRIVER_RATE, estH: estimateHours(t), closed_at: t.closed_at || null, en_route: t.en_route || [] } : null, clients, depots: DEPOTS, events, vehicles: (veh || []).map((v: any) => ({ ...v, has_plate: !!v.plate_photo, plate_photo: undefined, shipment: v.shipments?.name || "", stage: vehicleStage(v, v.shipments), shipments: undefined })) });
     }
     // Journal de tournée : départ, pause, reprise, arrivée, livraison, problème, position GPS
     if (b.action === "event") {
       if (!t) return NextResponse.json({ ok: false, error: "Ce lien n'est pas lié à une tournée." }, { status: 400 });
       const kind = b.kind;
-      if (!isEventKind(kind) || kind === "prevenir") return NextResponse.json({ ok: false, error: "Événement inconnu" }, { status: 400 });
+      if (!isEventKind(kind) || (OFFICE_KINDS as readonly string[]).includes(kind)) return NextResponse.json({ ok: false, error: "Événement inconnu" }, { status: 400 });
       const geo = cleanGeo(b);
       const stops = t.stops || [];
       const events = await listEvents(db, [tour]);

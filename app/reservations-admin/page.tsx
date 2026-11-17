@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import c from "../giga/giga.module.css";
+import Contact from "./Contact";
 
 type R = {
   id: number; created_at: string; source: string; nom: string; prenom: string; telephone: string; email: string;
@@ -12,6 +13,9 @@ const STATUTS = ["Nouvelle", "Confirmée", "Planifiée", "Livrée", "Annulée"];
 const PRIOS = ["Urgente", "Haute", "Normale", "Basse"];
 const ST_BG: Record<string, string> = { Nouvelle: "#fff4d6", Confirmée: "#e8f0fe", Planifiée: "#ede7fb", Livrée: "#e7f6ec", Annulée: "#f1f1f1" };
 const SRC: Record<string, string> = { site_devis: "Site (devis)", site_formulaire: "Site (formulaire)", manuel: "Saisie manuelle", planificateur: "Planificateur" };
+/** Modèle hors stock : tout sauf la Confort simple (Essentielle, Confort Plus…). */
+const horsStock = (m: string) => /essentiel|plus/i.test(m || "");
+const ACTIVE = ["Nouvelle", "Confirmée", "Planifiée"];
 const eur = (n: number | null) => n == null ? "—" : `${Math.round(n).toLocaleString("fr-FR")} €`;
 const fmt = (d?: string | null) => d ? new Date(d.length === 10 ? d + "T12:00:00" : d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "—";
 const code = () => { try { return sessionStorage.getItem("nd_pc") || ""; } catch { return ""; } };
@@ -31,21 +35,24 @@ export default function ReservationsAdmin() {
   const [rows, setRows] = useState<R[]>([]); const [filter, setFilter] = useState("actives");
   const [sel, setSel] = useState<Set<number>>(new Set()); const [open, setOpen] = useState<number | null>(null);
   const [edit, setEdit] = useState<Partial<R>>({}); const [add, setAdd] = useState<typeof blank | null>(null);
+  const [contact, setContact] = useState<number | null>(null); const [video, setVideo] = useState(""); const [videoDraft, setVideoDraft] = useState(""); const [showSet, setShowSet] = useState(false);
 
   const load = useCallback(async (p = code()) => {
-    try { const j = await api<{ reservations: R[] }>({ action: "list" }, p); setRows(j.reservations); setState("ready"); }
+    try { const j = await api<{ reservations: R[] }>({ action: "list" }, p); setRows(j.reservations); setState("ready"); api<{ video_url: string }>({ action: "settings" }, p).then(x => { setVideo(x.video_url || ""); setVideoDraft(x.video_url || ""); }).catch(() => null); }
     catch (e) { if (e instanceof Unauthorized) { setState("login"); throw e; } setMsg((e as Error).message); setState("ready"); }
   }, []);
   useEffect(() => { load().catch(() => null); }, [load]);
 
   const counts = useMemo(() => Object.fromEntries(STATUTS.map(s => [s, rows.filter(r => r.statut === s).length])), [rows]);
-  const shown = rows.filter(r => filter === "toutes" ? true : filter === "actives" ? !["Livrée", "Annulée"].includes(r.statut) : r.statut === filter);
+  const shown = rows.filter(r => filter === "toutes" ? true : filter === "actives" ? !["Livrée", "Annulée"].includes(r.statut) : filter === "horsstock" ? ACTIVE.includes(r.statut) && horsStock(r.modele) : r.statut === filter);
+  const enCours = rows.filter(r => ACTIVE.includes(r.statut));
   const chosen = rows.filter(r => sel.has(r.id));
 
   const run = async (fn: () => Promise<string | void>) => { setBusy(true); setMsg(""); try { const m = await fn(); await load(); if (m) setMsg(m); } catch (e) { setMsg("❌ " + (e as Error).message); } finally { setBusy(false); } };
   const save = (id: number, patch: Partial<R>) => run(async () => { await api({ action: "update", id, ...patch }); setOpen(null); return "✅ Enregistré."; });
   const toPlanner = () => run(async () => { const j = await api<{ done: number; errors: string[] }>({ action: "to_planner", ids: [...sel] }); setSel(new Set()); return `🚚 ${j.done} réservation(s) dans le planificateur.${j.errors.length ? " ⚠️ " + j.errors.join(" ; ") : ""}`; });
   const importPlanner = () => run(async () => { const j = await api<{ added: number }>({ action: "import_planner" }); return `📥 ${j.added} réservation(s) reprise(s) du planificateur.`; });
+  const logContact = (id: number, channel: string, template: string) => { api({ action: "contact_log", id, channel, template }).then(() => load()).catch(e => setMsg("❌ " + (e as Error).message)); };
   const copyList = () => { const t = (chosen.length ? chosen : shown).map(r => `${r.prenom} ${r.nom}, ${r.adresse}, ${r.code_postal} ${r.ville}, ${r.telephone}`).join("\n"); navigator.clipboard?.writeText(t).then(() => setMsg("📋 Liste copiée.")); };
 
   if (state === "loading") return <main className={c.page}><p className={c.muted} style={{ padding: 30 }}>Chargement…</p></main>;
@@ -69,6 +76,11 @@ export default function ReservationsAdmin() {
     <h1 style={{ margin: "14px 0 4px" }}>📋 Réservations clients</h1>
     <p className={c.muted}>Toutes les réservations du site arrivent ici automatiquement. Ajoutez à la main les anciennes (reçues seulement par e-mail), fixez une date promise, puis envoyez-les au planificateur.</p>
     {msg ? <p className={c.msg} style={{ fontWeight: 700 }}>{msg}</p> : null}
+    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "12px 0 0" }}>
+      {([["📋 En cours", enCours.length, "#111", "#fff", "actives"], ["🔴 Hors stock", enCours.filter(r => horsStock(r.modele)).length, "#b42318", "#fef3f2", "horsstock"], ["⚡ Urgentes", enCours.filter(r => r.priorite === "Urgente").length, "#b54708", "#fffaeb", "actives"]] as const).map(([l, n, col, bg, f]) =>
+        <button key={l} onClick={() => setFilter(f)} style={{ flex: "1 1 120px", textAlign: "left", padding: "10px 14px", borderRadius: 14, border: `1.5px solid ${col === "#111" ? "#e5e0d8" : col}`, background: bg, cursor: "pointer", font: "inherit" }}>
+          <small style={{ display: "block", color: col, fontWeight: 700 }}>{l}</small><b style={{ fontSize: 26, color: col }}>{n}</b></button>)}
+    </div>
 
     {add ? <section className={c.card} style={{ marginTop: 14, display: "grid", gap: 10 }}>
       <h2 style={{ margin: 0 }}>Nouvelle réservation</h2>
@@ -87,8 +99,17 @@ export default function ReservationsAdmin() {
       </div>
     </section> : null}
 
+    <div style={{ marginTop: 10 }}>
+      <button className={`${c.btn} ${c.btnGhost}`} style={{ padding: "6px 12px" }} onClick={() => setShowSet(!showSet)}>⚙️ Réglages{video ? "" : " (vidéo de prise en main à ajouter)"}</button>
+      {showSet ? <section className={c.card} style={{ marginTop: 8, display: "grid", gap: 8 }}>
+        <label style={{ display: "grid", gap: 4, fontSize: 14, fontWeight: 600 }}>URL de la vidéo de prise en main
+          <input className={c.input} value={videoDraft} onChange={e => setVideoDraft(e.target.value)} placeholder="https://www.youtube.com/watch?v=…" /></label>
+        <small className={c.muted}>Affichée sur la page « Préparer ma livraison » et proposée dans les messages clients. Laissez vide pour la masquer.</small>
+        <div><button className={`${c.btn} ${c.btnBrand}`} disabled={busy} onClick={() => run(async () => { const j = await api<{ video_url: string }>({ action: "set_video", url: videoDraft.trim() }); setVideo(j.video_url); return j.video_url ? "✅ Vidéo enregistrée." : "✅ Vidéo retirée."; })}>Enregistrer</button></div>
+      </section> : null}
+    </div>
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "16px 0 8px" }}>
-      {[["actives", `En cours (${rows.filter(r => !["Livrée", "Annulée"].includes(r.statut)).length})`], ...STATUTS.map(s => [s, `${s} (${counts[s] || 0})`]), ["toutes", `Toutes (${rows.length})`]].map(([k, l]) =>
+      {[["actives", `En cours (${rows.filter(r => !["Livrée", "Annulée"].includes(r.statut)).length})`], ["horsstock", `🔴 Hors stock (${enCours.filter(r => horsStock(r.modele)).length})`], ...STATUTS.map(s => [s, `${s} (${counts[s] || 0})`]), ["toutes", `Toutes (${rows.length})`]].map(([k, l]) =>
         <button key={k} className={`${c.btn} ${filter === k ? c.btnBrand : c.btnGhost}`} style={{ padding: "6px 12px" }} onClick={() => setFilter(k)}>{l}</button>)}
     </div>
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
@@ -99,7 +120,8 @@ export default function ReservationsAdmin() {
     </div>
 
     {shown.length ? <div style={{ display: "grid", gap: 10 }}>{shown.map(r => { const isOpen = open === r.id; const late = r.date_promise && r.date_promise < new Date().toISOString().slice(0, 10) && !["Livrée", "Annulée"].includes(r.statut);
-      return <section key={r.id} className={c.card} style={{ display: "grid", gap: 8, borderColor: r.priorite === "Urgente" ? "#f97066" : undefined }}>
+      const hs = horsStock(r.modele) && !["Livrée", "Annulée"].includes(r.statut);
+      return <section key={r.id} className={c.card} style={{ display: "grid", gap: 8, borderColor: hs ? "#d92d20" : r.priorite === "Urgente" ? "#f97066" : undefined, borderWidth: hs ? 2 : undefined, background: hs ? "#fef3f2" : undefined }}>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
           <input type="checkbox" checked={sel.has(r.id)} style={{ width: 20, height: 20, marginTop: 3 }} onChange={e => { const n = new Set(sel); if (e.target.checked) n.add(r.id); else n.delete(r.id); setSel(n); }} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -107,19 +129,23 @@ export default function ReservationsAdmin() {
               <span className={c.badge} style={{ background: ST_BG[r.statut] || "#eee", color: "#111" }}>{r.statut}</span>
               {r.priorite !== "Normale" ? <span className={c.badge} style={{ background: r.priorite === "Urgente" ? "#fde8e7" : r.priorite === "Haute" ? "#fff4d6" : "#f1f1f1", color: "#111" }}>{r.priorite}</span> : null}
               {r.plan_client_id ? <span className={c.badge} style={{ background: "#ede7fb", color: "#111" }}>🚚 au planificateur</span> : null}
+              {hs ? <span className={c.badge} style={{ background: "#d92d20", color: "#fff" }}>Hors stock — rappeler</span> : null}
               <b style={{ fontSize: 17 }}>{r.prenom} {r.nom}</b>
             </div>
             <div className={c.muted} style={{ marginTop: 4 }}>
-              📍 {r.ville || "—"} {r.departement ? `(${r.departement})` : ""} · 🚗 {r.modele || "—"}{r.quantite > 1 ? ` ×${r.quantite}` : ""} · 💶 {eur(r.total)}{r.acompte ? ` (acompte ${eur(r.acompte)})` : ""}
+              📍 {r.ville || "—"} {r.departement ? `(${r.departement})` : ""} · 🚗 <b style={{ color: hs ? "#b42318" : undefined }}>{r.modele || "—"}</b>{r.quantite > 1 ? ` ×${r.quantite}` : ""} · 💶 {eur(r.total)}{r.acompte ? ` (acompte ${eur(r.acompte)})` : ""}
             </div>
+            {(() => { const last = (r.notes || "").split("\n").filter(l => l.startsWith("💬")).pop(); return last ? <div className={c.muted} style={{ fontSize: 13 }}>Dernier contact : {last.slice(2).trim()}</div> : null; })()}
             <div className={c.muted}>Réservé le {fmt(r.created_at)} · Date promise : <b style={{ color: late ? "#b42318" : undefined }}>{fmt(r.date_promise)}{late ? " (dépassée)" : ""}</b></div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
               {r.telephone ? <a className={`${c.btn} ${c.btnGhost}`} href={`tel:${r.telephone}`}>📞 {r.telephone}</a> : null}
               {r.telephone ? <a className={`${c.btn} ${c.btnGhost}`} target="_blank" rel="noreferrer" href={`https://wa.me/${r.telephone.replace(/[^\d]/g, "").replace(/^0/, "33")}`}>💬 WhatsApp</a> : null}
+              {r.telephone ? <button className={`${c.btn} ${c.btnBrand}`} onClick={() => setContact(contact === r.id ? null : r.id)}>💬 Contacter</button> : null}
               <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { setOpen(isOpen ? null : r.id); setEdit({ statut: r.statut, priorite: r.priorite, date_promise: r.date_promise, acompte: r.acompte, notes: r.notes }); }}>{isOpen ? "Fermer" : "✏️ Modifier"}</button>
             </div>
           </div>
         </div>
+        {contact === r.id ? <Contact r={r} hs={hs} video={video} onSent={(ch, t) => logContact(r.id, ch, t)} onClose={() => setContact(null)} /> : null}
         {isOpen ? <div style={{ display: "grid", gap: 10, borderTop: "1px solid #eee", paddingTop: 10 }}>
           <div className={c.muted}>{r.adresse} {r.code_postal} {r.ville}{r.email ? ` · ${r.email}` : ""} · Source : {SRC[r.source] || r.source}{r.delivery_price != null ? ` · Livraison ${eur(r.delivery_price)}` : ""}{r.options ? ` · ${r.options}` : ""}</div>
           <div style={grid}>

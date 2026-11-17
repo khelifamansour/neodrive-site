@@ -66,6 +66,11 @@ function Driver() {
   return <main className={s.page} style={{ maxWidth: 560 }}>
     <div className={s.top}><div><h1>🚚 {data.tour ? data.tour.name || "Tournée" : "Chargement / livraison"}</h1><p>{data.tour ? `${data.tour.date || ""} · ${data.tour.driver || ""} · ` : ""}{loaded.length} chargé(s) · {delivered.length} livré(s)</p></div></div>
     {msg ? <p className={msg.startsWith("❌") || msg.startsWith("⚠️") ? s.err : s.ok}>{msg}</p> : null}
+    {data.tour?.closed_at ? <section className={s.card} style={{ borderColor: "#f4b740", background: "#fffaeb" }}>
+      <b>🔒 Tournée clôturée</b>
+      <p className={s.muted}>La liste des clients est figée. Un client ne peut être ajouté qu’en cours de route, par NeoDrive, avec votre accord.</p>
+      {(data.tour.en_route || []).length ? <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>{(data.tour.en_route as { clientId: string; note: string; at: string }[]).map(e => { const c = data.clients.find(x => x.id === e.clientId); return <li key={e.clientId + e.at}><b>➕ {c ? c.name : "Client ajouté"}</b>{c ? ` · ${c.adresse}` : ""} — {e.note}</li>; })}</ul> : null}
+    </section> : null}
     {data.tour ? <TourDay data={{ tour: data.tour, clients: data.clients, vehicles: data.vehicles, events: data.events || [] }} call={call} upload={uploadPhoto} reload={load} onMsg={setMsg} deliverId={deliverId} setDeliverId={setDeliverId} /> : null}
 
     <section className={s.card}>

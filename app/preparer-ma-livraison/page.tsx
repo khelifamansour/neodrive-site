@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import s from "./livraison.module.css";
 
 const RIB: [string, string][] = [["Bénéficiaire", "MK HOLDING"], ["IBAN", "FR76 2823 3000 0142 1307 1051 008"], ["BIC", "REVOFRP2"]];
@@ -17,6 +17,8 @@ const DRIVE = [
 
 export default function PreparerLivraison() {
   const [copied, setCopied] = useState("");
+  const [video, setVideo] = useState("");
+  useEffect(() => { fetch("/api/reservations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "video_url" }) }).then(r => r.json()).then(j => { if (j?.url) setVideo(j.url); }).catch(() => null); }, []);
   const copy = async (k: string, v: string) => { try { await navigator.clipboard.writeText(v.replace(/ /g, k === "IBAN" ? "" : " ")); setCopied(k); setTimeout(() => setCopied(""), 1500); } catch { /* ignore */ } };
   return (
     <main className={s.page}>
@@ -92,6 +94,11 @@ export default function PreparerLivraison() {
       </section>
 
       {/* BATTERIE */}
+      {video ? <section className={s.card}>
+        <header className={s.head}><span className={s.num}>🎥</span><div><h2>Vidéo de prise en main</h2><p>Quelques minutes pour tout comprendre avant de rouler.</p></div></header>
+        <a href={video} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, padding: "12px 18px", borderRadius: 12, background: "#f05a28", color: "#fff", fontWeight: 800, textDecoration: "none" }}>▶️ Regarder la vidéo</a>
+      </section> : null}
+
       <section className={s.card}>
         <header className={s.head}><span className={s.num}>🔋</span><div><h2>Lire la batterie à l’écran</h2><p>Quelques repères simples.</p></div></header>
         <div className={s.split}>

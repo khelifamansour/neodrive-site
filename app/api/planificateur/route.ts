@@ -134,6 +134,12 @@ export async function POST(req: Request) {
       const t = b.tour as PlanTour;
       if (!t?.id || !Array.isArray(t.clientIds)) return NextResponse.json({ ok: false, error: "Tournée invalide" }, { status: 400 });
       const prev = await readJson<PlanTour>(sb, `${T}/${t.id}.json`);
+      // Tournée clôturée : pas d'ajout libre (seulement « ajouter en cours de route »).
+      if (prev?.closed_at) {
+        const before = new Set(prev.clientIds);
+        if (t.clientIds.some(id => !before.has(id))) return NextResponse.json({ ok: false, error: "Tournée clôturée : utilisez « Ajouter en cours de route »." }, { status: 409 });
+        t.closed_at = prev.closed_at; t.en_route = prev.en_route || []; t.stops = t.stops || prev.stops;
+      }
       const validating = t.status === "valide" && prev?.status !== "valide";
       if (validating && !t.stops?.length) return NextResponse.json({ ok: false, error: "Calculez la tournée avant de la valider." }, { status: 400 });
       const ids = new Set(t.clientIds);
@@ -148,6 +154,59 @@ export async function POST(req: Request) {
       }
       await writeJson(sb, `${T}/${t.id}.json`, t);
       return NextResponse.json({ ok: true, hubs: await readHubs(sb) });
+    }
+    // ── Clôture de la tournée et ajouts en cours de route
+    if (b.action === "close_tour" || b.action === "reopen_tour") {
+      const t = await readJson<PlanTour>(sb, `${T}/${clean(b.id, 80)}.json`);
+      if (!t) return NextResponse.json({ ok: false, error: "Tournée introuvable" }, { status: 404 });
+      if (b.action === "reopen_tour") {
+        if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Réservé au fondateur." }, { status: 403 });
+        t.closed_at = null;
+      } else {
+        if (t.status === "brouillon") return NextResponse.json({ ok: false, error: "Validez la tournée avant de la clôturer." }, { status: 400 });
+        if (!t.closed_at) { t.closed_at = new Date().toISOString(); await addEvent(sb, { tour_id: t.id, kind: "cloture", note: "Liste des clients figée : ajout seulement en cours de route.", author: acc.name }); }
+      }
+      await writeJson(sb, `${T}/${t.id}.json`, t);
+      return NextResponse.json({ ok: true, tour: t });
+    }
+    if (b.action === "add_en_route") {
+      const t = await readJson<PlanTour>(sb, `${T}/${clean(b.id, 80)}.json`);
+      if (!t) return NextResponse.json({ ok: false, error: "Tournée introuvable" }, { status: 404 });
+      if (!t.closed_at) return NextResponse.json({ ok: false, error: "La tournée n'est pas clôturée : ajoutez le client normalement." }, { status: 400 });
+      const note = clean(b.note, 300);
+      if (note.length < 3) return NextResponse.json({ ok: false, error: "Expliquez l'ajout (ex. : client sur la route, accord du livreur)." }, { status: 400 });
+      const cid = clean(b.client_id, 80);
+      const c = await readJson<PlanClient>(sb, `${C}/${cid}.json`);
+      if (!c) return NextResponse.json({ ok: false, error: "Client introuvable" }, { status: 404 });
+      if (c.status === "livre") return NextResponse.json({ ok: false, error: "Client déjà livré." }, { status: 400 });
+      if (t.clientIds.includes(cid)) return NextResponse.json({ ok: false, error: "Client déjà dans la tournée." }, { status: 400 });
+      t.clientIds = [...t.clientIds, cid];
+      const stop = { kind: "client" as const, id: c.id, name: `${c.prenom} ${c.nom}`.trim(), label: `${c.adresse ? c.adresse + ", " : ""}${c.code_postal} ${c.ville}`, lat: c.lat, lng: c.lng, load: 0, action: `Ajouté en cours de route : ${note}`, phone: c.telephone || undefined, address: c.adresse || undefined };
+      const stops = [...(t.stops || [])];
+      // Avant le retour final au dépôt, s'il y en a un.
+      const last = stops[stops.length - 1];
+      if (last && last.kind === "depot") stops.splice(stops.length - 1, 0, stop); else stops.push(stop);
+      t.stops = stops;
+      t.en_route = [...(t.en_route || []), { clientId: cid, note, at: new Date().toISOString(), by: acc.name }];
+      c.tour_id = t.id; c.status = "planifie"; c.retour = false;
+      await writeJson(sb, `${C}/${c.id}.json`, c);
+      await writeJson(sb, `${T}/${t.id}.json`, t);
+      await addEvent(sb, { tour_id: t.id, kind: "ajout", client_id: cid, stop_index: stops.indexOf(stop), note: `${stop.name} (${c.code_postal} ${c.ville}) : ${note}`, author: acc.name });
+      return NextResponse.json({ ok: true, tour: t });
+    }
+    if (b.action === "mark_retour") {
+      const cid = clean(b.client_id, 80);
+      const c = await readJson<PlanClient>(sb, `${C}/${cid}.json`);
+      if (!c) return NextResponse.json({ ok: false, error: "Client introuvable" }, { status: 404 });
+      if (c.status === "livre") return NextResponse.json({ ok: false, error: "Client déjà livré." }, { status: 400 });
+      const from = c.tour_id ? await readJson<PlanTour>(sb, `${T}/${c.tour_id}.json`) : null;
+      c.retour = true; c.status = "a_planifier"; c.tour_id = null;
+      const tag = `À livrer au retour${from ? ` (non livré pendant « ${from.name} »)` : ""}`;
+      if (!(c.note || "").includes("À livrer au retour")) c.note = [c.note, tag].filter(Boolean).join(" · ");
+      await writeJson(sb, `${C}/${c.id}.json`, c);
+      // Retiré de la liste de la tournée (l'arrêt reste dans l'itinéraire déjà parcouru).
+      if (from) { from.clientIds = from.clientIds.filter(x => x !== cid); await writeJson(sb, `${T}/${from.id}.json`, from); }
+      return NextResponse.json({ ok: true });
     }
     // ── Planning : heure (et date) de départ, modifiable même après validation
     if (b.action === "tour_depart") {

@@ -11,13 +11,15 @@ export type PlanClient = Point & {
   token?: string; received_at?: string; received_by?: string; reception_note?: string;
   /** Heure à laquelle le livreur a appuyé sur « Livré ». */
   delivered_at?: string;
+  /** Non livré pendant sa tournée : à livrer au retour (ou lors d'une prochaine tournée). */
+  retour?: boolean;
 };
 export type Stop = { kind: "depot" | "client"; id: string; name: string; label: string; lat: number; lng: number; load: number; loaded?: number; action: string; phone?: string; address?: string; legKm?: number; legH?: number };
 export type Fuel = "gazole" | "e10" | "sp95" | "e85" | "gpl";
 export const FUELS: { id: Fuel; label: string; conso: number; price: number }[] = [
   { id: "gazole", label: "Gazole (Duster dCi)", conso: 13, price: 1.65 },
-  { id: "e10", label: "Essence SP95-E10", conso: 15, price: 1.75 },
-  { id: "sp95", label: "Essence SP95", conso: 15, price: 1.8 },
+  { id: "e10", label: "Essence SP95-E10", conso: 12.5, price: 2.03 },
+  { id: "sp95", label: "Essence SP95", conso: 12.5, price: 2.1 },
   { id: "e85", label: "Éthanol E85", conso: 19, price: 0.85 },
   { id: "gpl", label: "GPL (Duster Eco-G)", conso: 18, price: 1.0 },
 ];
@@ -32,6 +34,10 @@ export type PlanTour = {
   departTime?: string;
   /** Taux horaire du chauffeur indépendant (€/h, TVA non applicable) ; 25 € par défaut. */
   driverRate?: number;
+  /** Tournée clôturée : plus d'ajout libre, seulement « ajouter en cours de route ». */
+  closed_at?: string | null;
+  /** Clients ajoutés en cours de route après la clôture. */
+  en_route?: { clientId: string; note: string; at: string; by: string }[];
 };
 
 export const DEFAULT_HUBS: Hub[] = [
@@ -43,7 +49,7 @@ export const TRAILERS = [
   { value: 2, label: "Grande remorque (2 voitures)" },
   { value: 3, label: "Les deux remorques (3 voitures)" },
 ];
-export const DEFAULT_PARAMS: CostParams = { fuel: "gazole", consumption: 13, fuelPrice: 1.65, tollPerKm: 0.09, hourlyRate: 25, mealPerDay: 30, hotelPerNight: 70, hoursPerDay: 9, mode: "carte" };
+export const DEFAULT_PARAMS: CostParams = { fuel: "e10", consumption: 12.5, fuelPrice: 2.03, tollPerKm: 0.09, hourlyRate: 25, mealPerDay: 30, hotelPerNight: 65, hoursPerDay: 9, mode: "carte" };
 
 export function haversineKm(a: Point, b: Point) {
   const R = 6371, toRad = (x: number) => (x * Math.PI) / 180;

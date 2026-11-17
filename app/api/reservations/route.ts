@@ -7,6 +7,7 @@ import { cleanReservation, saveReservation, type Reservation } from "../../../li
 import { normalizePhone } from "../../../lib/crm-agent";
 
 export const dynamic = "force-dynamic";
+const VIDEO_KEY = "prise_en_main_video_url";
 export const maxDuration = 60;
 
 // Limite simple par adresse IP (formulaire public)
@@ -37,9 +38,40 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, id: saved.id });
     }
 
+    // ── Public : vidéo de prise en main (page « préparer ma livraison »)
+    if (b.action === "video_url") {
+      const { data } = await sb.from("marketing_settings").select("value").eq("key", VIDEO_KEY).maybeSingle();
+      const url = (data?.value as { url?: string } | null)?.url || "";
+      return NextResponse.json({ ok: true, url: /^https:\/\//.test(url) ? url : "" });
+    }
     const acc = await authorizeSection(req, b.passcode, "tournees");
     if (!acc) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
 
+    if (b.action === "settings") {
+      const { data } = await sb.from("marketing_settings").select("value").eq("key", VIDEO_KEY).maybeSingle();
+      return NextResponse.json({ ok: true, video_url: (data?.value as { url?: string } | null)?.url || "" });
+    }
+    if (b.action === "set_video") {
+      if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Réservé au fondateur." }, { status: 403 });
+      const url = String(b.url || "").trim().slice(0, 500);
+      if (url && !/^https:\/\/\S+$/.test(url)) return NextResponse.json({ ok: false, error: "Adresse invalide (elle doit commencer par https://)." }, { status: 400 });
+      const { error } = await sb.from("marketing_settings").upsert({ key: VIDEO_KEY, value: { url }, description: "Vidéo de prise en main (page préparer ma livraison, message client)", updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (error) throw new Error(error.message);
+      return NextResponse.json({ ok: true, video_url: url });
+    }
+    if (b.action === "contact_log") {
+      const id = Number(b.id); if (!id) return NextResponse.json({ ok: false, error: "id manquant" }, { status: 400 });
+      const { data: r } = await sb.from("reservations").select("notes,raw").eq("id", id).single();
+      const at = new Date();
+      const channel = b.channel === "sms" ? "SMS" : "WhatsApp";
+      const tpl = String(b.template || "").slice(0, 60);
+      const line = `💬 ${at.toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })} ${at.toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" })} : ${channel} « ${tpl} » (${acc.name})`;
+      const raw = (r?.raw && typeof r.raw === "object" ? r.raw : {}) as Record<string, unknown>;
+      const contacts = Array.isArray(raw.contacts) ? raw.contacts : [];
+      await sb.from("reservations").update({ notes: [r?.notes, line].filter(Boolean).join("\n"), raw: { ...raw, contacts: [...contacts, { at: at.toISOString(), channel, template: tpl, by: acc.name }] }, updated_at: at.toISOString() }).eq("id", id);
+      await logSection(acc, "reservation_contact", { id, channel, template: tpl });
+      return NextResponse.json({ ok: true });
+    }
     if (b.action === "list") {
       const { data, error } = await sb.from("reservations").select("*").order("created_at", { ascending: false }).limit(1000);
       if (error) throw new Error(error.message);
