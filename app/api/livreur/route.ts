@@ -3,12 +3,13 @@ import { authorizeSection, logSection } from "../../../lib/access";
 import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { listJson } from "../../../lib/datastore";
-import { PLAN_TOURS } from "../../../lib/fleet";
+import { PLAN_CLIENTS, PLAN_TOURS } from "../../../lib/fleet";
 import { driverKey } from "../../../lib/driver-link";
 import { brevoReady, sendEmail, sendSms } from "../../../lib/brevo";
 import { newCode, sha } from "../../../lib/team";
 import { CONTRACT_VERSION, DOC_KINDS, DRIVER_BUCKET, REQUIRED_DOCS, isDocKind } from "../../../lib/driver-docs";
-import type { PlanTour } from "../../../lib/planif";
+import { roadKm, splitTrips, type PlanClient, type PlanTour, type Stop } from "../../../lib/planif";
+import { estimateHours } from "../../../lib/driver-hours";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -33,6 +34,33 @@ const isMine = (t: PlanTour, name: string | null) => {
   const first = name.trim().split(/\s+/)[0]?.toLowerCase() || "";
   return !!first && String(t.driver || "").toLowerCase().includes(first);
 };
+
+
+/**
+ * Vue livreur d'une tournée (lecture seule) : voyages, prénom + ville de chaque client, km et heures estimées.
+ * Jamais de prix ni de coûts. Tournée prévisionnelle (brouillon) : ni adresse ni téléphone, positions arrondies (~1 km).
+ */
+function driverPlan(t: PlanTour, clients: Map<string, PlanClient>) {
+  const draft = t.status === "brouillon";
+  const stops: Stop[] = (t.stops || []).map(s => {
+    if (s.kind !== "client") return { kind: "depot", id: s.id, name: s.name, label: s.name, lat: s.lat, lng: s.lng, load: s.load, loaded: s.loaded, action: s.action, legKm: s.legKm, legH: s.legH };
+    const c = clients.get(s.id);
+    const who = c ? `${c.prenom || c.nom}`.trim() : s.name.split(" ")[0];
+    const ville = c ? `${c.code_postal ? c.code_postal.slice(0, 2) + " · " : ""}${c.ville}` : "";
+    const r = (x: number) => draft ? Math.round(x * 100) / 100 : x;
+    return { kind: "client", id: s.id, name: who, label: ville, lat: r(s.lat), lng: r(s.lng), load: s.load, action: s.action, legKm: s.legKm, legH: s.legH };
+  });
+  const trips = splitTrips(stops).map(v => {
+    const legs = [...v.clients, ...(v.next ? [v.next] : [])];
+    const drive = legs.every(x => x.legH) ? legs.reduce((a, x) => a + (x.legH || 0), 0) : v.km / 72;
+    const hours = drive + v.clients.length * 0.75 + (v.hub.loaded ? 0.5 : 0);
+    return { n: v.n, color: v.color, hub: v.hub.name, action: v.hub.action, clients: v.clients.map(x => ({ id: x.id, name: x.name, ville: x.label })), next: v.next ? v.next.name : null, km: Math.round(v.km || legs.reduce((a, x, i) => a + roadKm(i ? legs[i - 1] : v.hub, x), 0)), hours: Math.round(hours * 10) / 10 };
+  });
+  const hours = Math.round(estimateHours(t) * 10) / 10;
+  const days = Math.max(1, Math.ceil(hours / 9));
+  const end = t.date ? new Date(new Date(t.date + "T12:00:00").getTime() + (days - 1) * 86400e3).toISOString().slice(0, 10) : null;
+  return { draft, stops, trips, km: t.km || Math.round(trips.reduce((a, v) => a + v.km, 0)), hours, days, end };
+}
 
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, unknown>;
@@ -96,8 +124,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, reservations: data || [] });
     }
     if (b.action === "tours") {
-      const tours = (await listJson<PlanTour>(db, PLAN_TOURS)).filter(t => t.status !== "brouillon" && isMine(t, name)).sort((a, z) => String(z.date).localeCompare(String(a.date))).slice(0, 30);
-      return NextResponse.json({ ok: true, tours: tours.map(t => { const k = driverKey(t.id); return { id: t.id, name: t.name, date: t.date, driver: t.driver, status: t.status, clients: t.clientIds.length, km: t.km || 0, closed_at: t.closed_at || null, en_route: (t.en_route || []).length, link: k ? `/chauffeur?k=${encodeURIComponent(k)}` : null }; }) });
+      const tours = (await listJson<PlanTour>(db, PLAN_TOURS)).filter(t => isMine(t, name) && (t.status !== "brouillon" || (t.stops?.length ?? 0) > 0)).sort((a, z) => String(a.date).localeCompare(String(z.date))).slice(0, 30);
+      const need = new Set(tours.flatMap(t => t.clientIds));
+      const clients = new Map((need.size ? await listJson<PlanClient>(db, PLAN_CLIENTS) : []).filter(c => need.has(c.id)).map(c => [c.id, c]));
+      return NextResponse.json({ ok: true, tours: tours.map(t => { const k = t.status === "brouillon" ? null : driverKey(t.id); return { id: t.id, name: t.name, date: t.date, departTime: t.departTime || "", driver: t.driver, status: t.status, clients: t.clientIds.length, km: t.km || 0, closed_at: t.closed_at || null, en_route: (t.en_route || []).length, link: k ? `/chauffeur?k=${encodeURIComponent(k)}` : null, plan: driverPlan(t, clients) }; }) });
     }
     if (!memberId) return NextResponse.json({ ok: false, error: "Le dépôt de documents se fait depuis le compte du livreur." }, { status: 403 });
 

@@ -4,11 +4,16 @@ import c from "../giga/giga.module.css";
 import { supabase } from "../../lib/supabase";
 import { DOC_STATUS_LABEL } from "../../lib/driver-docs";
 import Contract from "./Contract";
+import TourMap from "../planificateur/TourMap";
+import type { Stop } from "../../lib/planif";
 
 type DocInfo = { status: string; filename?: string | null; uploaded_at?: string; note?: string | null; signed_name?: string | null; signed_at?: string | null };
 type Me = { who: "owner" | "member"; name: string; kinds: { id: string; label: string; hint: string }[]; required: string[]; docs: Record<string, DocInfo> };
 type Res = { id: number; prenom: string; nom: string; ville: string; code_postal: string; departement: string; telephone: string; statut: string; date_promise: string | null; modele: string; priorite: string };
-type Tour = { id: string; name: string; date: string; driver: string; status: string; clients: number; km: number; closed_at: string | null; en_route: number; link: string | null };
+type Trip = { n: number; color: string; hub: string; action: string; clients: { id: string; name: string; ville: string }[]; next: string | null; km: number; hours: number };
+type Plan = { draft: boolean; stops: Stop[]; trips: Trip[]; km: number; hours: number; days: number; end: string | null };
+type Tour = { id: string; name: string; date: string; departTime: string; driver: string; status: string; clients: number; km: number; closed_at: string | null; en_route: number; link: string | null; plan: Plan };
+const hm = (h: number) => { const m = Math.round(h * 60); return `${Math.floor(m / 60)} h${m % 60 ? String(m % 60).padStart(2, "0") : ""}`; };
 
 const pc = () => { try { return sessionStorage.getItem("nd_pc") || ""; } catch { return ""; } };
 class Unauthorized extends Error {}
@@ -28,6 +33,7 @@ export default function Livreur() {
   const [me, setMe] = useState<Me | null>(null); const [res, setRes] = useState<Res[]>([]); const [tours, setTours] = useState<Tour[]>([]);
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
   const [sign, setSign] = useState(""); const [accept, setAccept] = useState(false);
+  const [mapOf, setMapOf] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -78,15 +84,30 @@ export default function Livreur() {
     </div>
 
     {tab === "tournees" ? <div style={{ display: "grid", gap: 10 }}>
-      {tours.length ? tours.map(t => <section key={t.id} className={c.card} style={{ display: "grid", gap: 6 }}>
+      {tours.length ? tours.map(t => { const p = t.plan; return <section key={t.id} className={c.card} style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <b style={{ fontSize: 17 }}>{t.name}</b>
-          <span className={c.badge} style={{ background: t.status === "termine" ? "#e7f6ec" : "#e8f0fe", color: "#111" }}>{t.status === "termine" ? "Terminée" : "Validée"}</span>
+          {p.draft ? <span className={c.badge} style={{ background: "#fef0c7", color: "#93370d" }}>Prévisionnel — peut évoluer</span>
+            : <span className={c.badge} style={{ background: t.status === "termine" ? "#e7f6ec" : "#e8f0fe", color: "#111" }}>{t.status === "termine" ? "Terminée" : "Validée"}</span>}
           {t.closed_at ? <span className={c.badge} style={{ background: "#fef0c7", color: "#93370d" }}>🔒 Clôturée</span> : null}
         </div>
-        <div className={c.muted}>{fmt(t.date)} · {t.clients} client{t.clients > 1 ? "s" : ""}{t.km ? ` · ${t.km} km` : ""}{t.en_route ? ` · ➕ ${t.en_route} ajout(s) en cours de route` : ""}</div>
+        <div className={c.muted}>📅 {p.draft ? "Vers le " : ""}{fmt(t.date)}{p.end && p.end !== t.date ? ` → ${fmt(p.end)}` : ""}{t.departTime ? ` · départ ${t.departTime.replace(":", "h")}` : ""}</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {[`👥 ${t.clients} client${t.clients > 1 ? "s" : ""}`, `🛣️ ≈ ${p.km.toLocaleString("fr-FR")} km`, `⏱️ ≈ ${hm(p.hours)} de travail`, `🗓️ ≈ ${p.days} jour${p.days > 1 ? "s" : ""}`, `🔁 ${p.trips.length} voyage${p.trips.length > 1 ? "s" : ""}`].map(x => <span key={x} className={c.badge} style={{ background: "#f1f1f1", color: "#111" }}>{x}</span>)}
+        </div>
+        <div style={{ display: "grid", gap: 6 }}>
+          {p.trips.map(v => <div key={v.n} style={{ borderLeft: `5px solid ${v.color}`, background: "#fafafa", borderRadius: 10, padding: "8px 10px", display: "grid", gap: 3 }}>
+            <b>Voyage {v.n} · ≈ {v.km.toLocaleString("fr-FR")} km · ≈ {hm(v.hours)}</b>
+            <small className={c.muted}>📦 {v.hub} : {v.action}</small>
+            {v.clients.map((x, i) => <span key={x.id}>{i + 1}. 🚗 {x.name}{x.ville ? ` — ${x.ville}` : ""}</span>)}
+            {v.next ? <small className={c.muted}>➡️ Ensuite : {v.next}</small> : null}
+          </div>)}
+        </div>
+        {p.stops.length ? <button className={`${c.btn} ${c.btnGhost}`} onClick={() => setMapOf(mapOf === t.id ? "" : t.id)}>{mapOf === t.id ? "Masquer la carte" : "🗺️ Voir la carte"}</button> : null}
+        {mapOf === t.id ? <TourMap stops={p.stops} /> : null}
+        {p.draft ? <small className={c.muted}>Tournée prévisionnelle : clients, dates et ordre peuvent changer. Les adresses et téléphones apparaîtront quand la tournée sera validée.</small> : null}
         {t.link ? <a className={`${c.btn} ${c.btnBrand}`} href={t.link} style={{ textAlign: "center", textDecoration: "none" }}>Ouvrir la tournée (chargement, livraisons, heures)</a> : null}
-      </section>) : <p className={c.muted}>Aucune tournée validée à votre nom pour l’instant.</p>}
+      </section>; }) : <p className={c.muted}>Aucune tournée à votre nom pour l’instant.</p>}
     </div> : null}
 
     {tab === "reservations" ? <div style={{ display: "grid", gap: 8 }}>
