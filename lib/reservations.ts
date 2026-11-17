@@ -1,6 +1,8 @@
 /** Réservations clients : enregistrement en base + lien avec la fiche prospect. Serveur uniquement. */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { after } from "next/server";
 import { normalizePhone } from "./crm-agent";
+import { confirmReservation } from "./reservation-confirm";
 
 export const RES_STATUTS = ["Nouvelle", "Confirmée", "Planifiée", "Livrée", "Annulée"] as const;
 export const RES_PRIORITES = ["Urgente", "Haute", "Normale", "Basse"] as const;
@@ -12,8 +14,11 @@ export type Reservation = {
   modele: string; couleur: string; quantite: number; options: string;
   delivery_price: number | null; total: number | null; message: string;
   statut: string; date_promise: string | null; acompte: number | null; priorite: string; notes: string;
-  lead_id: number | null; plan_client_id: string | null;
+  lead_id: number | null; plan_client_id: string | null; confirm?: Record<string, unknown> | null;
 };
+
+/** Réservations faites par le client lui-même sur le site : elles déclenchent la confirmation automatique. */
+const PUBLIC_SOURCES = new Set(["site_devis", "site_formulaire"]);
 
 const s = (v: unknown, n = 200) => String(v ?? "").trim().slice(0, n);
 const num = (v: unknown) => { const n = Number(String(v ?? "").replace(/[^\d.,-]/g, "").replace(",", ".")); return Number.isFinite(n) && String(v ?? "").trim() !== "" ? n : null; };
@@ -61,5 +66,10 @@ export async function saveReservation(sb: SupabaseClient, b: Record<string, unkn
   try { lead_id = await linkLead(sb, r, source); } catch (e) { console.error("[RESERVATIONS] lead", e); }
   const { data, error } = await sb.from("reservations").insert({ ...r, source, lead_id, plan_client_id: extra.plan_client_id ?? null }).select().single();
   if (error) throw new Error(error.message);
+  // Confirmation immédiate au client (SMS, e-mail, WhatsApp) + alerte fondateur, après la réponse : ne bloque jamais la réservation.
+  if (PUBLIC_SOURCES.has(source)) {
+    const run = () => confirmReservation(sb, data as Reservation).catch(e => console.error("[RESERVATIONS] confirmation", e));
+    try { after(run); } catch { await run(); }
+  }
   return data as Reservation;
 }
