@@ -56,20 +56,19 @@ export default function MetaRealistePage() {
 
     <section className={c.section}>
       <h2 className={c.h2}>⚖️ Les scénarios comparés (année 2027)</h2>
-      <div className={c.tableWrap}><table className={c.table}>
-        <thead><tr><th>Scénario</th><th>Ventes</th><th>Chiffre d’affaires HT</th><th>Marge</th><th>Bénéfice avant impôt</th><th>Caisse la plus basse</th><th>Caisse fin 2027</th><th>Si tout va 30 % plus mal</th></tr></thead>
-        <tbody>{d.scenarios.map(x => <tr key={x.id} onClick={() => setSid(x.id)} style={{ cursor: "pointer", background: x.id === sid ? "#fff7ed" : undefined }}>
-          <td><b>{x.id === "recommande" ? "⭐ " : ""}{x.nom}</b></td>
-          <td className={c.num}>{x.res.ventes2027}</td><td className={c.num}>{k(x.res.ca2027)}</td><td className={c.num}>{k(x.res.marge2027)}</td>
-          <td className={c.num}><b>{k(x.res.benefice2027)}</b></td><td className={c.num}>{eur(x.res.caisseMin)}</td><td className={c.num}>{k(x.res.caisseFin)}</td>
-          <td className={c.num} style={{ color: x.stress.caisseMin < 0 ? "#b42318" : undefined }}>{k(x.stress.benefice)} · caisse mini {eur(x.stress.caisseMin)}</td>
-        </tr>)}</tbody>
-      </table></div>
-      <p className={c.small} style={{ marginTop: 8 }}>« 30 % plus mal » : ventes et partenaires −30 %, fret/douane/logistique +30 %, SAV ×1,3 et pas de hausse à 5 490 €. Le bénéfice ne compte pas l’impôt sur les sociétés. Touchez une ligne pour voir son plan.</p>
+      <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>{d.scenarios.map(x => <button key={x.id} type="button" onClick={() => setSid(x.id)} style={{ textAlign: "left", border: x.id === sid ? "3px solid #f97316" : "1px solid #e5e7eb", borderRadius: 14, padding: 14, background: x.id === sid ? "#fff7ed" : "#fff", cursor: "pointer", font: "inherit", color: "inherit" }}>
+        <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>{x.id === "recommande" ? "⭐ " : ""}{x.nom}{x.id === sid ? " — affiché en dessous" : ""}</div>
+        <div>Ventes 2027 : <b>{x.res.ventes2027}</b></div>
+        <div>Chiffre d’affaires HT : <b>{k(x.res.ca2027)}</b></div>
+        <div>Bénéfice avant impôt : <b style={{ fontSize: 18 }}>{k(x.res.benefice2027)}</b></div>
+        <div>Caisse la plus basse : {eur(x.res.caisseMin)} · fin 2027 : {k(x.res.caisseFin)}</div>
+        <div style={{ color: x.stress.caisseMin < 0 ? "#b42318" : "#5b6573", fontSize: 14, marginTop: 4 }}>Si tout va 30 % plus mal : {k(x.stress.benefice)}, caisse mini {eur(x.stress.caisseMin)}</div>
+      </button>)}</div>
+      <p className={c.small} style={{ marginTop: 8 }}>« 30 % plus mal » : ventes et partenaires −30 %, fret/douane/logistique +30 %, SAV ×1,3 et pas de hausse à 5 490 €. Le bénéfice ne compte pas l’impôt sur les sociétés. Touchez un scénario pour afficher son détail juste en dessous.</p>
     </section>
 
     <section className={c.section}>
-      <h2 className={c.h2}>{s.id === "recommande" ? "⭐ " : ""}{s.nom}</h2>
+      <h2 className={c.h2}>Détail du scénario : {s.id === "recommande" ? "⭐ " : ""}{s.nom}</h2>
       <p className={c.muted} style={{ marginBottom: 12 }}>{s.resume}</p>
       <div className={c.stats}>
         <div className={c.stat}><p className={c.statLabel}>Ventes 2027</p><p className={c.statValue}>{r.ventes2027}</p><p className={c.statNote}>{Object.entries(r.ventesParLigne).filter(([, v]) => v > 0).map(([id, v]) => `${name(id)} ${v}`).join(" · ")}</p></div>
