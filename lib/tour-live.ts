@@ -5,7 +5,7 @@ import { PLAN_CLIENTS, patchVehicle, readClient } from "./fleet";
 import type { PlanTour } from "./planif";
 import type { TourEvent } from "./schedule";
 
-export const EVENT_KINDS = ["depart", "pause", "reprise", "arrive", "livre", "probleme", "position", "prevenir"] as const;
+export const EVENT_KINDS = ["depart", "pause", "reprise", "arrive", "livre", "probleme", "position", "prevenir", "debut_jour", "fin_jour", "correction", "frais"] as const;
 export type EventKind = typeof EVENT_KINDS[number];
 export const isEventKind = (k: unknown): k is EventKind => EVENT_KINDS.includes(k as EventKind);
 /** Durée de conservation des positions GPS. */

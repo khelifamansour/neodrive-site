@@ -8,6 +8,7 @@ import { plannedSchedule, tourProgress } from "../../../lib/schedule";
 import { addEvent, cleanGeo, deliverVehicle, isEventKind, listEvents, stopIndexOf } from "../../../lib/tour-live";
 import type { PlanClient, PlanTour } from "../../../lib/planif";
 import { readVinPhoto } from "../conteneurs/extract";
+import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType } from "../../../lib/driver-hours";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
       q = t ? q.eq("tour_id", tour) : q.eq("status", "chargée");
       const { data: veh } = await q;
       const events = t ? await listEvents(db, [tour]) : [];
-      return NextResponse.json({ ok: true, tour: t ? { id: t.id, name: t.name, date: t.date, driver: t.driver, hubId: t.hubId, status: t.status, departTime: t.departTime || "", stops: t.stops || [], km: t.km || 0 } : null, clients, depots: DEPOTS, events, vehicles: (veh || []).map((v: any) => ({ ...v, has_plate: !!v.plate_photo, plate_photo: undefined, shipment: v.shipments?.name || "", stage: vehicleStage(v, v.shipments), shipments: undefined })) });
+      return NextResponse.json({ ok: true, tour: t ? { id: t.id, name: t.name, date: t.date, driver: t.driver, hubId: t.hubId, status: t.status, departTime: t.departTime || "", stops: t.stops || [], km: t.km || 0, rate: t.driverRate || DEFAULT_DRIVER_RATE, estH: estimateHours(t) } : null, clients, depots: DEPOTS, events, vehicles: (veh || []).map((v: any) => ({ ...v, has_plate: !!v.plate_photo, plate_photo: undefined, shipment: v.shipments?.name || "", stage: vehicleStage(v, v.shipments), shipments: undefined })) });
     }
     // Journal de tournée : départ, pause, reprise, arrivée, livraison, problème, position GPS
     if (b.action === "event") {
@@ -54,6 +55,25 @@ export async function POST(req: Request) {
       const si = Number(b.stop_index); const stop_index = Number.isInteger(si) && stops[si] ? si : null;
       const cid = clean(b.client_id, 80); const client_id = cid && t.clientIds.includes(cid) ? cid : null;
       const base = { tour_id: tour, kind, client_id, stop_index, ...geo, author: driver, note: clean(b.note, 500) || null };
+      // Heures et frais du chauffeur indépendant
+      const isDay = (d: unknown) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
+      if (kind === "frais") {
+        const type = b.type, amount = Math.round(Number(String(b.amount ?? "").replace(",", ".")) * 100) / 100;
+        if (!isExpenseType(type)) return NextResponse.json({ ok: false, error: "Type de frais inconnu." }, { status: 400 });
+        if (!(amount > 0 && amount <= 2000)) return NextResponse.json({ ok: false, error: "Montant invalide." }, { status: 400 });
+        const photo = photoOk(b.path) ? String(b.path) : null;
+        if ((type === "hotel" || type === "repas") && !photo) return NextResponse.json({ ok: false, error: "Photo du ticket obligatoire pour l'hôtel et les repas." }, { status: 400 });
+        const event = await addEvent(db, { ...base, photo_path: photo, data: { type, amount, date: isDay(b.date) ? b.date : new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" }) } });
+        return NextResponse.json({ ok: true, event });
+      }
+      if (kind === "correction") {
+        const minutes = Math.round(Number(b.minutes));
+        if (!isDay(b.date)) return NextResponse.json({ ok: false, error: "Choisissez le jour à corriger." }, { status: 400 });
+        if (!Number.isFinite(minutes) || !minutes || Math.abs(minutes) > 720) return NextResponse.json({ ok: false, error: "Durée de correction invalide (12 h maximum)." }, { status: 400 });
+        if (String(base.note || "").length < 5) return NextResponse.json({ ok: false, error: "Expliquez la correction (ex. « oublié de cliquer Fin de journée, fini à 19h »)." }, { status: 400 });
+        const event = await addEvent(db, { ...base, data: { date: b.date, minutes } });
+        return NextResponse.json({ ok: true, event });
+      }
       if (kind === "livre") {
         if (!client_id) return NextResponse.json({ ok: false, error: "Choisissez le client livré." }, { status: 400 });
         const { data: vs } = await db.from("shipment_vehicles").select("id,vin,status,client_id,client_name,tour_id,plate_photo").eq("client_id", client_id).order("picked_at", { ascending: false });

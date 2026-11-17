@@ -30,6 +30,8 @@ export type PlanTour = {
   stops?: Stop[]; path?: [number, number][]; km?: number; hours?: number; precise?: boolean; costs?: Costs; params?: CostParams; warning?: string;
   /** Heure de départ prévue « HH:MM » (heure de Paris) le jour `date` : base du planning du livreur. */
   departTime?: string;
+  /** Taux horaire du chauffeur indépendant (€/h, TVA non applicable) ; 25 € par défaut. */
+  driverRate?: number;
 };
 
 export const DEFAULT_HUBS: Hub[] = [
@@ -41,7 +43,7 @@ export const TRAILERS = [
   { value: 2, label: "Grande remorque (2 voitures)" },
   { value: 3, label: "Les deux remorques (3 voitures)" },
 ];
-export const DEFAULT_PARAMS: CostParams = { fuel: "gazole", consumption: 13, fuelPrice: 1.65, tollPerKm: 0.09, hourlyRate: 15, mealPerDay: 25, hotelPerNight: 70, hoursPerDay: 9, mode: "carte" };
+export const DEFAULT_PARAMS: CostParams = { fuel: "gazole", consumption: 13, fuelPrice: 1.65, tollPerKm: 0.09, hourlyRate: 25, mealPerDay: 30, hotelPerNight: 70, hoursPerDay: 9, mode: "carte" };
 
 export function haversineKm(a: Point, b: Point) {
   const R = 6371, toRad = (x: number) => (x * Math.PI) / 180;

@@ -6,6 +6,8 @@ import { deliveryPriceForDepartment } from "../../../lib/neodrive-pricing";
 import { ALERT_ENDPOINT } from "../../../lib/sav";
 import { driverKey } from "../../../lib/driver-link";
 import { addEvent, listEvents, purgeOldPositions } from "../../../lib/tour-live";
+import { PHOTO_BUCKET } from "../../../lib/fleet";
+import { DEFAULT_DRIVER_RATE, estimateHours } from "../../../lib/driver-hours";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -177,6 +179,26 @@ export async function POST(req: Request) {
       await purgeOldPositions(sb).catch(e => console.error("[PLANIF] purge", e));
       const [events, clients] = await Promise.all([listEvents(sb, [t.id], !!b.track), Promise.all(t.clientIds.map(cid => readJson<PlanClient>(sb, `${C}/${cid}.json`)))]);
       return NextResponse.json({ ok: true, tour: t, events, clients: clients.filter(Boolean), driverLink: driverKey(t.id) });
+    }
+    // ── Heures et frais du chauffeur indépendant (journal + photos des tickets)
+    if (b.action === "hours") {
+      const id = clean(b.id, 80);
+      const t = await readJson<PlanTour>(sb, `${T}/${id}.json`);
+      if (!t) return NextResponse.json({ ok: false, error: "Tournée introuvable" }, { status: 404 });
+      const events = (await listEvents(sb, [t.id])).filter(e => e.kind !== "position");
+      const paths = [...new Set(events.filter(e => e.kind === "frais" && e.photo_path).map(e => String(e.photo_path)))];
+      const photos: Record<string, string> = {};
+      if (paths.length) { const { data } = await sb.storage.from(PHOTO_BUCKET).createSignedUrls(paths, 3600); for (const x of data || []) if (x.path && x.signedUrl) photos[x.path] = x.signedUrl; }
+      return NextResponse.json({ ok: true, events, photos, rate: t.driverRate || DEFAULT_DRIVER_RATE, estH: estimateHours(t) });
+    }
+    if (b.action === "hours_rate") {
+      const id = clean(b.id, 80);
+      const t = await readJson<PlanTour>(sb, `${T}/${id}.json`);
+      if (!t) return NextResponse.json({ ok: false, error: "Tournée introuvable" }, { status: 404 });
+      const r = Math.round(Number(String(b.rate ?? "").replace(",", ".")) * 100) / 100;
+      if (!(r >= 5 && r <= 200)) return NextResponse.json({ ok: false, error: "Taux horaire invalide (entre 5 et 200 €)." }, { status: 400 });
+      t.driverRate = r; await writeJson(sb, `${T}/${t.id}.json`, t);
+      return NextResponse.json({ ok: true, rate: r });
     }
     // ── Carte compacte (Organisation) : tournées validées récentes ou en cours
     if (b.action === "live_summary") {

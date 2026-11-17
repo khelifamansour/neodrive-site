@@ -154,8 +154,8 @@ export function buildSchedule(stops: Stop[], start: ScheduleStart, rules: Partia
 export const plannedSchedule = (stops: Stop[], date: string, departTime?: string) => buildSchedule(stops, { date, startAbs: parseHm(departTime, 8 * 60) });
 
 // ───────── Suivi en direct ─────────
-export type TourEvent = { id?: number; tour_id: string; created_at: string; kind: string; client_id?: string | null; stop_index?: number | null; lat?: number | null; lng?: number | null; accuracy?: number | null; note?: string | null; photo_path?: string | null; author?: string | null };
-export const EVENT_LABEL: Record<string, string> = { depart: "🚚 Départ", pause: "☕ Pause", reprise: "▶️ Reprise", arrive: "📍 Arrivé", livre: "✅ Livré", probleme: "⚠️ Problème", position: "📡 Position", prevenir: "📲 Client prévenu" };
+export type TourEvent = { id?: number; tour_id: string; created_at: string; kind: string; client_id?: string | null; stop_index?: number | null; lat?: number | null; lng?: number | null; accuracy?: number | null; note?: string | null; photo_path?: string | null; author?: string | null; data?: Record<string, unknown> | null };
+export const EVENT_LABEL: Record<string, string> = { depart: "🚚 Départ", pause: "☕ Pause", reprise: "▶️ Reprise", arrive: "📍 Arrivé", livre: "✅ Livré", probleme: "⚠️ Problème", position: "📡 Position", prevenir: "📲 Client prévenu", debut_jour: "🌅 Début de journée", fin_jour: "🌙 Fin de journée", correction: "✏️ Correction d’heures", frais: "🧾 Frais" };
 const MILESTONES = new Set(["depart", "arrive", "livre"]);
 
 export type Progress = {

@@ -7,6 +7,7 @@ import {TRAILERS,DEFAULT_PARAMS,FUELS,splitTrips,type Stop,planRoute,estimateKm,
 import {waNumber} from "../../lib/sav";
 import {demoApi} from "./demoApi";
 import LiveTrack from "./LiveTrack";
+import HoursAdmin from "./HoursAdmin";
 import {ScheduleKpis,ScheduleRulesNote,ScheduleView,downloadIcs} from "./Schedule";
 import {dayOf,hhmm,plannedSchedule} from "../../lib/schedule";
 
@@ -185,7 +186,7 @@ export function Planner({demo=false}:{demo?:boolean}){
        {v.next?<p className={s.after}>➡️ Ensuite : <b>{v.next.id===v.hub.id?"retour à ":""}{v.next.name}</b>{v.next.legKm?` · ${v.next.legKm} km remorque vide`:""}{v.next.action==="Retour au hub"?" (fin de tournée)":` pour ${v.next.action.toLowerCase()}`}</p>:null}
       </section>)}</div>;})()}
       <TourPlanning t={t} busy={busy==="dep-"+t.id} onSave={(d,h)=>setDepart(t,d,h)}/>
-      {locked&&!demo?<LiveTrack tour={t} api={api}/>:null}
+      {locked&&!demo?<><LiveTrack tour={t} api={api}/><HoursAdmin tour={t} api={api}/></>:null}
       {!locked?<><div className={s.seg}><button className={params.mode==="carte"?s.on:""} onClick={()=>setParams(p=>({...p,mode:"carte"}))}>Carte NeoDrive</button><button className={params.mode==="remboursement"?s.on:""} onClick={()=>setParams(p=>({...p,mode:"remboursement"}))}>Remboursement sur tickets</button></div>
       <label className={s.field}><span>Véhicule tracteur : Dacia Duster — carburant</span><select value={params.fuel} onChange={e=>setFuel(e.target.value as CostParams["fuel"])}>{FUELS.map(f=><option key={f.id} value={f.id}>{f.label}{live?.[f.id]?` · ${live[f.id].toFixed(3)} €/L aujourd’hui`:""}</option>)}</select></label>
       <p className={s.muted}>{live?"Prix moyen national du jour (données officielles prix-carburants.gouv.fr). ":"Prix du jour indisponible : prix par défaut. "}Consommation majorée pour la remorque chargée.</p>
