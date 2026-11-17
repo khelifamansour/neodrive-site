@@ -17,6 +17,7 @@ export const SECTIONS = {
   clients: "Clients et avis",
   rentabilite: "Rentabilité (estimation)",
   giga: "Giga Analyse",
+  conformite: "Conformité (banques, documents)",
 } as const;
 export type SectionKey = keyof typeof SECTIONS;
 export const isSection = (s: unknown): s is SectionKey => typeof s === "string" && s in SECTIONS;

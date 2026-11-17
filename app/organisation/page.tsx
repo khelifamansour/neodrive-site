@@ -22,6 +22,7 @@ const TILES: Tile[] = [
   { href: "/pilotage", icon: "📊", title: "Pilotage financier", text: "Chiffre d’affaires, marges et trésorerie.", section: "owner" },
   { href: "/rentabilite", icon: "💰", title: "Rentabilité (estimation)", text: "Coût de revient, marge par voiture et résultat du mois.", section: "rentabilite" },
   { href: "/giga", icon: "🧠", title: "Giga Analyse", text: "Toutes les 2 semaines : opportunités, menaces et pistes de croissance.", section: "giga" },
+  { href: "/conformite", icon: "🛡️", title: "Conformité", text: "Les demandes des banques et organismes, les documents justificatifs et la présentation de l’activité.", section: "conformite" },
 ];
 type Me = { who: "owner" | "member"; name: string; role: string; roleLabel?: string; sections: string[]; expires_at?: string | null };
 

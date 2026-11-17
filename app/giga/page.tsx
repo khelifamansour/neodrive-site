@@ -46,6 +46,10 @@ export default function GigaList() {
       <div className={c.rowMain}><p className={c.rowTitle}>🎯 Méta-analyse réaliste 2027</p><p className={c.rowText}>Ta situation réelle + les produits de la méta-analyse : scénarios comparés, produit par produit, plan mois par mois et sensibilité.</p></div>
       <span className={c.badge} style={{ background: "#141414", color: "#fff" }}>Ouvrir →</span>
     </Link> : null}
+    {who === "owner" ? <Link href="/conformite" className={`${c.card} ${c.row}`} style={{ marginTop: 12 }}>
+      <div className={c.rowMain}><p className={c.rowTitle}>🛡️ Conformité</p><p className={c.rowText}>Les demandes des banques (Revolut…), les documents justificatifs et la présentation de l’activité à imprimer.</p></div>
+      <span className={c.badge} style={{ background: "#141414", color: "#fff" }}>Ouvrir →</span>
+    </Link> : null}
     {who === "owner" ? <div style={{ marginTop: 16 }}>
       <button className={`${c.btn} ${c.btnBrand}`} onClick={run} disabled={busy || running}>{running ? <><span className={c.spin} /> Analyse en cours…</> : busy ? "…" : "⚡ Lancer une analyse maintenant"}</button>
     </div> : null}
