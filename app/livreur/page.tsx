@@ -122,7 +122,7 @@ export default function Livreur() {
       </section> : null}
     </div> : null}
     {tab === "factures" ? <div style={{ display: "grid", gap: 10 }}>
-      <p className={c.muted} style={{ margin: 0 }}>Une facture par tournée : à la fin de chaque tournée, cliquez « Clôturer cette tournée » et suivez les étapes (heures et pauses → tickets → facture). Pas de saisie chaque jour.</p>
+      <p className={c.muted} style={{ margin: 0 }}>Une facture par tournée : à la fin de chaque tournée, cliquez « Clôturer cette tournée » et suivez les étapes (heures et pauses → tickets → facture). Déposez vos tickets chaque soir (photos) et gardez les originaux papier pour Mansour. Hôtel max 70 €/nuit, repas max 30 €/jour.</p>
       {[...tours].sort((a, z) => String(z.date).localeCompare(String(a.date))).map(t => <section key={t.id} className={c.card} style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}><b style={{ fontSize: 17 }}>{t.name}</b><span className={c.muted}>📅 {fmt(t.date)}</span>
           {t.plan.draft ? <span className={c.badge} style={{ background: "#fef0c7", color: "#93370d" }}>Prévisionnelle</span> : <span className={c.badge} style={{ background: "#e8f0fe", color: "#111" }}>{t.status === "termine" ? "Terminée" : "Validée"}</span>}
@@ -173,7 +173,7 @@ export default function Livreur() {
           {tixOf === t.id ? <TicketsBulk btnClass={`${c.btn} ${c.btnBrand}`} todayCount={0} onMsg={setMsg}
             upload={async f => { if (f.size > 15 * 1024 * 1024) throw new Error("Photo trop lourde (15 Mo maximum)."); const u = await api<{ bucket: string; path: string; token: string }>({ action: "ticket_upload_url", tour_id: t.id }); const { error } = await supabase.storage.from(u.bucket).uploadToSignedUrl(u.path, u.token, f, { contentType: f.type || "image/jpeg" }); if (error) throw new Error("Envoi de la photo impossible, réessayez."); return u.path; }}
             save={async paths => { await api({ action: "ticket_add", tour_id: t.id, paths }); await load(); }} /> : null}
-          <small className={c.muted}>Carburant, péages, hôtel, repas : photographiez tous les tickets payés avec la carte NeoDrive, plusieurs d’un coup, le soir ou en fin de tournée.</small>
+          <small className={c.muted}>Déposez vos tickets chaque soir (photos) et gardez les originaux papier pour Mansour. Hôtel max 70 €/nuit, repas max 30 €/jour.</small>
         </div> : null}
         {closeBox(t)}
       </section>; }) : <p className={c.muted}>Aucune tournée à votre nom pour l’instant.</p>}
