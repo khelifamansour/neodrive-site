@@ -186,6 +186,19 @@ export async function POST(req: Request) {
         if (error) { await db.from("team_members").update({ active: false, revoked_at: new Date().toISOString() }).eq("id", id); return NextResponse.json({ ok: true, revoked_only: true }); }
         return NextResponse.json({ ok: true });
       }
+      if (b.action === "admin_resend_code") {
+        // Nouveau code personnel envoyé par SMS (l'ancien ne marche plus) ; le code n'est jamais affiché ici.
+        const id = Number(b.id);
+        const { data: m } = await db.from("team_members").select("id,name,phone,role").eq("id", id).maybeSingle();
+        if (!m || m.role !== "livreur" || !m.phone) return NextResponse.json({ ok: false, error: "Livreur introuvable ou sans téléphone." }, { status: 400 });
+        await applyStoredSecrets();
+        if (!brevoReady()) return NextResponse.json({ ok: false, error: "Envoi SMS indisponible (Brevo non configuré)" }, { status: 503 });
+        const code = newCode();
+        await db.from("team_members").update({ code_hash: sha(code), active: true, revoked_at: null }).eq("id", id);
+        const first = String(m.name || "").split(/\s+/)[0];
+        await sendSms(m.phone, `Bonjour ${first}, voici votre nouveau code NeoDrive (livreur) : ${code}. Ouvrez ${SITE}/organisation puis « Espace livreur ».`);
+        return NextResponse.json({ ok: true });
+      }
       if (b.action === "admin_invite") {
         const name = clean(b.name, 80); if (name.length < 2) return NextResponse.json({ ok: false, error: "Nom manquant" }, { status: 400 });
         const phone = clean(b.phone, 30), email = clean(b.email, 160);
