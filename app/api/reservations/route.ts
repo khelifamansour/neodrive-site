@@ -108,6 +108,7 @@ export async function POST(req: Request) {
         patch.vin = vin || null;
       }
       if ("avis_google" in b) patch.avis_google = String(b.avis_google || "").trim().slice(0, 2000) || null;
+      for (const k of ["nouvelles_at", "avis_demande_at"] as const) if (k in b) patch[k] = b[k] ? new Date().toISOString() : null;
       if ("avis_at" in b) patch.avis_at = /^\d{4}-\d{2}-\d{2}$/.test(String(b.avis_at || "")) ? String(b.avis_at) : null;
       const { error } = await sb.from("reservations").update(patch).eq("id", id);
       if (error) throw new Error(error.message);

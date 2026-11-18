@@ -1,17 +1,23 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import c from "../giga/giga.module.css";
+import { normalizePhone, whatsappLink, REVIEW_URL } from "../../lib/clients";
 
 /** Registre clients : livraison, numéro de série (VIN) et avis Google, client par client. */
 export type RegRow = {
   id: number; prenom: string; nom: string; telephone: string; ville: string; code_postal: string; modele: string; couleur: string;
   statut: string; created_at: string; vin?: string | null; avis_google?: string | null; avis_at?: string | null;
+  nouvelles_at?: string | null; avis_demande_at?: string | null;
 };
 type Vin = { vin: string; container: string | null; status: string | null };
 type Api = <T = Record<string, unknown>>(body: object) => Promise<T>;
 
 const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
 const fold = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const first = (r: RegRow) => { const p = (r.prenom || "").trim().split(/\s+/)[0] || ""; return p && !/^(mme|mr|m\.|madame|monsieur)$/i.test(p) ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : ""; };
+const msgNouvelles = (r: RegRow) => `Bonjour${first(r) ? " " + first(r) : ""}, j'espère que vous allez bien. Je voulais juste savoir comment ça se passait avec votre véhicule, si vous en êtes content, et si vous avez besoin de quoi que ce soit. Mansour – NeoDrive`;
+const msgAvis = (r: RegRow) => `Merci beaucoup${first(r) ? " " + first(r) : ""}, ça me fait très plaisir ! Si vous avez 30 secondes, un petit avis sur Google nous aiderait énormément, cela rassure les personnes qui hésitent à se lancer : ${REVIEW_URL} Merci encore et bonne route ! Mansour – NeoDrive`;
+const day = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) : "";
 const FILTERS = [["tous", "Tous"], ["livres", "✅ Livrés"], ["alivrer", "⏳ À livrer"], ["sansavis", "⭐ Sans avis"], ["sansvin", "🔢 Sans n° de série"]] as const;
 
 export default function Registre({ rows, api, onSaved }: { rows: RegRow[]; api: Api; onSaved: (msg: string) => void }) {
@@ -58,6 +64,12 @@ export default function Registre({ rows, api, onSaved }: { rows: RegRow[]; api: 
     try { await api({ action: "update", id: r.id, statut: "Livrée" }); onSaved(`✅ ${r.prenom} ${r.nom} marqué livré.`); }
     catch (e) { setErr({ ...err, [r.id]: (e as Error).message }); } finally { setBusy(null); }
   };
+  const sendWa = async (r: RegRow, kind: "nouvelles" | "avis") => {
+    const ph = normalizePhone(r.telephone);
+    if (!ph.valid) { setErr({ ...err, [r.id]: "Numéro de téléphone à vérifier avant d’envoyer." }); return; }
+    window.open(whatsappLink(ph.intl, kind === "nouvelles" ? msgNouvelles(r) : msgAvis(r)), "_blank");
+    try { await api({ action: "update", id: r.id, [kind === "nouvelles" ? "nouvelles_at" : "avis_demande_at"]: true }); onSaved(kind === "nouvelles" ? `💬 Message de nouvelles ouvert pour ${r.prenom} ${r.nom}.` : `⭐ Demande d’avis ouverte pour ${r.prenom} ${r.nom}.`); } catch { /* l'envoi WhatsApp reste possible */ }
+  };
   const copy = (t: string) => { navigator.clipboard?.writeText(t).then(() => onSaved(`📋 ${t} copié.`)).catch(() => null); };
 
   return <section style={{ marginTop: 14 }}>
@@ -81,6 +93,12 @@ export default function Registre({ rows, api, onSaved }: { rows: RegRow[]; api: 
           {r.telephone ? <button className={`${c.btn} ${c.btnGhost}`} style={{ padding: "4px 10px" }} onClick={() => copy(r.telephone)}>📋 {r.telephone}</button> : null}
           {!ok ? <button className={`${c.btn} ${c.btnGhost}`} style={{ padding: "4px 10px" }} disabled={busy === r.id} onClick={() => { if (confirm(`Marquer ${r.prenom} ${r.nom} comme livré ?`)) markDelivered(r); }}>Marquer livré</button> : null}
         </div>
+        {ok && !r.avis_google ? <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", background: "#f6faf7", borderRadius: 10, padding: 8 }}>
+          <button className={`${c.btn} ${c.btnBrand}`} style={{ padding: "6px 12px", background: "#1fa855" }} onClick={() => sendWa(r, "nouvelles")}>1️⃣ Prendre des nouvelles</button>
+          {r.nouvelles_at ? <span className={c.muted}>envoyé le {day(r.nouvelles_at)}</span> : null}
+          <button className={`${c.btn} ${r.nouvelles_at ? c.btnBrand : c.btnGhost}`} style={{ padding: "6px 12px" }} onClick={() => { if (r.nouvelles_at || confirm("Conseil : envoyez d’abord le message de nouvelles, et demandez l’avis seulement si la réponse est positive. Continuer quand même ?")) sendWa(r, "avis"); }}>2️⃣ Demander un avis</button>
+          {r.avis_demande_at ? <span className={c.muted}>demandé le {day(r.avis_demande_at)}</span> : null}
+        </div> : null}
         <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
           <label style={{ display: "grid", gap: 4, fontSize: 13, fontWeight: 600 }}>N° de série (VIN)
             <input className={c.input} list="reg-vins" value={x.vin} maxLength={17} autoCapitalize="characters" spellCheck={false} placeholder="17 caractères, ex. LP4SE0D0…" onChange={e => setD(r, { vin: e.target.value.toUpperCase() })} style={{ fontFamily: "monospace" }} /></label>
