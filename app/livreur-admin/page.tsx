@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import c from "../giga/giga.module.css";
 import { DOC_STATUS_LABEL } from "../../lib/driver-docs";
 import Contract from "../livreur/Contract";
+import Invoices from "./Invoices";
 
 type Doc = { id: number; status: string; filename: string | null; uploaded_at: string; validated_at: string | null; note: string | null; url: string | null; data: { signed_name?: string; signed_at?: string } };
 type Driver = { id: number; name: string; phone: string | null; email: string | null; active: boolean; expires_at: string | null; revoked_at: string | null; last_seen_at: string | null; docs: Record<string, Doc> };
@@ -69,6 +70,8 @@ export default function LivreurAdmin() {
       <div><button className={`${c.btn} ${c.btnBrand}`} disabled={busy || form.name.trim().length < 2} onClick={() => run(async () => { const j = await api<{ code: string; text: string; sent: { sms: boolean; email: boolean; errors: string[] } }>({ action: "admin_invite", ...form }); setInvite({ name: form.name, code: j.code, text: j.text, sent: j.sent }); setForm({ name: "", phone: "", email: "", days: "90" }); })}>{busy ? "…" : "Créer l’accès et envoyer l’invitation"}</button></div>
       <small className={c.muted}>Pour qu’il voie ses tournées, écrivez son prénom dans le champ « Livreur » de la tournée (planificateur).</small>
     </section>
+
+    <Invoices api={api} onMsg={setMsg} />
 
     <div style={{ margin: "14px 0" }}><button className={`${c.btn} ${c.btnGhost}`} onClick={() => setShowContract(!showContract)}>{showContract ? "Masquer" : "📄 Voir"} le modèle de contrat</button></div>
     {showContract ? <section className={c.card}><Contract /></section> : null}

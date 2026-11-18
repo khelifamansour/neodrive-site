@@ -9,10 +9,15 @@ import { brevoReady, sendEmail, sendSms } from "../../../lib/brevo";
 import { newCode, sha } from "../../../lib/team";
 import { CONTRACT_VERSION, DOC_KINDS, DRIVER_BUCKET, REQUIRED_DOCS, isDocKind } from "../../../lib/driver-docs";
 import { roadKm, splitTrips, type PlanClient, type PlanTour, type Stop } from "../../../lib/planif";
-import { estimateHours } from "../../../lib/driver-hours";
+import { estimateHours, isExpenseType } from "../../../lib/driver-hours";
+import { addTickets, readTicket, type TicketData } from "../../../lib/driver-tickets";
 import { randomBytes } from "crypto";
 import { RECEIPT_FOLDER, VIN_RE, checksFor, type ReceiptData } from "../../../lib/delivery-receipt";
 import { finalizeDelivery, intlPhone } from "../../../lib/delivery-finalize";
+import { OWNER_EMAIL } from "../../../lib/brevo";
+import { PHOTO_BUCKET } from "../../../lib/fleet";
+import { bicOk, fmtIban, ibanOk, invoicePdf, siretOk, type Billing, type Control } from "../../../lib/driver-invoice";
+import { cleanDays, control, initials, invoiceTotal, tourBillingBase } from "../../../lib/driver-billing";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -30,6 +35,33 @@ async function latestDocs(db: DB, memberId: number) {
   return out;
 }
 const publicDoc = (d?: Doc) => d ? { status: d.status, filename: d.filename, uploaded_at: d.uploaded_at, note: d.note, signed_name: d.data?.signed_name || null, signed_at: d.data?.signed_at || null } : { status: "manquant" };
+
+
+const INVOICE_FOLDER = "factures";
+const eurTxt = (n: number) => `${(Math.round(Number(n) * 100) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+const hmTxt = (min: number) => `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, "0")}`;
+/** Coordonnées de facturation nettoyées + liste de ce qui manque. */
+function checkBilling(x: Billing | null | undefined) {
+  const b: Billing = { legal_name: clean(x?.legal_name, 120), siret: String(x?.siret || "").replace(/\s+/g, ""), address: clean(x?.address, 200), iban: String(x?.iban || "").toUpperCase().replace(/\s+/g, ""), bic: String(x?.bic || "").toUpperCase().replace(/\s+/g, "") };
+  const missing: string[] = [];
+  if ((b.legal_name || "").length < 3) missing.push("nom ou raison sociale");
+  if (!siretOk(b.siret || "")) missing.push("SIRET (14 chiffres)");
+  if ((b.address || "").length < 8) missing.push("adresse");
+  if (!ibanOk(b.iban || "")) missing.push("IBAN valide");
+  if (b.bic && !bicOk(b.bic)) missing.push("BIC valide (8 ou 11 caractères)");
+  return { b, missing };
+}
+/** Rapport court de contrôle (SMS, 2 SMS maximum, sans emoji). */
+function controlSms(driver: string, tour: string, number: string, total: number, c: Control) {
+  const parts = [`NeoDrive : facture ${number} de ${driver} (${tour}) : ${eurTxt(total)}.`, `Heures ${c.real_h} h pour ${c.planned_h} h prevues (ecart ${c.gap_h > 0 ? "+" : ""}${c.gap_h} h).`, `Livres ${c.delivered}/${c.planned_stops}.`];
+  if (c.missing.length) parts.push(`Non livres : ${c.missing.slice(0, 3).join(", ")}${c.missing.length > 3 ? "..." : ""}.`);
+  if (c.no_vin.length) parts.push(`VIN non saisi : ${c.no_vin.length}.`);
+  if (c.no_receipt.length) parts.push(`Sans accuse : ${c.no_receipt.length}.`);
+  parts.push(`Carte societe : ${eurTxt(c.card_total)} (${c.tickets} ticket${c.tickets > 1 ? "s" : ""}${c.tickets ? "" : ", AUCUN TICKET"}).`);
+  if (c.cap_alerts.length) parts.push(`Depassements : ${c.cap_alerts.length}.`);
+  if (c.perso_total) parts.push(`A rembourser : ${eurTxt(c.perso_total)}.`);
+  return parts.join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").slice(0, 300);
+}
 
 /** Tournées du livreur : nom du livreur de la tournée qui contient son prénom (ou toutes pour le fondateur). */
 const isMine = (t: PlanTour, name: string | null) => {
@@ -92,6 +124,53 @@ export async function POST(req: Request) {
         if (error) throw new Error(error.message);
         return NextResponse.json({ ok: true });
       }
+      if (b.action === "admin_invoices") {
+        const { data, error } = await db.from("driver_invoices").select("id,member_id,tour_id,tour_name,number,status,days,deliveries,expenses,rate,worked_min,total,control,pdf_path,sent_at,paid_at,created_at").order("created_at", { ascending: false }).limit(500);
+        if (error) throw new Error(error.message);
+        const { data: mem } = await db.from("team_members").select("id,name,is_test");
+        const names = new Map((mem || []).map(m => [m.id, m.name]));
+        const paths = (data || []).map(x => x.pdf_path).filter(Boolean) as string[];
+        const urls: Record<string, string> = {};
+        if (paths.length) { const { data: u } = await db.storage.from(DRIVER_BUCKET).createSignedUrls(paths, 1800); for (const x of u || []) if (x.path && x.signedUrl) urls[x.path] = x.signedUrl; }
+        return NextResponse.json({ ok: true, invoices: (data || []).map(x => ({ ...x, driver: names.get(x.member_id) || "?", url: x.pdf_path ? urls[x.pdf_path] || null : null })) });
+      }
+      if (b.action === "admin_invoice_paid") {
+        const paid = b.paid !== false;
+        const { error } = await db.from("driver_invoices").update({ status: paid ? "payee" : "a_payer", paid_at: paid ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq("id", Number(b.id)).neq("status", "brouillon");
+        if (error) throw new Error(error.message);
+        return NextResponse.json({ ok: true });
+      }
+      // Dépenses de tournée (tickets) d'un mois : tableau, CSV et photos pour le comptable
+      if (b.action === "admin_expenses") {
+        const month = /^\d{4}-\d{2}$/.test(String(b.month)) ? String(b.month) : new Date().toISOString().slice(0, 7);
+        const from = new Date(month + "-01T00:00:00Z"); const to = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 1));
+        const { data, error } = await db.from("tour_events").select("id,tour_id,created_at,author,note,photo_path,data").eq("kind", "frais").gte("created_at", new Date(from.getTime() - 3 * 86400e3).toISOString()).lt("created_at", new Date(to.getTime() + 3 * 86400e3).toISOString()).order("created_at").limit(3000);
+        if (error) throw new Error(error.message);
+        const tours = new Map((await listJson<PlanTour>(db, PLAN_TOURS)).map(t => [t.id, t]));
+        const rows = (data || []).map(e => { const d = (e.data || {}) as Record<string, unknown>; return { id: e.id, date: String(d.date || e.created_at.slice(0, 10)), type: String(d.type || "autre"), amount: Number(d.amount) || 0, paid: d.paid === "perso" ? "perso" : "carte", merchant: (d.merchant as string) || "", vat: d.vat == null ? null : Number(d.vat), ai: (d.ai || null) as TicketData["ai"] | null, edited: !!d.edited, tour_id: e.tour_id, tour: tours.get(e.tour_id)?.name || e.tour_id, driver: tours.get(e.tour_id)?.driver || e.author || "", note: e.note || "", photo: e.photo_path as string | null }; }).filter(r => r.date.startsWith(month));
+        const paths = rows.map(r => r.photo).filter(Boolean) as string[];
+        const urls: Record<string, string> = {};
+        for (let i = 0; i < paths.length; i += 100) { const { data: u } = await db.storage.from(PHOTO_BUCKET).createSignedUrls(paths.slice(i, i + 100), 3600); for (const x of u || []) if (x.path && x.signedUrl) urls[x.path] = x.signedUrl; }
+        return NextResponse.json({ ok: true, month, expenses: rows.map(r => ({ ...r, url: r.photo ? urls[r.photo] || null : null, photo: !!r.photo })) });
+      }
+      if (b.action === "admin_expense_update" || b.action === "admin_expense_reread") {
+        const { data: ev } = await db.from("tour_events").select("id,photo_path,data,created_at").eq("id", Number(b.id)).eq("kind", "frais").maybeSingle();
+        if (!ev) return NextResponse.json({ ok: false, error: "Ticket introuvable" }, { status: 404 });
+        const cur = (ev.data || {}) as TicketData;
+        let next: TicketData;
+        if (b.action === "admin_expense_reread") {
+          if (!ev.photo_path) return NextResponse.json({ ok: false, error: "Pas de photo" }, { status: 400 });
+          next = { ...cur, ...(await readTicket(db, ev.photo_path, cur.date || ev.created_at.slice(0, 10))), edited: false };
+        } else {
+          const amount = Math.round(Number(String(b.amount ?? cur.amount).replace(",", ".")) * 100) / 100;
+          if (!(amount >= 0 && amount <= 5000)) return NextResponse.json({ ok: false, error: "Montant invalide" }, { status: 400 });
+          const vat = b.vat === "" || b.vat == null ? null : Math.round(Number(String(b.vat).replace(",", ".")) * 100) / 100;
+          next = { ...cur, type: isExpenseType(b.type) ? b.type : cur.type, amount, vat: Number.isFinite(vat as number) ? vat : null, date: /^\d{4}-\d{2}-\d{2}$/.test(String(b.date)) ? String(b.date) : cur.date, merchant: clean(b.merchant ?? cur.merchant, 80) || null, paid: b.paid === "perso" ? "perso" : "carte", edited: true };
+        }
+        const { error } = await db.from("tour_events").update({ data: next }).eq("id", ev.id);
+        if (error) throw new Error(error.message);
+        return NextResponse.json({ ok: true, ticket: next });
+      }
       if (b.action === "admin_invite") {
         const name = clean(b.name, 80); if (name.length < 2) return NextResponse.json({ ok: false, error: "Nom manquant" }, { status: 400 });
         const phone = clean(b.phone, 30), email = clean(b.email, 160);
@@ -119,7 +198,8 @@ export async function POST(req: Request) {
 
     if (b.action === "me") {
       const docs = memberId ? await latestDocs(db, memberId) : {};
-      return NextResponse.json({ ok: true, who: acc.who, name: acc.name, kinds: DOC_KINDS, required: REQUIRED_DOCS, docs: Object.fromEntries([...DOC_KINDS.map(k => k.id), "contrat"].map(k => [k, publicDoc(docs[k])])), contractVersion: CONTRACT_VERSION });
+      const { data: mb } = memberId ? await db.from("team_members").select("billing").eq("id", memberId).maybeSingle() : { data: null };
+      return NextResponse.json({ ok: true, who: acc.who, name: acc.name, kinds: DOC_KINDS, required: REQUIRED_DOCS, docs: Object.fromEntries([...DOC_KINDS.map(k => k.id), "contrat"].map(k => [k, publicDoc(docs[k])])), contractVersion: CONTRACT_VERSION, billing: (mb?.billing || null) as Billing | null });
     }
     if (b.action === "reservations") {
       const { data, error } = await db.from("reservations").select("id,prenom,nom,ville,code_postal,departement,telephone,statut,date_promise,modele,priorite").in("statut", ["Nouvelle", "Confirmée", "Planifiée"]).order("date_promise", { ascending: true, nullsFirst: false }).limit(500);
@@ -283,6 +363,103 @@ export async function POST(req: Request) {
       if (error) throw new Error(error.message);
       await logSection(acc, "livreur_document", { kind: b.kind });
       return NextResponse.json({ ok: true });
+    }
+    // ── Coordonnées de facturation (IBAN contrôlé) et factures de fin de tournée
+    if (b.action === "billing_save") {
+      if (!memberId) return NextResponse.json({ ok: false, error: "Réservé au livreur." }, { status: 403 });
+      const { b: bill, missing } = checkBilling(b as Billing);
+      if (bill.iban && !ibanOk(bill.iban)) return NextResponse.json({ ok: false, error: "IBAN invalide : vérifiez-le (la clé de contrôle ne correspond pas)." }, { status: 400 });
+      if (bill.siret && !siretOk(bill.siret)) return NextResponse.json({ ok: false, error: "SIRET invalide : 14 chiffres." }, { status: 400 });
+      if (bill.bic && !bicOk(bill.bic)) return NextResponse.json({ ok: false, error: "BIC invalide : 8 ou 11 caractères." }, { status: 400 });
+      const { error } = await db.from("team_members").update({ billing: { ...bill, updated_at: new Date().toISOString() } }).eq("id", memberId);
+      if (error) throw new Error(error.message);
+      await logSection(acc, "livreur_facturation", { complete: !missing.length });
+      return NextResponse.json({ ok: true, missing });
+    }
+    if (b.action === "my_invoices") {
+      if (!memberId) return NextResponse.json({ ok: true, invoices: [] });
+      const { data } = await db.from("driver_invoices").select("id,tour_id,tour_name,number,status,worked_min,total,sent_at,paid_at,pdf_path").eq("member_id", memberId).order("seq", { ascending: false });
+      const paths = (data || []).map(x => x.pdf_path).filter(Boolean) as string[];
+      const urls: Record<string, string> = {};
+      if (paths.length) { const { data: u } = await db.storage.from(DRIVER_BUCKET).createSignedUrls(paths, 1800); for (const x of u || []) if (x.path && x.signedUrl) urls[x.path] = x.signedUrl; }
+      return NextResponse.json({ ok: true, invoices: (data || []).map(x => ({ ...x, pdf_path: undefined, url: x.pdf_path ? urls[x.pdf_path] || null : null })) });
+    }
+    // Tickets de dépenses en lot depuis l'espace livreur (photos rangées avec celles de la tournée)
+    if (b.action === "ticket_upload_url" || b.action === "ticket_add") {
+      const t = (await listJson<PlanTour>(db, PLAN_TOURS)).find(x => x.id === String(b.tour_id || ""));
+      if (!t || !isMine(t, name) || t.status === "brouillon") return NextResponse.json({ ok: false, error: "Tournée introuvable." }, { status: 404 });
+      if (b.action === "ticket_upload_url") {
+        const path = `vehicles/${t.id}/ticket-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+        const { data, error } = await db.storage.from(PHOTO_BUCKET).createSignedUploadUrl(path);
+        if (error || !data) return NextResponse.json({ ok: false, error: "Stockage indisponible" }, { status: 502 });
+        return NextResponse.json({ ok: true, bucket: PHOTO_BUCKET, path: data.path, token: data.token });
+      }
+      const paths = (Array.isArray(b.paths) ? b.paths : []).map(String).filter(p => p.startsWith(`vehicles/${t.id}/`) && !p.includes(".."));
+      if (!paths.length) return NextResponse.json({ ok: false, error: "Aucune photo reçue." }, { status: 400 });
+      return NextResponse.json({ ok: true, ...(await addTickets(db, t.id, name || acc.name, paths)) });
+    }
+    if (b.action === "invoice_prepare" || b.action === "invoice_preview" || b.action === "invoice_send") {
+      if (!memberId) return NextResponse.json({ ok: false, error: "La facture est faite par le livreur depuis son espace." }, { status: 403 });
+      const t = (await listJson<PlanTour>(db, PLAN_TOURS)).find(x => x.id === String(b.tour_id || ""));
+      if (!t || !isMine(t, name)) return NextResponse.json({ ok: false, error: "Tournée introuvable." }, { status: 404 });
+      if (t.status === "brouillon") return NextResponse.json({ ok: false, error: "Tournée prévisionnelle : rien à facturer." }, { status: 400 });
+      const [{ data: existing }, { data: mb }, docs] = await Promise.all([
+        db.from("driver_invoices").select("id,number,status,total,sent_at,paid_at").eq("member_id", memberId).eq("tour_id", t.id).maybeSingle(),
+        db.from("team_members").select("name,email,billing").eq("id", memberId).maybeSingle(),
+        latestDocs(db, memberId),
+      ]);
+      const base = await tourBillingBase(db, t);
+      const { b: bill, missing } = checkBilling((mb?.billing || {}) as Billing);
+      const blockers = [...missing.map(m => `Profil de facturation : ${m}`)];
+      if (!docs.rib || docs.rib.status === "refuse") blockers.push("RIB à déposer (onglet Mes documents)");
+      if (!docs.contrat || docs.contrat.status === "refuse") blockers.push("Contrat à signer");
+      const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" });
+      const exp = { card: base.sum.card, perso: base.sum.refund, count: base.expenses.length, today: base.expenses.filter(e => e.created === todayStr).length, no_photo: base.expenses.filter(e => !e.photo).length, by_day: base.sum.days.filter(d => d.expenses.length).map(d => ({ date: d.date, n: d.expenses.length, card: d.card, perso: d.perso, flags: d.flags.filter(f => /repère|photo/.test(f)) })) };
+      if (b.action === "invoice_prepare") {
+        return NextResponse.json({ ok: true, tour: { id: t.id, name: t.name, date: t.date }, rate: base.rate, days: base.days, deliveries: base.deliveries, expenses: exp, planned: { h: base.planned_h, km: base.planned_km, stops: base.planned_stops }, existing: existing || null, blockers });
+      }
+      if (existing) return NextResponse.json({ ok: false, error: `Facture ${existing.number} déjà envoyée pour cette tournée.` }, { status: 409 });
+      const { days, errors } = cleanDays(b.days);
+      if (errors.length) return NextResponse.json({ ok: false, error: errors.join(" ") }, { status: 400 });
+      const { worked_min, total } = invoiceTotal(days, base.rate);
+      if (!worked_min) return NextResponse.json({ ok: false, error: "Aucune heure saisie." }, { status: 400 });
+      const issued = new Date().toISOString();
+      const driverName = mb?.name || name || "Livreur";
+      const deliveries = base.deliveries.filter(d => d.delivered).map(({ client, vin, date, accuse }) => ({ client, vin, date, accuse }));
+      const pdfData = { issued, driver: driverName, billing: bill, tour: `${t.name || t.id}${t.date ? " du " + new Date(t.date + "T12:00:00Z").toLocaleDateString("fr-FR", { timeZone: "UTC" }) : ""}`, days, deliveries, rate: base.rate, worked_min, total };
+      if (b.action === "invoice_preview") {
+        const pdf = await invoicePdf({ ...pdfData, number: "APERÇU (numéro attribué à l'envoi)" });
+        return NextResponse.json({ ok: true, worked_min, total, pdf: pdf.toString("base64"), blockers });
+      }
+      if (blockers.length) return NextResponse.json({ ok: false, error: "Avant d'envoyer la facture : " + blockers.join(" ; ") + "." }, { status: 400 });
+      const ctl = control(base, days, worked_min, base.deliveries);
+      // Numéro séquentiel propre au livreur (aucun trou : attribué seulement à l'envoi)
+      let row: { id: number; number: string } | null = null;
+      for (let attempt = 0; attempt < 3 && !row; attempt++) {
+        const { data: last } = await db.from("driver_invoices").select("seq").eq("member_id", memberId).order("seq", { ascending: false }).limit(1);
+        const seq = (last?.[0]?.seq || 0) + 1;
+        const number = `${initials(driverName)}${memberId}-${issued.slice(0, 4)}-${String(seq).padStart(3, "0")}`;
+        const ins = await db.from("driver_invoices").insert({ member_id: memberId, tour_id: t.id, tour_name: t.name || t.id, seq, number, status: "a_payer", days, deliveries, expenses: base.expenses, rate: base.rate, worked_min, amount_hours: total, amount_expenses: 0, total, control: ctl, billing: bill, sent_at: issued }).select("id,number").single();
+        if (ins.error) { if (/member_id, tour_id|driver_invoices_member_id_tour_id/.test(ins.error.message)) return NextResponse.json({ ok: false, error: "Facture déjà envoyée pour cette tournée." }, { status: 409 }); if (!/duplicate/.test(ins.error.message)) throw new Error(ins.error.message); }
+        else row = ins.data;
+      }
+      if (!row) throw new Error("Numérotation de la facture impossible, réessayez.");
+      const pdf = await invoicePdf({ ...pdfData, number: row.number });
+      const path = `${INVOICE_FOLDER}/${memberId}/${row.number}.pdf`;
+      const up = await db.storage.from(DRIVER_BUCKET).upload(path, pdf, { contentType: "application/pdf", upsert: true });
+      if (up.error) throw new Error("Enregistrement du PDF impossible : " + up.error.message);
+      await db.from("driver_invoices").update({ pdf_path: path }).eq("id", row.id);
+      const sent = { email: false, sms: false };
+      await applyStoredSecrets();
+      if (brevoReady()) {
+        const first = driverName.split(/\s+/)[0];
+        const att = [{ name: `Facture-${row.number}.pdf`, content: pdf.toString("base64") }];
+        const html = `<p>Bonjour ${esc(first)},</p><p>Voici votre facture <b>${esc(row.number)}</b> pour la tournée ${esc(t.name || t.id)} : ${esc(hmTxt(worked_min))} de travail, <b>${esc(eurTxt(total))}</b> (TVA non applicable, art. 293 B du CGI).</p><p>Elle est établie par MK HOLDING en votre nom (mandat d'autofacturation, article 11 de votre contrat). Vous avez 15 jours pour la contester en répondant à cet e-mail. Le paiement est fait par virement sur votre compte ${esc(fmtIban(bill.iban || "").slice(0, 9))}…</p><p>Merci pour cette tournée !<br>Mansour - NeoDrive</p>`;
+        try { sent.email = !!(await sendEmail(mb?.email || OWNER_EMAIL, driverName, `Facture ${row.number} - tournée ${t.name || t.id}`, html, att, mb?.email ? { cc: [OWNER_EMAIL], replyTo: OWNER_EMAIL } : undefined)); } catch (e) { console.error("[LIVREUR] e-mail facture", e); }
+        try { sent.sms = !!(await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", controlSms(driverName, t.name || t.id, row.number, total, ctl))); } catch (e) { console.error("[LIVREUR] SMS contrôle", e); }
+      }
+      await logSection(acc, "livreur_facture", { number: row.number, total, tour: t.id });
+      return NextResponse.json({ ok: true, number: row.number, total, worked_min, sent, emailed_to_driver: !!mb?.email, control: ctl });
     }
     if (b.action === "contract_sign") {
       const signed = clean(b.signed_name, 120);

@@ -2,14 +2,15 @@
 import { useMemo, useState } from "react";
 import s from "../planificateur/planif.module.css";
 import type { TourEvent } from "../../lib/schedule";
-import { EXPENSE_TYPES, HOTEL_CAP, MEAL_CAP, computeHours, dayTxt, eur, expenseLabel, hm, parisDay, parisTime, recapText } from "../../lib/driver-hours";
+import TicketsBulk from "../livreur/TicketsBulk";
+import { computeHours, dayTxt, eur, expenseLabel, hm, parisDay, parisTime, recapText } from "../../lib/driver-hours";
 
 type Send = (key: string, body: Record<string, unknown>, ok: string) => Promise<unknown>;
 const big: React.CSSProperties = { fontSize: 17, padding: 14, width: "100%", textAlign: "center", cursor: "pointer" };
 const box: React.CSSProperties = { display: "grid", gap: 8, border: "1px solid #ece6dd", borderRadius: 14, padding: 12 };
 
 /** Heures et frais du chauffeur : début / pause / fin de journée, tickets, corrections, récapitulatif pour la facture. */
-export default function HoursCard({ events, now, rate, estH, tourName, driver, busy, send, upload, onMsg }: { events: TourEvent[]; now: number; rate: number; estH: number; tourName: string; driver: string; busy: string; send: Send; upload: (f: File) => Promise<string>; onMsg: (m: string) => void }) {
+export default function HoursCard({ events, now, rate, estH, tourName, driver, busy, send, upload, addTickets, onMsg }: { events: TourEvent[]; now: number; rate: number; estH: number; tourName: string; driver: string; busy: string; send: Send; upload: (f: File) => Promise<string>; addTickets: (paths: string[]) => Promise<void>; onMsg: (m: string) => void }) {
   const sum = useMemo(() => computeHours(events, rate, now), [events, rate, now]);
   const today = parisDay(now);
   const td = sum.days.find(d => d.date === today);
@@ -20,10 +21,8 @@ export default function HoursCard({ events, now, rate, estH, tourName, driver, b
   const lastP = [...todays].reverse().find(e => e.kind === "pause" || e.kind === "reprise" || e.kind === "debut_jour");
   const paused = working && lastP?.kind === "pause";
 
-  const [fx, setFx] = useState<{ type: string; amount: string; date: string; photo: string } | null>(null); const [up, setUp] = useState(false);
   const [cx, setCx] = useState<{ date: string; sign: "+" | "-"; h: string; m: string; note: string } | null>(null);
   const [recap, setRecap] = useState(false);
-  const needPhoto = fx?.type === "hotel" || fx?.type === "repas";
   const text = recapText(tourName, driver, sum, estH);
 
   return <section className={s.card}>
@@ -38,18 +37,10 @@ export default function HoursCard({ events, now, rate, estH, tourName, driver, b
     </div>
 
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <button className={s.ghost} onClick={() => { setFx(fx ? null : { type: "repas", amount: "", date: today, photo: "" }); setCx(null); }}>🧾 Ajouter un ticket</button>
-      <button className={s.ghost} onClick={() => { setCx(cx ? null : { date: today, sign: "+", h: "0", m: "30", note: "" }); setFx(null); }}>✏️ Oubli de clic ? Corriger</button>
+      <button className={s.ghost} onClick={() => { setCx(cx ? null : { date: today, sign: "+", h: "0", m: "30", note: "" }); }}>✏️ Oubli de clic ? Corriger</button>
     </div>
 
-    {fx ? <div style={box}>
-      <label className={s.field}>Type<select value={fx.type} onChange={e => setFx({ ...fx, type: e.target.value })}>{EXPENSE_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}</select></label>
-      <small className={s.muted}>{fx.type === "hotel" ? `Remboursé jusqu’à ${HOTEL_CAP} € la nuit.` : fx.type === "repas" ? `Remboursé jusqu’à ${MEAL_CAP} € par jour (tous repas).` : fx.type === "autre" ? "À valider par Mansour avant de le facturer." : "Payé avec la carte NeoDrive : noté pour information, pas à facturer."}</small>
-      <label className={s.field}>Montant TTC (€)<input inputMode="decimal" value={fx.amount} onChange={e => setFx({ ...fx, amount: e.target.value })} placeholder="ex. 18,50" /></label>
-      <label className={s.field}>Jour<input type="date" value={fx.date} onChange={e => setFx({ ...fx, date: e.target.value })} /></label>
-      <label className={s.ghost} style={{ cursor: "pointer", textAlign: "center" }}>{up ? "Envoi…" : fx.photo ? "✅ Photo du ticket prête (reprendre)" : needPhoto ? "📷 Photo du ticket (obligatoire)" : "📷 Photo du ticket (conseillée)"}<input type="file" accept="image/*" capture="environment" hidden disabled={up} onChange={async e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; setUp(true); try { const p = await upload(f); setFx(v => v ? { ...v, photo: p } : v); } catch (er) { onMsg("❌ " + (er as Error).message); } setUp(false); }} /></label>
-      <button className={s.primary} style={big} disabled={!!busy || up || !(Number(fx.amount.replace(",", ".")) > 0) || (needPhoto && !fx.photo)} onClick={async () => { const j = await send("frais", { kind: "frais", type: fx.type, amount: fx.amount, date: fx.date, path: fx.photo || null }, "🧾 Ticket enregistré."); if (j) setFx(null); }}>{busy === "frais" ? "…" : "Enregistrer le ticket"}</button>
-    </div> : null}
+    <TicketsBulk upload={upload} save={addTickets} todayCount={events.filter(e => e.kind === "frais" && parisDay(e.created_at) === today).length} onMsg={onMsg} btnClass={s.primary} />
 
     {cx ? <div style={box}>
       <label className={s.field}>Jour à corriger<input type="date" value={cx.date} onChange={e => setCx({ ...cx, date: e.target.value })} /></label>
@@ -62,12 +53,12 @@ export default function HoursCard({ events, now, rate, estH, tourName, driver, b
       <button className={s.primary} style={big} disabled={!!busy || cx.note.trim().length < 5 || !((Number(cx.h) || 0) * 60 + (Number(cx.m) || 0))} onClick={async () => { const min = ((Number(cx.h) || 0) * 60 + (Number(cx.m) || 0)) * (cx.sign === "-" ? -1 : 1); const j = await send("correction", { kind: "correction", date: cx.date, minutes: min, note: cx.note.trim() }, "✏️ Correction enregistrée (visible par NeoDrive)."); if (j) setCx(null); }}>{busy === "correction" ? "…" : "Enregistrer la correction"}</button>
     </div> : null}
 
-    {sum.days.length ? <ul className={s.log}>{sum.days.map(d => <li key={d.date}><time>{dayTxt(d.date)}</time><span><b>{hm(d.workedMin)}</b>{d.start ? ` · ${parisTime(d.start)} → ${d.end ? parisTime(d.end) : d.open ? "en cours" : "?"}` : ""}{d.pauseMin >= 1 ? ` · pauses ${hm(d.pauseMin)}` : ""}{d.correctionMin ? ` · correction ${d.correctionMin > 0 ? "+" : ""}${hm(d.correctionMin)}` : ""}{d.expenses.map((p, k) => <small key={k} style={{ display: "block" }}>{expenseLabel(p.type)} {eur(p.amount)}{p.photo ? " 📷" : ""}</small>)}{d.flags.map((f, k) => <small key={"f" + k} style={{ display: "block", color: "#b42318" }}>⚠️ {f}</small>)}</span></li>)}</ul> : null}
+    {sum.days.length ? <ul className={s.log}>{sum.days.map(d => <li key={d.date}><time>{dayTxt(d.date)}</time><span><b>{hm(d.workedMin)}</b>{d.start ? ` · ${parisTime(d.start)} → ${d.end ? parisTime(d.end) : d.open ? "en cours" : "?"}` : ""}{d.pauseMin >= 1 ? ` · pauses ${hm(d.pauseMin)}` : ""}{d.correctionMin ? ` · correction ${d.correctionMin > 0 ? "+" : ""}${hm(d.correctionMin)}` : ""}{d.expenses.map((p, k) => <small key={k} style={{ display: "block" }}>{expenseLabel(p.type)} {eur(p.amount)}{p.paid === "perso" ? " · à rembourser" : ""}{p.photo ? " 📷" : ""}</small>)}{d.flags.map((f, k) => <small key={"f" + k} style={{ display: "block", color: "#b42318" }}>⚠️ {f}</small>)}</span></li>)}</ul> : null}
 
     <div className={s.kpis}>
-      <div><small>Heures × {eur(rate)}</small><b>{eur(sum.amount)}</b></div>
-      <div><small>Frais remboursés</small><b>{eur(sum.refund)}</b></div>
-      <div><small>Total à facturer</small><b>{eur(sum.total)}</b></div>
+      <div><small>Ma facture (heures × {eur(rate)})</small><b>{eur(sum.amount)}</b></div>
+      <div><small>Dépenses carte société</small><b>{eur(sum.card)}</b></div>
+      {sum.refund ? <div><small>À me rembourser (hors facture)</small><b>{eur(sum.refund)}</b></div> : null}
     </div>
     <button className={s.ghost} onClick={() => setRecap(v => !v)}>{recap ? "Masquer" : "📄 Voir"} le récapitulatif pour ma facture</button>
     {recap ? <><pre style={{ whiteSpace: "pre-wrap", background: "#f6f4f0", padding: 12, borderRadius: 12, fontSize: 13 }}>{text}</pre>

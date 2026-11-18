@@ -129,7 +129,7 @@ export default function TourDay({ data, call, upload, reload, onMsg, deliverId, 
       {lastEvents.length ? <ul className={s.log}>{lastEvents.map((e, k) => <li key={e.id || k}><time>{fmt(e.created_at)}</time><span>{EVENT_LABEL[e.kind] || e.kind}{e.stop_index != null && stops[e.stop_index] ? ` · ${stops[e.stop_index].name}` : ""}{e.note ? ` — ${e.note}` : ""}</span></li>)}</ul> : null}
     </section>
 
-    <HoursCard events={data.events} now={now} rate={data.tour.rate || 25} estH={data.tour.estH || 0} tourName={data.tour.name || "Tournée"} driver={data.tour.driver || ""} busy={busy} send={send} upload={upload} onMsg={onMsg} />
+    <HoursCard events={data.events} now={now} rate={data.tour.rate || 25} estH={data.tour.estH || 0} tourName={data.tour.name || "Tournée"} driver={data.tour.driver || ""} busy={busy} send={send} upload={upload} addTickets={async paths => { await call({ action: "tickets", paths }); await reload(); }} onMsg={onMsg} />
 
     <section className={s.card}>
       <div className={s.rowHead}><h2>🕒 {all ? "Toute la tournée" : `Mon planning · jour ${today + 1}`}</h2><button className={s.small} onClick={() => setAll(v => !v)}>{all ? "Aujourd’hui" : "Tout voir"}</button></div>

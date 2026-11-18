@@ -8,7 +8,8 @@ import { plannedSchedule, tourProgress } from "../../../lib/schedule";
 import { OFFICE_KINDS, addEvent, cleanGeo, deliverVehicle, isEventKind, listEvents, stopIndexOf } from "../../../lib/tour-live";
 import type { PlanClient, PlanTour } from "../../../lib/planif";
 import { readVinPhoto } from "../conteneurs/extract";
-import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType } from "../../../lib/driver-hours";
+import { addTickets } from "../../../lib/driver-tickets";
+import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType, isPaidBy } from "../../../lib/driver-hours";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -60,10 +61,11 @@ export async function POST(req: Request) {
       if (kind === "frais") {
         const type = b.type, amount = Math.round(Number(String(b.amount ?? "").replace(",", ".")) * 100) / 100;
         if (!isExpenseType(type)) return NextResponse.json({ ok: false, error: "Type de frais inconnu." }, { status: 400 });
-        if (!(amount > 0 && amount <= 2000)) return NextResponse.json({ ok: false, error: "Montant invalide." }, { status: 400 });
+        if (!(amount >= 0 && amount <= 2000)) return NextResponse.json({ ok: false, error: "Montant invalide." }, { status: 400 });
         const photo = photoOk(b.path) ? String(b.path) : null;
-        if ((type === "hotel" || type === "repas") && !photo) return NextResponse.json({ ok: false, error: "Photo du ticket obligatoire pour l'hôtel et les repas." }, { status: 400 });
-        const event = await addEvent(db, { ...base, photo_path: photo, data: { type, amount, date: isDay(b.date) ? b.date : new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" }) } });
+        if (!photo) return NextResponse.json({ ok: false, error: "Photo du ticket obligatoire." }, { status: 400 });
+        const paid = isPaidBy(b.paid) ? b.paid : "carte";
+        const event = await addEvent(db, { ...base, photo_path: photo, data: { type, amount, paid, date: isDay(b.date) ? b.date : new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" }) } });
         return NextResponse.json({ ok: true, event });
       }
       if (kind === "correction") {
@@ -97,6 +99,13 @@ export async function POST(req: Request) {
       }
       const event = await addEvent(db, base);
       return NextResponse.json({ ok: true, event });
+    }
+    // Tickets : photos seules, triées ensuite par l'IA (catégorie, montant, date)
+    if (b.action === "tickets") {
+      if (!t) return NextResponse.json({ ok: false, error: "Ce lien n'est pas lié à une tournée." }, { status: 400 });
+      const paths = (Array.isArray(b.paths) ? b.paths : []).filter(photoOk).map(String);
+      if (!paths.length) return NextResponse.json({ ok: false, error: "Aucune photo reçue." }, { status: 400 });
+      return NextResponse.json({ ok: true, ...(await addTickets(db, tour, driver, paths)) });
     }
     if (b.action === "upload_url") {
       const path = `vehicles/${tour}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;

@@ -46,13 +46,13 @@ export default function HoursAdmin({ tour, api }: { tour: PlanTour; api: Api }) 
       {sum.days.map(x => <tr key={x.date}><td>
         <b>{dayTxt(x.date)}</b>{x.start ? ` · ${parisTime(x.start)} → ${x.end ? parisTime(x.end) : x.open ? "en cours" : "?"}` : ""}{x.pauseMin >= 1 ? ` · pauses ${hm(x.pauseMin)}` : ""}{x.correctionMin ? ` · correction ${x.correctionMin > 0 ? "+" : ""}${hm(x.correctionMin)}` : ""}
         {x.corrections.map((c, k) => <small key={k} style={{ display: "block" }}>✏️ {c.minutes > 0 ? "+" : ""}{hm(c.minutes)} — « {c.note} »</small>)}
-        {x.expenses.map((p, k) => <small key={"e" + k} style={{ display: "block" }}>{expenseLabel(p.type)} {eur(p.amount)} {p.photo && d.photos[p.photo] ? <a href={d.photos[p.photo]} target="_blank" rel="noreferrer">📷 ticket</a> : p.type === "hotel" || p.type === "repas" ? <b style={{ color: "#b42318" }}>sans photo</b> : null}</small>)}
+        {x.expenses.map((p, k) => <small key={"e" + k} style={{ display: "block" }}>{expenseLabel(p.type)} {eur(p.amount)}{p.paid === "perso" ? " · à rembourser" : ""} {p.photo && d.photos[p.photo] ? <a href={d.photos[p.photo]} target="_blank" rel="noreferrer">📷 ticket</a> : <b style={{ color: "#b42318" }}>sans photo</b>}</small>)}
         {x.flags.map((f, k) => <small key={"f" + k} style={{ display: "block", color: "#b42318" }}>⚠️ {f}</small>)}
       </td><td>{hm(x.workedMin)}</td></tr>)}
       <tr><td>Heures × {eur(sum.rate)}</td><td>{eur(sum.amount)}</td></tr>
-      <tr><td>Frais remboursés (hôtel ≤ {HOTEL_CAP} €/nuit, repas ≤ {MEAL_CAP} €/jour){sum.overCap ? <b style={{ color: "#b42318" }}> · dépassement plafonné</b> : null}</td><td>{eur(sum.refund)}</td></tr>
-      <tr className={s.tot}><td>Total à facturer par le chauffeur</td><td>{eur(sum.total)}</td></tr>
-      {sum.info ? <tr><td>Pour info : carburant, péages, autres (carte NeoDrive, non refacturés)</td><td>{eur(sum.info)}</td></tr> : null}
+      <tr className={s.tot}><td>Total facturé par le chauffeur (heures seulement)</td><td>{eur(sum.total)}</td></tr>
+      <tr><td>Dépenses carte société (hors facture){sum.overCap ? <b style={{ color: "#b42318" }}> · au-dessus des repères (hôtel {HOTEL_CAP} €/nuit, repas {MEAL_CAP} €/jour)</b> : null}</td><td>{eur(sum.card)}</td></tr>
+      {sum.refund ? <tr><td>À rembourser au chauffeur (payé personnellement, note de frais hors facture)</td><td>{eur(sum.refund)}</td></tr> : null}
     </tbody></table> : <p className={s.muted}>Aucune heure notée pour l’instant. Le chauffeur utilise « Début de journée », « Pause », « Reprise » et « Fin de journée » sur son lien.</p>}
     {corrections.length ? <p className={s.muted}>✏️ {corrections.length} correction{corrections.length > 1 ? "s" : ""} manuelle{corrections.length > 1 ? "s" : ""} : chacune a une explication du chauffeur.</p> : null}
 

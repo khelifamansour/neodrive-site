@@ -5,11 +5,14 @@ import { supabase } from "../../lib/supabase";
 import { DOC_STATUS_LABEL } from "../../lib/driver-docs";
 import Contract from "./Contract";
 import Delivery from "./Delivery";
+import Billing, { type BillingInfo } from "./Billing";
+import Invoice from "./Invoice";
 import TourMap from "../planificateur/TourMap";
 import type { Stop } from "../../lib/planif";
 
 type DocInfo = { status: string; filename?: string | null; uploaded_at?: string; note?: string | null; signed_name?: string | null; signed_at?: string | null };
-type Me = { who: "owner" | "member"; name: string; kinds: { id: string; label: string; hint: string }[]; required: string[]; docs: Record<string, DocInfo> };
+type Me = { who: "owner" | "member"; name: string; kinds: { id: string; label: string; hint: string }[]; required: string[]; docs: Record<string, DocInfo>; billing?: BillingInfo };
+type MyInvoice = { id: number; tour_id: string; tour_name: string; number: string; status: string; worked_min: number; total: number; sent_at: string; paid_at: string | null; url: string | null };
 type Res = { id: number; prenom: string; nom: string; ville: string; code_postal: string; departement: string; telephone: string; statut: string; date_promise: string | null; modele: string; priorite: string };
 type LL = [number, number];
 type Trip = { n: number; color: string; hub: string; hubPos?: LL; action: string; clients: { id: string; name: string; ville: string; pos?: LL }[]; next: string | null; nextPos?: LL | null; driveH?: number; km: number; hours: number };
@@ -41,12 +44,13 @@ export default function Livreur() {
   const [me, setMe] = useState<Me | null>(null); const [res, setRes] = useState<Res[]>([]); const [tours, setTours] = useState<Tour[]>([]);
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
   const [sign, setSign] = useState(""); const [accept, setAccept] = useState(false);
-  const [mapOf, setMapOf] = useState("");
+  const [mapOf, setMapOf] = useState(""); const [invOf, setInvOf] = useState(""); const [invoices, setInvoices] = useState<MyInvoice[]>([]);
 
   const load = useCallback(async () => {
     try {
       const [m, r, t] = await Promise.all([api<Me>({ action: "me" }), api<{ reservations: Res[] }>({ action: "reservations" }), api<{ tours: Tour[] }>({ action: "tours" })]);
       setMe(m); setRes(r.reservations); setTours(t.tours); setState("ready");
+      if (m.who === "member") api<{ invoices: MyInvoice[] }>({ action: "my_invoices" }).then(j => setInvoices(j.invoices)).catch(() => null);
     } catch (e) { if (e instanceof Unauthorized) setState("login"); else { setMsg("❌ " + (e as Error).message); setState("ready"); } }
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -123,6 +127,9 @@ export default function Livreur() {
         {p.stops.length ? <button className={`${c.btn} ${c.btnGhost}`} onClick={() => setMapOf(mapOf === t.id ? "" : t.id)}>{mapOf === t.id ? "Masquer la carte" : "🗺️ Voir la carte"}</button> : null}
         {mapOf === t.id ? <TourMap stops={p.stops} /> : null}
         {p.draft ? <small className={c.muted}>Tournée prévisionnelle : clients, dates et ordre peuvent changer. Les adresses et téléphones apparaîtront quand la tournée sera validée.</small> : null}
+        {!p.draft && me?.who === "member" ? (() => { const inv = invoices.find(x => x.tour_id === t.id); return inv ? <div style={{ padding: 10, borderRadius: 10, background: inv.status === "payee" ? "#e7f6ec" : "#fffaeb" }}>🧾 Facture <b>{inv.number}</b> · {inv.total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {inv.status === "payee" ? "✅ payée" : "⏳ à payer par NeoDrive"}{inv.url ? <> · <a href={inv.url} target="_blank" rel="noreferrer">PDF</a></> : null}</div>
+          : <><button className={`${c.btn} ${invOf === t.id ? c.btnGhost : c.btnBrand}`} onClick={() => setInvOf(invOf === t.id ? "" : t.id)}>{invOf === t.id ? "Fermer" : "🏁 Clôturer ma tournée et faire ma facture"}</button>
+            {invOf === t.id ? <Invoice tourId={t.id} api={api} onMsg={setMsg} onDone={() => { setInvOf(""); load(); }} /> : null}</>; })() : null}
         {t.link ? <a className={`${c.btn} ${c.btnBrand}`} href={t.link} style={{ textAlign: "center", textDecoration: "none" }}>Ouvrir la tournée (chargement, livraisons, heures)</a> : null}
       </section>; }) : <p className={c.muted}>Aucune tournée à votre nom pour l’instant.</p>}
     </div> : null}
@@ -137,6 +144,8 @@ export default function Livreur() {
     </div> : null}
 
     {tab === "documents" && me ? <div style={{ display: "grid", gap: 10 }}>
+      {me.who === "member" ? <Billing initial={me.billing || null} api={api} onSaved={load} onMsg={setMsg} /> : null}
+      {invoices.length ? <section className={c.card} style={{ display: "grid", gap: 6, padding: 14 }}><b>🧾 Mes factures</b>{invoices.map(x => <span key={x.id}>{x.number} · {x.tour_name} · {x.total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {x.status === "payee" ? `✅ payée le ${x.paid_at ? new Date(x.paid_at).toLocaleDateString("fr-FR") : ""}` : "⏳ à payer"}{x.url ? <> · <a href={x.url} target="_blank" rel="noreferrer">PDF</a></> : null}</span>)}</section> : null}
       <p className={c.muted}>Une photo nette ou un PDF par document. NeoDrive vérifie chaque document et le valide.</p>
       {me.kinds.map(k => { const d = me.docs[k.id] || { status: "manquant" }; const [bg, col] = ST_COLOR[d.status] || ST_COLOR.manquant; const req = me.required.includes(k.id);
         return <section key={k.id} className={c.card} style={{ display: "grid", gap: 6, padding: 14 }}>
