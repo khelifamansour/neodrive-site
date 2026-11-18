@@ -11,7 +11,14 @@ import type { Stop } from "../../lib/planif";
 type DocInfo = { status: string; filename?: string | null; uploaded_at?: string; note?: string | null; signed_name?: string | null; signed_at?: string | null };
 type Me = { who: "owner" | "member"; name: string; kinds: { id: string; label: string; hint: string }[]; required: string[]; docs: Record<string, DocInfo> };
 type Res = { id: number; prenom: string; nom: string; ville: string; code_postal: string; departement: string; telephone: string; statut: string; date_promise: string | null; modele: string; priorite: string };
-type Trip = { n: number; color: string; hub: string; action: string; clients: { id: string; name: string; ville: string }[]; next: string | null; km: number; hours: number };
+type LL = [number, number];
+type Trip = { n: number; color: string; hub: string; hubPos?: LL; action: string; clients: { id: string; name: string; ville: string; pos?: LL }[]; next: string | null; nextPos?: LL | null; driveH?: number; km: number; hours: number };
+/** Itinéraire Google Maps (voiture) : vers un point, ou départ → étapes → arrivée. */
+const gmaps = (to: LL, from?: LL, via: LL[] = []) => `https://www.google.com/maps/dir/?api=1${from ? `&origin=${from.join(",")}` : ""}&destination=${to.join(",")}${via.length ? `&waypoints=${encodeURIComponent(via.map(x => x.join(",")).join("|"))}` : ""}&travelmode=driving`;
+/** Pauses : 15 min toutes les 2 h de conduite (remorque, ≈ 72 km/h). */
+const pauseH = (drive: number) => Math.floor(drive / 2) * 0.25;
+const tripRoute = (v: Trip) => { const pts = v.clients.map(x => x.pos).filter(Boolean) as LL[]; const end = v.nextPos || pts[pts.length - 1]; if (!end) return null; const via = v.nextPos ? pts : pts.slice(0, -1); return gmaps(end, v.hubPos, via); };
+const nextWeek = (d: string) => { const now = new Date(); const day = (now.getDay() + 6) % 7; const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 7); const sun = new Date(mon.getTime() + 7 * 86400e3); const x = new Date(d + "T12:00:00"); return x >= mon && x < sun; };
 type Plan = { draft: boolean; stops: Stop[]; trips: Trip[]; km: number; hours: number; days: number; end: string | null };
 type Tour = { id: string; name: string; date: string; departTime: string; driver: string; status: string; clients: number; km: number; closed_at: string | null; en_route: number; link: string | null; plan: Plan };
 const hm = (h: number) => { const m = Math.round(h * 60); return `${Math.floor(m / 60)} h${m % 60 ? String(m % 60).padStart(2, "0") : ""}`; };
@@ -86,9 +93,15 @@ export default function Livreur() {
 
     {tab === "livraisons" ? <Delivery api={api} onMsg={setMsg} /> : null}
     {tab === "tournees" ? <div style={{ display: "grid", gap: 10 }}>
-      {tours.length ? tours.map(t => { const p = t.plan; return <section key={t.id} className={c.card} style={{ display: "grid", gap: 8 }}>
+      {(() => { const nw = tours.filter(t => t.date && nextWeek(t.date)); if (!nw.length) return null; const km = nw.reduce((a, t) => a + (t.plan.km || 0), 0); const drive = nw.reduce((a, t) => a + t.plan.trips.reduce((b, v) => b + (v.driveH ?? v.km / 72), 0), 0); const stops = nw.reduce((a, t) => a + t.clients, 0); return <section className={c.card} style={{ display: "grid", gap: 6, background: "#eef6ff" }}>
+        <b style={{ fontSize: 16 }}>📆 Semaine prochaine : {nw.length} tournée{nw.length > 1 ? "s" : ""}</b>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{[`👥 ${stops} arrêt${stops > 1 ? "s" : ""} client`, `🛣️ ≈ ${Math.round(km).toLocaleString("fr-FR")} km`, `🚚 ≈ ${hm(drive)} de conduite (72 km/h avec remorque)`, `☕ + ${hm(pauseH(drive))} de pauses`].map(x => <span key={x} className={c.badge} style={{ background: "#fff", color: "#111" }}>{x}</span>)}</div>
+        <small className={c.muted}>Détail, ordre des arrêts et liens GPS ci-dessous.</small>
+      </section>; })()}
+      {tours.length ? [...tours].sort((a, z) => Number(nextWeek(z.date || "")) - Number(nextWeek(a.date || ""))).map(t => { const p = t.plan; return <section key={t.id} className={c.card} style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <b style={{ fontSize: 17 }}>{t.name}</b>
+          {t.date && nextWeek(t.date) ? <span className={c.badge} style={{ background: "#e8f0fe", color: "#1849a9" }}>Semaine prochaine</span> : null}
           {p.draft ? <span className={c.badge} style={{ background: "#fef0c7", color: "#93370d" }}>Prévisionnel — peut évoluer</span>
             : <span className={c.badge} style={{ background: t.status === "termine" ? "#e7f6ec" : "#e8f0fe", color: "#111" }}>{t.status === "termine" ? "Terminée" : "Validée"}</span>}
           {t.closed_at ? <span className={c.badge} style={{ background: "#fef0c7", color: "#93370d" }}>🔒 Clôturée</span> : null}
@@ -100,9 +113,11 @@ export default function Livreur() {
         <div style={{ display: "grid", gap: 6 }}>
           {p.trips.map(v => <div key={v.n} style={{ borderLeft: `5px solid ${v.color}`, background: "#fafafa", borderRadius: 10, padding: "8px 10px", display: "grid", gap: 3 }}>
             <b>Voyage {v.n} · ≈ {v.km.toLocaleString("fr-FR")} km · ≈ {hm(v.hours)}</b>
-            <small className={c.muted}>📦 {v.hub} : {v.action}</small>
-            {v.clients.map((x, i) => <span key={x.id}>{i + 1}. 🚗 {x.name}{x.ville ? ` — ${x.ville}` : ""}</span>)}
-            {v.next ? <small className={c.muted}>➡️ Ensuite : {v.next}</small> : null}
+            {(() => { const d = v.driveH ?? v.km / 72; return <small className={c.muted}>🚚 Conduite ≈ {hm(d)} (72 km/h avec remorque){pauseH(d) ? ` + ${hm(pauseH(d))} de pauses` : ""}</small>; })()}
+            <small className={c.muted}>📦 {v.hub} : {v.action}{v.hubPos ? <> · <a href={gmaps(v.hubPos)} target="_blank" rel="noreferrer">GPS</a></> : null}</small>
+            {v.clients.map((x, i) => <span key={x.id}>{i + 1}. 🚗 {x.name}{x.ville ? ` — ${x.ville}` : ""}{x.pos ? <> · <a href={gmaps(x.pos)} target="_blank" rel="noreferrer">📍 GPS</a></> : null}</span>)}
+            {v.next ? <small className={c.muted}>➡️ Ensuite : {v.next}{v.nextPos ? <> · <a href={gmaps(v.nextPos)} target="_blank" rel="noreferrer">GPS</a></> : null}</small> : null}
+            {(() => { const u = tripRoute(v); return u ? <a className={`${c.btn} ${c.btnGhost}`} href={u} target="_blank" rel="noreferrer" style={{ textAlign: "center", textDecoration: "none", padding: "6px 10px" }}>🧭 Tout le voyage dans Google Maps</a> : null; })()}
           </div>)}
         </div>
         {p.stops.length ? <button className={`${c.btn} ${c.btnGhost}`} onClick={() => setMapOf(mapOf === t.id ? "" : t.id)}>{mapOf === t.id ? "Masquer la carte" : "🗺️ Voir la carte"}</button> : null}

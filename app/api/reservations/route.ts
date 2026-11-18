@@ -5,6 +5,8 @@ import { buildClient, PLAN_CLIENTS } from "../../../lib/planif-server";
 import type { PlanClient } from "../../../lib/planif";
 import { cleanReservation, saveReservation, type Reservation } from "../../../lib/reservations";
 import { normalizePhone } from "../../../lib/crm-agent";
+import { applyStoredSecrets } from "../../../lib/integrations";
+import { brevoReady, sendSms } from "../../../lib/brevo";
 
 export const dynamic = "force-dynamic";
 const VIDEO_KEY = "prise_en_main_video_url";
@@ -109,11 +111,34 @@ export async function POST(req: Request) {
       }
       if ("avis_google" in b) patch.avis_google = String(b.avis_google || "").trim().slice(0, 2000) || null;
       // Paiement confirmé par le fondateur : débloque la signature de l'accusé chez le livreur
-      if ("paiement_confirme" in b) patch.paiement_confirme_at = b.paiement_confirme ? new Date().toISOString() : null;
+      let paidAfterDelivery: Record<string, unknown> | null = null;
+      if ("paiement_confirme" in b) {
+        if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Seul le fondateur peut confirmer un paiement." }, { status: 403 });
+        patch.paiement_confirme_at = b.paiement_confirme ? new Date().toISOString() : null;
+        if (b.paiement_confirme) {
+          const { data: cur } = await sb.from("reservations").select("id,prenom,nom,telephone,adresse,code_postal,ville,livre_at,paiement_en_attente,notes").eq("id", id).maybeSingle();
+          // Livrée avec paiement en attente : le paiement arrive → « Livrée », clés et papiers à envoyer en lettre suivie.
+          if (cur?.livre_at && cur.paiement_en_attente) {
+            patch.statut = "Livrée"; patch.paiement_en_attente = false; paidAfterDelivery = cur;
+            patch.notes = [cur.notes, `[${new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] Paiement reçu après livraison : clés et papiers à envoyer en lettre suivie.`].filter(Boolean).join("\n");
+          }
+        }
+      }
       for (const k of ["nouvelles_at", "avis_demande_at"] as const) if (k in b) patch[k] = b[k] ? new Date().toISOString() : null;
       if ("avis_at" in b) patch.avis_at = /^\d{4}-\d{2}-\d{2}$/.test(String(b.avis_at || "")) ? String(b.avis_at) : null;
       const { error } = await sb.from("reservations").update(patch).eq("id", id);
       if (error) throw new Error(error.message);
+      if (paidAfterDelivery) {
+        const p = paidAfterDelivery as Record<string, string | null>;
+        const client = `${p.prenom || ""} ${p.nom || ""}`.trim(); const adresse = [p.adresse, `${p.code_postal || ""} ${p.ville || ""}`.trim()].filter(Boolean).join(", ");
+        try {
+          await applyStoredSecrets();
+          if (brevoReady()) {
+            await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", `NeoDrive : paiement de ${client} recu. Envoyer cles et papiers en lettre suivie a ${client}, ${adresse || "adresse a verifier"}.`);
+            if (p.telephone) await sendSms(p.telephone, `Bonjour ${String(p.prenom || "").split(/\s+/)[0]}, NeoDrive : paiement recu, merci ! Vos cles et papiers partent par la Poste en lettre suivie. Bonne route !`);
+          }
+        } catch (e) { console.error("[RESERVATIONS] SMS paiement apres livraison", e); }
+      }
       await logSection(acc, "reservation_modif", { id, statut: patch.statut });
       return NextResponse.json({ ok: true });
     }

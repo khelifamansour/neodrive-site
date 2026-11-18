@@ -3,11 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import c from "../giga/giga.module.css";
 import { supabase } from "../../lib/supabase";
 
-/** Livraisons : numéro de série (VIN) + photo de la plaque, puis accusé de réception signé par le client sur le téléphone du livreur. */
+/** Livraisons : numéro de série (VIN) + photo de la plaque, puis accusé de réception confirmé par le client (lien SMS) ou signé sur le téléphone du livreur. */
 export type Dlv = {
   id: number; prenom: string; nom: string; adresse: string; code_postal: string; ville: string; telephone: string; has_email: boolean;
   modele: string; couleur: string; statut: string; date_promise: string | null; vin: string | null; has_vin_photo: boolean;
   paiement_confirme_at: string | null; livre_at: string | null; accuse_url: string | null;
+  confirm_sent_at: string | null; remote_confirmed: boolean; paiement_en_attente: boolean; montant_du: number | null; prevenu_at: string | null; total: number | null;
 };
 type Check = { id: string; label: string };
 type Api = <T = Record<string, unknown>>(body: object) => Promise<T>;
@@ -36,7 +37,9 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
 }
 
 export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) => void }) {
-  const [list, setList] = useState<Dlv[]>([]); const [checks, setChecks] = useState<Check[]>([]); const [vins, setVins] = useState<{ vin: string; container: string | null }[]>([]);
+  const [list, setList] = useState<Dlv[]>([]); const [checksAll, setChecks] = useState<Check[]>([]); const [checksPending, setChecksPending] = useState<Check[]>([]);
+  const [sigMode, setSigMode] = useState(false); const [sent, setSent] = useState<{ sms: boolean; email: boolean; whatsapp: string | null } | null>(null);
+  const [notif, setNotif] = useState({ date: "", from: "14:00", to: "16:00" }); const [pend, setPend] = useState({ montant: "", cles: false, documents: false }); const [vins, setVins] = useState<{ vin: string; container: string | null }[]>([]);
   const [sel, setSel] = useState<number | null>(null); const [busy, setBusy] = useState("");
   const [vin, setVin] = useState(""); const [photo, setPhoto] = useState("");
   const [ck, setCk] = useState<Record<string, boolean>>({}); const [reserves, setReserves] = useState(""); const [signer, setSigner] = useState(""); const [sig, setSig] = useState<string | null>(null);
@@ -44,14 +47,14 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
 
   const load = useCallback(async () => {
     try {
-      const [d, v] = await Promise.all([api<{ deliveries: Dlv[]; checks: Check[] }>({ action: "deliveries" }), api<{ vins: { vin: string; container: string | null }[] }>({ action: "free_vins" })]);
-      setList(d.deliveries); setChecks(d.checks); setVins(v.vins);
+      const [d, v] = await Promise.all([api<{ deliveries: Dlv[]; checks: Check[]; checks_pending: Check[] }>({ action: "deliveries" }), api<{ vins: { vin: string; container: string | null }[] }>({ action: "free_vins" })]);
+      setList(d.deliveries); setChecks(d.checks); setChecksPending(d.checks_pending || d.checks); setVins(v.vins);
     } catch (e) { onMsg("❌ " + (e as Error).message); }
   }, [api, onMsg]);
   useEffect(() => { load(); }, [load]);
 
   const r = list.find(x => x.id === sel) || null;
-  const open = (x: Dlv) => { setSel(x.id); setVin(x.vin || ""); setPhoto(""); setCk({}); setReserves(""); setSigner(`${x.prenom} ${x.nom}`.replace(/\(.*?\)/g, "").trim()); setSig(null); setDone(null); window.scrollTo({ top: 0 }); };
+  const open = (x: Dlv) => { setSel(x.id); setVin(x.vin || ""); setPhoto(""); setCk({}); setReserves(""); setSigner(`${x.prenom} ${x.nom}`.replace(/\(.*?\)/g, "").trim()); setSig(null); setDone(null); setSigMode(false); setSent(null); setNotif({ date: x.date_promise || "", from: "14:00", to: "16:00" }); setPend({ montant: x.montant_du != null ? String(x.montant_du) : x.total != null ? String(x.total) : "", cles: false, documents: false }); window.scrollTo({ top: 0 }); };
 
   const uploadPhoto = async (f?: File) => {
     if (!f || !r) return; setBusy("photo");
@@ -84,9 +87,31 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
     } catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
   };
 
+  const notifyClient = async () => {
+    if (!r) return; setBusy("notif");
+    try { await api({ action: "notify_client", id: r.id, date: notif.date, from: notif.from, to: notif.to }); onMsg(`✅ ${r.prenom} est prévenu(e) par SMS.`); await load(); }
+    catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
+  };
+  const setPending = async (on: boolean) => {
+    if (!r) return; setBusy("pend");
+    try { await api({ action: "pending_mode", id: r.id, on, montant_du: pend.montant, kept: { cles: pend.cles, documents: pend.documents } }); onMsg(on ? "✅ Livraison avec paiement en attente : gardez les clés et les documents." : "Paiement en attente annulé."); await load(); }
+    catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
+  };
+  const sendConfirm = async () => {
+    if (!r) return; setBusy("send");
+    try { const j = await api<{ sent: { sms: boolean; email: boolean }; whatsapp: string | null }>({ action: "send_confirm", id: r.id }); setSent({ ...j.sent, whatsapp: j.whatsapp }); onMsg(`✅ Lien envoyé à ${r.prenom}${j.sent.sms ? " par SMS" : ""}${j.sent.email ? (j.sent.sms ? " et" : "") + " par e-mail" : ""}. Il confirme sur son téléphone.`); await load(); }
+    catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
+  };
+  const checkConfirm = async () => {
+    if (!r) return; setBusy("check");
+    try { const j = await api<{ confirmed: boolean }>({ action: "confirm_status", id: r.id }); if (j.confirmed) { onMsg(`✅ ${r.prenom} a confirmé la réception.`); await load(); } else onMsg("⏳ Pas encore confirmé. Demandez au client d’ouvrir le lien reçu par SMS."); }
+    catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
+  };
+
   if (r) {
-    const paid = !!r.paiement_confirme_at; const allChecked = checks.every(x => ck[x.id]);
-    const canSign = !!r.vin && paid && signer.trim().length >= 3 && !!sig && !r.accuse_url;
+    const paid = !!r.paiement_confirme_at; const pending = !paid && r.paiement_en_attente; const ready = !!r.vin && (paid || pending);
+    const checks = pending ? checksPending : checksAll; const allChecked = checks.every(x => ck[x.id]);
+    const canSign = ready && signer.trim().length >= 3 && !!sig && !r.accuse_url;
     return <section style={{ display: "grid", gap: 12, marginTop: 12 }}>
       <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { setSel(null); load(); }}>← Toutes les livraisons</button>
       <div className={c.card} style={{ display: "grid", gap: 6 }}>
@@ -100,12 +125,24 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
       </div>
 
       {r.accuse_url ? <div className={c.card} style={{ background: "#e7f6ec" }}>
-        <b>✅ Livrée{r.livre_at ? ` le ${fmt(r.livre_at)}` : ""} · accusé signé</b>
+        <b>✅ Livrée{r.livre_at ? ` le ${fmt(r.livre_at)}` : ""} · accusé {r.remote_confirmed ? "confirmé à distance par le client" : "signé"}</b>
+        {pending ? <p style={{ margin: "6px 0", color: "#b42318", fontWeight: 700 }}>💶 Paiement en attente : gardez les clés et les documents. NeoDrive les enverra au client dès réception du paiement.</p> : null}
         <p style={{ margin: "6px 0" }}>N° de série : <b style={{ fontFamily: "monospace" }}>{r.vin}</b></p>
         <a className={`${c.btn} ${c.btnBrand}`} style={big} href={r.accuse_url} target="_blank" rel="noreferrer">📄 Voir l’accusé (PDF)</a>
         {done?.whatsapp ? <a className={`${c.btn} ${c.btnGhost}`} style={{ ...big, marginTop: 8, background: "#1fa855", color: "#fff" }} href={done.whatsapp} target="_blank" rel="noreferrer">💬 Envoyer l’accusé au client par WhatsApp</a> : null}
         {done ? <p className={c.muted}>{done.emailed ? "📧 Envoyé aussi par e-mail au client." : "Pas d’e-mail envoyé (adresse inconnue) : envoyez le lien par WhatsApp."}</p> : null}
       </div> : <>
+        <div className={c.card} style={{ display: "grid", gap: 8 }}>
+          <b>📨 Prévenir le client de la livraison</b>
+          <small className={c.muted}>Un SMS avec la date et le créneau. À envoyer la veille ou le matin.{r.prevenu_at ? ` Déjà prévenu le ${fmt(r.prevenu_at)}.` : ""}</small>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 6 }}>
+            <input className={c.input} type="date" value={notif.date} onChange={e => setNotif({ ...notif, date: e.target.value })} />
+            <input className={c.input} type="time" value={notif.from} onChange={e => setNotif({ ...notif, from: e.target.value })} />
+            <input className={c.input} type="time" value={notif.to} onChange={e => setNotif({ ...notif, to: e.target.value })} />
+          </div>
+          <button className={`${c.btn} ${c.btnGhost}`} style={big} disabled={!!busy || !notif.date || !r.telephone} onClick={() => { if (confirm(`Envoyer le SMS à ${r.prenom} : livraison le ${fmt(notif.date)} entre ${notif.from} et ${notif.to} ?`)) notifyClient(); }}>{busy === "notif" ? "Envoi…" : "📨 Prévenir le client par SMS"}</button>
+        </div>
+
         <div className={c.card} style={{ display: "grid", gap: 8 }}>
           <b>1. Numéro de série (VIN)</b>
           <small className={c.muted}>Lisez la plaque du véhicule (17 caractères) et photographiez-la.</small>
@@ -117,15 +154,39 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
           <button className={`${c.btn} ${c.btnBrand}`} style={big} disabled={!!busy || vin.length !== 17} onClick={saveVin}>{busy === "vin" ? "…" : r.vin === vin && !photo ? "✅ Numéro enregistré" : "Enregistrer le numéro de série"}</button>
         </div>
 
-        <div className={c.card} style={{ display: "grid", gap: 8, background: paid ? "#e7f6ec" : "#fff4d6" }}>
+        <div className={c.card} style={{ display: "grid", gap: 8, background: paid ? "#e7f6ec" : pending ? "#fde8e7" : "#fff4d6" }}>
           <b>2. Paiement</b>
-          {paid ? <span>✅ <b>Paiement reçu : confirmé par NeoDrive.</b> Vous pouvez remettre les clés après la signature.</span>
-            : <span>⏳ <b>Paiement pas encore confirmé.</b> Ne remettez pas les clés. Le client fait son virement, Mansour le confirme, puis appuyez sur « Vérifier ».</span>}
+          {paid ? <span>✅ <b>Paiement reçu : confirmé par NeoDrive.</b> Vous pouvez remettre les clés après l’accusé.</span>
+            : pending ? <span>💶 <b>Livraison avec paiement en attente{r.montant_du ? ` (${Math.round(r.montant_du).toLocaleString("fr-FR")} € dus)` : ""}.</b> Laissez la voiture, mais <b>gardez les clés et les documents</b>. NeoDrive les enverra au client par courrier suivi dès réception du paiement.</span>
+            : <span>⏳ <b>Paiement pas encore confirmé.</b> Ne remettez pas les clés. Le client fait son virement instantané, Mansour le confirme, puis appuyez sur « Vérifier ».</span>}
           {!paid ? <button className={`${c.btn} ${c.btnGhost}`} style={big} onClick={load}>🔄 Vérifier le paiement</button> : null}
+          {!paid && !pending ? <details>
+            <summary style={{ cursor: "pointer", fontWeight: 700 }}>Le virement n’est pas instantané ? Livraison avec paiement en attente</summary>
+            <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+              <small className={c.muted}>Seulement avec l’accord de Mansour. La voiture reste chez le client, vous repartez avec les clés et les documents.</small>
+              <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Montant restant dû (€)<input className={c.input} inputMode="decimal" value={pend.montant} onChange={e => setPend({ ...pend, montant: e.target.value })} /></label>
+              <label style={{ display: "flex", gap: 10, alignItems: "center" }}><input type="checkbox" checked={pend.cles} onChange={e => setPend({ ...pend, cles: e.target.checked })} style={{ width: 22, height: 22 }} />Je garde les clés (2)</label>
+              <label style={{ display: "flex", gap: 10, alignItems: "center" }}><input type="checkbox" checked={pend.documents} onChange={e => setPend({ ...pend, documents: e.target.checked })} style={{ width: 22, height: 22 }} />Je garde les documents du véhicule</label>
+              <button className={`${c.btn} ${c.btnBrand}`} style={big} disabled={!!busy || !pend.cles || !pend.documents} onClick={() => setPending(true)}>{busy === "pend" ? "…" : "Livrer avec paiement en attente"}</button>
+            </div>
+          </details> : null}
+          {pending && !r.accuse_url ? <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { if (confirm("Annuler la livraison avec paiement en attente ?")) setPending(false); }}>Annuler le paiement en attente</button> : null}
         </div>
 
         <div className={c.card} style={{ display: "grid", gap: 10 }}>
-          <b>3. Accusé de réception (le client lit et signe)</b>
+          <b>3. Accusé de réception</b>
+          <small className={c.muted}>Le plus simple : le client reçoit un lien par SMS et confirme sur son propre téléphone. Sinon, il signe sur le vôtre.</small>
+          <button className={`${c.btn} ${c.btnBrand}`} style={{ ...big, opacity: ready ? 1 : .5 }} disabled={!ready || !!busy} onClick={sendConfirm}>{busy === "send" ? "Envoi…" : r.confirm_sent_at ? "📲 Renvoyer le lien au client" : "📲 Envoyer l’accusé au client"}</button>
+          {r.confirm_sent_at ? <div style={{ display: "grid", gap: 6, background: "#e8f0fe", borderRadius: 10, padding: 10 }}>
+            <span>📲 Lien envoyé le {new Date(r.confirm_sent_at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}{sent ? ` (${[sent.sms ? "SMS" : "", sent.email ? "e-mail" : ""].filter(Boolean).join(" + ")})` : ""}. Le client coche « J’ai bien reçu mon véhicule » et écrit son nom.</span>
+            <button className={`${c.btn} ${c.btnGhost}`} onClick={checkConfirm}>{busy === "check" ? "…" : "🔄 Vérifier si le client a confirmé"}</button>
+            {sent?.whatsapp ? <a className={`${c.btn} ${c.btnGhost}`} style={{ background: "#1fa855", color: "#fff", textAlign: "center" }} href={sent.whatsapp} target="_blank" rel="noreferrer">💬 Envoyer aussi le lien par WhatsApp</a> : null}
+          </div> : null}
+          {!ready ? <small className={c.err}>{!r.vin ? "Enregistrez d’abord le numéro de série (étape 1)." : "Attendez la confirmation du paiement (étape 2)."}</small> : null}
+          <button className={`${c.btn} ${c.btnGhost}`} onClick={() => setSigMode(!sigMode)}>{sigMode ? "Masquer la signature sur mon téléphone" : "✍️ Ou faire signer sur mon téléphone"}</button>
+        </div>
+        {sigMode ? <div className={c.card} style={{ display: "grid", gap: 10 }}>
+          <b>Signature sur votre téléphone (le client lit et signe)</b>
           {checks.map(x => <label key={x.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 16 }}><input type="checkbox" checked={!!ck[x.id]} onChange={e => setCk({ ...ck, [x.id]: e.target.checked })} style={{ width: 22, height: 22, flex: "0 0 22px" }} />{x.label}</label>)}
           {!allChecked ? <small className={c.muted}>Une case non cochée apparaîtra comme non vérifiée sur l’accusé.</small> : null}
           <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Réserves ou remarques du client (facultatif)
@@ -134,20 +195,20 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
             <input className={c.input} value={signer} onChange={e => setSigner(e.target.value)} autoComplete="off" style={{ fontSize: 17 }} /></label>
           <SignaturePad onChange={setSig} />
           <button className={`${c.btn} ${c.btnBrand}`} style={{ ...big, opacity: canSign ? 1 : .5 }} disabled={!canSign || !!busy} onClick={signNow}>{busy === "sign" ? "Enregistrement…" : "✍️ Valider la livraison"}</button>
-          {!r.vin ? <small className={c.err}>Enregistrez d’abord le numéro de série (étape 1).</small> : !paid ? <small className={c.err}>Attendez la confirmation du paiement (étape 2).</small> : !sig ? <small className={c.muted}>Le client doit signer dans le cadre.</small> : null}
-        </div>
+          {!r.vin ? <small className={c.err}>Enregistrez d’abord le numéro de série (étape 1).</small> : !ready ? <small className={c.err}>Attendez la confirmation du paiement (étape 2).</small> : !sig ? <small className={c.muted}>Le client doit signer dans le cadre.</small> : null}
+        </div> : null}
       </>}
     </section>;
   }
 
   const todo = list.filter(x => !x.accuse_url); const recent = list.filter(x => x.accuse_url);
   return <section style={{ display: "grid", gap: 10, marginTop: 12 }}>
-    <p className={c.muted} style={{ margin: 0 }}>Pour chaque voiture : 1. numéro de série et photo de la plaque, 2. paiement confirmé par Mansour, 3. le client signe l’accusé sur votre téléphone.</p>
+    <p className={c.muted} style={{ margin: 0 }}>Pour chaque voiture : 1. numéro de série et photo de la plaque, 2. paiement confirmé par Mansour, 3. accusé : lien envoyé au client par SMS, ou signature sur votre téléphone.</p>
     {todo.length ? todo.map(x => <button key={x.id} className={c.card} onClick={() => open(x)} style={{ textAlign: "left", display: "grid", gap: 4, cursor: "pointer", font: "inherit" }}>
       <b style={{ fontSize: 17 }}>{x.prenom} {x.nom}</b>
       <span className={c.muted}>📍 {x.ville || "—"}{x.code_postal ? ` (${x.code_postal.slice(0, 2)})` : ""} · 🚗 {x.modele || "—"}{x.couleur ? ` · ${x.couleur}` : ""} · 📅 {fmt(x.date_promise)}</span>
-      <span style={{ fontSize: 14 }}>{x.vin ? `🔢 ${x.vin}` : "🔢 VIN à saisir"} · {x.paiement_confirme_at ? "💶 paiement confirmé" : "⏳ paiement à confirmer"}</span>
+      <span style={{ fontSize: 14 }}>{x.vin ? `🔢 ${x.vin}` : "🔢 VIN à saisir"} · {x.paiement_confirme_at ? "💶 paiement confirmé" : x.paiement_en_attente ? "💶 paiement en attente" : "⏳ paiement à confirmer"}{x.confirm_sent_at ? " · 📲 lien envoyé" : ""}</span>
     </button>) : <p className={c.muted}>Aucune livraison en attente.</p>}
-    {recent.length ? <><b style={{ marginTop: 8 }}>Livrées ces 3 derniers jours</b>{recent.map(x => <button key={x.id} className={c.card} onClick={() => open(x)} style={{ textAlign: "left", cursor: "pointer", font: "inherit", background: "#e7f6ec" }}>✅ {x.prenom} {x.nom} · {x.ville} · <span style={{ fontFamily: "monospace" }}>{x.vin}</span></button>)}</> : null}
+    {recent.length ? <><b style={{ marginTop: 8 }}>Livrées ces 3 derniers jours</b>{recent.map(x => <button key={x.id} className={c.card} onClick={() => open(x)} style={{ textAlign: "left", cursor: "pointer", font: "inherit", background: "#e7f6ec" }}>{x.paiement_en_attente && !x.paiement_confirme_at ? "💶" : "✅"} {x.prenom} {x.nom} · {x.ville} · <span style={{ fontFamily: "monospace" }}>{x.vin}</span>{x.paiement_en_attente && !x.paiement_confirme_at ? " · paiement en attente" : ""}</button>)}</> : null}
   </section>;
 }

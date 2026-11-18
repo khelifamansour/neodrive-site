@@ -11,6 +11,7 @@ type R = {
   acompte: number | null; priorite: string; notes: string; plan_client_id: string | null; options: string;
   vin?: string | null; avis_google?: string | null; avis_at?: string | null;
   paiement_confirme_at?: string | null; livre_at?: string | null; accuse_token?: string | null;
+  paiement_en_attente?: boolean | null; montant_du?: number | null; remote_confirm?: { name?: string; at?: string } | null;
 };
 const STATUTS = ["Nouvelle", "Confirmée", "Planifiée", "Livrée", "Annulée"];
 const PRIOS = ["Urgente", "Haute", "Normale", "Basse"];
@@ -57,7 +58,7 @@ export default function ReservationsAdmin() {
   const save = (id: number, patch: Partial<R>) => run(async () => { await api({ action: "update", id, ...patch }); setOpen(null); return "✅ Enregistré."; });
   const toPlanner = () => run(async () => { const j = await api<{ done: number; errors: string[] }>({ action: "to_planner", ids: [...sel] }); setSel(new Set()); return `🚚 ${j.done} réservation(s) dans le planificateur.${j.errors.length ? " ⚠️ " + j.errors.join(" ; ") : ""}`; });
   const importPlanner = () => run(async () => { const j = await api<{ added: number }>({ action: "import_planner" }); return `📥 ${j.added} réservation(s) reprise(s) du planificateur.`; });
-  const setPaid = (r: R) => { const on = !r.paiement_confirme_at; if (!confirm(on ? `Confirmer que le paiement de ${r.prenom} ${r.nom} est bien reçu sur le compte ? Le livreur pourra alors faire signer l'accusé et remettre les clés.` : `Annuler la confirmation de paiement de ${r.prenom} ${r.nom} ?`)) return; run(async () => { await api({ action: "update", id: r.id, paiement_confirme: on }); return on ? `💶 Paiement de ${r.prenom} ${r.nom} confirmé : le livreur peut faire signer l'accusé.` : "Confirmation de paiement annulée."; }); };
+  const setPaid = (r: R) => { const on = !r.paiement_confirme_at; if (!confirm(on ? `Confirmer que le paiement de ${r.prenom} ${r.nom} est bien reçu sur le compte ? Le livreur pourra alors faire signer l'accusé et remettre les clés.` : `Annuler la confirmation de paiement de ${r.prenom} ${r.nom} ?`)) return; run(async () => { await api({ action: "update", id: r.id, paiement_confirme: on }); return on ? (r.livre_at && r.paiement_en_attente ? `💶 Paiement de ${r.prenom} ${r.nom} confirmé : réservation passée en « Livrée ». SMS envoyés : à vous (envoyer clés et papiers en lettre suivie) et au client.` : `💶 Paiement de ${r.prenom} ${r.nom} confirmé : le livreur peut faire confirmer l'accusé.`) : "Confirmation de paiement annulée."; }); };
   const logContact = (id: number, channel: string, template: string) => { api({ action: "contact_log", id, channel, template }).then(() => load()).catch(e => setMsg("❌ " + (e as Error).message)); };
   const copyList = () => { const t = (chosen.length ? chosen : shown).map(r => `${r.prenom} ${r.nom}, ${r.adresse}, ${r.code_postal} ${r.ville}, ${r.telephone}`).join("\n"); navigator.clipboard?.writeText(t).then(() => setMsg("📋 Liste copiée.")); };
 
@@ -138,6 +139,7 @@ export default function ReservationsAdmin() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <span className={c.badge} style={{ background: ST_BG[r.statut] || "#eee", color: "#111" }}>{r.statut}</span>
+              {r.livre_at && r.paiement_en_attente && !r.paiement_confirme_at ? <span className={c.badge} style={{ background: "#fde8e7", color: "#b42318" }}>Livrée – paiement en attente{r.montant_du ? ` (${Math.round(Number(r.montant_du)).toLocaleString("fr-FR")} €)` : ""}</span> : null}
               {r.priorite !== "Normale" ? <span className={c.badge} style={{ background: r.priorite === "Urgente" ? "#fde8e7" : r.priorite === "Haute" ? "#fff4d6" : "#f1f1f1", color: "#111" }}>{r.priorite}</span> : null}
               {r.plan_client_id ? <span className={c.badge} style={{ background: "#ede7fb", color: "#111" }}>🚚 au planificateur</span> : null}
               {hs ? <span className={c.badge} style={{ background: "#d92d20", color: "#fff" }}>Hors stock — rappeler</span> : null}
@@ -152,8 +154,8 @@ export default function ReservationsAdmin() {
               {r.telephone ? <a className={`${c.btn} ${c.btnGhost}`} href={`tel:${r.telephone}`}>📞 {r.telephone}</a> : null}
               {r.telephone ? <a className={`${c.btn} ${c.btnGhost}`} target="_blank" rel="noreferrer" href={`https://wa.me/${r.telephone.replace(/[^\d]/g, "").replace(/^0/, "33")}`}>💬 WhatsApp</a> : null}
               {r.telephone ? <button className={`${c.btn} ${c.btnBrand}`} onClick={() => setContact(contact === r.id ? null : r.id)}>💬 Contacter</button> : null}
-              {r.accuse_token ? <a className={`${c.btn} ${c.btnGhost}`} href={`/api/accuse/${r.accuse_token}`} target="_blank" rel="noreferrer">📄 Accusé signé</a> : null}
-              {!["Livrée", "Annulée"].includes(r.statut) ? <button className={`${c.btn} ${r.paiement_confirme_at ? c.btnGhost : c.btnBrand}`} style={r.paiement_confirme_at ? { background: "#e7f6ec" } : undefined} onClick={() => setPaid(r)}>{r.paiement_confirme_at ? "💶 Paiement confirmé ✅" : "💶 Confirmer le paiement"}</button> : null}
+              {r.accuse_token ? <a className={`${c.btn} ${c.btnGhost}`} href={`/api/accuse/${r.accuse_token}`} target="_blank" rel="noreferrer">📄 {r.remote_confirm ? "Accusé confirmé à distance" : "Accusé signé"}</a> : null}
+              {!["Livrée", "Annulée"].includes(r.statut) ? <button className={`${c.btn} ${r.paiement_confirme_at ? c.btnGhost : c.btnBrand}`} title={r.livre_at && r.paiement_en_attente ? "Paiement reçu après livraison : passe en Livrée et prévient le client" : undefined} style={r.paiement_confirme_at ? { background: "#e7f6ec" } : undefined} onClick={() => setPaid(r)}>{r.paiement_confirme_at ? "💶 Paiement confirmé ✅" : "💶 Confirmer le paiement"}</button> : null}
               <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { setOpen(isOpen ? null : r.id); setEdit({ statut: r.statut, priorite: r.priorite, date_promise: r.date_promise, acompte: r.acompte, notes: r.notes }); }}>{isOpen ? "Fermer" : "✏️ Modifier"}</button>
             </div>
           </div>

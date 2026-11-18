@@ -1,4 +1,4 @@
-/** Accusé de réception du véhicule : signé par le client sur le téléphone du livreur. Serveur uniquement. */
+/** Accusé de réception du véhicule : signé par le client sur le téléphone du livreur, ou confirmé à distance par le client (lien SMS / e-mail). Serveur uniquement. */
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import PDFDocument from "pdfkit";
@@ -16,6 +16,9 @@ export const CHECKS = [
   { id: "chargeur", label: "J'ai reçu le câble de recharge" },
 ] as const;
 export type CheckId = typeof CHECKS[number]["id"];
+/** Livraison avec paiement en attente : le livreur garde les clés et les documents jusqu'au paiement. */
+export const PENDING_KEPT = ["cles", "documents"] as const;
+export const checksFor = (pending: boolean) => CHECKS.filter(c => !pending || !(PENDING_KEPT as readonly string[]).includes(c.id));
 
 export type ReceiptData = {
   numero: string; // ex. LIV-2026-000063
@@ -25,6 +28,11 @@ export type ReceiptData = {
   signer: string; signed_at: string; livreur: string;
   paiement_confirme_at: string | null;
   lat?: number | null; lng?: number | null;
+  /** « signature » : signé du doigt sur le téléphone du livreur ; « distance » : confirmé par le client depuis son téléphone. */
+  mode?: "signature" | "distance";
+  remote?: { at: string; ip: string | null; phone: string; ua: string } | null;
+  /** Paiement en attente : montant restant dû ; clés et documents conservés par NeoDrive. */
+  pending?: { montant_du: number | null } | null;
 };
 
 const SELLER = ["MK HOLDING - NeoDrive", "31600 Muret, France", "SIREN 908 645 393", "Tél. 06 89 78 17 10 · contact.neodrivefrance@gmail.com"];
@@ -54,7 +62,7 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
     y += 112;
 
     doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Contrôles à la remise du véhicule", 40, y); y += 16;
-    for (const c of CHECKS) {
+    for (const c of checksFor(!!d.pending)) {
       const ok = !!d.checks[c.id];
       doc.rect(44, y + 1, 9, 9).lineWidth(0.8).stroke(ok ? "#067647" : "#999");
       if (ok) doc.font("Helvetica-Bold").fontSize(9).fillColor("#067647").text("X", 46, y + 1.5);
@@ -68,23 +76,31 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
     y += 66;
 
     doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Paiement", 40, y); y += 14;
-    doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(d.paiement_confirme_at ? `Paiement reçu : confirmé par NeoDrive le ${fr(d.paiement_confirme_at)}.` : "Paiement : non confirmé.", 40, y, { width: 515 });
-    y += 24;
+    const eur = (n: number | null | undefined) => n == null ? "" : `${Math.round(n).toLocaleString("fr-FR")} €`;
+    const payText = d.paiement_confirme_at ? `Paiement reçu : confirmé par NeoDrive le ${fr(d.paiement_confirme_at)}.`
+      : d.pending ? `Paiement en attente${d.pending.montant_du ? ` : ${eur(d.pending.montant_du)} restant dus` : ""}. Les clés et les documents du véhicule sont conservés par NeoDrive et seront remis ou envoyés au client dès réception du paiement.`
+      : "Paiement : non confirmé.";
+    doc.font("Helvetica").fontSize(9.5).fillColor(d.pending && !d.paiement_confirme_at ? "#b42318" : ink).text(payText, 40, y, { width: 515 });
+    y += d.pending ? 36 : 24;
 
     doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(
-      `Je soussigné(e) ${d.signer} reconnais avoir reçu ce jour le véhicule décrit ci-dessus, avec les éléments cochés, sous réserve des remarques indiquées. La garantie légale de conformité de 2 ans s'applique à compter de cette date.`,
+      `Je soussigné(e) ${d.signer} reconnais avoir reçu ce jour le véhicule décrit ci-dessus, avec les éléments cochés, sous réserve des remarques indiquées.${d.pending && !d.paiement_confirme_at ? " Je m'engage à régler le montant restant dû ; les clés et les documents me seront remis dès réception du paiement." : ""} La garantie légale de conformité de 2 ans s'applique à compter de cette date.`,
       40, y, { width: 515 });
     y += 46;
 
-    doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text("Signature du client", 40, y).text("Remis par", 330, y);
+    const remote = d.mode === "distance";
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text(remote ? "Confirmation du client" : "Signature du client", 40, y).text("Remis par", 330, y);
     doc.roundedRect(40, y + 14, 270, 110, 6).lineWidth(0.6).stroke("#bbb");
-    if (signaturePng) { try { doc.image(signaturePng, 48, y + 20, { fit: [254, 84], align: "center", valign: "center" }); } catch { /* signature illisible : le nom reste */ } }
-    doc.font("Helvetica").fontSize(8.5).fillColor(grey).text(`${d.signer} · ${fr(d.signed_at)}`, 48, y + 108, { width: 254 });
+    if (remote) {
+      doc.font("Helvetica-Bold").fontSize(10).fillColor("#067647").text("CONFIRMÉ À DISTANCE PAR LE CLIENT", 48, y + 24, { width: 254 });
+      doc.font("Helvetica").fontSize(8.5).fillColor(ink).text(`Case « J'ai bien reçu mon véhicule » cochée et nom saisi par le client sur son téléphone, via le lien sécurisé envoyé au ${d.remote?.phone || d.telephone || "numéro du client"}.${d.remote?.ip ? `\nAdresse IP : ${d.remote.ip}` : ""}`, 48, y + 42, { width: 254 });
+    } else if (signaturePng) { try { doc.image(signaturePng, 48, y + 20, { fit: [254, 84], align: "center", valign: "center" }); } catch { /* signature illisible : le nom reste */ } }
+    doc.font("Helvetica").fontSize(8.5).fillColor(grey).text(`${d.signer} · ${fr(remote ? d.remote?.at || d.signed_at : d.signed_at)}`, 48, y + 108, { width: 254 });
     doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(`${d.livreur || "NeoDrive"}\npour MK HOLDING - NeoDrive`, 330, y + 18, { width: 225 });
     y += 140;
 
     doc.font("Helvetica").fontSize(7.5).fillColor(grey).text(
-      `Signature électronique simple recueillie sur l'appareil du livreur${d.lat != null && d.lng != null ? `, position ${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}` : ""}. Document généré automatiquement par NeoDrive ; un exemplaire est remis au client par e-mail ou lien sécurisé.`,
+      `${remote ? "Confirmation électronique simple recueillie sur l'appareil du client (lien personnel à usage unique)" : "Signature électronique simple recueillie sur l'appareil du livreur"}${d.lat != null && d.lng != null ? `, position du livreur ${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}` : ""}. Document généré automatiquement par NeoDrive ; un exemplaire est remis au client par e-mail ou lien sécurisé.`,
       40, Math.min(y, 770), { width: 515 });
     doc.end();
   });
