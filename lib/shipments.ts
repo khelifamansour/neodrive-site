@@ -9,6 +9,8 @@ export const DOC_TYPES = [
   { key: "pieces", fr: "Liste détaillée des pièces détachées", en: "Detailed spare-parts list", zh: "配件明细清单", required: false, factory: true, send: true },
   { key: "transport", fr: "Facture de transport", en: "Freight invoice", zh: "运费发票", required: true, factory: false, send: true },
   { key: "assurance", fr: "Assurance transport", en: "Cargo insurance", zh: "货物保险", required: false, factory: false, send: true },
+  { key: "telex", fr: "Télex release", en: "Telex release", zh: "电放", required: false, factory: false, send: true },
+  { key: "arrivee", fr: "Avis d'arrivée (compagnie)", en: "Arrival notice", zh: "到货通知", required: false, factory: false, send: true },
   { key: "douane", fr: "Douane (DAU, avis d'arrivée…)", en: "Customs (declaration, arrival notice…)", zh: "海关文件", required: false, factory: false, send: true },
   { key: "autre", fr: "Autre", en: "Other", zh: "其他", required: false, factory: false, send: true },
 ] as const;
@@ -20,6 +22,8 @@ export const docLabel = (k: string) => DOC_TYPES.find(d => d.key === k)?.fr || k
 /** Classement automatique par le nom du fichier (repli si l'IA n'est pas disponible). */
 export function guessType(name: string): DocType {
   const n = name.toLowerCase();
+  if (/telex|t[eé]l[eé]x|release/.test(n)) return "telex";
+  if (/arrival|avis.?d.?arriv/.test(n)) return "arrivee";
   if (/(^|[^a-z])(obl|bl|b-l|bill|lading)([^a-z]|$)|^\d{12}/.test(n)) return "bl";
   if (/coc|conform/.test(n)) return "coc";
   if (/proforma|(^|[^a-z])pi([^a-z]|\d|$)/.test(n)) return "pi";
@@ -173,3 +177,28 @@ export function factoryChecks(ship: { vehicles?: number | null; container_list?:
   const complete = !missing.length && !issues.some(i => i.level === "error");
   return { missing: missing.map(m => m.key as string), issues, complete };
 }
+
+/* ───────────── Chaîne import : étapes du conteneur ───────────── */
+
+/** Étapes d'un conteneur, de la commande au stock, avec une couleur par étape. */
+export const PIPELINE = [
+  { key: "commandé", color: "#64748b", bg: "#f1f5f9" },
+  { key: "en production", color: "#7c3aed", bg: "#f3e8ff" },
+  { key: "prêt usine", color: "#9333ea", bg: "#fae8ff" },
+  { key: "documents complets", color: "#0369a1", bg: "#e0f2fe" },
+  { key: "en mer", color: "#1d4ed8", bg: "#dbeafe" },
+  { key: "avis d'arrivée", color: "#0e7490", bg: "#cffafe" },
+  { key: "frais débarquement payés", color: "#0f766e", bg: "#ccfbf1" },
+  { key: "dédouané", color: "#b45309", bg: "#fef3c7" },
+  { key: "livré au dépôt", color: "#c2410c", bg: "#ffedd5" },
+  { key: "dépoté", color: "#15803d", bg: "#dcfce7" },
+  { key: "en stock", color: "#166534", bg: "#bbf7d0" },
+] as const;
+export type PipelineStage = typeof PIPELINE[number]["key"];
+export const isPipelineStage = (v: unknown): v is PipelineStage => PIPELINE.some(p => p.key === v);
+export const pipelineStyle = (k: unknown) => PIPELINE.find(p => p.key === k) || PIPELINE[0];
+export const pipelineIndex = (k: unknown) => Math.max(0, PIPELINE.findIndex(p => p.key === k));
+
+/** Rôles des prestataires d'un port. */
+export const FORWARDER_ROLES = ["dédouanement", "transport", "stockage", "compagnie"] as const;
+export const FOLLOWUP_KINDS = ["usine", "transitaire", "compagnie", "transport", "stockage", "autre"] as const;

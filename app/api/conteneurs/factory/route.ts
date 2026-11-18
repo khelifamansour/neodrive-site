@@ -3,7 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 import { crmDatabase } from "../../../../lib/crm-agent";
 import { brevoReady, sendEmail, OWNER_EMAIL, SITE } from "../../../../lib/brevo";
-import { DOC_TYPES, FACTORY_DOCS, factoryChecks, portKey, type Extracted } from "../../../../lib/shipments";
+import { DOC_TYPES, FACTORY_DOCS, factoryChecks, pipelineIndex, portKey, type Extracted } from "../../../../lib/shipments";
+import { notifyOwner } from "../../../../lib/import-notify";
+import { genDocs } from "../gen";
 import { extractDoc } from "../extract";
 import { sendDossier } from "../send";
 
@@ -88,7 +90,14 @@ export async function POST(req: Request) {
     const fresh = (await db.from("shipments").select("*").eq("id", s.id).single()).data || s;
     const { docs, checks } = await state(db, fresh);
     let autoSent: string | null = null, sendErr = "";
-    if (checks.complete && !fresh.factory_complete_at) await db.from("shipments").update({ factory_complete_at: new Date().toISOString() }).eq("id", s.id);
+    if (checks.complete && !fresh.factory_complete_at) {
+      // Dossier usine complet : étape « documents complets », génération des documents avec VIN et des COC regroupés, SMS au fondateur.
+      const now = new Date().toISOString(); const up: Record<string, unknown> = { factory_complete_at: now };
+      if (pipelineIndex(fresh.pipeline) < pipelineIndex("documents complets")) { up.pipeline = "documents complets"; up.pipeline_history = [...(Array.isArray(fresh.pipeline_history) ? fresh.pipeline_history : []), { at: now, stage: "documents complets", from: fresh.pipeline, by: "usine" }]; }
+      await db.from("shipments").update(up).eq("id", s.id);
+      const g = await genDocs(db, s.id).catch(e => ({ ok: false, error: (e as Error).message }));
+      await notifyOwner(`📦 ${fresh.name} : l'usine a tout déposé. ${g.ok ? "Documents avec VIN et COC regroupés prêts : prévisualisez puis envoyez au transitaire." : "Documents à générer dans /conteneurs."}`).catch(() => null);
+    }
     if (checks.complete && fresh.auto_send && !fresh.sent_at && brevoReady()) {
       try { autoSent = (await sendDossier(db, s.id)).to; } catch (e) { sendErr = (e as Error).message; }
     }

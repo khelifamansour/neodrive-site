@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { applyStoredSecrets, isAuthorized } from "../../../../lib/integrations";
 import { crmDatabase } from "../../../../lib/crm-agent";
 import { brevoReady, sendEmail, OWNER_EMAIL, SITE } from "../../../../lib/brevo";
-import { DOC_TYPES, factoryChecks } from "../../../../lib/shipments";
+import { DOC_TYPES, factoryChecks, pipelineIndex } from "../../../../lib/shipments";
+import { notifyOwner } from "../../../../lib/import-notify";
+import { genDocs } from "../gen";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -24,7 +26,16 @@ export async function GET(req: Request) {
   for (const s of ships || []) {
     const { data: docs } = await db.from("shipment_docs").select("doc_type,version,created_at,extracted,uploaded_by").eq("shipment_id", s.id);
     const c = factoryChecks(s, (docs || []).filter(d => d.uploaded_by !== "plateforme"));
-    if (c.complete) { if (!s.factory_complete_at && !dry) await db.from("shipments").update({ factory_complete_at: new Date().toISOString() }).eq("id", s.id); }
+    if (c.complete) {
+      if (!s.factory_complete_at && !dry) {
+        const now = new Date().toISOString();
+        const up: Record<string, unknown> = { factory_complete_at: now };
+        if (pipelineIndex(s.pipeline) < pipelineIndex("documents complets")) { up.pipeline = "documents complets"; up.pipeline_history = [...(Array.isArray(s.pipeline_history) ? s.pipeline_history : []), { at: now, stage: "documents complets", from: s.pipeline, by: "automatique" }]; }
+        await db.from("shipments").update(up).eq("id", s.id);
+        const g = await genDocs(db, s.id).catch(e => ({ ok: false, error: (e as Error).message }));
+        await notifyOwner(`📦 ${s.name} : documents usine complets. ${g.ok ? "Facture, colisage avec VIN et COC regroupés générés : prévisualisez puis envoyez au transitaire." : `Génération à faire : ${"error" in g ? g.error : ""}`}`).catch(() => null);
+      }
+    }
     else if (s.factory_email && s.factory_token && (!s.factory_reminded_at || Date.now() - new Date(s.factory_reminded_at).getTime() > EVERY_DAYS * 86400000 - 3600000)) {
       const link = `${SITE}/factory/${s.factory_token}`;
       const errors = c.issues.filter(i => i.level === "error");

@@ -76,6 +76,10 @@
     {
       "path": "/api/crm/reservation-wa",
       "schedule": "40 7-19 * * *"
+    },
+    {
+      "path": "/api/conteneurs/followups",
+      "schedule": "30 9 * * *"
     }
   ]
 }
