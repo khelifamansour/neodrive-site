@@ -128,6 +128,7 @@ export type CashHyp = {
   prod_usine: number;      // reste usine par voiture en production (€)
   prod_fret: number;       // fret par voiture, payé au départ (€)
   prod_mois: number;       // mois d'arrivée des voitures en production (0 = décembre)
+  prod_decale: number;     // parmi elles, voitures qui partent un mois plus tard (payées et arrivées 1 mois après)
   acompte: number;         // nouvelles commandes : payé à la commande (€/voiture)
   solde: number;           // payé environ 45 jours après (reste usine)
   fret: number;            // payé au départ du bateau (€/voiture)
@@ -139,9 +140,9 @@ export type CashHyp = {
 };
 export const DEFAULT_CASH: CashHyp = {
   caisse: 10000, stock: 51, stock_reste: 550, stock_a_payer: 45,
-  prod: 60, prod_usine: 611, prod_fret: 490, prod_mois: 2,
+  prod: 60, prod_usine: 611, prod_fret: 490, prod_mois: 2, prod_decale: 30,
   acompte: 500, solde: 1111, fret: 490, douane: 540, delai: 4,
-  seuil: 5000, prelevement: 0, securite: 0.5,
+  seuil: 3000, prelevement: 0, securite: 0.5,
 };
 
 export type CashRow = {
@@ -149,45 +150,53 @@ export type CashRow = {
   encaisse: number; usine: number; arrivee: number; frais: number; caisse_fin: number; en_route: number;
 };
 
-/** Mois par mois : ventes limitées par le stock, commandes limitées par l'argent disponible. */
+/** Mois par mois : ventes limitées par le stock, commandes limitées par l'argent disponible.
+ *  Chaque commande est la plus grande possible (dans la limite des besoins) pour que le compte ne passe jamais
+ *  sous le seuil pendant les mois suivants, en payant le solde, le fret et la douane de cette commande. */
 export function cashPlan(h: SimHyp, c: CashHyp): CashRow[] {
   const rows = simulate(h);
   const n = rows.length, D = Math.max(2, Math.round(c.delai));
-  const dem = (i: number) => rows[Math.min(i, n - 1)].total;
-  const orders: number[] = Array(n).fill(0);
-  const arrivals = (i: number) => (i - D >= 0 ? orders[i - D] : 0) + (i === c.prod_mois ? c.prod : 0);
-  let caisse = c.caisse, stock = c.stock;
-  const out: CashRow[] = [];
+  const H = n + D + 1;
+  const row = (i: number) => rows[Math.min(i, n - 1)];
+  const p1 = Math.max(0, c.prod - c.prod_decale), p2 = Math.min(c.prod, c.prod_decale);
+
+  // Déroule la trésorerie avec un plan de commandes donné, jusqu'au mois "fin" (exclu).
+  const run = (orders: number[], fin: number) => {
+    let caisse = c.caisse, stock = c.stock; const out: CashRow[] = [];
+    for (let i = 0; i < fin; i++) {
+      const r = row(i);
+      const arr = (i - D >= 0 ? orders[i - D] || 0 : 0) + (i === c.prod_mois ? p1 : 0) + (i === c.prod_mois + 1 ? p2 : 0);
+      stock += arr;
+      const demande = r.total, ventes = Math.min(demande, stock); stock -= ventes;
+      const encaisse = r.total ? ventes * r.ca_ht / r.total : 0;
+      const livraison = Math.min(ventes, r.direct) * h.livraison;
+      const usine = (i === 0 ? p1 * (c.prod_usine + c.prod_fret) : 0) + (i === 1 ? p2 * (c.prod_usine + c.prod_fret) : 0)
+        + (i >= 1 ? (orders[i - 1] || 0) * c.solde : 0) + (i >= 2 ? (orders[i - 2] || 0) * c.fret : 0) + (orders[i] || 0) * c.acompte;
+      const arrivee = (i === 0 ? c.stock_a_payer * c.stock_reste : 0) + (i === c.prod_mois ? p1 * c.douane : 0)
+        + (i === c.prod_mois + 1 ? p2 * c.douane : 0) + (i - D >= 0 ? (orders[i - D] || 0) * c.douane : 0);
+      const frais = r.fixes + livraison + c.prelevement;
+      caisse += encaisse - usine - arrivee - frais;
+      let enRoute = 0; for (let k = Math.max(0, i - D + 1); k <= i; k++) enRoute += orders[k] || 0;
+      if (i < c.prod_mois) enRoute += p1; if (i < c.prod_mois + 1) enRoute += p2;
+      out.push({ mois: r.mois, demande, ventes, perdues: demande - ventes, stock_fin: stock, commande: orders[i] || 0, arrivees: arr, encaisse, usine, arrivee, frais, caisse_fin: caisse, en_route: enRoute });
+    }
+    return out;
+  };
+
+  const orders: number[] = Array(H).fill(0);
   for (let i = 0; i < n; i++) {
-    const r = rows[i];
-    const arr = arrivals(i);
-    stock += arr;
-    const demande = r.total;
-    const ventes = Math.min(demande, stock);
-    stock -= ventes;
-    const parVoiture = r.total ? r.ca_ht / r.total : 0;
-    const encaisse = ventes * parVoiture;
-    const livraison = Math.min(ventes, r.direct) * h.livraison;
-    // Usine et fret : production en cours (mois 0) + soldes et frets des nouvelles commandes.
-    const usine = (i === 0 ? c.prod * (c.prod_usine + c.prod_fret) : 0)
-      + (i >= 1 ? orders[i - 1] * c.solde : 0) + (i >= 2 ? orders[i - 2] * c.fret : 0);
-    const arrivee = (i === 0 ? c.stock_a_payer * c.stock_reste : 0) + (i === c.prod_mois ? c.prod * c.douane : 0)
-      + (i - D >= 0 ? orders[i - D] * c.douane : 0);
-    const frais = r.fixes + livraison + c.prelevement;
-    caisse += encaisse - usine - arrivee - frais;
-    // Commande : couvrir les ventes du mois où elle sera vendable + le stock de sécurité, sans passer sous le seuil.
-    let stockPrevu = stock;
-    for (let k = 1; k < D; k++) stockPrevu += arrivals(i + k) - dem(i + k);
-    const voulu = Math.max(0, Math.ceil(dem(i + D) * (1 + c.securite) - Math.max(0, stockPrevu)));
-    const margeProchaine = Math.max(0, rows[Math.min(i + 1, n - 1)].resultat);
-    const dispo = caisse - c.seuil + margeProchaine * 0.5;
-    const possible = Math.max(0, Math.floor(dispo / (c.acompte + c.solde)));
-    const commande = Math.min(voulu, possible);
-    orders[i] = commande;
-    caisse -= commande * c.acompte;
-    let enRoute = 0; for (let k = Math.max(0, i - D + 1); k <= i; k++) enRoute += orders[k];
-    if (i < c.prod_mois) enRoute += c.prod;
-    out.push({ mois: r.mois, demande, ventes, perdues: demande - ventes, stock_fin: stock, commande, arrivees: arr, encaisse, usine: usine + commande * c.acompte, arrivee, frais, caisse_fin: caisse, en_route: enRoute });
+    // Besoin : ventes du mois où la commande sera vendable + stock de sécurité, moins ce qui arrivera déjà.
+    const before = run(orders, i + D + 1);
+    const stockAvant = before[i + D - 1]?.stock_fin ?? 0;
+    const voulu = Math.max(0, Math.ceil(row(i + D).total * (1 + c.securite) - stockAvant));
+    // Plus grande commande qui garde le compte au-dessus du seuil jusqu'à son arrivée (sans compter les commandes suivantes).
+    let lo = 0, hi = voulu;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2); orders[i] = mid;
+      const ok = run(orders, i + D + 1).slice(i).every(x => x.caisse_fin >= c.seuil);
+      if (ok) lo = mid; else hi = mid - 1;
+    }
+    orders[i] = lo;
   }
-  return out;
+  return run(orders, n);
 }
