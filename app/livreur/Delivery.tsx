@@ -1,0 +1,153 @@
+"use client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import c from "../giga/giga.module.css";
+import { supabase } from "../../lib/supabase";
+
+/** Livraisons : numéro de série (VIN) + photo de la plaque, puis accusé de réception signé par le client sur le téléphone du livreur. */
+export type Dlv = {
+  id: number; prenom: string; nom: string; adresse: string; code_postal: string; ville: string; telephone: string; has_email: boolean;
+  modele: string; couleur: string; statut: string; date_promise: string | null; vin: string | null; has_vin_photo: boolean;
+  paiement_confirme_at: string | null; livre_at: string | null; accuse_url: string | null;
+};
+type Check = { id: string; label: string };
+type Api = <T = Record<string, unknown>>(body: object) => Promise<T>;
+
+const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
+const big: React.CSSProperties = { width: "100%", padding: "14px 16px", fontSize: 17, borderRadius: 14, justifyContent: "center", textAlign: "center" };
+const fmt = (d?: string | null) => d ? new Date(d.length === 10 ? d + "T12:00:00" : d).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }) : "—";
+
+function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
+  const ref = useRef<HTMLCanvasElement>(null); const drawing = useRef(false); const strokes = useRef(0);
+  useEffect(() => {
+    const cv = ref.current; if (!cv) return;
+    const ratio = Math.min(2, window.devicePixelRatio || 1); const w = cv.clientWidth; const h = 200;
+    cv.width = w * ratio; cv.height = h * ratio; const ctx = cv.getContext("2d")!; ctx.scale(ratio, ratio);
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); ctx.lineWidth = 2.6; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#111";
+  }, []);
+  const pos = (e: React.PointerEvent) => { const r = ref.current!.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  const down = (e: React.PointerEvent) => { e.preventDefault(); ref.current!.setPointerCapture(e.pointerId); drawing.current = true; const [x, y] = pos(e); const ctx = ref.current!.getContext("2d")!; ctx.beginPath(); ctx.moveTo(x, y); };
+  const move = (e: React.PointerEvent) => { if (!drawing.current) return; const [x, y] = pos(e); const ctx = ref.current!.getContext("2d")!; ctx.lineTo(x, y); ctx.stroke(); };
+  const up = () => { if (!drawing.current) return; drawing.current = false; strokes.current++; onChange(strokes.current ? ref.current!.toDataURL("image/png") : null); };
+  const clear = () => { const cv = ref.current!; const ctx = cv.getContext("2d")!; ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height); ctx.restore(); strokes.current = 0; onChange(null); };
+  return <div>
+    <canvas ref={ref} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={up} style={{ width: "100%", height: 200, border: "2px dashed #bbb", borderRadius: 12, touchAction: "none", background: "#fff", display: "block" }} />
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}><small className={c.muted}>Le client signe avec le doigt dans le cadre.</small><button type="button" className={`${c.btn} ${c.btnGhost}`} onClick={clear}>Effacer</button></div>
+  </div>;
+}
+
+export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) => void }) {
+  const [list, setList] = useState<Dlv[]>([]); const [checks, setChecks] = useState<Check[]>([]); const [vins, setVins] = useState<{ vin: string; container: string | null }[]>([]);
+  const [sel, setSel] = useState<number | null>(null); const [busy, setBusy] = useState("");
+  const [vin, setVin] = useState(""); const [photo, setPhoto] = useState("");
+  const [ck, setCk] = useState<Record<string, boolean>>({}); const [reserves, setReserves] = useState(""); const [signer, setSigner] = useState(""); const [sig, setSig] = useState<string | null>(null);
+  const [done, setDone] = useState<{ url: string; emailed: boolean; whatsapp: string | null } | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [d, v] = await Promise.all([api<{ deliveries: Dlv[]; checks: Check[] }>({ action: "deliveries" }), api<{ vins: { vin: string; container: string | null }[] }>({ action: "free_vins" })]);
+      setList(d.deliveries); setChecks(d.checks); setVins(v.vins);
+    } catch (e) { onMsg("❌ " + (e as Error).message); }
+  }, [api, onMsg]);
+  useEffect(() => { load(); }, [load]);
+
+  const r = list.find(x => x.id === sel) || null;
+  const open = (x: Dlv) => { setSel(x.id); setVin(x.vin || ""); setPhoto(""); setCk({}); setReserves(""); setSigner(`${x.prenom} ${x.nom}`.replace(/\(.*?\)/g, "").trim()); setSig(null); setDone(null); window.scrollTo({ top: 0 }); };
+
+  const uploadPhoto = async (f?: File) => {
+    if (!f || !r) return; setBusy("photo");
+    try {
+      if (f.size > 15 * 1024 * 1024) throw new Error("Photo trop lourde (15 Mo maximum).");
+      const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
+      const u = await api<{ bucket: string; path: string; token: string }>({ action: "vin_photo_url", id: r.id, ext });
+      const { error } = await supabase.storage.from(u.bucket).uploadToSignedUrl(u.path, u.token, f, { contentType: f.type || undefined });
+      if (error) throw new Error("Envoi impossible : " + error.message);
+      setPhoto(u.path); onMsg("✅ Photo de la plaque prête. Vérifiez le numéro puis enregistrez.");
+    } catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
+  };
+  const saveVin = async () => {
+    if (!r) return; const v = vin.toUpperCase().replace(/[\s-]/g, "");
+    if (!VIN_RE.test(v)) { onMsg("❌ Le numéro de série doit faire 17 caractères (lettres et chiffres, sans I, O ni Q)."); return; }
+    setBusy("vin");
+    try { await api({ action: "save_vin", id: r.id, vin: v, photo_path: photo || undefined }); onMsg(`✅ Numéro de série ${v} enregistré pour ${r.prenom} ${r.nom}.`); await load(); }
+    catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
+  };
+  const position = () => new Promise<{ lat: number | null; lng: number | null }>(res => {
+    if (!navigator.geolocation) return res({ lat: null, lng: null });
+    navigator.geolocation.getCurrentPosition(p => res({ lat: p.coords.latitude, lng: p.coords.longitude }), () => res({ lat: null, lng: null }), { timeout: 6000, maximumAge: 60000 });
+  });
+  const signNow = async () => {
+    if (!r || !sig) return; setBusy("sign");
+    try {
+      const pos = await position();
+      const j = await api<{ url: string; emailed: boolean; whatsapp: string | null }>({ action: "sign", id: r.id, checks: ck, reserves, signer, signature: sig, ...pos });
+      setDone(j); onMsg(`✅ Livraison de ${r.prenom} ${r.nom} terminée, accusé signé.`); await load();
+    } catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
+  };
+
+  if (r) {
+    const paid = !!r.paiement_confirme_at; const allChecked = checks.every(x => ck[x.id]);
+    const canSign = !!r.vin && paid && signer.trim().length >= 3 && !!sig && !r.accuse_url;
+    return <section style={{ display: "grid", gap: 12, marginTop: 12 }}>
+      <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { setSel(null); load(); }}>← Toutes les livraisons</button>
+      <div className={c.card} style={{ display: "grid", gap: 6 }}>
+        <b style={{ fontSize: 19 }}>{r.prenom} {r.nom}</b>
+        <span>📍 {[r.adresse, `${r.code_postal} ${r.ville}`].filter(Boolean).join(", ") || "Adresse à demander à Mansour"}</span>
+        <span>🚗 {r.modele || "NeoDrive"}{r.couleur ? ` · ${r.couleur}` : ""}</span>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {r.adresse || r.ville ? <a className={`${c.btn} ${c.btnGhost}`} target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent([r.adresse, r.code_postal, r.ville].filter(Boolean).join(" "))}`}>🧭 Itinéraire</a> : null}
+          {r.telephone ? <a className={`${c.btn} ${c.btnGhost}`} href={`tel:${r.telephone}`}>📞 Appeler</a> : null}
+        </div>
+      </div>
+
+      {r.accuse_url ? <div className={c.card} style={{ background: "#e7f6ec" }}>
+        <b>✅ Livrée{r.livre_at ? ` le ${fmt(r.livre_at)}` : ""} · accusé signé</b>
+        <p style={{ margin: "6px 0" }}>N° de série : <b style={{ fontFamily: "monospace" }}>{r.vin}</b></p>
+        <a className={`${c.btn} ${c.btnBrand}`} style={big} href={r.accuse_url} target="_blank" rel="noreferrer">📄 Voir l’accusé (PDF)</a>
+        {done?.whatsapp ? <a className={`${c.btn} ${c.btnGhost}`} style={{ ...big, marginTop: 8, background: "#1fa855", color: "#fff" }} href={done.whatsapp} target="_blank" rel="noreferrer">💬 Envoyer l’accusé au client par WhatsApp</a> : null}
+        {done ? <p className={c.muted}>{done.emailed ? "📧 Envoyé aussi par e-mail au client." : "Pas d’e-mail envoyé (adresse inconnue) : envoyez le lien par WhatsApp."}</p> : null}
+      </div> : <>
+        <div className={c.card} style={{ display: "grid", gap: 8 }}>
+          <b>1. Numéro de série (VIN)</b>
+          <small className={c.muted}>Lisez la plaque du véhicule (17 caractères) et photographiez-la.</small>
+          <datalist id="dlv-vins">{vins.map(v => <option key={v.vin} value={v.vin}>{v.container || ""}</option>)}</datalist>
+          <input className={c.input} list="dlv-vins" value={vin} maxLength={17} autoCapitalize="characters" spellCheck={false} placeholder="Ex. LP4SE0D0…" onChange={e => setVin(e.target.value.toUpperCase())} style={{ fontFamily: "monospace", fontSize: 18, letterSpacing: 1 }} />
+          <label className={`${c.btn} ${c.btnGhost}`} style={{ ...big, opacity: busy === "photo" ? .6 : 1 }}>{busy === "photo" ? "Envoi…" : photo || r.has_vin_photo ? "📷 Reprendre la photo de la plaque" : "📷 Photographier la plaque VIN"}
+            <input type="file" accept="image/*" capture="environment" hidden disabled={!!busy} onChange={e => { uploadPhoto(e.target.files?.[0]); e.target.value = ""; }} /></label>
+          {photo || r.has_vin_photo ? <small className={c.muted}>✅ Photo de la plaque enregistrée.</small> : null}
+          <button className={`${c.btn} ${c.btnBrand}`} style={big} disabled={!!busy || vin.length !== 17} onClick={saveVin}>{busy === "vin" ? "…" : r.vin === vin && !photo ? "✅ Numéro enregistré" : "Enregistrer le numéro de série"}</button>
+        </div>
+
+        <div className={c.card} style={{ display: "grid", gap: 8, background: paid ? "#e7f6ec" : "#fff4d6" }}>
+          <b>2. Paiement</b>
+          {paid ? <span>✅ <b>Paiement reçu : confirmé par NeoDrive.</b> Vous pouvez remettre les clés après la signature.</span>
+            : <span>⏳ <b>Paiement pas encore confirmé.</b> Ne remettez pas les clés. Le client fait son virement, Mansour le confirme, puis appuyez sur « Vérifier ».</span>}
+          {!paid ? <button className={`${c.btn} ${c.btnGhost}`} style={big} onClick={load}>🔄 Vérifier le paiement</button> : null}
+        </div>
+
+        <div className={c.card} style={{ display: "grid", gap: 10 }}>
+          <b>3. Accusé de réception (le client lit et signe)</b>
+          {checks.map(x => <label key={x.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 16 }}><input type="checkbox" checked={!!ck[x.id]} onChange={e => setCk({ ...ck, [x.id]: e.target.checked })} style={{ width: 22, height: 22, flex: "0 0 22px" }} />{x.label}</label>)}
+          {!allChecked ? <small className={c.muted}>Une case non cochée apparaîtra comme non vérifiée sur l’accusé.</small> : null}
+          <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Réserves ou remarques du client (facultatif)
+            <textarea className={c.input} rows={2} value={reserves} onChange={e => setReserves(e.target.value)} placeholder="Ex. petite rayure porte gauche" /></label>
+          <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Nom et prénom du client
+            <input className={c.input} value={signer} onChange={e => setSigner(e.target.value)} autoComplete="off" style={{ fontSize: 17 }} /></label>
+          <SignaturePad onChange={setSig} />
+          <button className={`${c.btn} ${c.btnBrand}`} style={{ ...big, opacity: canSign ? 1 : .5 }} disabled={!canSign || !!busy} onClick={signNow}>{busy === "sign" ? "Enregistrement…" : "✍️ Valider la livraison"}</button>
+          {!r.vin ? <small className={c.err}>Enregistrez d’abord le numéro de série (étape 1).</small> : !paid ? <small className={c.err}>Attendez la confirmation du paiement (étape 2).</small> : !sig ? <small className={c.muted}>Le client doit signer dans le cadre.</small> : null}
+        </div>
+      </>}
+    </section>;
+  }
+
+  const todo = list.filter(x => !x.accuse_url); const recent = list.filter(x => x.accuse_url);
+  return <section style={{ display: "grid", gap: 10, marginTop: 12 }}>
+    <p className={c.muted} style={{ margin: 0 }}>Pour chaque voiture : 1. numéro de série et photo de la plaque, 2. paiement confirmé par Mansour, 3. le client signe l’accusé sur votre téléphone.</p>
+    {todo.length ? todo.map(x => <button key={x.id} className={c.card} onClick={() => open(x)} style={{ textAlign: "left", display: "grid", gap: 4, cursor: "pointer", font: "inherit" }}>
+      <b style={{ fontSize: 17 }}>{x.prenom} {x.nom}</b>
+      <span className={c.muted}>📍 {x.ville || "—"}{x.code_postal ? ` (${x.code_postal.slice(0, 2)})` : ""} · 🚗 {x.modele || "—"}{x.couleur ? ` · ${x.couleur}` : ""} · 📅 {fmt(x.date_promise)}</span>
+      <span style={{ fontSize: 14 }}>{x.vin ? `🔢 ${x.vin}` : "🔢 VIN à saisir"} · {x.paiement_confirme_at ? "💶 paiement confirmé" : "⏳ paiement à confirmer"}</span>
+    </button>) : <p className={c.muted}>Aucune livraison en attente.</p>}
+    {recent.length ? <><b style={{ marginTop: 8 }}>Livrées ces 3 derniers jours</b>{recent.map(x => <button key={x.id} className={c.card} onClick={() => open(x)} style={{ textAlign: "left", cursor: "pointer", font: "inherit", background: "#e7f6ec" }}>✅ {x.prenom} {x.nom} · {x.ville} · <span style={{ fontFamily: "monospace" }}>{x.vin}</span></button>)}</> : null}
+  </section>;
+}

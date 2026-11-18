@@ -10,6 +10,8 @@ import { newCode, sha } from "../../../lib/team";
 import { CONTRACT_VERSION, DOC_KINDS, DRIVER_BUCKET, REQUIRED_DOCS, isDocKind } from "../../../lib/driver-docs";
 import { roadKm, splitTrips, type PlanClient, type PlanTour, type Stop } from "../../../lib/planif";
 import { estimateHours } from "../../../lib/driver-hours";
+import { randomBytes } from "crypto";
+import { CHECKS, RECEIPT_FOLDER, VIN_RE, receiptPdf, type ReceiptData } from "../../../lib/delivery-receipt";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -129,6 +131,101 @@ export async function POST(req: Request) {
       const clients = new Map((need.size ? await listJson<PlanClient>(db, PLAN_CLIENTS) : []).filter(c => need.has(c.id)).map(c => [c.id, c]));
       return NextResponse.json({ ok: true, tours: tours.map(t => { const k = t.status === "brouillon" ? null : driverKey(t.id); return { id: t.id, name: t.name, date: t.date, departTime: t.departTime || "", driver: t.driver, status: t.status, clients: t.clientIds.length, km: t.km || 0, closed_at: t.closed_at || null, en_route: (t.en_route || []).length, link: k ? `/chauffeur?k=${encodeURIComponent(k)}` : null, plan: driverPlan(t, clients) }; }) });
     }
+    // ── Livraisons : numéro de série (VIN) + accusé de réception signé par le client
+    if (b.action === "deliveries") {
+      const since = new Date(Date.now() - 3 * 86400e3).toISOString();
+      const { data, error } = await db.from("reservations").select("id,prenom,nom,adresse,code_postal,ville,telephone,email,modele,couleur,statut,date_promise,vin,vin_photo_path,paiement_confirme_at,livre_at,accuse_token").or(`statut.in.(Confirmée,Planifiée),livre_at.gte.${since}`).order("date_promise", { ascending: true, nullsFirst: false }).limit(200);
+      if (error) throw new Error(error.message);
+      return NextResponse.json({ ok: true, deliveries: (data || []).map(r => ({ ...r, email: undefined, has_email: !!r.email, has_vin_photo: !!r.vin_photo_path, vin_photo_path: undefined, accuse_url: r.accuse_token ? `${SITE}/api/accuse/${r.accuse_token}` : null, accuse_token: undefined })), checks: CHECKS });
+    }
+    if (b.action === "free_vins") {
+      const [{ data: sv }, { data: used }] = await Promise.all([db.from("shipment_vehicles").select("vin,container,status,client_name").neq("status", "livrée").order("vin").limit(500), db.from("reservations").select("vin").not("vin", "is", null)]);
+      const taken = new Set((used || []).map(x => x.vin));
+      return NextResponse.json({ ok: true, vins: (sv || []).filter(v => !taken.has(v.vin) && !v.client_name).map(v => ({ vin: v.vin, container: v.container, status: v.status })) });
+    }
+    if (b.action === "vin_photo_url") {
+      const id = Number(b.id); if (!id) return NextResponse.json({ ok: false, error: "Livraison inconnue" }, { status: 400 });
+      const ext = String(b.ext || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "jpg";
+      if (!["jpg", "jpeg", "png", "webp", "heic"].includes(ext)) return NextResponse.json({ ok: false, error: "Envoyez une photo (JPG ou PNG)." }, { status: 400 });
+      const path = `${RECEIPT_FOLDER}/${id}/vin-${Date.now()}.${ext}`;
+      const { data, error } = await db.storage.from(DRIVER_BUCKET).createSignedUploadUrl(path);
+      if (error || !data) return NextResponse.json({ ok: false, error: "Stockage indisponible" }, { status: 502 });
+      return NextResponse.json({ ok: true, bucket: DRIVER_BUCKET, path: data.path, token: data.token });
+    }
+    if (b.action === "save_vin") {
+      const id = Number(b.id); const vin = String(b.vin || "").toUpperCase().replace(/[\s-]/g, "");
+      if (!id) return NextResponse.json({ ok: false, error: "Livraison inconnue" }, { status: 400 });
+      if (!VIN_RE.test(vin)) return NextResponse.json({ ok: false, error: "Numéro de série invalide : 17 caractères, lettres et chiffres, sans I, O ni Q." }, { status: 400 });
+      const photo = clean(b.photo_path, 300);
+      if (photo && (!photo.startsWith(`${RECEIPT_FOLDER}/${id}/`) || photo.includes(".."))) return NextResponse.json({ ok: false, error: "Photo invalide" }, { status: 400 });
+      const { data: r } = await db.from("reservations").select("id,prenom,nom,statut,vin_photo_path").eq("id", id).maybeSingle();
+      if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
+      const { data: dup } = await db.from("reservations").select("id,prenom,nom").eq("vin", vin).neq("id", id).limit(1);
+      if (dup?.length) return NextResponse.json({ ok: false, error: `Ce numéro de série est déjà attribué à ${dup[0].prenom} ${dup[0].nom}. Vérifiez la plaque.` }, { status: 409 });
+      const { error } = await db.from("reservations").update({ vin, ...(photo ? { vin_photo_path: photo } : {}), updated_at: new Date().toISOString() }).eq("id", id);
+      if (error) throw new Error(error.message);
+      await db.from("shipment_vehicles").update({ client_name: `${r.prenom} ${r.nom}`.trim(), ...(photo ? { plate_photo: photo } : {}), updated_at: new Date().toISOString() }).eq("vin", vin);
+      await logSection(acc, "livraison_vin", { id, vin });
+      return NextResponse.json({ ok: true, vin });
+    }
+    if (b.action === "sign") {
+      const id = Number(b.id);
+      const { data: r } = await db.from("reservations").select("*").eq("id", id).maybeSingle();
+      if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
+      if (r.accuse_token) return NextResponse.json({ ok: false, error: "Cette livraison est déjà signée." }, { status: 409 });
+      if (!r.vin) return NextResponse.json({ ok: false, error: "Enregistrez d'abord le numéro de série (VIN)." }, { status: 400 });
+      if (!r.paiement_confirme_at) return NextResponse.json({ ok: false, error: "Le paiement n'est pas encore confirmé par NeoDrive. Ne remettez pas les clés : appelez Mansour." }, { status: 409 });
+      const signer = clean(b.signer, 120);
+      if (signer.length < 3) return NextResponse.json({ ok: false, error: "Le client doit écrire son nom et prénom." }, { status: 400 });
+      const sigUrl = String(b.signature || "");
+      const m = sigUrl.match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/);
+      if (!m || m[1].length < 800) return NextResponse.json({ ok: false, error: "Le client doit signer dans le cadre." }, { status: 400 });
+      if (m[1].length > 900_000) return NextResponse.json({ ok: false, error: "Signature trop lourde, recommencez." }, { status: 400 });
+      const sig = Buffer.from(m[1], "base64");
+      const checksIn = (b.checks || {}) as Record<string, unknown>;
+      const checks = Object.fromEntries(CHECKS.map(c => [c.id, !!checksIn[c.id]]));
+      const at = new Date().toISOString();
+      const num = (x: unknown) => { const n = Number(x); return Number.isFinite(n) ? n : null; };
+      const data: ReceiptData = {
+        numero: `LIV-${at.slice(0, 4)}-${String(id).padStart(6, "0")}`,
+        client: `${r.prenom || ""} ${r.nom || ""}`.trim(), adresse: [r.adresse, `${r.code_postal || ""} ${r.ville || ""}`.trim()].filter(Boolean).join(", "),
+        telephone: r.telephone || "", email: r.email || "", modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin,
+        checks, reserves: clean(b.reserves, 600), signer, signed_at: at, livreur: name || acc.name || "NeoDrive",
+        paiement_confirme_at: r.paiement_confirme_at, lat: num(b.lat), lng: num(b.lng),
+      };
+      const pdf = await receiptPdf(data, sig);
+      const base = `${RECEIPT_FOLDER}/${id}/accuse-${Date.now()}`;
+      const up1 = await db.storage.from(DRIVER_BUCKET).upload(`${base}.pdf`, pdf, { contentType: "application/pdf", upsert: false });
+      if (up1.error) throw new Error("Enregistrement du PDF impossible : " + up1.error.message);
+      await db.storage.from(DRIVER_BUCKET).upload(`${base}-signature.png`, sig, { contentType: "image/png", upsert: false });
+      const token = randomBytes(24).toString("hex");
+      const line = `[${new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] Livrée, accusé signé par ${signer} (VIN ${r.vin})${data.reserves ? " · réserves : " + data.reserves : ""}`;
+      const { error } = await db.from("reservations").update({ statut: "Livrée", livre_at: at, accuse_path: `${base}.pdf`, accuse_token: token, accuse_data: data, notes: [r.notes, line].filter(Boolean).join("\n"), updated_at: at }).eq("id", id).is("accuse_token", null);
+      if (error) throw new Error(error.message);
+      await db.from("shipment_vehicles").update({ status: "livrée", client_name: data.client, delivered_at: at, driver: data.livreur, updated_at: at }).eq("vin", r.vin);
+      if (r.plan_client_id) {
+        try {
+          const tours = await listJson<PlanTour>(db, PLAN_TOURS);
+          const t = tours.filter(x => x.clientIds?.includes(r.plan_client_id)).sort((a, z) => String(z.date).localeCompare(String(a.date)))[0];
+          if (t) await db.from("tour_events").insert({ tour_id: t.id, kind: "accuse_signe", client_id: r.plan_client_id, lat: data.lat, lng: data.lng, note: `Accusé signé par ${signer} · VIN ${r.vin}`, author: data.livreur, data: { reservation_id: id, vin: r.vin, reserves: data.reserves } });
+        } catch (e) { console.error("[LIVREUR] tour_event", e); }
+      }
+      const url = `${SITE}/api/accuse/${token}`;
+      let emailed = false;
+      if (r.email) {
+        await applyStoredSecrets();
+        if (brevoReady()) {
+          try {
+            const first = String(r.prenom || "").split(/\s+/)[0];
+            emailed = !!(await sendEmail(r.email, data.client, "Votre accusé de réception NeoDrive", `<p>Bonjour ${esc(first)},</p><p>Bienvenue dans la famille NeoDrive ! Vous trouverez ci-joint l'accusé de réception de votre véhicule (n° de série ${esc(r.vin)}), signé ce jour.</p><p>Vous pouvez aussi le consulter ici : <a href="${url}">${url}</a></p><p>Une question, un souci ? Répondez simplement à cet e-mail ou appelez-nous au 06 89 78 17 10.</p><p>Bonne route !<br>Mansour - NeoDrive</p>`, [{ name: `Accuse-reception-${data.numero}.pdf`, content: pdf.toString("base64") }]));
+          } catch (e) { console.error("[LIVREUR] email accusé", e); }
+        }
+      }
+      await logSection(acc, "livraison_accuse", { id, vin: r.vin });
+      const wa = r.telephone ? `https://wa.me/${String(r.telephone).replace(/\D/g, "").replace(/^0/, "33")}?text=${encodeURIComponent(`Bonjour, voici votre accusé de réception NeoDrive : ${url} Bonne route ! NeoDrive`)}` : null;
+      return NextResponse.json({ ok: true, url, emailed, whatsapp: wa });
+    }
+
     if (!memberId) return NextResponse.json({ ok: false, error: "Le dépôt de documents se fait depuis le compte du livreur." }, { status: 403 });
 
     if (b.action === "upload_url") {

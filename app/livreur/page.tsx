@@ -4,6 +4,7 @@ import c from "../giga/giga.module.css";
 import { supabase } from "../../lib/supabase";
 import { DOC_STATUS_LABEL } from "../../lib/driver-docs";
 import Contract from "./Contract";
+import Delivery from "./Delivery";
 import TourMap from "../planificateur/TourMap";
 import type { Stop } from "../../lib/planif";
 
@@ -29,7 +30,7 @@ const ST_COLOR: Record<string, [string, string]> = { manquant: ["#f1f1f1", "#555
 
 export default function Livreur() {
   const [state, setState] = useState<"loading" | "login" | "ready">("loading");
-  const [tab, setTab] = useState<"tournees" | "reservations" | "documents" | "contrat">("tournees");
+  const [tab, setTab] = useState<"livraisons" | "tournees" | "reservations" | "documents" | "contrat">("livraisons");
   const [me, setMe] = useState<Me | null>(null); const [res, setRes] = useState<Res[]>([]); const [tours, setTours] = useState<Tour[]>([]);
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
   const [sign, setSign] = useState(""); const [accept, setAccept] = useState(false);
@@ -72,7 +73,7 @@ export default function Livreur() {
   const contract = me?.docs.contrat;
   const signed = contract && contract.status !== "manquant" && contract.status !== "refuse";
   const missing = (me?.required || []).filter(k => ["manquant", "refuse"].includes(me?.docs[k]?.status || "manquant")).length + (signed ? 0 : 1);
-  const tabs: [typeof tab, string][] = [["tournees", `🚚 Mes tournées (${tours.length})`], ["reservations", `📋 Réservations en cours (${res.length})`], ["documents", `🪪 Mes documents${missing ? ` (${missing} à faire)` : " ✅"}`], ["contrat", signed ? "✍️ Contrat ✅" : "✍️ Contrat à signer"]];
+  const tabs: [typeof tab, string][] = [["livraisons", "🚗 Livraisons"], ["tournees", `🚚 Mes tournées (${tours.length})`], ["reservations", `📋 Réservations en cours (${res.length})`], ["documents", `🪪 Mes documents${missing ? ` (${missing} à faire)` : " ✅"}`], ["contrat", signed ? "✍️ Contrat ✅" : "✍️ Contrat à signer"]];
 
   return <main className={c.page}><div className={c.wrap}>
     <div className={c.top}><a href="/organisation" className={c.back}>← Organisation</a></div>
@@ -83,6 +84,7 @@ export default function Livreur() {
       {tabs.map(([k, l]) => <button key={k} className={`${c.btn} ${tab === k ? c.btnBrand : c.btnGhost}`} style={{ padding: "8px 12px" }} onClick={() => setTab(k)}>{l}</button>)}
     </div>
 
+    {tab === "livraisons" ? <Delivery api={api} onMsg={setMsg} /> : null}
     {tab === "tournees" ? <div style={{ display: "grid", gap: 10 }}>
       {tours.length ? tours.map(t => { const p = t.plan; return <section key={t.id} className={c.card} style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>

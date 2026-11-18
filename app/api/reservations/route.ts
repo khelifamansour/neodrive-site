@@ -108,6 +108,8 @@ export async function POST(req: Request) {
         patch.vin = vin || null;
       }
       if ("avis_google" in b) patch.avis_google = String(b.avis_google || "").trim().slice(0, 2000) || null;
+      // Paiement confirmé par le fondateur : débloque la signature de l'accusé chez le livreur
+      if ("paiement_confirme" in b) patch.paiement_confirme_at = b.paiement_confirme ? new Date().toISOString() : null;
       for (const k of ["nouvelles_at", "avis_demande_at"] as const) if (k in b) patch[k] = b[k] ? new Date().toISOString() : null;
       if ("avis_at" in b) patch.avis_at = /^\d{4}-\d{2}-\d{2}$/.test(String(b.avis_at || "")) ? String(b.avis_at) : null;
       const { error } = await sb.from("reservations").update(patch).eq("id", id);
