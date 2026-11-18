@@ -47,19 +47,21 @@ export async function reservationTemplateStatus(create = false) {
 export function confirmationTexts(r: Pick<Reservation, "prenom" | "nom" | "modele" | "ville" | "total">) {
   const p = prenomOf(r); const m = modeleOf(r.modele); const bonjour = `Bonjour${p ? " " + p : ""}`;
   const onOrder = isOnOrder(r.modele);
+  const ess = /essentiel/i.test(r.modele || "");
+  const delaiCmd = ess ? "Ce modèle est fabriqué sur commande : délai de 6 à 8 mois environ" : "Ce modèle est fabriqué sur commande";
   const sms0 = onOrder
-    ? `${bonjour}, merci pour votre réservation NeoDrive ${m}, bien enregistrée. Ce modèle est fabriqué sur commande : un conseiller vous appelle sous 48 h pour le délai, et peut vous proposer la Confort disponible immédiatement. Paiement à la livraison. NeoDrive`
-    : `${bonjour}, merci pour votre réservation NeoDrive ${m}, bien enregistrée. Délai indicatif de livraison chez vous : 7 à 27 jours selon votre secteur. Un conseiller vous appelle pour la date exacte dès que la tournée de votre région est planifiée. Paiement à la livraison. NeoDrive`;
+    ? `${bonjour}, merci pour votre réservation NeoDrive ${m}, bien enregistrée. ${delaiCmd}. Un conseiller vous appelle sous 48 h et peut vous proposer la Confort, en stock et livrée en 2 à 3 semaines. Paiement à la livraison. NeoDrive`
+    : `${bonjour}, merci pour votre réservation NeoDrive ${m}, bien enregistrée. Délai indicatif de livraison chez vous : 2 à 3 semaines environ. Un conseiller vous appelle pour la date exacte dès que la tournée de votre région est planifiée. Paiement à la livraison. NeoDrive`;
   // 2 SMS maximum (306 caractères GSM) : sans le prénom si besoin.
   const sms = sms0.length > 306 ? sms0.replace(`${bonjour},`, "Bonjour,") : sms0;
   const whatsapp = onOrder
-    ? `${bonjour}, merci pour votre réservation NeoDrive ${m} ✅ Elle est bien enregistrée.\n\nCe modèle est fabriqué sur commande : un conseiller vous appelle sous 48 h pour vous indiquer le délai et vous proposer, si vous le souhaitez, la Confort disponible immédiatement.\n\nPaiement uniquement à la livraison.\nMansour - NeoDrive`
+    ? `${bonjour}, merci pour votre réservation NeoDrive ${m} ✅ Elle est bien enregistrée.\n\n${delaiCmd}. Un conseiller vous appelle sous 48 h et peut vous proposer, si vous le souhaitez, la Confort, en stock et livrée en 2 à 3 semaines.\n\nPaiement uniquement à la livraison.\nMansour - NeoDrive`
     : TEMPLATE_BODY.replace("{{1}}", p || "et merci").replace("{{2}}", m);
   const lines = onOrder
     ? [`Merci pour votre réservation NeoDrive <b>${m}</b> ✅ Elle est bien enregistrée.`,
-       `Ce modèle est <b>fabriqué sur commande</b> : un conseiller vous appelle <b>sous 48 h</b> pour vous indiquer le délai et vous proposer, si vous le souhaitez, la <b>Confort disponible immédiatement</b>.`]
+       `Ce modèle est <b>fabriqué sur commande</b>${ess ? " : délai de <b>6 à 8 mois environ</b>" : ""}. Un conseiller vous appelle <b>sous 48 h</b> et peut vous proposer, si vous le souhaitez, la <b>Confort, en stock et livrée en 2 à 3 semaines</b>.`]
     : [`Merci pour votre réservation NeoDrive <b>${m}</b> ✅ Elle est bien enregistrée, vous n'avez rien d'autre à faire.`,
-       `<b>Délai indicatif</b> de préparation et de livraison jusqu'à votre porte : <b>entre 7 et 27 jours</b> selon votre secteur.`,
+       `<b>Délai indicatif</b> de préparation et de livraison jusqu'à votre porte : <b>2 à 3 semaines environ</b>.`,
        `Un conseiller vous appelle pour vous donner la <b>date exacte</b> dès que la tournée de votre région est planifiée.`];
   const recap = [r.modele ? `Modèle : ${r.modele}` : "", r.total != null ? `Prix total livré : ${euro(r.total)}` : "", r.ville ? `Livraison : ${r.ville}` : ""].filter(Boolean);
   const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#111;max-width:560px">
@@ -68,7 +70,7 @@ ${recap.length ? `<p style="background:#f4f4f5;border-radius:10px;padding:12px 1
 <p>En attendant, préparez sereinement votre livraison : <a href="${SITE}/preparer-ma-livraison">${SITE.replace("https://", "")}/preparer-ma-livraison</a></p>
 <p>Merci pour votre confiance,<br>Mansour<br>NeoDrive</p></div>`;
   const subject = onOrder ? `Votre réservation NeoDrive ${m} est enregistrée` : `Votre réservation NeoDrive ${m} est enregistrée ✅`;
-  const note = onOrder ? "modèle sur commande ; un conseiller rappelle sous 48 h (délai + proposition Confort)" : "délai indicatif 7 à 27 jours ; un conseiller rappelle pour la date exacte";
+  const note = onOrder ? (ess ? "Essentielle : 6 à 8 mois annoncés ; " : "modèle sur commande ; ") + "un conseiller rappelle sous 48 h (proposition Confort)" : "délai indicatif 2 à 3 semaines ; un conseiller rappelle pour la date exacte";
   return { sms, whatsapp, html, subject, note, onOrder };
 }
 

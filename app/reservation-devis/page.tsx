@@ -1,6 +1,6 @@
 "use client";
 import {useMemo,useState,useEffect} from "react";
-import {VEHICLES,REGISTRATION_PRICE,calculateQuote,type VehicleKey} from "../../lib/neodrive-pricing";
+import {VEHICLES,REGISTRATION_PRICE,calculateQuote,AVAILABILITY,type VehicleKey} from "../../lib/neodrive-pricing";
 import s from "./reservation.module.css";
 import GoogleReviews from "../_components/GoogleReviews";
 
@@ -243,7 +243,9 @@ export default function ReservationDevis(){
        <strong>{v.label.replace("NeoDrive ","")}</strong>
        <small>{m.tagline}</small>
        <b>{euro(v.price)}<em> TTC</em></b>
+       <small style={{display:"block",marginTop:4,fontWeight:800,color:AVAILABILITY[key].inStock?"#15803d":"#b45309"}}>{AVAILABILITY[key].inStock?"✅ ":"⏳ "}{AVAILABILITY[key].short}</small>
       </button>})}
+      {!AVAILABILITY[model].inStock?<p className={s.note} style={{gridColumn:"1/-1"}}>⏳ {AVAILABILITY[model].long} La <b>Confort</b> est en stock et livrée en 2 à 3 semaines. <button type="button" onClick={()=>setModel("confort")} style={{border:0,background:"none",color:"#c2410c",fontWeight:800,textDecoration:"underline",cursor:"pointer",padding:0}}>Choisir la Confort</button></p>:null}
      </div>
      <a className={s.seeCar} href="/produit">Voir les photos et équipements du véhicule →</a>
     </section>

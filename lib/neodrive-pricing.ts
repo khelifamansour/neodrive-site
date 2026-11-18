@@ -5,6 +5,13 @@ export const VEHICLES = {
   confortPlus: { label: "NeoDrive Confort Plus", price: 5990 },
 } as const;
 export type VehicleKey = keyof typeof VEHICLES;
+/** Disponibilité affichée au client (à tenir à jour avec le stock réel). */
+export const AVAILABILITY: Record<VehicleKey, { short: string; long: string; inStock: boolean }> = {
+  essentielle: { short: "Sur commande : 6 à 8 mois", long: "Fabriquée sur commande : délai de 6 à 8 mois environ.", inStock: false },
+  confort: { short: "En stock : livrée en 2 à 3 semaines", long: "En stock : livraison chez vous en 2 à 3 semaines environ.", inStock: true },
+  confortPlus: { short: "Sur commande : délai à confirmer", long: "Fabriquée sur commande : délai confirmé par un conseiller.", inStock: false },
+};
+export const AVAILABILITY_NOTICE = "Confort en stock : livrée chez vous en 2 à 3 semaines · Essentielle sur commande : 6 à 8 mois";
 export const REGISTRATION_PRICE = 150;
 const Z1 = new Set(["31","81","82","32","09"]);
 const Z2 = new Set(["11","12","46","47","33","65","66","34","30","40","24","19","87","15"]);
