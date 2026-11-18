@@ -920,6 +920,22 @@
 "no": 115
 },
 {
+"sku": "ND-115C",
+"name": "Rétroviseur gauche : couverture extérieure",
+"category": "Carrosserie",
+"sale_price": 15.0,
+"image_url": null,
+"no": 115.1
+},
+{
+"sku": "ND-114C",
+"name": "Rétroviseur droit : couverture extérieure",
+"category": "Carrosserie",
+"sale_price": 15.0,
+"image_url": null,
+"no": 115.2
+},
+{
 "sku": "131.2.47.210.0610",
 "name": "Joint rétroviseur",
 "category": "Carrosserie",
