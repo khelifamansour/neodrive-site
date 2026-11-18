@@ -137,12 +137,14 @@ export type CashHyp = {
   seuil: number;           // argent minimum à garder sur le compte
   prelevement: number;     // ce que tu te verses chaque mois
   securite: number;        // stock de sécurité, en mois de ventes
+  retrait: number;         // argent repris en une fois (ex. réserve remise de côté)
+  mois_retrait: number;    // mois de ce retrait (0 = décembre ; 99 = jamais)
 };
 export const DEFAULT_CASH: CashHyp = {
   caisse: 10000, stock: 51, stock_reste: 550, stock_a_payer: 45,
   prod: 60, prod_usine: 611, prod_fret: 490, prod_mois: 2, prod_decale: 30,
   acompte: 500, solde: 1111, fret: 490, douane: 540, delai: 4,
-  seuil: 3000, prelevement: 0, securite: 0.5,
+  seuil: 3000, prelevement: 0, securite: 0.5, retrait: 0, mois_retrait: 99,
 };
 
 export type CashRow = {
@@ -174,7 +176,7 @@ export function cashPlan(h: SimHyp, c: CashHyp): CashRow[] {
         + (i >= 1 ? (orders[i - 1] || 0) * c.solde : 0) + (i >= 2 ? (orders[i - 2] || 0) * c.fret : 0) + (orders[i] || 0) * c.acompte;
       const arrivee = (i === 0 ? c.stock_a_payer * c.stock_reste : 0) + (i === c.prod_mois ? p1 * c.douane : 0)
         + (i === c.prod_mois + 1 ? p2 * c.douane : 0) + (i - D >= 0 ? (orders[i - D] || 0) * c.douane : 0);
-      const frais = r.fixes + livraison + c.prelevement;
+      const frais = r.fixes + livraison + c.prelevement + (i === c.mois_retrait ? c.retrait : 0);
       caisse += encaisse - usine - arrivee - frais;
       let enRoute = 0; for (let k = Math.max(0, i - D + 1); k <= i; k++) enRoute += orders[k] || 0;
       if (i < c.prod_mois) enRoute += p1; if (i < c.prod_mois + 1) enRoute += p2;
@@ -193,7 +195,7 @@ export function cashPlan(h: SimHyp, c: CashHyp): CashRow[] {
     let lo = 0, hi = voulu;
     while (lo < hi) {
       const mid = Math.ceil((lo + hi) / 2); orders[i] = mid;
-      const ok = run(orders, i + D + 1).slice(i).every(x => x.caisse_fin >= c.seuil);
+      const ok = run(orders, Math.min(H, Math.max(i + D + 1, c.mois_retrait < 99 ? c.mois_retrait + 1 : 0))).slice(i).every(x => x.caisse_fin >= c.seuil);
       if (ok) lo = mid; else hi = mid - 1;
     }
     orders[i] = lo;
