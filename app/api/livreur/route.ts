@@ -9,14 +9,14 @@ import { brevoReady, sendEmail, sendSms } from "../../../lib/brevo";
 import { newCode, sha } from "../../../lib/team";
 import { CONTRACT_VERSION, DOC_KINDS, DRIVER_BUCKET, REQUIRED_DOCS, isDocKind } from "../../../lib/driver-docs";
 import { roadKm, splitTrips, type PlanClient, type PlanTour, type Stop } from "../../../lib/planif";
-import { estimateHours, isExpenseType } from "../../../lib/driver-hours";
+import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType } from "../../../lib/driver-hours";
 import { addTickets, readTicket, type TicketData } from "../../../lib/driver-tickets";
 import { randomBytes } from "crypto";
 import { RECEIPT_FOLDER, VIN_RE, checksFor, cleanPayment, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
 import { finalizeDelivery, intlPhone } from "../../../lib/delivery-finalize";
 import { OWNER_EMAIL } from "../../../lib/brevo";
 import { PHOTO_BUCKET } from "../../../lib/fleet";
-import { bicOk, fmtIban, ibanOk, invoicePdf, siretOk, type Billing, type Control } from "../../../lib/driver-invoice";
+import { bicOk, dayWorked, fmtIban, ibanOk, invoicePdf, siretOk, toMin, type Billing, type Control } from "../../../lib/driver-invoice";
 import { cleanDays, control, initials, invoiceTotal, tourBillingBase } from "../../../lib/driver-billing";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +43,7 @@ const publicDoc = (d?: Doc) => {
 
 
 const INVOICE_FOLDER = "factures";
+const HOUR_KINDS = ["Tournée", "Préparation / nettoyage", "Contrôle à l'arrivée", "Réparation / pièces", "Transport vers partenaire", "Autre"];
 const eurTxt = (n: number) => `${(Math.round(Number(n) * 100) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 const hmTxt = (min: number) => `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, "0")}`;
 /** Coordonnées de facturation nettoyées + liste de ce qui manque. */
@@ -455,6 +456,81 @@ export async function POST(req: Request) {
       const paths = (Array.isArray(b.paths) ? b.paths : []).map(String).filter(p => p.startsWith(`vehicles/${t.id}/`) && !p.includes(".."));
       if (!paths.length) return NextResponse.json({ ok: false, error: "Aucune photo reçue." }, { status: 400 });
       return NextResponse.json({ ok: true, ...(await addTickets(db, t.id, name || acc.name, paths)) });
+    }
+    // ── Heures hors tournée (préparation, contrôle à l'arrivée, réparation, transport…) et leur facture
+    if (b.action === "hours_list") {
+      const { data, error } = await db.from("driver_hours").select("id,date,kind,start_time,end_time,pause_min,worked_min,note,tour_id,invoice_id").eq("member_id", memberId).order("date", { ascending: false }).limit(200);
+      if (error) throw new Error(error.message);
+      return NextResponse.json({ ok: true, hours: data || [], rate: DEFAULT_DRIVER_RATE });
+    }
+    if (b.action === "hours_add") {
+      const date = String(b.date || ""); const kind = HOUR_KINDS.includes(String(b.kind)) ? String(b.kind) : "Autre";
+      const start = String(b.start || "").trim().replace("h", ":"), end = String(b.end || "").trim().replace("h", ":");
+      const pause = Math.max(0, Math.min(600, Math.round(Number(b.pause_min) || 0)));
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ ok: false, error: "Date manquante." }, { status: 400 });
+      if (toMin(start) == null || toMin(end) == null) return NextResponse.json({ ok: false, error: "Heure de début et heure de fin obligatoires (ex. 08:00 et 12:30)." }, { status: 400 });
+      const worked = dayWorked(start, end, pause);
+      if (worked <= 0) return NextResponse.json({ ok: false, error: "L'heure de fin doit être après l'heure de début (pauses déduites)." }, { status: 400 });
+      if (worked > 16 * 60) return NextResponse.json({ ok: false, error: "Plus de 16 h sur une ligne : vérifiez les heures." }, { status: 400 });
+      const { error } = await db.from("driver_hours").insert({ member_id: memberId, date, kind, start_time: start, end_time: end, pause_min: pause, worked_min: worked, note: String(b.note || "").replace(/[<>]/g, "").trim().slice(0, 200) || null, tour_id: String(b.tour_id || "").slice(0, 80) || null });
+      if (error) throw new Error(error.message);
+      return NextResponse.json({ ok: true });
+    }
+    if (b.action === "hours_delete") {
+      const { error } = await db.from("driver_hours").delete().eq("id", Number(b.id)).eq("member_id", memberId).is("invoice_id", null);
+      if (error) throw new Error(error.message);
+      return NextResponse.json({ ok: true });
+    }
+    if (b.action === "hours_invoice") {
+      const ids = (Array.isArray(b.ids) ? b.ids : []).map(Number).filter(Number.isFinite).slice(0, 200);
+      if (!ids.length) return NextResponse.json({ ok: false, error: "Sélectionnez au moins une ligne d'heures." }, { status: 400 });
+      const [{ data: rows }, { data: mb }, docs] = await Promise.all([
+        db.from("driver_hours").select("*").eq("member_id", memberId).is("invoice_id", null).in("id", ids).order("date"),
+        db.from("team_members").select("name,email,billing").eq("id", memberId).maybeSingle(),
+        latestDocs(db, memberId),
+      ]);
+      if (!rows?.length) return NextResponse.json({ ok: false, error: "Ces heures sont déjà facturées." }, { status: 409 });
+      const { b: bill, missing } = checkBilling((mb?.billing || {}) as Billing);
+      const blockers = [...missing.map(m => `Profil de facturation : ${m}`)];
+      if (!docs.rib || docs.rib.status === "refuse") blockers.push("RIB à déposer (onglet Mes documents)");
+      if (!docs.contrat || docs.contrat.status === "refuse") blockers.push("Contrat à signer");
+      const rate = DEFAULT_DRIVER_RATE;
+      const days = rows.map(r => ({ date: String(r.date), depart: `${r.kind}${r.note ? " – " + r.note : ""}`.slice(0, 60), start: r.start_time, end: r.end_time, pause_min: r.pause_min, worked_min: r.worked_min }));
+      const worked_min = days.reduce((a, d) => a + d.worked_min, 0);
+      const total = Math.round(worked_min / 60 * rate * 100) / 100;
+      const issued = new Date().toISOString();
+      const driverName = mb?.name || name || "Livreur";
+      const period = days[0].date === days[days.length - 1].date ? new Date(days[0].date + "T12:00:00Z").toLocaleDateString("fr-FR", { timeZone: "UTC" }) : `du ${new Date(days[0].date + "T12:00:00Z").toLocaleDateString("fr-FR", { timeZone: "UTC" })} au ${new Date(days[days.length - 1].date + "T12:00:00Z").toLocaleDateString("fr-FR", { timeZone: "UTC" })}`;
+      const label = `Missions hors tournée ${period}`;
+      const pdfData = { issued, driver: driverName, billing: bill, tour: label, days, deliveries: [], rate, worked_min, total };
+      if (b.preview) { const pdf = await invoicePdf({ ...pdfData, number: "APERÇU (numéro attribué à l'envoi)" }); return NextResponse.json({ ok: true, worked_min, total, pdf: pdf.toString("base64"), blockers }); }
+      if (blockers.length) return NextResponse.json({ ok: false, error: "Avant de générer la facture : " + blockers.join(" ; ") + "." }, { status: 400 });
+      let row: { id: number; number: string } | null = null;
+      for (let attempt = 0; attempt < 3 && !row; attempt++) {
+        const { data: last } = await db.from("driver_invoices").select("seq").eq("member_id", memberId).order("seq", { ascending: false }).limit(1);
+        const seq = (last?.[0]?.seq || 0) + 1;
+        const number = `${initials(driverName)}${memberId}-${issued.slice(0, 4)}-${String(seq).padStart(3, "0")}`;
+        const ins = await db.from("driver_invoices").insert({ member_id: memberId, tour_id: `hors-${Date.now()}`, tour_name: label, seq, number, status: "a_payer", days, deliveries: [], expenses: [], rate, worked_min, amount_hours: total, amount_expenses: 0, total, control: null, billing: bill, sent_at: issued }).select("id,number").single();
+        if (ins.error) { if (!/duplicate/.test(ins.error.message)) throw new Error(ins.error.message); } else row = ins.data;
+      }
+      if (!row) throw new Error("Numérotation de la facture impossible, réessayez.");
+      await db.from("driver_hours").update({ invoice_id: row.id }).in("id", rows.map(r => r.id)).eq("member_id", memberId);
+      const pdf = await invoicePdf({ ...pdfData, number: row.number });
+      const path = `${INVOICE_FOLDER}/${memberId}/${row.number}.pdf`;
+      const up = await db.storage.from(DRIVER_BUCKET).upload(path, pdf, { contentType: "application/pdf", upsert: true });
+      if (up.error) throw new Error("Enregistrement du PDF impossible : " + up.error.message);
+      await db.from("driver_invoices").update({ pdf_path: path }).eq("id", row.id);
+      const sent = { email: false, sms: false };
+      await applyStoredSecrets();
+      if (brevoReady()) {
+        const first = driverName.split(/\s+/)[0];
+        const att = [{ name: `Facture-${row.number}.pdf`, content: pdf.toString("base64") }];
+        const html = `<p>Bonjour ${esc(first)},</p><p>Voici votre facture <b>${esc(row.number)}</b> (${esc(label)}) : ${esc(hmTxt(worked_min))} de travail, <b>${esc(eurTxt(total))}</b> (TVA non applicable, art. 293 B du CGI).</p><p>Elle est établie par MK HOLDING en votre nom (mandat d'autofacturation de votre contrat). Vous avez 15 jours pour la contester en répondant à cet e-mail.</p><p>Merci !<br>Mansour - NeoDrive</p>`;
+        try { sent.email = !!(await sendEmail(mb?.email || OWNER_EMAIL, driverName, `Facture ${row.number} - ${label}`, html, att, mb?.email ? { cc: [OWNER_EMAIL], replyTo: OWNER_EMAIL } : undefined)); } catch (e) { console.error("[LIVREUR] e-mail facture hors tournée", e); }
+        try { sent.sms = !!(await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", `NeoDrive : facture ${row.number} de ${driverName} (${label}) : ${hmTxt(worked_min)}, ${eurTxt(total)}. A verifier dans Livreurs prestataires.`, "transactional")); } catch (e) { console.error("[LIVREUR] SMS facture hors tournée", e); }
+      }
+      await logSection(acc, "livreur_facture_hors_tournee", { number: row.number, total });
+      return NextResponse.json({ ok: true, number: row.number, total, worked_min, sent });
     }
     if (b.action === "invoice_prepare" || b.action === "invoice_preview" || b.action === "invoice_send") {
       if (!memberId) return NextResponse.json({ ok: false, error: "La facture est faite par le livreur depuis son espace." }, { status: 403 });

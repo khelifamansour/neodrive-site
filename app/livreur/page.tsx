@@ -7,6 +7,7 @@ import Contract from "./Contract";
 import Delivery from "./Delivery";
 import Billing, { type BillingInfo } from "./Billing";
 import Invoice from "./Invoice";
+import Hours from "./Hours";
 import TicketsBulk from "./TicketsBulk";
 import SignaturePad from "./SignaturePad";
 import TourMap from "../planificateur/TourMap";
@@ -48,12 +49,19 @@ export default function Livreur() {
   const [me, setMe] = useState<Me | null>(null); const [res, setRes] = useState<Res[]>([]); const [tours, setTours] = useState<Tour[]>([]);
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
   const [sign, setSign] = useState(""); const [accept, setAccept] = useState(false); const [sigPng, setSigPng] = useState<string | null>(null);
+  const [guide, setGuide] = useState(true);
+  useEffect(() => { try { if (localStorage.getItem("nd_livreur_guide") === "0") setGuide(false); } catch { /* privé */ } }, []);
+  const toggleGuide = (v: boolean) => { setGuide(v); try { localStorage.setItem("nd_livreur_guide", v ? "1" : "0"); } catch { /* privé */ } };
+  const go = (t: "livraisons" | "tournees" | "factures" | "documents" | "contrat") => { setTab(t); setTimeout(() => document.getElementById("nd-tab-zone")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); };
   const [mapOf, setMapOf] = useState(""); const [tixOf, setTixOf] = useState(""); const [invOf, setInvOf] = useState(""); const [invoices, setInvoices] = useState<MyInvoice[]>([]);
 
   const load = useCallback(async () => {
     try {
-      const [m, r, t] = await Promise.all([api<Me>({ action: "me" }), api<{ reservations: Res[] }>({ action: "reservations" }), api<{ tours: Tour[] }>({ action: "tours" })]);
-      setMe(m); setRes(r.reservations); setTours(t.tours); setState("ready");
+      const m = await api<Me>({ action: "me" });
+      // Tournées et réservations chargées à part : une erreur sur l'une ne vide pas tout l'espace.
+      const [r, t] = await Promise.allSettled([m.who === "owner" ? api<{ reservations: Res[] }>({ action: "reservations" }) : Promise.resolve({ reservations: [] as Res[] }), api<{ tours: Tour[] }>({ action: "tours" })]);
+      setMe(m); setRes(r.status === "fulfilled" ? r.value.reservations : []); setTours(t.status === "fulfilled" ? t.value.tours : []); setState("ready");
+      if (t.status === "rejected") setMsg("❌ Tournées : " + (t.reason as Error).message);
       if (m.who === "member") api<{ invoices: MyInvoice[] }>({ action: "my_invoices" }).then(j => setInvoices(j.invoices)).catch(() => null);
     } catch (e) { if (e instanceof Unauthorized) setState("login"); else { setMsg("❌ " + (e as Error).message); setState("ready"); } }
   }, []);
@@ -91,6 +99,11 @@ export default function Livreur() {
   const member = me?.who === "member";
   const tabs: [typeof tab, string][] = [["livraisons", "🚗 Livraisons"], ["tournees", `🚚 Mes tournées (${tours.length})`], ["factures", "🧾 Heures, tickets et factures"], ...(member ? [] : [["reservations", `📋 Réservations en cours (${res.length})`]] as [typeof tab, string][]), ["documents", `🪪 Mes documents${missing ? ` (${missing} à faire)` : " ✅"}`], ["contrat", signed ? "✍️ Contrat ✅" : "✍️ Contrat à signer"]];
   const drafts = tours.filter(t => t.plan.draft);
+  const validated = tours.filter(t => !t.plan.draft).length;
+  const docsTotal = (me?.required || []).length;
+  const docsDone = (me?.required || []).filter(k => !["manquant", "refuse"].includes(me?.docs[k]?.status || "manquant")).length;
+  const tester = me?.who === "owner" || /\(test\)/i.test(me?.name || "");
+  const emptyTours = <section className={c.card} style={{ display: "grid", gap: 6 }}><b>Aucune tournée pour l’instant.</b><span className={c.muted}>Mansour prépare vos tournées dans le planificateur et vous les revoyez ensemble avant le départ.</span>{tester ? <small className={c.muted}>Pour tester : dans le planificateur, choisissez « Serge » comme livreur sur une tournée et validez-la. <a href="/planificateur">Ouvrir le planificateur</a></small> : null}</section>;
   /** Fin de tournée : heures et pauses → tickets → facture de CETTE tournée (heures × taux), dans cet ordre. */
   const closeBox = (t: Tour) => {
     if (t.plan.draft) return <div style={{ padding: 10, borderRadius: 10, background: "#fffaeb", fontSize: 14 }}>⏳ Tournée prévisionnelle : Mansour la revoit avec vous avant le départ. Une fois validée, vous la ferez, puis vous la clôturerez ici (heures, tickets, facture).</div>;
@@ -108,8 +121,21 @@ export default function Livreur() {
     <h1 style={{ margin: "14px 0 4px" }}>🚚 Espace livreur</h1>
     <p className={c.muted}>Bonjour {me?.name?.split(" ")[0] || ""}. Vos tournées, les réservations en cours, vos documents et votre contrat.</p>
     {msg ? <p className={c.msg} style={{ fontWeight: 700 }}>{msg}</p> : null}
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "14px 0" }}>
-      {tabs.map(([k, l]) => <button key={k} className={`${c.btn} ${tab === k ? c.btnBrand : c.btnGhost}`} style={{ padding: "8px 12px" }} onClick={() => setTab(k)}>{l}</button>)}
+    {guide ? <section className={c.card} style={{ display: "grid", gap: 10, margin: "14px 0", background: "#fffdf8" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><b style={{ fontSize: 19 }}>🧭 Comment ça marche</b><button className={`${c.btn} ${c.btnGhost}`} style={{ padding: "6px 10px", fontSize: 13 }} onClick={() => toggleGuide(false)}>Masquer le guide</button></div>
+      {([
+        { n: "①", t: "Mes documents", d: "SIRET, assurance RC pro, permis, pièce d’identité, RIB : une photo ou un PDF chacun.", st: `${docsDone}/${docsTotal} déposés`, done: docsTotal > 0 && docsDone >= docsTotal, b: "Déposer mes documents", to: "documents" as const },
+        { n: "②", t: "Contrat", d: "Lisez le contrat de prestation, puis signez-le avec le doigt.", st: signed ? `Signé le ${contract?.signed_at ? new Date(contract.signed_at).toLocaleDateString("fr-FR") : ""}` : "À signer", done: !!signed, b: "Lire et signer", to: "contrat" as const },
+        { n: "③", t: "Mes tournées", d: "Mansour prépare la tournée, vous la revoyez ensemble avant le départ.", st: `${validated} validée${validated > 1 ? "s" : ""}${drafts.length ? ` · ${drafts.length} prévisionnelle${drafts.length > 1 ? "s" : ""}` : ""}`, done: validated > 0, b: "Voir mes tournées", to: "tournees" as const },
+        { n: "④", t: "Livraisons", d: "Pour chaque client : numéro de série + photo de la plaque → paiement confirmé par Mansour → le client déclare comment il a payé et signe l’accusé.", st: validated ? "Clients des tournées validées" : "Dès qu’une tournée est validée", done: false, b: "Voir les livraisons", to: "livraisons" as const },
+        { n: "⑤", t: "Heures et factures", d: "Saisissez vos heures (tournée ou autre mission : préparation, contrôle, réparation, transport), déposez vos tickets chaque soir, puis générez votre facture (heures × 25 € HT) : elle arrive chez Mansour automatiquement.", st: invoices.length ? `${invoices.length} facture${invoices.length > 1 ? "s" : ""}` : "Aucune facture", done: false, b: "Saisir mes heures", to: "factures" as const },
+      ]).map(x => <div key={x.n} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center", padding: 10, borderRadius: 12, background: x.done ? "#e7f6ec" : "#fff", border: "1px solid #eee" }}>
+        <div style={{ display: "grid", gap: 2 }}><b style={{ fontSize: 16 }}>{x.done ? "✅" : x.n} {x.t} <span className={c.badge} style={{ background: x.done ? "#d1fadf" : "#f1f1f1", color: "#111", marginLeft: 4 }}>{x.st}</span></b><small className={c.muted}>{x.d}</small></div>
+        <button className={`${c.btn} ${x.done ? c.btnGhost : c.btnBrand}`} style={{ padding: "12px 14px", fontSize: 15 }} onClick={() => go(x.to)}>{x.b}</button>
+      </div>)}
+    </section> : <button className={`${c.btn} ${c.btnGhost}`} style={{ margin: "10px 0", padding: "6px 10px", fontSize: 13 }} onClick={() => toggleGuide(true)}>🧭 Afficher le guide « Comment ça marche »</button>}
+    <div id="nd-tab-zone" style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "14px 0" }}>
+      {tabs.map(([k, l]) => { const alert = k === "documents" && missing > 0 && tab !== k; return <button key={k} className={`${c.btn} ${tab === k || alert ? c.btnBrand : c.btnGhost}`} style={{ padding: "8px 12px", ...(alert ? { background: "#fff4ec", color: "#b54708", border: "2px solid #f05a28" } : {}) }} onClick={() => setTab(k)}>{l}</button>; })}
     </div>
 
     {tab === "livraisons" ? <div style={{ display: "grid", gap: 10 }}>
@@ -122,6 +148,7 @@ export default function Livreur() {
       </section> : null}
     </div> : null}
     {tab === "factures" ? <div style={{ display: "grid", gap: 10 }}>
+      {member ? <Hours api={api} onMsg={setMsg} tours={tours.filter(t => !t.plan.draft).map(t => ({ id: t.id, name: t.name }))} onInvoiced={() => api<{ invoices: MyInvoice[] }>({ action: "my_invoices" }).then(j => setInvoices(j.invoices)).catch(() => null)} /> : <p className={c.muted} style={{ margin: 0 }}>Aperçu fondateur : la saisie des heures se fait depuis le compte du livreur.</p>}
       <p className={c.muted} style={{ margin: 0 }}>Une facture par tournée : à la fin de chaque tournée, cliquez « Clôturer cette tournée » et suivez les étapes (heures et pauses → tickets → facture). Déposez vos tickets chaque soir (photos) et gardez les originaux papier pour Mansour. Hôtel max 70 €/nuit, repas max 30 €/jour.</p>
       {[...tours].sort((a, z) => String(z.date).localeCompare(String(a.date))).map(t => <section key={t.id} className={c.card} style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}><b style={{ fontSize: 17 }}>{t.name}</b><span className={c.muted}>📅 {fmt(t.date)}</span>
@@ -129,7 +156,7 @@ export default function Livreur() {
           {!t.plan.draft ? <span className={c.badge} style={{ background: "#f1f1f1", color: "#111" }}>🧾 {t.tickets || 0} ticket{(t.tickets || 0) > 1 ? "s" : ""}</span> : null}</div>
         {closeBox(t)}
       </section>)}
-      {!tours.length ? <p className={c.muted}>Aucune tournée à votre nom pour l’instant.</p> : null}
+      {!tours.length ? emptyTours : null}
       {member ? <Billing initial={me?.billing || null} api={api} onSaved={load} onMsg={setMsg} /> : null}
       {invoices.length ? <section className={c.card} style={{ display: "grid", gap: 6, padding: 14 }}><b>🧾 Toutes mes factures</b>{invoices.map(x => <span key={x.id}>{x.number} · {x.tour_name} · {x.total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {x.status === "payee" ? `✅ payée le ${x.paid_at ? new Date(x.paid_at).toLocaleDateString("fr-FR") : ""}` : "⏳ à payer"}{x.url ? <> · <a href={x.url} target="_blank" rel="noreferrer">PDF</a></> : null}</span>)}</section> : null}
     </div> : null}
@@ -176,7 +203,7 @@ export default function Livreur() {
           <small className={c.muted}>Déposez vos tickets chaque soir (photos) et gardez les originaux papier pour Mansour. Hôtel max 70 €/nuit, repas max 30 €/jour.</small>
         </div> : null}
         {closeBox(t)}
-      </section>; }) : <p className={c.muted}>Aucune tournée à votre nom pour l’instant.</p>}
+      </section>; }) : emptyTours}
     </div> : null}
 
     {tab === "reservations" ? <div style={{ display: "grid", gap: 8 }}>
@@ -189,9 +216,8 @@ export default function Livreur() {
     </div> : null}
 
     {tab === "documents" && me ? <div style={{ display: "grid", gap: 10 }}>
-      {me.who === "member" ? <Billing initial={me.billing || null} api={api} onSaved={load} onMsg={setMsg} /> : null}
       {invoices.length ? <section className={c.card} style={{ display: "grid", gap: 6, padding: 14 }}><b>🧾 Mes factures</b>{invoices.map(x => <span key={x.id}>{x.number} · {x.tour_name} · {x.total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {x.status === "payee" ? `✅ payée le ${x.paid_at ? new Date(x.paid_at).toLocaleDateString("fr-FR") : ""}` : "⏳ à payer"}{x.url ? <> · <a href={x.url} target="_blank" rel="noreferrer">PDF</a></> : null}</span>)}</section> : null}
-      <p className={c.muted}>Une photo nette ou un PDF par document. NeoDrive vérifie chaque document et le valide.</p>
+      <p style={{ margin: 0, padding: 12, borderRadius: 12, background: "#fff4ec", fontWeight: 600 }}>📄 Déposez ici vos documents : appuyez sur le bouton orange de chaque document, prenez-le en photo (ou choisissez un PDF). NeoDrive vérifie chaque document et le valide.</p>
       {me.kinds.map(k => { const d = me.docs[k.id] || { status: "manquant" }; const [bg, col] = ST_COLOR[d.status] || ST_COLOR.manquant; const req = me.required.includes(k.id);
         return <section key={k.id} className={c.card} style={{ display: "grid", gap: 6, padding: 14 }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
@@ -201,7 +227,7 @@ export default function Livreur() {
           {k.hint ? <small className={c.muted}>{k.hint}</small> : null}
           {d.filename ? <small className={c.muted}>Dernier envoi : {d.filename} · {fmt(d.uploaded_at)}</small> : null}
           {d.status === "refuse" && d.note ? <small className={c.err}>Motif : {d.note}</small> : null}
-          <label className={`${c.btn} ${c.btnGhost}`} style={{ textAlign: "center", cursor: "pointer" }}>{busy === k.id ? "Envoi…" : d.status === "manquant" ? "📎 Envoyer le document" : "📎 Envoyer une nouvelle version"}
+          <label className={`${c.btn} ${d.status === "manquant" || d.status === "refuse" ? c.btnBrand : c.btnGhost}`} style={{ justifyContent: "center", textAlign: "center", cursor: "pointer", fontSize: 17, padding: 14 }}>{busy === k.id ? "Envoi…" : d.status === "manquant" ? "📷 Prendre en photo / choisir un fichier" : "📷 Envoyer une nouvelle version"}
             <input type="file" accept="image/*,application/pdf" hidden disabled={!!busy} onChange={e => { upload(k.id, e.target.files?.[0]); e.target.value = ""; }} /></label>
         </section>; })}
     </div> : null}
