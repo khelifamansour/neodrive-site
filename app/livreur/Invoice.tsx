@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import c from "../giga/giga.module.css";
-import { dayWorked } from "../../lib/driver-invoice";
+import { dayWorked } from "../../lib/driver-invoice-shared";
 import { supabase } from "../../lib/supabase";
 import TicketsBulk from "./TicketsBulk";
 

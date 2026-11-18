@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import c from "../giga/giga.module.css";
-import { ibanOk } from "../../lib/driver-invoice";
+import { ibanOk } from "../../lib/driver-invoice-shared";
 
 type Api = <T = Record<string, unknown>>(body: object) => Promise<T>;
 export type BillingInfo = { legal_name?: string; siret?: string; address?: string; iban?: string; bic?: string } | null;
