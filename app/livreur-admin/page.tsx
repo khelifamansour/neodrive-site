@@ -47,6 +47,14 @@ export default function LivreurAdmin() {
     <h1 style={{ margin: "14px 0 4px" }}>🪪 Livreurs prestataires</h1>
     <p className={c.muted}>Invitez un livreur : il reçoit son code par SMS et par e-mail, dépose ses documents et signe son contrat dans son « Espace livreur ». Il ne voit que les réservations en cours (sans les prix), ses tournées et ses documents.</p>
     {msg ? <p className={c.msg} style={{ fontWeight: 700 }}>{msg}</p> : null}
+    <section className={c.card} style={{ display: "grid", gap: 8, margin: "10px 0", background: "#fffaeb" }}>
+      <b>🧪 Données de test</b>
+      <small className={c.muted}>Tournée « Tournée TEST – démo Serge » (2 clients de test à Muret et Seysses, vos téléphone et e-mail) pour essayer l’espace livreur avec le compte « Serge (test) ».</small>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button className={`${c.btn} ${c.btnGhost}`} disabled={busy} onClick={() => confirm("Créer (ou recréer) la tournée de test pour Serge ?") && run(async () => { const j = await api<{ reservations: number[] }>({ action: "admin_create_demo_tour" }); return `✅ Tournée de test créée (${j.reservations.length} réservations de test).`; })}>➕ Créer la tournée de test</button>
+        <button className={`${c.btn} ${c.btnGhost}`} disabled={busy} onClick={() => confirm("Supprimer TOUTES les données de test (tournée, clients et réservations de test, accusés, heures et factures du compte de test) ?") && run(async () => { const j = await api<{ tours: number; reservations: number; hours: number; invoices: number }>({ action: "admin_delete_test_data" }); return `🗑️ Supprimé : ${j.tours} tournée(s), ${j.reservations} réservation(s), ${j.hours} ligne(s) d’heures, ${j.invoices} facture(s) de test.`; })}>🗑️ Supprimer les données de test</button>
+      </div>
+    </section>
 
     {invite ? <section className={c.card} style={{ marginTop: 12, display: "grid", gap: 8, borderColor: "#f05a28" }}>
       <b>Accès créé pour {invite.name} : code <span style={{ fontSize: 20, letterSpacing: 2 }}>{invite.code}</span></b>

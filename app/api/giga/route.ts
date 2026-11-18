@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     }
     if (b.action === "sim_history") {
       if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "La simulation est réservée au fondateur." }, { status: 403 });
-      const { data, error } = await db.from("reservations").select("created_at,statut,code_postal").neq("statut", "Annulée").limit(5000);
+      const { data, error } = await db.from("reservations").select("created_at,statut,code_postal").neq("statut", "Annulée").or("source.is.null,source.neq.test").limit(5000);
       if (error) throw new Error(error.message);
       const parMois: Record<string, number> = {}; let sud = 0, total = 0;
       for (const r of data || []) {

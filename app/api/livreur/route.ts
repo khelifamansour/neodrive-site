@@ -14,6 +14,7 @@ import { addTickets, readTicket, type TicketData } from "../../../lib/driver-tic
 import { randomBytes } from "crypto";
 import { RECEIPT_FOLDER, VIN_RE, checksFor, cleanPayment, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
 import { finalizeDelivery, intlPhone } from "../../../lib/delivery-finalize";
+import { createDemoTour, deleteTestData } from "../../../lib/demo-tour";
 import { OWNER_EMAIL } from "../../../lib/brevo";
 import { PHOTO_BUCKET } from "../../../lib/fleet";
 import { bicOk, dayWorked, fmtIban, ibanOk, invoicePdf, siretOk, toMin, type Billing, type Control } from "../../../lib/driver-invoice";
@@ -179,6 +180,12 @@ export async function POST(req: Request) {
         const { error } = await db.from("tour_events").update({ data: next }).eq("id", ev.id);
         if (error) throw new Error(error.message);
         return NextResponse.json({ ok: true, ticket: next });
+      }
+      if (b.action === "admin_delete_test_data") {
+        return NextResponse.json({ ok: true, ...(await deleteTestData(db)) });
+      }
+      if (b.action === "admin_create_demo_tour") {
+        return NextResponse.json({ ok: true, ...(await createDemoTour(db, /^\d{4}-\d{2}-\d{2}$/.test(String(b.date || "")) ? String(b.date) : undefined)) });
       }
       if (b.action === "admin_delete_test") {
         const id = Number(b.id);
