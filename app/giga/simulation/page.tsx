@@ -6,7 +6,7 @@ import { Login, Unauthorized, gigaApi, storedCode } from "../client";
 import { DEFAULT_HUB, DEFAULT_SIM, SEASON, SIM_MONTHS, hubCost, milestones, simulate, type HubHyp, type SimHyp } from "../../../lib/sales-sim";
 
 const eur = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} €`;
-const KEY = "nd_sim_hyp";
+const KEY = "nd_sim_hyp_v2";
 type History = { mois: { m: string; n: number }[]; part_sud: number | null };
 
 const FIELDS: { k: keyof SimHyp; label: string; step?: number; month?: boolean }[] = [
@@ -25,10 +25,14 @@ const FIELDS: { k: keyof SimHyp; label: string; step?: number; month?: boolean }
   { k: "net_direct", label: "Net HT par voiture vendue en direct (€)", step: 50 },
   { k: "usine", label: "Prix usine (€)", step: 10 },
   { k: "arrivee", label: "Fret + douane + dépotage par voiture (€)", step: 10 },
-  { k: "livraison", label: "Livraison client par voiture (€)", step: 10 },
+  { k: "livraison", label: "Coût livraison par voiture : livreur + déplacements (€)", step: 10 },
   { k: "net_revendeur", label: "Net HT par voiture revendeur (€)", step: 50 },
-  { k: "fixes", label: "Frais fixes par mois (€)", step: 100 },
-  { k: "livreur_nord", label: "Coût du livreur nord par mois (€)", step: 100 },
+  { k: "fixes", label: "Frais fixes par mois hors pub (€)", step: 100 },
+  { k: "pub_actuelle", label: "Pub actuelle par mois (€)", step: 100 },
+  { k: "pub", label: "Budget pub visé par mois (€)", step: 500 },
+  { k: "mois_pub", label: "Début du nouveau budget pub", month: true },
+  { k: "cout_resa", label: "Coût d'une réservation en plus (€)", step: 50 },
+  { k: "livreur_nord", label: "Surcoût fixe du dépôt nord une fois le livreur embauché (€)", step: 100 },
   { k: "cap_livreur", label: "Livraisons par livreur et par mois" },
 ];
 

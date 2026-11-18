@@ -30,7 +30,11 @@ export type SimHyp = {
   net_revendeur: number;   // ce que tu touches HT par voiture vendue par un revendeur
   cap_livreur: number;     // livraisons par mois et par livreur
   par_conteneur: number;   // voitures par conteneur 40 pieds
-  fixes: number;           // frais fixes par mois (pub, équipe Algérie, assurance, dépôts, outils)
+  fixes: number;           // frais fixes par mois hors pub (équipe Algérie, assurance, comptable, logiciels, SAV)
+  pub_actuelle: number;    // budget pub par mois déjà compris dans le rythme actuel (€)
+  pub: number;             // budget pub par mois visé (€)
+  mois_pub: number;        // mois où le nouveau budget pub démarre
+  cout_resa: number;       // coût d'une réservation en plus avec la pub supplémentaire (€)
   livreur_nord: number;    // coût mensuel du livreur de Gennevilliers une fois embauché
 };
 
@@ -39,8 +43,12 @@ export const DEFAULT_SIM: SimHyp = {
   hausse: 500, mois_hausse: 1, elasticite: 1,
   equipe_mois: 1, equipe_gain: 20,
   reseau_mois: 4, reseau_par_mois: 2, reseau_max: 16,
-  part_sud: 55, prix_ttc: 5860, net_direct: 4230, usine: 1570, arrivee: 850, livraison: 250, net_revendeur: 3550,
-  cap_livreur: 14, par_conteneur: 9, fixes: 4000, livreur_nord: 2800,
+  // Coûts réels (nov. 2026) : usine 1 771 $ à 1 € = 1,10 $ ; fret ≈ 530 $, droits 10 %, transitaire, dépotage, stockage ≈ 1 030 €.
+  // Net HT : Confort 4 990 € TTC + livraison moyenne 550 € TTC + 50 € gagnés sur la carte grise.
+  // Livraison : Serge (≈ 5 000 €) + déplacements (≈ 5 000 €) pour ≈ 24 voitures, soit ≈ 420 € par voiture.
+  part_sud: 55, prix_ttc: 5690, net_direct: 4666, usine: 1611, arrivee: 1030, livraison: 420, net_revendeur: 3800,
+  cap_livreur: 14, par_conteneur: 9, fixes: 4500, livreur_nord: 1500,
+  pub_actuelle: 1500, pub: 5000, mois_pub: 1, cout_resa: 400,
 };
 
 export type SimRow = {
@@ -54,7 +62,10 @@ export function simulate(h: SimHyp): SimRow[] {
   return SIM_MONTHS.map((mois, i) => {
     const effetPrix = i >= h.mois_hausse ? Math.max(0, 1 - (h.elasticite * h.hausse) / h.prix_ttc) : 1;
     const effetEquipe = i >= h.equipe_mois ? 1 + h.equipe_gain / 100 : 1;
-    const reservations = h.base * SEASON[i] * Math.pow(1 + h.croissance / 100, i) * effetPrix * effetEquipe;
+    const pubEnPlus = i >= h.mois_pub ? Math.max(0, h.pub - h.pub_actuelle) : 0;
+    const montee = i - h.mois_pub === 0 ? 0.5 : 1; // la pub met environ un mois à donner son plein effet
+    const resaPub = h.cout_resa > 0 ? montee * pubEnPlus / h.cout_resa : 0;
+    const reservations = (h.base * Math.pow(1 + h.croissance / 100, i) * effetEquipe + resaPub) * SEASON[i] * effetPrix;
     const direct = Math.round(reservations * h.conversion / 100);
     const reseau = i >= h.reseau_mois ? Math.min(h.reseau_max, h.reseau_par_mois * (i - h.reseau_mois + 1)) : 0;
     const sud = Math.round(direct * h.part_sud / 100); const nord = direct - sud;
@@ -64,7 +75,7 @@ export function simulate(h: SimHyp): SimRow[] {
     const mReseau = h.net_revendeur - coutVoiture;
     if (nord > 10) livreurNord = true;
     const marge = direct * mDirect + reseau * mReseau;
-    const fixes = h.fixes + (livreurNord ? h.livreur_nord : 0);
+    const fixes = h.fixes + (i >= h.mois_pub ? h.pub : h.pub_actuelle) + (livreurNord ? h.livreur_nord : 0);
     return {
       mois, reservations: Math.round(reservations), direct, reseau, total: direct + reseau, sud, nord,
       conteneurs: Math.ceil((direct + reseau) / h.par_conteneur),
@@ -101,7 +112,7 @@ export function milestones(rows: SimRow[], h: SimHyp) {
     { quand: "Janv. 27", quoi: "Véhicule tracteur + remorque 3 voitures pour Serge", pourquoi: "Chaque retour de Serge rapporte 3 voitures au sud au lieu de 2." },
     { quand: first(r => r.nord > 10) ?? "Pas sur l'année", quoi: "Livreur basé à Gennevilliers (avec le testeur et la grande remorque)", pourquoi: "Plus de 10 livraisons par mois au nord : Serge ne remonte plus, il garde tout le sud." },
     { quand: SIM_MONTHS[h.reseau_mois] ?? "—", quoi: "Premiers revendeurs (le directeur commercial les cherche)", pourquoi: "Ventes sans coût de livraison client ; le revendeur vient chercher au dépôt." },
-    { quand: first(r => r.sud >= 15) ?? "Pas sur l'année", quoi: "Dépôt à Fos + un gars sur place (dépotage + livraisons Sud-Est)", pourquoi: "Environ 15 ventes par mois au sud : les conteneurs du sud arrivent directement à Fos." },
+    { quand: first((r, ) => r.sud >= 15 && rows.filter(x => x.sud >= 15).length >= 3) ?? "Pas sur l'année", quoi: "Dépôt à Fos + un gars sur place (dépotage + livraisons Sud-Est)", pourquoi: "Environ 15 ventes par mois au sud : les conteneurs du sud arrivent directement à Fos." },
     { quand: first(r => r.total >= 40) ?? "Pas sur l'année", quoi: "2e commercial en Algérie + marketing", pourquoi: "Environ 40 ventes par mois au total." },
   ];
 }
