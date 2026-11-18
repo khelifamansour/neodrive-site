@@ -199,7 +199,7 @@ export async function POST(req: Request) {
         const code = newCode();
         await db.from("team_members").update({ code_hash: sha(code), active: true, revoked_at: null }).eq("id", id);
         const first = String(m.name || "").split(/\s+/)[0];
-        await sendSms(m.phone, `Bonjour ${first}, voici votre nouveau code NeoDrive (livreur) : ${code}. Ouvrez ${SITE}/organisation puis « Espace livreur ».`, "transactional");
+        await sendSms(m.phone, `Bonjour ${first}, voici votre nouveau code NeoDrive (livreur) : ${code}. Ouvrez ${SITE}/organisation?changer=1 puis « Espace livreur ».`, "transactional");
         return NextResponse.json({ ok: true });
       }
       if (b.action === "admin_invite") {
@@ -209,12 +209,12 @@ export async function POST(req: Request) {
         const { data, error } = await db.from("team_members").insert({ name, role: "livreur", phone: phone || null, email: email || null, code_hash: sha(code), expires_at: new Date(Date.now() + days * 86400e3).toISOString(), can_see_numbers: true, max_views_per_hour: 60, note: "Livreur prestataire (invitation espace livreur)", sections: ["livreur"] }).select("id").single();
         if (error) throw new Error(error.message);
         const first = name.split(/\s+/)[0];
-        const text = `Bonjour ${first}, voici votre accès NeoDrive (livreur) : ${SITE}/organisation - code personnel : ${code}. Ouvrez « Espace livreur » pour déposer vos documents et signer votre contrat.`;
+        const text = `Bonjour ${first}, voici votre accès NeoDrive (livreur) : ${SITE}/organisation?changer=1 - code personnel : ${code}. Ouvrez « Espace livreur » pour déposer vos documents et signer votre contrat.`;
         const sent = { sms: false, email: false, errors: [] as string[] };
         await applyStoredSecrets();
         if (brevoReady()) {
           if (phone) { try { sent.sms = !!(await sendSms(phone, text, "transactional")); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
-          if (email) { try { sent.email = !!(await sendEmail(email, name, "Votre accès NeoDrive (espace livreur)", `<p>Bonjour ${esc(first)},</p><p>Voici votre accès à l'espace livreur NeoDrive.</p><p>1. Ouvrez <a href="${SITE}/organisation">${SITE}/organisation</a><br>2. Entrez votre code personnel : <b style="font-size:18px;letter-spacing:2px">${esc(code)}</b><br>3. Ouvrez « Espace livreur » : déposez vos documents (SIRET, assurance RC pro, permis, pièce d'identité, RIB) et signez votre contrat.</p><p>Ce code est personnel : ne le communiquez à personne.</p><p>À bientôt,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
+          if (email) { try { sent.email = !!(await sendEmail(email, name, "Votre accès NeoDrive (espace livreur)", `<p>Bonjour ${esc(first)},</p><p>Voici votre accès à l'espace livreur NeoDrive.</p><p>1. Ouvrez <a href="${SITE}/organisation?changer=1">${SITE}/organisation</a><br>2. Entrez votre code personnel : <b style="font-size:18px;letter-spacing:2px">${esc(code)}</b><br>3. Ouvrez « Espace livreur » : déposez vos documents (SIRET, assurance RC pro, permis, pièce d'identité, RIB) et signez votre contrat.</p><p>Ce code est personnel : ne le communiquez à personne.</p><p>À bientôt,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
         } else sent.errors.push("Envoi automatique indisponible (Brevo non configuré)");
         return NextResponse.json({ ok: true, id: data.id, code, text, sent });
       }

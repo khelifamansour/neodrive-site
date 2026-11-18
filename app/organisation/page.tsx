@@ -43,7 +43,17 @@ export default function Organisation() {
     return j.ok ? (j as Me) : null;
   };
   useEffect(() => {
-    (async () => { let pc = ""; try { pc = sessionStorage.getItem("nd_pc") || ""; } catch { /* privé */ } setMe(await whoami(pc)); setReady(true); })();
+    (async () => {
+      // Lien « ?changer=1 » (ex. SMS d'accès) : on ferme la session fondateur de ce navigateur et on affiche le champ du code.
+      const changer = new URLSearchParams(window.location.search).has("changer");
+      if (changer) {
+        try { sessionStorage.removeItem("nd_pc"); } catch { /* privé */ }
+        await fetch("/api/equipe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) }).catch(() => null);
+        window.history.replaceState(null, "", "/organisation");
+        setMsg("Entrez votre code personnel."); setReady(true); return;
+      }
+      let pc = ""; try { pc = sessionStorage.getItem("nd_pc") || ""; } catch { /* privé */ } setMe(await whoami(pc)); setReady(true);
+    })();
   }, []);
   // Temps actif des membres (même compteur que l’espace prospects).
   useEffect(() => {
