@@ -15,8 +15,10 @@ type Api = <T = Record<string, unknown>>(body: object) => Promise<T>;
 const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
 const fold = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const first = (r: RegRow) => { const p = (r.prenom || "").trim().split(/\s+/)[0] || ""; return p && !/^(mme|mr|m\.|madame|monsieur)$/i.test(p) ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : ""; };
-const msgNouvelles = (r: RegRow) => `Bonjour${first(r) ? " " + first(r) : ""}, j'espère que vous allez bien. Je voulais juste savoir comment ça se passait avec votre véhicule, si vous en êtes content, et si vous avez besoin de quoi que ce soit. Mansour – NeoDrive`;
-const msgAvis = (r: RegRow) => `Merci beaucoup${first(r) ? " " + first(r) : ""}, ça me fait très plaisir ! Si vous avez 30 secondes, un petit avis sur Google nous aiderait énormément, cela rassure les personnes qui hésitent à se lancer : ${REVIEW_URL} Merci encore et bonne route ! Mansour – NeoDrive`;
+const nomPropre = (n: string) => (n || "").replace(/\(.*?\)/g, "").trim().toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, x: string, y: string) => x + y.toUpperCase());
+const salut = (r: RegRow) => { if (first(r)) return " " + first(r); const p = (r.prenom || "").trim().toLowerCase(); const civ = /^(mme|madame)$/.test(p) ? "Madame" : /^(mr|m\.|monsieur)$/.test(p) ? "Monsieur" : ""; const n = nomPropre(r.nom); return civ && n ? ` ${civ} ${n}` : n ? ` ${n}` : ""; };
+const msgNouvelles = (r: RegRow) => `Bonjour${salut(r)}, j'espère que vous allez bien. Je voulais juste savoir comment ça se passait avec votre véhicule, si vous en êtes content, et si vous avez besoin de quoi que ce soit. Mansour – NeoDrive`;
+const msgAvis = (r: RegRow) => `Merci beaucoup${salut(r)}, ça me fait très plaisir ! Si vous avez 30 secondes, un petit avis sur Google nous aiderait énormément, cela rassure les personnes qui hésitent à se lancer : ${REVIEW_URL} Merci encore et bonne route ! Mansour – NeoDrive`;
 const day = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) : "";
 const FILTERS = [["tous", "Tous"], ["livres", "✅ Livrés"], ["alivrer", "⏳ À livrer"], ["sansavis", "⭐ Sans avis"], ["sansvin", "🔢 Sans n° de série"]] as const;
 
