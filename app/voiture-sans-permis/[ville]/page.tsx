@@ -34,9 +34,9 @@ export default async function CityPage({ params }: { params: Promise<{ ville: st
       url: "https://www.easydrive-auto.fr",
       address: {
         "@type": "PostalAddress",
-        streetAddress: "31 rue Jean Nougaro",
         postalCode: "31600",
         addressLocality: "Muret",
+        addressRegion: "Occitanie",
         addressCountry: "FR",
       },
     },
@@ -52,6 +52,7 @@ export default async function CityPage({ params }: { params: Promise<{ ville: st
   return (
     <main style={{maxWidth:1050,margin:"0 auto",padding:"44px 20px 78px",fontFamily:"Arial,sans-serif",lineHeight:1.65,color:"#111"}}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema).replace(/</g,"\\u003c")}} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify({"@context":"https://schema.org","@type":"BreadcrumbList",itemListElement:[{"@type":"ListItem",position:1,name:"Accueil",item:"https://www.easydrive-auto.fr/"},{"@type":"ListItem",position:2,name:"Voiture sans permis",item:"https://www.easydrive-auto.fr/voiture-sans-permis"},{"@type":"ListItem",position:3,name:`Voiture sans permis ${city.city}`,item:`https://www.easydrive-auto.fr/voiture-sans-permis/${city.slug}`}]}).replace(/</g,"\\u003c")}} />
       <a href="/voiture-sans-permis" style={{color:"#555",textDecoration:"none"}}>← Voiture sans permis en France</a>
 
       <section style={{padding:"30px 0 34px"}}>

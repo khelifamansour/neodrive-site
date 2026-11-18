@@ -4,6 +4,7 @@ import { commercialPages } from "../lib/seo-commercial";
 import { seoCities } from "../lib/seo-cities";
 
 const SITE = "https://www.easydrive-auto.fr";
+const BUILD_DATE = new Date();
 const supabase = createClient(
   "https://tzlsdjzcxdjaatcpwqwn.supabase.co",
   process.env.SUPABASE_SERVICE_ROLE_KEY || "sb_publishable_FxvXFqvTpjdu3vYbCQo9qQ_lTlNrAMd",
@@ -39,11 +40,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ] as const;
 
   const base: MetadataRoute.Sitemap = routes.map(([route, changeFrequency, priority]) => ({
-    url: `${SITE}${route}`, changeFrequency, priority,
+    url: `${SITE}${route}`, lastModified: BUILD_DATE, changeFrequency, priority,
   }));
 
   const cityPages: MetadataRoute.Sitemap = seoCities.map((city) => ({
     url: `${SITE}/voiture-sans-permis/${city.slug}`,
+    lastModified: BUILD_DATE,
     changeFrequency: "weekly",
     priority: city.slug === "toulouse" ? 0.95 : 0.9,
   }));

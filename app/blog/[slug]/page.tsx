@@ -39,14 +39,16 @@ async function relatedArticles(slug:string):Promise<Article[]> {
 }
 export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{
   const {slug}=await params;const a=await article(slug);
-  return a?{title:`${a.title} | NeoDrive`,description:a.meta_description||a.excerpt||a.description,alternates:{canonical:`${SITE}/blog/${slug}`}}:{};
+  return a?{title:`${a.title} | NeoDrive`,description:a.meta_description||a.excerpt||a.description,alternates:{canonical:`${SITE}/blog/${slug}`},openGraph:{title:a.title,description:a.meta_description||a.excerpt||a.description,url:`${SITE}/blog/${slug}`,type:"article",siteName:"NeoDrive",locale:"fr_FR"}}:{};
 }
 export default async function Page({params}:{params:Promise<{slug:string}>}){
   const {slug}=await params;const a=await article(slug);if(!a)notFound();
   const [photos, related]=await Promise.all([gallery(slug,a.content||""),relatedArticles(slug)]);
   const structured={"@context":"https://schema.org","@type":"Article",headline:a.title,description:a.meta_description||a.excerpt||a.description,datePublished:a.published_at,dateModified:a.updated_at||a.published_at,mainEntityOfPage:`${SITE}/blog/${slug}`,author:{"@type":"Organization",name:"NeoDrive"},publisher:{"@type":"Organization",name:"NeoDrive",url:SITE}};
+  const crumbs={"@context":"https://schema.org","@type":"BreadcrumbList",itemListElement:[{"@type":"ListItem",position:1,name:"Accueil",item:`${SITE}/`},{"@type":"ListItem",position:2,name:"Guides",item:`${SITE}/blog`},{"@type":"ListItem",position:3,name:a.title,item:`${SITE}/blog/${slug}`}]};
   return <main style={{maxWidth:900,margin:"50px auto",padding:"0 22px",fontFamily:"Arial",lineHeight:1.7}}>
     <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(structured).replace(/</g,"\\u003c")}}/>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(crumbs).replace(/</g,"\\u003c")}}/>
     <a href="/blog">← Tous les guides NeoDrive</a>
     <article><h1>{a.title}</h1><p style={{color:"#555"}}>{a.excerpt||a.meta_description||a.description||""}</p><div dangerouslySetInnerHTML={{__html:a.content}} /></article>
     {photos.length>0 && <section style={{marginTop:32}}><h2>Découvrez les véhicules NeoDrive en images</h2><p>Photos issues de la médiathèque NeoDrive. Les couleurs et équipements peuvent varier selon la version.</p>
