@@ -53,8 +53,11 @@ export default function Organisation() {
   }, [me?.who]);
 
   const memberLogin = async (c: string) => {
+    // Un code membre (livreur, équipe) remplace toute session fondateur restée dans le navigateur.
+    const dropOwner = () => { try { sessionStorage.removeItem("nd_pc"); } catch { /* privé */ } };
     const r = await fetch("/api/equipe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "login", code: c }) });
     const j = await r.json().catch(() => ({ ok: false }));
+    if (j.ok) dropOwner();
     return { ok: !!j.ok, error: j.error as string | undefined, status: r.status };
   };
   const login = async (e: React.FormEvent) => {

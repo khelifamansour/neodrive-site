@@ -7,6 +7,7 @@ import Contract from "./Contract";
 import Delivery from "./Delivery";
 import Billing, { type BillingInfo } from "./Billing";
 import Invoice from "./Invoice";
+import TicketsBulk from "./TicketsBulk";
 import TourMap from "../planificateur/TourMap";
 import type { Stop } from "../../lib/planif";
 
@@ -20,10 +21,12 @@ type Trip = { n: number; color: string; hub: string; hubPos?: LL; action: string
 const gmaps = (to: LL, from?: LL, via: LL[] = []) => `https://www.google.com/maps/dir/?api=1${from ? `&origin=${from.join(",")}` : ""}&destination=${to.join(",")}${via.length ? `&waypoints=${encodeURIComponent(via.map(x => x.join(",")).join("|"))}` : ""}&travelmode=driving`;
 /** Pauses : 15 min toutes les 2 h de conduite (remorque, ≈ 72 km/h). */
 const pauseH = (drive: number) => Math.floor(drive / 2) * 0.25;
+/** Waze ne gère pas les étapes : on guide vers le prochain arrêt du voyage. */
+const wazeTo = (p: LL) => `https://waze.com/ul?ll=${p[0]},${p[1]}&navigate=yes`;
 const tripRoute = (v: Trip) => { const pts = v.clients.map(x => x.pos).filter(Boolean) as LL[]; const end = v.nextPos || pts[pts.length - 1]; if (!end) return null; const via = v.nextPos ? pts : pts.slice(0, -1); return gmaps(end, v.hubPos, via); };
 const nextWeek = (d: string) => { const now = new Date(); const day = (now.getDay() + 6) % 7; const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 7); const sun = new Date(mon.getTime() + 7 * 86400e3); const x = new Date(d + "T12:00:00"); return x >= mon && x < sun; };
 type Plan = { draft: boolean; stops: Stop[]; trips: Trip[]; km: number; hours: number; days: number; end: string | null };
-type Tour = { id: string; name: string; date: string; departTime: string; driver: string; status: string; clients: number; km: number; closed_at: string | null; en_route: number; link: string | null; plan: Plan };
+type Tour = { id: string; tickets?: number; name: string; date: string; departTime: string; driver: string; status: string; clients: number; km: number; closed_at: string | null; en_route: number; link: string | null; plan: Plan };
 const hm = (h: number) => { const m = Math.round(h * 60); return `${Math.floor(m / 60)} h${m % 60 ? String(m % 60).padStart(2, "0") : ""}`; };
 
 const pc = () => { try { return sessionStorage.getItem("nd_pc") || ""; } catch { return ""; } };
@@ -44,7 +47,7 @@ export default function Livreur() {
   const [me, setMe] = useState<Me | null>(null); const [res, setRes] = useState<Res[]>([]); const [tours, setTours] = useState<Tour[]>([]);
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
   const [sign, setSign] = useState(""); const [accept, setAccept] = useState(false);
-  const [mapOf, setMapOf] = useState(""); const [invOf, setInvOf] = useState(""); const [invoices, setInvoices] = useState<MyInvoice[]>([]);
+  const [mapOf, setMapOf] = useState(""); const [tixOf, setTixOf] = useState(""); const [invOf, setInvOf] = useState(""); const [invoices, setInvoices] = useState<MyInvoice[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -110,6 +113,7 @@ export default function Livreur() {
             : <span className={c.badge} style={{ background: t.status === "termine" ? "#e7f6ec" : "#e8f0fe", color: "#111" }}>{t.status === "termine" ? "Terminée" : "Validée"}</span>}
           {t.closed_at ? <span className={c.badge} style={{ background: "#fef0c7", color: "#93370d" }}>🔒 Clôturée</span> : null}
         </div>
+        {t.link ? <a className={`${c.btn} ${c.btnBrand}`} href={t.link} style={{ justifyContent: "center", textAlign: "center", textDecoration: "none", fontSize: 18, padding: 16 }}>🚚 Ouvrir ma tournée (Waze / Maps)</a> : null}
         <div className={c.muted}>📅 {p.draft ? "Vers le " : ""}{fmt(t.date)}{p.end && p.end !== t.date ? ` → ${fmt(p.end)}` : ""}{t.departTime ? ` · départ ${t.departTime.replace(":", "h")}` : ""}</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {[`👥 ${t.clients} client${t.clients > 1 ? "s" : ""}`, `🛣️ ≈ ${p.km.toLocaleString("fr-FR")} km`, `⏱️ ≈ ${hm(p.hours)} de travail`, `🗓️ ≈ ${p.days} jour${p.days > 1 ? "s" : ""}`, `🔁 ${p.trips.length} voyage${p.trips.length > 1 ? "s" : ""}`].map(x => <span key={x} className={c.badge} style={{ background: "#f1f1f1", color: "#111" }}>{x}</span>)}
@@ -119,18 +123,27 @@ export default function Livreur() {
             <b>Voyage {v.n} · ≈ {v.km.toLocaleString("fr-FR")} km · ≈ {hm(v.hours)}</b>
             {(() => { const d = v.driveH ?? v.km / 72; return <small className={c.muted}>🚚 Conduite ≈ {hm(d)} (72 km/h avec remorque){pauseH(d) ? ` + ${hm(pauseH(d))} de pauses` : ""}</small>; })()}
             <small className={c.muted}>📦 {v.hub} : {v.action}{v.hubPos ? <> · <a href={gmaps(v.hubPos)} target="_blank" rel="noreferrer">GPS</a></> : null}</small>
-            {v.clients.map((x, i) => <span key={x.id}>{i + 1}. 🚗 {x.name}{x.ville ? ` — ${x.ville}` : ""}{x.pos ? <> · <a href={gmaps(x.pos)} target="_blank" rel="noreferrer">📍 GPS</a></> : null}</span>)}
+            {v.clients.map((x, i) => <span key={x.id}>{i + 1}. 🚗 {x.name}{x.ville ? ` — ${x.ville}` : ""}{x.pos ? <> · <a href={wazeTo(x.pos)} target="_blank" rel="noreferrer">🚙 Waze</a> · <a href={gmaps(x.pos)} target="_blank" rel="noreferrer">🧭 Maps</a></> : null}</span>)}
             {v.next ? <small className={c.muted}>➡️ Ensuite : {v.next}{v.nextPos ? <> · <a href={gmaps(v.nextPos)} target="_blank" rel="noreferrer">GPS</a></> : null}</small> : null}
-            {(() => { const u = tripRoute(v); return u ? <a className={`${c.btn} ${c.btnGhost}`} href={u} target="_blank" rel="noreferrer" style={{ textAlign: "center", textDecoration: "none", padding: "6px 10px" }}>🧭 Tout le voyage dans Google Maps</a> : null; })()}
+            {(() => { const u = tripRoute(v); const first = v.clients.find(x => x.pos)?.pos || v.nextPos; return u ? <div style={{ display: "grid", gridTemplateColumns: first ? "1fr 1fr" : "1fr", gap: 6 }}>
+              {first ? <a className={`${c.btn} ${c.btnGhost}`} href={wazeTo(first)} target="_blank" rel="noreferrer" style={{ justifyContent: "center", textDecoration: "none", padding: "6px 10px", background: "#33ccff", color: "#04202b", border: 0 }}>🚙 Waze (1er arrêt)</a> : null}
+              <a className={`${c.btn} ${c.btnGhost}`} href={u} target="_blank" rel="noreferrer" style={{ justifyContent: "center", textDecoration: "none", padding: "6px 10px" }}>🧭 Tout le voyage dans Google Maps</a>
+            </div> : null; })()}
           </div>)}
         </div>
         {p.stops.length ? <button className={`${c.btn} ${c.btnGhost}`} onClick={() => setMapOf(mapOf === t.id ? "" : t.id)}>{mapOf === t.id ? "Masquer la carte" : "🗺️ Voir la carte"}</button> : null}
         {mapOf === t.id ? <TourMap stops={p.stops} /> : null}
         {p.draft ? <small className={c.muted}>Tournée prévisionnelle : clients, dates et ordre peuvent changer. Les adresses et téléphones apparaîtront quand la tournée sera validée.</small> : null}
+        {!p.draft ? <div style={{ display: "grid", gap: 6, padding: 10, borderRadius: 12, background: "#fafafa", border: "1px solid #eee" }}>
+          <button className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center", fontSize: 17 }} onClick={() => setTixOf(tixOf === t.id ? "" : t.id)}>🧾 {tixOf === t.id ? "Fermer les tickets" : "Ajouter mes tickets (photos)"} · {t.tickets || 0} ticket{(t.tickets || 0) > 1 ? "s" : ""} pour cette tournée</button>
+          {tixOf === t.id ? <TicketsBulk btnClass={`${c.btn} ${c.btnBrand}`} todayCount={0} onMsg={setMsg}
+            upload={async f => { if (f.size > 15 * 1024 * 1024) throw new Error("Photo trop lourde (15 Mo maximum)."); const u = await api<{ bucket: string; path: string; token: string }>({ action: "ticket_upload_url", tour_id: t.id }); const { error } = await supabase.storage.from(u.bucket).uploadToSignedUrl(u.path, u.token, f, { contentType: f.type || "image/jpeg" }); if (error) throw new Error("Envoi de la photo impossible, réessayez."); return u.path; }}
+            save={async paths => { await api({ action: "ticket_add", tour_id: t.id, paths }); await load(); }} /> : null}
+          <small className={c.muted}>Carburant, péages, hôtel, repas : photographiez tous les tickets payés avec la carte NeoDrive, plusieurs d’un coup, le soir ou en fin de tournée.</small>
+        </div> : null}
         {!p.draft && me?.who === "member" ? (() => { const inv = invoices.find(x => x.tour_id === t.id); return inv ? <div style={{ padding: 10, borderRadius: 10, background: inv.status === "payee" ? "#e7f6ec" : "#fffaeb" }}>🧾 Facture <b>{inv.number}</b> · {inv.total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {inv.status === "payee" ? "✅ payée" : "⏳ à payer par NeoDrive"}{inv.url ? <> · <a href={inv.url} target="_blank" rel="noreferrer">PDF</a></> : null}</div>
           : <><button className={`${c.btn} ${invOf === t.id ? c.btnGhost : c.btnBrand}`} onClick={() => setInvOf(invOf === t.id ? "" : t.id)}>{invOf === t.id ? "Fermer" : "🏁 Clôturer ma tournée et faire ma facture"}</button>
             {invOf === t.id ? <Invoice tourId={t.id} api={api} onMsg={setMsg} onDone={() => { setInvOf(""); load(); }} /> : null}</>; })() : null}
-        {t.link ? <a className={`${c.btn} ${c.btnBrand}`} href={t.link} style={{ textAlign: "center", textDecoration: "none" }}>Ouvrir la tournée (chargement, livraisons, heures)</a> : null}
       </section>; }) : <p className={c.muted}>Aucune tournée à votre nom pour l’instant.</p>}
     </div> : null}
 

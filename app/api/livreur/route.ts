@@ -63,6 +63,9 @@ function controlSms(driver: string, tour: string, number: string, total: number,
   return parts.join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").slice(0, 300);
 }
 
+/** Livreur imité par le compte de test. */
+const TEST_DRIVER = "Serge";
+
 /** Tournées du livreur : nom du livreur de la tournée qui contient son prénom (ou toutes pour le fondateur). */
 const isMine = (t: PlanTour, name: string | null) => {
   if (!name) return true;
@@ -223,8 +226,8 @@ export async function POST(req: Request) {
     if (!acc) return NextResponse.json({ ok: false, error: "Connectez-vous avec votre code personnel." }, { status: 401 });
     const memberId = acc.who === "member" ? acc.member.id : null;
     const name = acc.who === "member" ? acc.member.name : null;
-    // Compte de test (is_test) : voit toutes les tournées, comme le fondateur, pour essayer le parcours complet
-    const tourName = acc.who === "member" && (acc.member as { is_test?: boolean }).is_test ? null : name;
+    // Compte de test (is_test) : voit exactement ce que voit Serge (ses tournées et ses livraisons)
+    const tourName = acc.who === "member" && (acc.member as { is_test?: boolean }).is_test ? TEST_DRIVER : name;
 
     if (b.action === "me") {
       const docs = memberId ? await latestDocs(db, memberId) : {};
@@ -240,14 +243,30 @@ export async function POST(req: Request) {
       const tours = (await listJson<PlanTour>(db, PLAN_TOURS)).filter(t => isMine(t, tourName) && (t.status !== "brouillon" || (t.stops?.length ?? 0) > 0)).sort((a, z) => String(a.date).localeCompare(String(z.date))).slice(0, 30);
       const need = new Set(tours.flatMap(t => t.clientIds));
       const clients = new Map((need.size ? await listJson<PlanClient>(db, PLAN_CLIENTS) : []).filter(c => need.has(c.id)).map(c => [c.id, c]));
-      return NextResponse.json({ ok: true, tours: tours.map(t => { const k = t.status === "brouillon" ? null : driverKey(t.id); return { id: t.id, name: t.name, date: t.date, departTime: t.departTime || "", driver: t.driver, status: t.status, clients: t.clientIds.length, km: t.km || 0, closed_at: t.closed_at || null, en_route: (t.en_route || []).length, link: k ? `/chauffeur?k=${encodeURIComponent(k)}` : null, plan: driverPlan(t, clients) }; }) });
+      const tickets: Record<string, number> = {};
+      if (tours.length) { const { data: ev } = await db.from("tour_events").select("tour_id").eq("kind", "frais").in("tour_id", tours.map(t => t.id)); for (const e of ev || []) tickets[e.tour_id] = (tickets[e.tour_id] || 0) + 1; }
+      return NextResponse.json({ ok: true, tours: tours.map(t => { const k = t.status === "brouillon" ? null : driverKey(t.id); return { id: t.id, tickets: tickets[t.id] || 0, name: t.name, date: t.date, departTime: t.departTime || "", driver: t.driver, status: t.status, clients: t.clientIds.length, km: t.km || 0, closed_at: t.closed_at || null, en_route: (t.en_route || []).length, link: k ? `/chauffeur?k=${encodeURIComponent(k)}` : null, plan: driverPlan(t, clients) }; }) });
     }
     // ── Livraisons : numéro de série (VIN) + accusé de réception signé par le client
     if (b.action === "deliveries") {
       const since = new Date(Date.now() - 3 * 86400e3).toISOString();
-      const { data, error } = await db.from("reservations").select("id,prenom,nom,adresse,code_postal,ville,telephone,email,modele,couleur,statut,date_promise,vin,vin_photo_path,paiement_confirme_at,livre_at,accuse_token,confirm_sent_at,remote_confirm,paiement_en_attente,montant_du,prevenu_at,total,remise_data").or(`statut.in.(Confirmée,Planifiée),livre_at.gte.${since}`).order("date_promise", { ascending: true, nullsFirst: false }).limit(200);
+      // Tournées en cours du livreur (validées, pas terminées) : ses clients, dans l'ordre de passage
+      const active = (await listJson<PlanTour>(db, PLAN_TOURS)).filter(t => isMine(t, tourName) && t.status === "valide").sort((a, z) => String(a.date).localeCompare(String(z.date)));
+      const where = new Map<string, { tour_id: string; tour_name: string; tour_date: string; ordre: number; lat: number | null; lng: number | null; link: string | null }>();
+      for (const t of active) {
+        const order = (t.stops || []).filter(x => x.kind === "client");
+        const ids = order.length ? order.map(x => x.id) : t.clientIds;
+        ids.forEach((id, k) => { if (!where.has(id)) { const st = order.find(x => x.id === id); where.set(id, { tour_id: t.id, tour_name: t.name, tour_date: t.date, ordre: k + 1, lat: st?.lat ?? null, lng: st?.lng ?? null, link: (() => { const k = driverKey(t.id); return k ? `/chauffeur?k=${encodeURIComponent(k)}` : null; })() }); } });
+      }
+      const cols = "id,prenom,nom,adresse,code_postal,ville,telephone,email,modele,couleur,statut,date_promise,vin,vin_photo_path,paiement_confirme_at,livre_at,accuse_token,confirm_sent_at,remote_confirm,paiement_en_attente,montant_du,prevenu_at,total,remise_data,plan_client_id";
+      const mine = acc.who === "member";
+      const { data, error } = mine
+        ? await db.from("reservations").select(cols).in("plan_client_id", where.size ? [...where.keys()] : ["-"]).neq("statut", "Annulée").or(`livre_at.is.null,livre_at.gte.${since}`).limit(200)
+        : await db.from("reservations").select(cols).or(`statut.in.(Confirmée,Planifiée),livre_at.gte.${since}`).order("date_promise", { ascending: true, nullsFirst: false }).limit(300);
       if (error) throw new Error(error.message);
-      return NextResponse.json({ ok: true, deliveries: (data || []).map(r => ({ ...r, email: undefined, has_email: !!r.email, has_vin_photo: !!r.vin_photo_path, vin_photo_path: undefined, accuse_url: r.accuse_token ? `${SITE}/api/accuse/${r.accuse_token}` : null, accuse_token: undefined, remote_confirmed: !!r.remote_confirm, remote_confirm: undefined })), checks: checksFor(false), checks_pending: checksFor(true) });
+      const rows = (data || []).map(r => ({ ...r, ...(r.plan_client_id ? where.get(r.plan_client_id) || {} : {}) })) as (Record<string, unknown> & { tour_date?: string; tour_id?: string; ordre?: number })[];
+      if (mine) rows.sort((a, z) => String(a.tour_date || "").localeCompare(String(z.tour_date || "")) || String(a.tour_id || "").localeCompare(String(z.tour_id || "")) || (a.ordre || 0) - (z.ordre || 0));
+      return NextResponse.json({ ok: true, mine, deliveries: rows.map(r => ({ ...r, plan_client_id: undefined, email: undefined, has_email: !!r.email, has_vin_photo: !!r.vin_photo_path, vin_photo_path: undefined, accuse_url: r.accuse_token ? `${SITE}/api/accuse/${r.accuse_token}` : null, accuse_token: undefined, remote_confirmed: !!r.remote_confirm, remote_confirm: undefined })), checks: checksFor(false), checks_pending: checksFor(true) });
     }
     if (b.action === "free_vins") {
       const [{ data: sv }, { data: used }] = await Promise.all([db.from("shipment_vehicles").select("vin,container,status,client_name").neq("status", "livrée").order("vin").limit(500), db.from("reservations").select("vin").not("vin", "is", null)]);

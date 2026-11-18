@@ -9,12 +9,26 @@ export type Dlv = {
   modele: string; couleur: string; statut: string; date_promise: string | null; vin: string | null; has_vin_photo: boolean;
   paiement_confirme_at: string | null; livre_at: string | null; accuse_url: string | null;
   confirm_sent_at: string | null; remote_confirmed: boolean; paiement_en_attente: boolean; montant_du: number | null; prevenu_at: string | null; total: number | null;
+  /** Tournée du livreur qui contient ce client (ordre de passage, position GPS). */
+  tour_id?: string; tour_name?: string; tour_date?: string; ordre?: number; lat?: number | null; lng?: number | null; link?: string | null;
 };
 type Check = { id: string; label: string };
 type Api = <T = Record<string, unknown>>(body: object) => Promise<T>;
 
 const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
 const big: React.CSSProperties = { width: "100%", padding: "14px 16px", fontSize: 17, borderRadius: 14, justifyContent: "center", textAlign: "center" };
+/** Navigation : position GPS de l'arrêt si connue, sinon l'adresse. */
+const dest = (x: Dlv) => x.lat != null && x.lng != null ? `${x.lat},${x.lng}` : [x.adresse, x.code_postal, x.ville].filter(Boolean).join(" ");
+const gmapsTo = (x: Dlv) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest(x))}&travelmode=driving`;
+const wazeTo = (x: Dlv) => x.lat != null && x.lng != null ? `https://waze.com/ul?ll=${x.lat},${x.lng}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(dest(x))}&navigate=yes`;
+const hasDest = (x: Dlv) => (x.lat != null && x.lng != null) || !!(x.adresse || x.ville);
+function NavBtns({ x }: { x: Dlv }) {
+  if (!hasDest(x)) return null;
+  return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+    <a className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center", background: "#33ccff", color: "#04202b", border: 0 }} href={wazeTo(x)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>🚙 Waze</a>
+    <a className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} href={gmapsTo(x)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>🧭 Google Maps</a>
+  </div>;
+}
 const fmt = (d?: string | null) => d ? new Date(d.length === 10 ? d + "T12:00:00" : d).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }) : "—";
 
 function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
@@ -37,7 +51,7 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
 }
 
 export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) => void }) {
-  const [list, setList] = useState<Dlv[]>([]); const [checksAll, setChecks] = useState<Check[]>([]); const [checksPending, setChecksPending] = useState<Check[]>([]);
+  const [list, setList] = useState<Dlv[]>([]); const [mine, setMine] = useState(false); const [checksAll, setChecks] = useState<Check[]>([]); const [checksPending, setChecksPending] = useState<Check[]>([]);
   const [sigMode, setSigMode] = useState(false); const [sent, setSent] = useState<{ sms: boolean; email: boolean; whatsapp: string | null } | null>(null);
   const [notif, setNotif] = useState({ date: "", from: "14:00", to: "16:00" }); const [pend, setPend] = useState({ montant: "", cles: false, documents: false }); const [vins, setVins] = useState<{ vin: string; container: string | null }[]>([]);
   const [sel, setSel] = useState<number | null>(null); const [busy, setBusy] = useState("");
@@ -47,8 +61,8 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
 
   const load = useCallback(async () => {
     try {
-      const [d, v] = await Promise.all([api<{ deliveries: Dlv[]; checks: Check[]; checks_pending: Check[] }>({ action: "deliveries" }), api<{ vins: { vin: string; container: string | null }[] }>({ action: "free_vins" })]);
-      setList(d.deliveries); setChecks(d.checks); setChecksPending(d.checks_pending || d.checks); setVins(v.vins);
+      const [d, v] = await Promise.all([api<{ deliveries: Dlv[]; checks: Check[]; checks_pending: Check[]; mine?: boolean }>({ action: "deliveries" }), api<{ vins: { vin: string; container: string | null }[] }>({ action: "free_vins" })]);
+      setList(d.deliveries); setMine(!!d.mine); setChecks(d.checks); setChecksPending(d.checks_pending || d.checks); setVins(v.vins);
     } catch (e) { onMsg("❌ " + (e as Error).message); }
   }, [api, onMsg]);
   useEffect(() => { load(); }, [load]);
@@ -119,9 +133,9 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
         <span>📍 {[r.adresse, `${r.code_postal} ${r.ville}`].filter(Boolean).join(", ") || "Adresse à demander à Mansour"}</span>
         <span>🚗 {r.modele || "NeoDrive"}{r.couleur ? ` · ${r.couleur}` : ""}</span>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {r.adresse || r.ville ? <a className={`${c.btn} ${c.btnGhost}`} target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent([r.adresse, r.code_postal, r.ville].filter(Boolean).join(" "))}`}>🧭 Itinéraire</a> : null}
           {r.telephone ? <a className={`${c.btn} ${c.btnGhost}`} href={`tel:${r.telephone}`}>📞 Appeler</a> : null}
         </div>
+        <NavBtns x={r} />
       </div>
 
       {r.accuse_url ? <div className={c.card} style={{ background: "#e7f6ec" }}>
@@ -202,13 +216,24 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
   }
 
   const todo = list.filter(x => !x.accuse_url); const recent = list.filter(x => x.accuse_url);
-  return <section style={{ display: "grid", gap: 10, marginTop: 12 }}>
-    <p className={c.muted} style={{ margin: 0 }}>Pour chaque voiture : 1. numéro de série et photo de la plaque, 2. paiement confirmé par Mansour, 3. accusé : lien envoyé au client par SMS, ou signature sur votre téléphone.</p>
-    {todo.length ? todo.map(x => <button key={x.id} className={c.card} onClick={() => open(x)} style={{ textAlign: "left", display: "grid", gap: 4, cursor: "pointer", font: "inherit" }}>
-      <b style={{ fontSize: 17 }}>{x.prenom} {x.nom}</b>
-      <span className={c.muted}>📍 {x.ville || "—"}{x.code_postal ? ` (${x.code_postal.slice(0, 2)})` : ""} · 🚗 {x.modele || "—"}{x.couleur ? ` · ${x.couleur}` : ""} · 📅 {fmt(x.date_promise)}</span>
+  const card = (x: Dlv) => <div key={x.id} className={c.card} style={{ display: "grid", gap: 8 }}>
+    <button onClick={() => open(x)} style={{ textAlign: "left", display: "grid", gap: 4, cursor: "pointer", font: "inherit", background: "none", border: 0, padding: 0, color: "inherit" }}>
+      <b style={{ fontSize: 17 }}>{x.ordre ? `${x.ordre}. ` : ""}{x.prenom} {x.nom}</b>
+      <span className={c.muted}>📍 {x.ville || "—"}{x.code_postal ? ` (${x.code_postal.slice(0, 2)})` : ""} · 🚗 {x.modele || "—"}{x.couleur ? ` · ${x.couleur}` : ""}{mine ? "" : ` · 📅 ${fmt(x.date_promise)}`}</span>
       <span style={{ fontSize: 14 }}>{x.vin ? `🔢 ${x.vin}` : "🔢 VIN à saisir"} · {x.paiement_confirme_at ? "💶 paiement confirmé" : x.paiement_en_attente ? "💶 paiement en attente" : "⏳ paiement à confirmer"}{x.confirm_sent_at ? " · 📲 lien envoyé" : ""}</span>
-    </button>) : <p className={c.muted}>Aucune livraison en attente.</p>}
+    </button>
+    <NavBtns x={x} />
+    <button className={`${c.btn} ${c.btnBrand}`} style={{ justifyContent: "center" }} onClick={() => open(x)}>✅ Livrer ce client (VIN, paiement, accusé)</button>
+  </div>;
+  const groups: { id: string; name: string; date: string; link: string | null; items: Dlv[] }[] = [];
+  for (const x of todo) { const k = x.tour_id || ""; let g = groups.find(y => y.id === k); if (!g) { g = { id: k, name: x.tour_name || "Hors tournée", date: x.tour_date || "", link: x.link || null, items: [] }; groups.push(g); } g.items.push(x); }
+  return <section style={{ display: "grid", gap: 10, marginTop: 12 }}>
+    <p className={c.muted} style={{ margin: 0 }}>{mine ? "Vos clients à livrer, tournée par tournée, dans l’ordre de passage. " : ""}Pour chaque voiture : 1. numéro de série et photo de la plaque, 2. paiement confirmé par Mansour, 3. accusé : lien envoyé au client par SMS, ou signature sur votre téléphone.</p>
+    {todo.length ? (mine ? groups.map(g => <div key={g.id} style={{ display: "grid", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}><b style={{ fontSize: 18 }}>🚚 {g.name}</b>{g.date ? <span className={c.badge} style={{ background: "#e8f0fe", color: "#1849a9" }}>📅 {fmt(g.date)}</span> : null}</div>
+      {g.link ? <a className={`${c.btn} ${c.btnGhost}`} href={g.link} style={{ justifyContent: "center", textDecoration: "none" }}>Ouvrir la tournée (chargement, étapes, heures)</a> : null}
+      {g.items.map(card)}
+    </div>) : todo.map(card)) : <p className={c.muted}>{mine ? "Aucun client à livrer : pas de tournée validée à votre nom pour l’instant." : "Aucune livraison en attente."}</p>}
     {recent.length ? <><b style={{ marginTop: 8 }}>Livrées ces 3 derniers jours</b>{recent.map(x => <button key={x.id} className={c.card} onClick={() => open(x)} style={{ textAlign: "left", cursor: "pointer", font: "inherit", background: "#e7f6ec" }}>{x.paiement_en_attente && !x.paiement_confirme_at ? "💶" : "✅"} {x.prenom} {x.nom} · {x.ville} · <span style={{ fontFamily: "monospace" }}>{x.vin}</span>{x.paiement_en_attente && !x.paiement_confirme_at ? " · paiement en attente" : ""}</button>)}</> : null}
   </section>;
 }
