@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import PaymentDeclare, { payValid, type PayDecl } from "../_components/PaymentDeclare";
 import c from "../giga/giga.module.css";
 import { supabase } from "../../lib/supabase";
 
@@ -50,7 +51,8 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
   </div>;
 }
 
-export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) => void }) {
+export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; onMsg: (m: string) => void; driverName?: string }) {
+  const [pay, setPay] = useState<PayDecl>({ lines: [], driver: driverName });
   const [list, setList] = useState<Dlv[]>([]); const [mine, setMine] = useState(false); const [checksAll, setChecks] = useState<Check[]>([]); const [checksPending, setChecksPending] = useState<Check[]>([]);
   const [sigMode, setSigMode] = useState(false); const [sent, setSent] = useState<{ sms: boolean; email: boolean; whatsapp: string | null } | null>(null);
   const [notif, setNotif] = useState({ date: "", from: "14:00", to: "16:00" }); const [pend, setPend] = useState({ montant: "", cles: false, documents: false }); const [vins, setVins] = useState<{ vin: string; container: string | null }[]>([]);
@@ -98,7 +100,7 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
     if (!r || !sig) return; setBusy("sign");
     try {
       const pos = await position();
-      const j = await api<{ url: string; emailed: boolean; whatsapp: string | null }>({ action: "sign", id: r.id, checks: ck, reserves, signer, signature: sig, ...pos });
+      const j = await api<{ url: string; emailed: boolean; whatsapp: string | null }>({ action: "sign", id: r.id, checks: ck, reserves, signer, signature: sig, payment: pay.lines, driver_name: pay.driver, ...pos });
       setDone(j); onMsg(`✅ Livraison de ${r.prenom} ${r.nom} terminée, accusé signé.`); await load();
     } catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
   };
@@ -127,7 +129,7 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
   if (r) {
     const paid = !!r.paiement_confirme_at; const pending = !paid && r.paiement_en_attente; const ready = !!r.vin && (paid || pending);
     const checks = pending ? checksPending : checksAll; const allChecked = checks.every(x => ck[x.id]);
-    const canSign = ready && signer.trim().length >= 3 && !!sig && !r.accuse_url;
+    const canSign = ready && signer.trim().length >= 3 && !!sig && !r.accuse_url && payValid(pay);
     return <section style={{ display: "grid", gap: 12, marginTop: 12 }}>
       <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { setSel(null); load(); }}>← Toutes les livraisons</button>
       <div className={c.card} style={{ display: "grid", gap: 6 }}>
@@ -209,9 +211,10 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
             <textarea className={c.input} rows={2} value={reserves} onChange={e => setReserves(e.target.value)} placeholder="Ex. petite rayure porte gauche" /></label>
           <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Nom et prénom du client
             <input className={c.input} value={signer} onChange={e => setSigner(e.target.value)} autoComplete="off" style={{ fontSize: 17 }} /></label>
+          <PaymentDeclare key={r.id} driver={driverName} total={r.total} onChange={setPay} />
           <SignaturePad onChange={setSig} />
           <button className={`${c.btn} ${c.btnBrand}`} style={{ ...big, opacity: canSign ? 1 : .5 }} disabled={!canSign || !!busy} onClick={signNow}>{busy === "sign" ? "Enregistrement…" : "✍️ Valider la livraison"}</button>
-          {!r.vin ? <small className={c.err}>Enregistrez d’abord le numéro de série (étape 1).</small> : !ready ? <small className={c.err}>Attendez la confirmation du paiement (étape 2).</small> : !sig ? <small className={c.muted}>Le client doit signer dans le cadre.</small> : null}
+          {!r.vin ? <small className={c.err}>Enregistrez d’abord le numéro de série (étape 1).</small> : !ready ? <small className={c.err}>Attendez la confirmation du paiement (étape 2).</small> : !payValid(pay) ? <small className={c.muted}>Le client indique comment il a réglé (moyen + montant).</small> : !sig ? <small className={c.muted}>Le client doit signer dans le cadre.</small> : null}
         </div> : null}
       </>}
     </section>;

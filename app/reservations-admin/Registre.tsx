@@ -8,7 +8,7 @@ export type RegRow = {
   id: number; prenom: string; nom: string; telephone: string; ville: string; code_postal: string; modele: string; couleur: string;
   statut: string; created_at: string; vin?: string | null; avis_google?: string | null; avis_at?: string | null;
   nouvelles_at?: string | null; avis_demande_at?: string | null;
-  accuse_token?: string | null; livre_at?: string | null;
+  accuse_token?: string | null; livre_at?: string | null; accuse_data?: { reglement?: { mode: string; amount: number }[] | null; driver_name?: string | null } | null;
 };
 type Vin = { vin: string; container: string | null; status: string | null };
 type Api = <T = Record<string, unknown>>(body: object) => Promise<T>;
@@ -95,6 +95,10 @@ export default function Registre({ rows, api, onSaved }: { rows: RegRow[]; api: 
           <span>🚗 {r.modele || "—"}{r.couleur ? ` · ${r.couleur}` : ""}</span>
           {r.telephone ? <button className={`${c.btn} ${c.btnGhost}`} style={{ padding: "4px 10px" }} onClick={() => copy(r.telephone)}>📋 {r.telephone}</button> : null}
           {r.accuse_token ? <a className={`${c.btn} ${c.btnGhost}`} style={{ padding: "4px 10px" }} href={`/api/accuse/${r.accuse_token}`} target="_blank" rel="noreferrer">📄 Accusé signé</a> : null}
+          {r.accuse_data?.reglement?.length ? <span style={{ fontSize: 13, padding: "4px 8px", borderRadius: 8, background: r.accuse_data.reglement.some(l => l.mode === "especes") ? "#fff4d6" : "#f1ede6" }}>
+            💶 Règlement déclaré : {r.accuse_data.reglement.map(l => `${l.mode === "especes" ? `espèces remises à ${r.accuse_data?.driver_name || "au chauffeur"}` : l.mode === "virement" ? "virement" : l.mode === "carte" ? "carte" : "autre"} ${Math.round(l.amount).toLocaleString("fr-FR")} €`).join(" · ")}
+            {r.accuse_data.reglement.some(l => l.mode === "especes") ? <b> → à récupérer auprès de {r.accuse_data.driver_name || "du chauffeur"}</b> : null}
+          </span> : null}
           {!ok ? <button className={`${c.btn} ${c.btnGhost}`} style={{ padding: "4px 10px" }} disabled={busy === r.id} onClick={() => { if (confirm(`Marquer ${r.prenom} ${r.nom} comme livré ?`)) markDelivered(r); }}>Marquer livré</button> : null}
         </div>
         {ok && !r.avis_google ? <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", background: "#f6faf7", borderRadius: 10, padding: 8 }}>

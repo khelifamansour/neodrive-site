@@ -12,7 +12,7 @@ import { roadKm, splitTrips, type PlanClient, type PlanTour, type Stop } from ".
 import { estimateHours, isExpenseType } from "../../../lib/driver-hours";
 import { addTickets, readTicket, type TicketData } from "../../../lib/driver-tickets";
 import { randomBytes } from "crypto";
-import { RECEIPT_FOLDER, VIN_RE, checksFor, type ReceiptData } from "../../../lib/delivery-receipt";
+import { RECEIPT_FOLDER, VIN_RE, checksFor, cleanPayment, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
 import { finalizeDelivery, intlPhone } from "../../../lib/delivery-finalize";
 import { OWNER_EMAIL } from "../../../lib/brevo";
 import { PHOTO_BUCKET } from "../../../lib/fleet";
@@ -316,6 +316,9 @@ export async function POST(req: Request) {
       const m = sigUrl.match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/);
       if (!m || m[1].length < 800) return NextResponse.json({ ok: false, error: "Le client doit signer dans le cadre." }, { status: 400 });
       if (m[1].length > 900_000) return NextResponse.json({ ok: false, error: "Signature trop lourde, recommencez." }, { status: 400 });
+      const reglement = cleanPayment(b.payment);
+      if (!reglement) return NextResponse.json({ ok: false, error: "Le client doit indiquer comment il a réglé (au moins un mode avec un montant)." }, { status: 400 });
+      const driverName = acc.who === "member" ? driverDisplay(name) : (driverDisplay(clean(b.driver_name, 80)) || "Mansour Khelifa");
       const pending = !r.paiement_confirme_at && !!r.paiement_en_attente;
       const checksIn = (b.checks || {}) as Record<string, unknown>;
       const checks = Object.fromEntries(checksFor(pending).map(c => [c.id, !!checksIn[c.id]]));
@@ -328,6 +331,7 @@ export async function POST(req: Request) {
         checks, reserves: clean(b.reserves, 600), signer, signed_at: at, livreur: name || acc.name || "NeoDrive",
         paiement_confirme_at: r.paiement_confirme_at, lat: num(b.lat), lng: num(b.lng), mode: "signature",
         pending: pending ? { montant_du: r.montant_du == null ? null : Number(r.montant_du) } : null,
+        reglement, driver_name: driverName,
       };
       const out = await finalizeDelivery(db, r, data, Buffer.from(m[1], "base64"));
       await logSection(acc, "livraison_accuse", { id, vin: r.vin, pending });

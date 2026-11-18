@@ -113,7 +113,7 @@ export default function Livreur() {
     </div>
 
     {tab === "livraisons" ? <div style={{ display: "grid", gap: 10 }}>
-      <Delivery api={api} onMsg={setMsg} />
+      <Delivery api={api} onMsg={setMsg} driverName={me?.who === "owner" ? "Mansour Khelifa" : (me?.name || "").replace(/\s*\(test\)\s*$/i, "").trim()} />
       {drafts.length ? <section className={c.card} style={{ display: "grid", gap: 8, background: "#fffaeb" }}>
         <b>🗓️ Prochaines tournées (prévisionnelles)</b>
         <small className={c.muted}>Mansour les revoit avec vous avant le départ. Les adresses, téléphones et étapes de livraison apparaissent ici dès qu’une tournée est validée.</small>

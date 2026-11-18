@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { crmDatabase } from "../../../lib/crm-agent";
-import { checksFor, type ReceiptData } from "../../../lib/delivery-receipt";
+import { checksFor, cleanPayment, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
+import { listJson } from "../../../lib/datastore";
+import { PLAN_TOURS } from "../../../lib/fleet";
+import type { PlanTour } from "../../../lib/planif";
 import { finalizeDelivery } from "../../../lib/delivery-finalize";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +18,17 @@ async function find(token: string) {
   return data;
 }
 
+/** Chauffeur de la tournée qui contient ce client (pour les espèces déclarées). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function tourDriver(r: any): Promise<string> {
+  if (!r?.plan_client_id) return "";
+  try {
+    const tours = await listJson<PlanTour>(crmDatabase(), PLAN_TOURS);
+    const t = tours.filter(x => x.clientIds?.includes(r.plan_client_id)).sort((a, z) => String(z.date).localeCompare(String(a.date)))[0];
+    return driverDisplay((t as { driver?: string } | undefined)?.driver || "");
+  } catch { return ""; }
+}
+
 export async function GET(req: Request) {
   const r = await find(new URL(req.url).searchParams.get("token") || "");
   if (!r) return NextResponse.json({ ok: false, error: "Lien invalide ou expiré." }, { status: 404 });
@@ -22,7 +36,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true, done: !!r.accuse_token, accuse_url: r.accuse_token ? `/api/accuse/${r.accuse_token}` : null,
     client: `${r.prenom || ""} ${r.nom || ""}`.replace(/\(.*?\)/g, "").trim(), modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin || "",
-    date: new Date().toISOString(), pending, montant_du: pending && r.montant_du != null ? Number(r.montant_du) : null, checks: checksFor(pending),
+    date: new Date().toISOString(), pending, montant_du: pending && r.montant_du != null ? Number(r.montant_du) : null, checks: checksFor(pending), driver: await tourDriver(r), total: r.total == null ? null : Number(r.total),
   });
 }
 
@@ -36,6 +50,9 @@ export async function POST(req: Request) {
     const signer = clean(b.name, 120);
     if (!b.accept) return NextResponse.json({ ok: false, error: "Cochez « J'ai bien reçu mon véhicule »." }, { status: 400 });
     if (signer.length < 3) return NextResponse.json({ ok: false, error: "Écrivez votre nom et prénom." }, { status: 400 });
+    const reglement = cleanPayment(b.payment);
+    if (!reglement) return NextResponse.json({ ok: false, error: "Indiquez comment vous avez réglé (moyen et montant)." }, { status: 400 });
+    const driverName = (await tourDriver(r)) || driverDisplay(clean(b.driver_name, 80));
     const pending = !r.paiement_confirme_at && !!r.paiement_en_attente;
     const checksIn = (b.checks || {}) as Record<string, unknown>;
     const checks = Object.fromEntries(checksFor(pending).map(c => [c.id, !!checksIn[c.id]]));
@@ -49,6 +66,7 @@ export async function POST(req: Request) {
       checks, reserves: clean(b.remarks, 600), signer, signed_at: at, livreur: "NeoDrive", paiement_confirme_at: r.paiement_confirme_at,
       mode: "distance", remote: { at, ip, phone: r.telephone || "", ua },
       pending: pending ? { montant_du: r.montant_du == null ? null : Number(r.montant_du) } : null,
+      reglement, driver_name: driverName || null,
     };
     await crmDatabase().from("reservations").update({ remote_confirm: { name: signer, at, ip, ua, phone: r.telephone || "", remarks: data.reserves } }).eq("id", r.id);
     const out = await finalizeDelivery(crmDatabase(), r, data, null);

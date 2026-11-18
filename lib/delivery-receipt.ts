@@ -20,6 +20,35 @@ export type CheckId = typeof CHECKS[number]["id"];
 export const PENDING_KEPT = ["cles", "documents"] as const;
 export const checksFor = (pending: boolean) => CHECKS.filter(c => !pending || !(PENDING_KEPT as readonly string[]).includes(c.id));
 
+/** Modes de règlement déclarés par le client au moment de signer (preuve, notamment des espèces remises au chauffeur). */
+export const PAY_MODES = [
+  { id: "virement", label: "Virement bancaire" },
+  { id: "especes", label: "Espèces remises au chauffeur" },
+  { id: "carte", label: "Carte bancaire" },
+  { id: "autre", label: "Autre" },
+] as const;
+export type PayMode = typeof PAY_MODES[number]["id"];
+export type PayLine = { mode: PayMode; amount: number };
+/** Nettoie la déclaration envoyée par le navigateur ; null si aucun mode avec un montant positif. */
+export function cleanPayment(raw: unknown): PayLine[] | null {
+  if (!Array.isArray(raw)) return null;
+  const ids = PAY_MODES.map(m => m.id) as string[];
+  const out: PayLine[] = [];
+  for (const x of raw.slice(0, 8)) {
+    const o = (x && typeof x === "object" ? x : {}) as Record<string, unknown>;
+    const mode = String(o.mode || ""); const amount = Math.round(Number(String(o.amount ?? "").replace(",", ".")) * 100) / 100;
+    if (ids.includes(mode) && Number.isFinite(amount) && amount > 0 && amount < 100000 && !out.some(l => l.mode === mode)) out.push({ mode: mode as PayMode, amount });
+  }
+  return out.length ? out : null;
+}
+/** Nom affiché du chauffeur (sans « (test) »). */
+export const driverDisplay = (name: string | null | undefined) => String(name || "").replace(/\s*\(test\)\s*$/i, "").trim();
+/** « Virement 4 490 € ; Espèces remises au chauffeur Serge : 1 000 € » */
+export function paymentText(lines: PayLine[], driver: string) {
+  const eur = (n: number) => `${n.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €`;
+  return lines.map(l => l.mode === "especes" ? `Espèces remises au chauffeur${driver ? ` ${driver}` : ""} : ${eur(l.amount)}` : `${PAY_MODES.find(m => m.id === l.mode)?.label || l.mode} : ${eur(l.amount)}`).join(" ; ");
+}
+
 export type ReceiptData = {
   numero: string; // ex. LIV-2026-000063
   client: string; adresse: string; telephone: string; email: string;
@@ -33,6 +62,10 @@ export type ReceiptData = {
   remote?: { at: string; ip: string | null; phone: string; ua: string } | null;
   /** Paiement en attente : montant restant dû ; clés et documents conservés par NeoDrive. */
   pending?: { montant_du: number | null } | null;
+  /** Règlement déclaré par le client avant de signer. */
+  reglement?: PayLine[] | null;
+  /** Chauffeur à qui d'éventuelles espèces ont été remises. */
+  driver_name?: string | null;
 };
 
 const SELLER = ["MK HOLDING - NeoDrive", "31600 Muret, France", "SIREN 908 645 393", "Tél. 06 89 78 17 10 · contact.neodrivefrance@gmail.com"];
@@ -82,6 +115,11 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
       : "Paiement : non confirmé.";
     doc.font("Helvetica").fontSize(9.5).fillColor(d.pending && !d.paiement_confirme_at ? "#b42318" : ink).text(payText, 40, y, { width: 515 });
     y += d.pending ? 36 : 24;
+    if (d.reglement?.length) {
+      const t = `Mode de règlement déclaré par le client : ${paymentText(d.reglement, driverDisplay(d.driver_name))}.`;
+      doc.font("Helvetica-Bold").fontSize(9.5).fillColor(ink).text(t, 40, y, { width: 515 });
+      y += doc.heightOfString(t, { width: 515 }) + 8;
+    }
 
     doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(
       `Je soussigné(e) ${d.signer} reconnais avoir reçu ce jour le véhicule décrit ci-dessus, avec les éléments cochés, sous réserve des remarques indiquées.${d.pending && !d.paiement_confirme_at ? " Je m'engage à régler le montant restant dû ; les clés et les documents me seront remis dès réception du paiement." : ""} La garantie légale de conformité de 2 ans s'applique à compter de cette date.`,
