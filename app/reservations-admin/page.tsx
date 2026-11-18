@@ -2,12 +2,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import c from "../giga/giga.module.css";
 import Contact from "./Contact";
+import Registre from "./Registre";
 
 type R = {
   id: number; created_at: string; source: string; nom: string; prenom: string; telephone: string; email: string;
   adresse: string; code_postal: string; ville: string; departement: string; modele: string; couleur: string; quantite: number;
   delivery_price: number | null; total: number | null; message: string; statut: string; date_promise: string | null;
   acompte: number | null; priorite: string; notes: string; plan_client_id: string | null; options: string;
+  vin?: string | null; avis_google?: string | null; avis_at?: string | null;
 };
 const STATUTS = ["Nouvelle", "Confirmée", "Planifiée", "Livrée", "Annulée"];
 const PRIOS = ["Urgente", "Haute", "Normale", "Basse"];
@@ -35,6 +37,8 @@ export default function ReservationsAdmin() {
   const [rows, setRows] = useState<R[]>([]); const [filter, setFilter] = useState("actives");
   const [sel, setSel] = useState<Set<number>>(new Set()); const [open, setOpen] = useState<number | null>(null);
   const [edit, setEdit] = useState<Partial<R>>({}); const [add, setAdd] = useState<typeof blank | null>(null);
+  const [view, setView] = useState<"liste" | "registre">("liste");
+  const regApi = useCallback(<T,>(body: object) => api<T>(body), []);
   const [contact, setContact] = useState<number | null>(null); const [video, setVideo] = useState(""); const [videoDraft, setVideoDraft] = useState(""); const [showSet, setShowSet] = useState(false);
 
   const load = useCallback(async (p = code()) => {
@@ -82,6 +86,11 @@ export default function ReservationsAdmin() {
           <small style={{ display: "block", color: col, fontWeight: 700 }}>{l}</small><b style={{ fontSize: 26, color: col }}>{n}</b></button>)}
     </div>
 
+    <div style={{ display: "flex", gap: 6, margin: "14px 0 0" }}>
+      <button className={`${c.btn} ${view === "liste" ? c.btnBrand : c.btnGhost}`} onClick={() => setView("liste")}>📋 Réservations</button>
+      <button className={`${c.btn} ${view === "registre" ? c.btnBrand : c.btnGhost}`} onClick={() => setView("registre")}>📒 Registre clients</button>
+    </div>
+    {view === "registre" ? <Registre rows={rows} api={regApi} onSaved={m => { setMsg(m); load().catch(() => null); }} /> : <>
     {add ? <section className={c.card} style={{ marginTop: 14, display: "grid", gap: 10 }}>
       <h2 style={{ margin: 0 }}>Nouvelle réservation</h2>
       <div style={grid}>
@@ -163,5 +172,6 @@ export default function ReservationsAdmin() {
           </div>
         </div> : null}
       </section>; })}</div> : <p className={c.muted}>Aucune réservation dans cette liste.</p>}
+    </>}
   </div></main>;
 }

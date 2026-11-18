@@ -77,6 +77,15 @@ export async function POST(req: Request) {
       if (error) throw new Error(error.message);
       return NextResponse.json({ ok: true, reservations: data || [] });
     }
+    // Numéros de série des voitures en cours d'import (pas encore attribués à un client)
+    if (b.action === "vins") {
+      const [{ data: sv }, { data: used }] = await Promise.all([
+        sb.from("shipment_vehicles").select("vin,container,status").order("vin").limit(500),
+        sb.from("reservations").select("vin").not("vin", "is", null),
+      ]);
+      const taken = new Set((used || []).map(u => u.vin));
+      return NextResponse.json({ ok: true, vins: (sv || []).filter(v => v.vin && !taken.has(v.vin)) });
+    }
     if (b.action === "add") {
       const r = cleanReservation(b);
       if (!r.nom) return NextResponse.json({ ok: false, error: "Le nom est obligatoire." }, { status: 400 });
@@ -92,6 +101,14 @@ export async function POST(req: Request) {
       const r = cleanReservation(b);
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       for (const k of ["statut", "priorite", "notes", "date_promise", "acompte", "nom", "prenom", "telephone", "email", "adresse", "code_postal", "ville", "departement", "modele", "couleur", "total", "delivery_price", "quantite"] as const) if (k in b || (k === "departement" && "code_postal" in b)) patch[k] = r[k];
+      // Registre clients : numéro de série (VIN) et avis Google
+      if ("vin" in b) {
+        const vin = String(b.vin || "").toUpperCase().replace(/[\s-]/g, "");
+        if (vin && !/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) return NextResponse.json({ ok: false, error: "Numéro de série invalide : 17 caractères, lettres et chiffres (sans I, O ni Q)." }, { status: 400 });
+        patch.vin = vin || null;
+      }
+      if ("avis_google" in b) patch.avis_google = String(b.avis_google || "").trim().slice(0, 2000) || null;
+      if ("avis_at" in b) patch.avis_at = /^\d{4}-\d{2}-\d{2}$/.test(String(b.avis_at || "")) ? String(b.avis_at) : null;
       const { error } = await sb.from("reservations").update(patch).eq("id", id);
       if (error) throw new Error(error.message);
       await logSection(acc, "reservation_modif", { id, statut: patch.statut });
