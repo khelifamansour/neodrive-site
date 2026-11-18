@@ -61,8 +61,10 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
 
   const load = useCallback(async () => {
     try {
-      const [d, v] = await Promise.all([api<{ deliveries: Dlv[]; checks: Check[]; checks_pending: Check[]; mine?: boolean }>({ action: "deliveries" }), api<{ vins: { vin: string; container: string | null }[] }>({ action: "free_vins" })]);
-      setList(d.deliveries); setMine(!!d.mine); setChecks(d.checks); setChecksPending(d.checks_pending || d.checks); setVins(v.vins);
+      const d = await api<{ deliveries: Dlv[]; checks: Check[]; checks_pending: Check[]; mine?: boolean }>({ action: "deliveries" });
+      setList(d.deliveries); setMine(!!d.mine); setChecks(d.checks); setChecksPending(d.checks_pending || d.checks);
+      // Liste des numéros de série libres : utile mais pas bloquante pour afficher les livraisons.
+      api<{ vins: { vin: string; container: string | null }[] }>({ action: "free_vins" }).then(v => setVins(v.vins)).catch(() => null);
     } catch (e) { onMsg("❌ " + (e as Error).message); }
   }, [api, onMsg]);
   useEffect(() => { load(); }, [load]);
@@ -233,7 +235,7 @@ export default function Delivery({ api, onMsg }: { api: Api; onMsg: (m: string) 
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}><b style={{ fontSize: 18 }}>🚚 {g.name}</b>{g.date ? <span className={c.badge} style={{ background: "#e8f0fe", color: "#1849a9" }}>📅 {fmt(g.date)}</span> : null}</div>
       {g.link ? <a className={`${c.btn} ${c.btnGhost}`} href={g.link} style={{ justifyContent: "center", textDecoration: "none" }}>Ouvrir la tournée (chargement, étapes, heures)</a> : null}
       {g.items.map(card)}
-    </div>) : todo.map(card)) : <p className={c.muted}>{mine ? "Aucun client à livrer : pas de tournée validée à votre nom pour l’instant." : "Aucune livraison en attente."}</p>}
+    </div>) : todo.map(card)) : <p className={c.muted}>{mine ? "Aucun client à livrer pour l’instant : les livraisons apparaissent ici dès que Mansour a validé une tournée à votre nom." : "Aucune livraison en attente."}</p>}
     {recent.length ? <><b style={{ marginTop: 8 }}>Livrées ces 3 derniers jours</b>{recent.map(x => <button key={x.id} className={c.card} onClick={() => open(x)} style={{ textAlign: "left", cursor: "pointer", font: "inherit", background: "#e7f6ec" }}>{x.paiement_en_attente && !x.paiement_confirme_at ? "💶" : "✅"} {x.prenom} {x.nom} · {x.ville} · <span style={{ fontFamily: "monospace" }}>{x.vin}</span>{x.paiement_en_attente && !x.paiement_confirme_at ? " · paiement en attente" : ""}</button>)}</> : null}
   </section>;
 }

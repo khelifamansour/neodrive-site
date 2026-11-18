@@ -34,7 +34,12 @@ async function latestDocs(db: DB, memberId: number) {
   for (const d of (data || []) as Doc[]) if (!out[d.kind]) out[d.kind] = d;
   return out;
 }
-const publicDoc = (d?: Doc) => d ? { status: d.status, filename: d.filename, uploaded_at: d.uploaded_at, note: d.note, signed_name: d.data?.signed_name || null, signed_at: d.data?.signed_at || null } : { status: "manquant" };
+const publicDoc = (d?: Doc) => {
+  if (!d) return { status: "manquant" };
+  // Contrat : seule une signature à la main sur la version en vigueur compte.
+  if (d.kind === "contrat" && (d.data?.version !== CONTRACT_VERSION || !d.data?.signature)) return { status: "manquant", outdated: true };
+  return { status: d.status, filename: d.filename, uploaded_at: d.uploaded_at, note: d.note, signed_name: d.data?.signed_name || null, signed_at: d.data?.signed_at || null, signature: d.kind === "contrat" ? d.data?.signature || null : undefined };
+};
 
 
 const INVOICE_FOLDER = "factures";
@@ -513,9 +518,11 @@ export async function POST(req: Request) {
     if (b.action === "contract_sign") {
       const signed = clean(b.signed_name, 120);
       if (signed.length < 3 || !b.accept) return NextResponse.json({ ok: false, error: "Écrivez votre nom complet et cochez la case." }, { status: 400 });
+      const signature = typeof b.signature === "string" ? b.signature : "";
+      if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(signature) || signature.length < 2000 || signature.length > 600000) return NextResponse.json({ ok: false, error: "Signez à la main dans le cadre (avec le doigt)." }, { status: 400 });
       const at = new Date().toISOString();
       const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || null;
-      const { error } = await db.from("driver_documents").insert({ member_id: memberId, kind: "contrat", path: null, filename: `Contrat de prestation v${CONTRACT_VERSION}`, status: "recu", data: { signed_name: signed, signed_at: at, version: CONTRACT_VERSION, ip, ua: clean(req.headers.get("user-agent"), 200), member_name: name, rate: 25 } });
+      const { error } = await db.from("driver_documents").insert({ member_id: memberId, kind: "contrat", path: null, filename: `Contrat de prestation v${CONTRACT_VERSION}`, status: "recu", data: { signed_name: signed, signed_at: at, version: CONTRACT_VERSION, signature, ip, ua: clean(req.headers.get("user-agent"), 200), member_name: name, rate: 25 } });
       if (error) throw new Error(error.message);
       await logSection(acc, "livreur_contrat_signe", { version: CONTRACT_VERSION });
       return NextResponse.json({ ok: true, signed_at: at });
