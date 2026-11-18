@@ -24,8 +24,9 @@ async function brevo(path: string, body: unknown) {
 /** Pièce jointe Brevo : nom du fichier + contenu encodé en base64. */
 export type EmailAttachment = { name: string; content: string };
 
-export async function sendEmail(to: string, toName: string, subject: string, html: string, attachments?: EmailAttachment[]) {
-  const j = await brevo("smtp/email", { sender: { name: "NeoDrive", email: senderEmail() }, replyTo: { email: process.env.BREVO_REPLY_TO || "contact.neodrivefrance@gmail.com", name: "NeoDrive" }, to: [{ email: to, ...(toName ? { name: toName } : {}) }], subject, htmlContent: html, ...(attachments?.length ? { attachment: attachments } : {}) });
+export async function sendEmail(to: string, toName: string, subject: string, html: string, attachments?: EmailAttachment[], opts?: { cc?: string[]; replyTo?: string }) {
+  const cc = (opts?.cc || []).map(e => e.trim()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && e.toLowerCase() !== to.toLowerCase());
+  const j = await brevo("smtp/email", { sender: { name: "NeoDrive", email: senderEmail() }, replyTo: { email: opts?.replyTo || process.env.BREVO_REPLY_TO || "contact.neodrivefrance@gmail.com", name: "NeoDrive" }, to: [{ email: to, ...(toName ? { name: toName } : {}) }], ...(cc.length ? { cc: cc.map(email => ({ email })) } : {}), subject, htmlContent: html, ...(attachments?.length ? { attachment: attachments } : {}) });
   return j?.messageId || null;
 }
 
