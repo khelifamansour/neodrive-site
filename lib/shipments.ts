@@ -200,5 +200,5 @@ export const pipelineStyle = (k: unknown) => PIPELINE.find(p => p.key === k) || 
 export const pipelineIndex = (k: unknown) => Math.max(0, PIPELINE.findIndex(p => p.key === k));
 
 /** Rôles des prestataires d'un port. */
-export const FORWARDER_ROLES = ["dédouanement", "transport", "stockage", "compagnie"] as const;
+export const FORWARDER_ROLES = ["dédouanement", "dépotage", "transport", "stockage", "compagnie"] as const;
 export const FOLLOWUP_KINDS = ["usine", "transitaire", "compagnie", "transport", "stockage", "autre"] as const;

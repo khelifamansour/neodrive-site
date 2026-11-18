@@ -70,7 +70,7 @@ export async function PUT(req: Request) {
   }
   if (b.action === "vehicle_delete" && b.id) { await db.from("shipment_vehicles").delete().eq("id", b.id); return NextResponse.json({ ok: true }); }
   if (b.action === "forwarder_save" && b.port) {
-    const row = { port: portKey(b.port), company: clean(b.company, 120) || null, contact: clean(b.contact, 120) || null, email: clean(b.email, 160) || null, cc: clean(b.cc, 400) || null, phone: clean(b.phone, 40) || null, role: (FORWARDER_ROLES as readonly string[]).includes(b.role) ? b.role : "dédouanement", notes: clean(b.notes, 1000) || null, active: b.active !== false };
+    const row = { port: portKey(b.port), company: clean(b.company, 120) || null, contact: clean(b.contact, 120) || null, email: clean(b.email, 160) || null, cc: clean(b.cc, 400) || null, phone: clean(b.phone, 40) || null, role: (FORWARDER_ROLES as readonly string[]).includes(b.role) ? b.role : "dédouanement", notes: clean(b.notes, 1000) || null, active: b.active !== false, confirmed: b.confirmed === true };
     const { error } = b.id ? await db.from("forwarders").update(row).eq("id", b.id) : await db.from("forwarders").insert(row); if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
