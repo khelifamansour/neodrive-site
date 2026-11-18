@@ -40,6 +40,7 @@ export default function ReservationDevis(){
  const [postalVerified,setPostalVerified]=useState(false);
  const [postalCities,setPostalCities]=useState<string[]>([]);
  const [postalLoading,setPostalLoading]=useState(false);
+ const [postalUnchecked,setPostalUnchecked]=useState(false);
  const [promoInput,setPromoInput]=useState("");
  const [promo,setPromo]=useState<{code:string;discount:number}|null>(null);
  const [promoMsg,setPromoMsg]=useState("");
@@ -52,15 +53,17 @@ export default function ReservationDevis(){
  };
  useEffect(()=>{let c="";try{c=new URLSearchParams(window.location.search).get("code")||localStorage.getItem("neodrive_code")||"";}catch{}if(c){setPromoInput(c.toUpperCase());checkPromo(c);}},[]);
  useEffect(()=>{
-  setPostalVerified(false);setPostalCities([]);
+  setPostalVerified(false);setPostalCities([]);setPostalUnchecked(false);
   if(!/^[0-9]{5}$/.test(postal))return;
   const controller=new AbortController();setPostalLoading(true);
+  // Si le service de vérification ne répond pas chez le client (bloqueur, réseau, vieux navigateur), on ne bloque pas la réservation : vérification manuelle ensuite.
+  const timer=setTimeout(()=>{controller.abort();setPostalUnchecked(true);setPostalLoading(false);},6000);
   fetch("https://geo.api.gouv.fr/communes?codePostal="+postal+"&fields=nom&format=json",{signal:controller.signal})
-   .then(r=>r.ok?r.json():[])
+   .then(r=>{if(!r.ok)throw new Error("geo "+r.status);return r.json();})
    .then(d=>{if(controller.signal.aborted)return;const cities=Array.isArray(d)?d.map((c:{nom:string})=>c.nom):[];setPostalVerified(cities.length>0);setPostalCities(cities);if(cities.length===1)setCustomer(p=>p.ville?p:{...p,ville:cities[0]});})
-   .catch(()=>{})
-   .finally(()=>{if(!controller.signal.aborted)setPostalLoading(false)});
-  return ()=>controller.abort();
+   .catch(()=>{if(!controller.signal.aborted)setPostalUnchecked(true);})
+   .finally(()=>{clearTimeout(timer);if(!controller.signal.aborted)setPostalLoading(false)});
+  return ()=>{clearTimeout(timer);controller.abort();};
  },[postal]);
  useEffect(()=>{try{const m=new URLSearchParams(window.location.search).get("modele");if(m&&m in VEHICLES)setModel(m as VehicleKey);}catch{}},[]);
  const quote=useMemo(()=>calculateQuote(model,postal,registration),[model,postal,registration]);
@@ -69,18 +72,18 @@ export default function ReservationDevis(){
  const normalizeCity=(v:string)=>v.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
  const cityMatches=postalCities.some(city=>normalizeCity(city)===normalizeCity(customer.ville));
  const contactDone=!!(customer.nom&&customer.prenom&&customer.email&&customer.adresse&&customer.ville);
- const valid=postalVerified&&cityMatches&&total!==null&&accepted&&signed.trim().length>=3&&customer.nom&&customer.prenom&&customer.email&&customer.adresse&&customer.ville;
+ const postalOk=postalVerified||postalUnchecked;
+ const valid=postalOk&&total!==null&&accepted&&signed.trim().length>=3&&customer.nom&&customer.prenom&&customer.email&&customer.adresse&&customer.ville;
 
  const missing:string[]=[];
- if(!postalVerified)missing.push("un code postal de livraison valide");
+ if(!postalOk)missing.push("un code postal de livraison valide");
  else if(total===null)missing.push("un tarif de livraison (zone sur devis : contactez-nous)");
  if(!contactDone)missing.push("vos coordonnées complètes");
- else if(postalVerified&&!cityMatches)missing.push("une ville correspondant au code postal");
  if(signed.trim().length<3)missing.push("votre nom de signataire");
  if(!accepted)missing.push("la case de confirmation");
 
  const deliveryLabel=quote.delivery.status==="estimated"?euro(quote.delivery.price):postal.length===5?"Sur devis":"—";
- const stepState=[true,postalVerified&&contactDone,!!valid];
+ const stepState=[true,postalOk&&contactDone,!!valid];
 
  const makePdf=async()=>{
   const {jsPDF}=await import("jspdf");
@@ -259,7 +262,7 @@ export default function ReservationDevis(){
       </div>
      </div>
      {quote.delivery.status==="manual"&&postal.length===5?<p className={s.note}>{quote.delivery.reason}. Nous vous communiquerons un tarif personnalisé avant toute confirmation — ou <a href={WHATSAPP} target="_blank" rel="noreferrer">demandez-le sur WhatsApp</a>.</p>:null}
-     {postal.length===5&&!postalLoading&&!postalVerified&&quote.delivery.status==="estimated"?<p className={s.note}>Nous ne trouvons pas ce code postal. Vérifiez-le pour continuer.</p>:null}
+     {postal.length===5&&!postalLoading&&!postalVerified&&!postalUnchecked&&quote.delivery.status==="estimated"?<p className={s.note}>Nous ne trouvons pas ce code postal. Vérifiez-le pour continuer.</p>:null}
 
      <div className={s.subHead}><i>{Icon.user}</i><div><h3>Vos coordonnées</h3><p>Pour établir votre devis nominatif.</p></div></div>
      <div className={s.fields}>
@@ -272,7 +275,7 @@ export default function ReservationDevis(){
       {field("societe","Entreprise",{required:false,autoComplete:"organization"})}
      </div>
      <datalist id="rd-cities">{postalCities.map(c=><option key={c} value={c}/>)}</datalist>
-     {postalVerified&&customer.ville&&!cityMatches?<p className={s.note}>La ville ne correspond pas au code postal {postal}. Communes possibles&nbsp;: {postalCities.slice(0,6).join(", ")}.</p>:null}
+     {postalVerified&&customer.ville&&!cityMatches?<p className={s.note}>Vérifiez la ville : elle ne correspond pas au code postal {postal} (communes possibles&nbsp;: {postalCities.slice(0,6).join(", ")}). Vous pouvez quand même continuer, nous vérifierons l’adresse avec vous.</p>:null}
     </section>
 
     {/* STEP 3 */}
@@ -346,7 +349,7 @@ export default function ReservationDevis(){
   {/* BARRE MOBILE */}
   <div className={s.mobileBar}>
    <div><small>{VEHICLES[model].label.replace("NeoDrive ","")} · total TTC</small><strong>{total===null?(postal.length===5?"Sur devis":euro(quote.vehiclePrice+REGISTRATION_PRICE-discount)+" + livr."):euro(total)}</strong></div>
-   <a href={valid?"#devis":postalVerified&&contactDone?"#devis":"#configurer"} className={s.btnPrimary}>{valid?"Réserver":"Continuer"}</a>
+   <a href={valid?"#devis":postalOk&&contactDone?"#devis":"#configurer"} className={s.btnPrimary}>{valid?"Réserver":"Continuer"}</a>
   </div>
  </main>;
 }
