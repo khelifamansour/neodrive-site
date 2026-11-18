@@ -30,11 +30,12 @@ export async function sendEmail(to: string, toName: string, subject: string, htm
   return j?.messageId || null;
 }
 
-export async function sendSms(phone: string, content: string) {
+/** type « transactional » pour les codes d'accès et confirmations (envoyés à toute heure) ; « marketing » pour la prospection (bloquée le soir). */
+export async function sendSms(phone: string, content: string, type: "marketing" | "transactional" = "marketing") {
   const to = normalizePhone(phone);
   if (!to) throw new Error("Numéro invalide");
   if (to.replace(/\D/g, "").endsWith("676192234")) throw new Error("Numéro de Hana (NeoDrive) : pas de SMS");
-  const j = await brevo("transactionalSMS/sms", { sender: "NeoDrive", recipient: to, content, type: "marketing" });
+  const j = await brevo("transactionalSMS/sms", { sender: "NeoDrive", recipient: to, content, type });
   return j?.messageId ? String(j.messageId) : null;
 }
 

@@ -196,7 +196,7 @@ export async function POST(req: Request) {
         const code = newCode();
         await db.from("team_members").update({ code_hash: sha(code), active: true, revoked_at: null }).eq("id", id);
         const first = String(m.name || "").split(/\s+/)[0];
-        await sendSms(m.phone, `Bonjour ${first}, voici votre nouveau code NeoDrive (livreur) : ${code}. Ouvrez ${SITE}/organisation puis « Espace livreur ».`);
+        await sendSms(m.phone, `Bonjour ${first}, voici votre nouveau code NeoDrive (livreur) : ${code}. Ouvrez ${SITE}/organisation puis « Espace livreur ».`, "transactional");
         return NextResponse.json({ ok: true });
       }
       if (b.action === "admin_invite") {
@@ -210,7 +210,7 @@ export async function POST(req: Request) {
         const sent = { sms: false, email: false, errors: [] as string[] };
         await applyStoredSecrets();
         if (brevoReady()) {
-          if (phone) { try { sent.sms = !!(await sendSms(phone, text)); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
+          if (phone) { try { sent.sms = !!(await sendSms(phone, text, "transactional")); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
           if (email) { try { sent.email = !!(await sendEmail(email, name, "Votre accès NeoDrive (espace livreur)", `<p>Bonjour ${esc(first)},</p><p>Voici votre accès à l'espace livreur NeoDrive.</p><p>1. Ouvrez <a href="${SITE}/organisation">${SITE}/organisation</a><br>2. Entrez votre code personnel : <b style="font-size:18px;letter-spacing:2px">${esc(code)}</b><br>3. Ouvrez « Espace livreur » : déposez vos documents (SIRET, assurance RC pro, permis, pièce d'identité, RIB) et signez votre contrat.</p><p>Ce code est personnel : ne le communiquez à personne.</p><p>À bientôt,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
         } else sent.errors.push("Envoi automatique indisponible (Brevo non configuré)");
         return NextResponse.json({ ok: true, id: data.id, code, text, sent });
@@ -342,7 +342,7 @@ export async function POST(req: Request) {
       const sent = { sms: false, email: false, errors: [] as string[] };
       await applyStoredSecrets();
       if (!brevoReady()) return NextResponse.json({ ok: false, error: "Envoi indisponible (Brevo non configuré) : faites signer sur votre téléphone." }, { status: 503 });
-      if (r.telephone) { try { sent.sms = !!(await sendSms(r.telephone, `Bonjour ${first}, NeoDrive : merci de confirmer la reception de votre vehicule en 30 secondes sur ce lien : ${link}`)); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
+      if (r.telephone) { try { sent.sms = !!(await sendSms(r.telephone, `Bonjour ${first}, NeoDrive : merci de confirmer la reception de votre vehicule en 30 secondes sur ce lien : ${link}`, "transactional")); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
       if (r.email) { try { sent.email = !!(await sendEmail(r.email, `${r.prenom || ""} ${r.nom || ""}`.trim(), "Confirmez la réception de votre NeoDrive", `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive ${esc(r.modele || "")} (n° de série ${esc(r.vin)}) vient de vous être remise. Merci de confirmer sa réception en 30 secondes :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Je confirme la réception</a></p><p>Vous recevrez ensuite votre accusé de réception en PDF.</p><p>Merci,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
       if (!sent.sms && !sent.email) return NextResponse.json({ ok: false, error: "Envoi impossible : " + sent.errors.join(" · ") }, { status: 502 });
       const at = new Date().toISOString();
