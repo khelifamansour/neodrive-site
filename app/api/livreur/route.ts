@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     if (typeof b.action === "string" && b.action.startsWith("admin_")) {
       if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
       if (b.action === "admin_list") {
-        const { data: members } = await db.from("team_members").select("id,name,role,phone,email,active,expires_at,revoked_at,last_seen_at,sections,created_at").order("created_at", { ascending: false });
+        const { data: members } = await db.from("team_members").select("id,name,role,phone,email,active,expires_at,revoked_at,last_seen_at,sections,created_at,is_test").order("created_at", { ascending: false });
         const drivers = (members || []).filter(m => m.role === "livreur" || (Array.isArray(m.sections) && m.sections.includes("livreur")));
         const out = [];
         for (const m of drivers) {
@@ -171,6 +171,21 @@ export async function POST(req: Request) {
         if (error) throw new Error(error.message);
         return NextResponse.json({ ok: true, ticket: next });
       }
+      if (b.action === "admin_delete_test") {
+        const id = Number(b.id);
+        const { data: m } = await db.from("team_members").select("id,is_test").eq("id", id).maybeSingle();
+        if (!m?.is_test) return NextResponse.json({ ok: false, error: "Seuls les comptes de test peuvent être supprimés ici." }, { status: 400 });
+        const { data: files } = await db.from("driver_documents").select("path").eq("member_id", id);
+        const { data: invs } = await db.from("driver_invoices").select("pdf_path").eq("member_id", id);
+        const paths = [...(files || []).map(f => f.path), ...(invs || []).map(f => f.pdf_path)].filter(Boolean) as string[];
+        if (paths.length) await db.storage.from(DRIVER_BUCKET).remove(paths);
+        await db.from("driver_invoices").delete().eq("member_id", id);
+        await db.from("driver_documents").delete().eq("member_id", id);
+        await db.from("team_sessions").update({ ended_at: new Date().toISOString() }).eq("member_id", id).is("ended_at", null);
+        const { error } = await db.from("team_members").delete().eq("id", id).eq("is_test", true);
+        if (error) { await db.from("team_members").update({ active: false, revoked_at: new Date().toISOString() }).eq("id", id); return NextResponse.json({ ok: true, revoked_only: true }); }
+        return NextResponse.json({ ok: true });
+      }
       if (b.action === "admin_invite") {
         const name = clean(b.name, 80); if (name.length < 2) return NextResponse.json({ ok: false, error: "Nom manquant" }, { status: 400 });
         const phone = clean(b.phone, 30), email = clean(b.email, 160);
@@ -195,6 +210,8 @@ export async function POST(req: Request) {
     if (!acc) return NextResponse.json({ ok: false, error: "Connectez-vous avec votre code personnel." }, { status: 401 });
     const memberId = acc.who === "member" ? acc.member.id : null;
     const name = acc.who === "member" ? acc.member.name : null;
+    // Compte de test (is_test) : voit toutes les tournées, comme le fondateur, pour essayer le parcours complet
+    const tourName = acc.who === "member" && (acc.member as { is_test?: boolean }).is_test ? null : name;
 
     if (b.action === "me") {
       const docs = memberId ? await latestDocs(db, memberId) : {};
@@ -207,7 +224,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, reservations: data || [] });
     }
     if (b.action === "tours") {
-      const tours = (await listJson<PlanTour>(db, PLAN_TOURS)).filter(t => isMine(t, name) && (t.status !== "brouillon" || (t.stops?.length ?? 0) > 0)).sort((a, z) => String(a.date).localeCompare(String(z.date))).slice(0, 30);
+      const tours = (await listJson<PlanTour>(db, PLAN_TOURS)).filter(t => isMine(t, tourName) && (t.status !== "brouillon" || (t.stops?.length ?? 0) > 0)).sort((a, z) => String(a.date).localeCompare(String(z.date))).slice(0, 30);
       const need = new Set(tours.flatMap(t => t.clientIds));
       const clients = new Map((need.size ? await listJson<PlanClient>(db, PLAN_CLIENTS) : []).filter(c => need.has(c.id)).map(c => [c.id, c]));
       return NextResponse.json({ ok: true, tours: tours.map(t => { const k = t.status === "brouillon" ? null : driverKey(t.id); return { id: t.id, name: t.name, date: t.date, departTime: t.departTime || "", driver: t.driver, status: t.status, clients: t.clientIds.length, km: t.km || 0, closed_at: t.closed_at || null, en_route: (t.en_route || []).length, link: k ? `/chauffeur?k=${encodeURIComponent(k)}` : null, plan: driverPlan(t, clients) }; }) });
@@ -387,7 +404,7 @@ export async function POST(req: Request) {
     // Tickets de dépenses en lot depuis l'espace livreur (photos rangées avec celles de la tournée)
     if (b.action === "ticket_upload_url" || b.action === "ticket_add") {
       const t = (await listJson<PlanTour>(db, PLAN_TOURS)).find(x => x.id === String(b.tour_id || ""));
-      if (!t || !isMine(t, name) || t.status === "brouillon") return NextResponse.json({ ok: false, error: "Tournée introuvable." }, { status: 404 });
+      if (!t || !isMine(t, tourName) || t.status === "brouillon") return NextResponse.json({ ok: false, error: "Tournée introuvable." }, { status: 404 });
       if (b.action === "ticket_upload_url") {
         const path = `vehicles/${t.id}/ticket-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
         const { data, error } = await db.storage.from(PHOTO_BUCKET).createSignedUploadUrl(path);
@@ -401,7 +418,7 @@ export async function POST(req: Request) {
     if (b.action === "invoice_prepare" || b.action === "invoice_preview" || b.action === "invoice_send") {
       if (!memberId) return NextResponse.json({ ok: false, error: "La facture est faite par le livreur depuis son espace." }, { status: 403 });
       const t = (await listJson<PlanTour>(db, PLAN_TOURS)).find(x => x.id === String(b.tour_id || ""));
-      if (!t || !isMine(t, name)) return NextResponse.json({ ok: false, error: "Tournée introuvable." }, { status: 404 });
+      if (!t || !isMine(t, tourName)) return NextResponse.json({ ok: false, error: "Tournée introuvable." }, { status: 404 });
       if (t.status === "brouillon") return NextResponse.json({ ok: false, error: "Tournée prévisionnelle : rien à facturer." }, { status: 400 });
       const [{ data: existing }, { data: mb }, docs] = await Promise.all([
         db.from("driver_invoices").select("id,number,status,total,sent_at,paid_at").eq("member_id", memberId).eq("tour_id", t.id).maybeSingle(),

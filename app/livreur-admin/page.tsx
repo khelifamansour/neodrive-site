@@ -6,7 +6,7 @@ import Contract from "../livreur/Contract";
 import Invoices from "./Invoices";
 
 type Doc = { id: number; status: string; filename: string | null; uploaded_at: string; validated_at: string | null; note: string | null; url: string | null; data: { signed_name?: string; signed_at?: string } };
-type Driver = { id: number; name: string; phone: string | null; email: string | null; active: boolean; expires_at: string | null; revoked_at: string | null; last_seen_at: string | null; docs: Record<string, Doc> };
+type Driver = { id: number; name: string; phone: string | null; email: string | null; active: boolean; expires_at: string | null; revoked_at: string | null; last_seen_at: string | null; is_test?: boolean; docs: Record<string, Doc> };
 type Kind = { id: string; label: string };
 const code = () => { try { return sessionStorage.getItem("nd_pc") || ""; } catch { return ""; } };
 async function api<T = Record<string, unknown>>(body: object, pc = code()): Promise<T> {
@@ -81,6 +81,7 @@ export default function LivreurAdmin() {
       return <section key={d.id} className={c.card} style={{ display: "grid", gap: 10 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <b style={{ fontSize: 18 }}>{d.name}</b>
+          {d.is_test ? <><span className={c.badge} style={{ background: "#fde8e7", color: "#b42318" }}>COMPTE DE TEST</span><button className={`${c.btn} ${c.btnGhost}`} style={{ padding: "4px 10px" }} disabled={busy} onClick={() => confirm(`Supprimer le compte de test « ${d.name} » (documents et factures de test compris) ?`) && run(async () => { const j = await api<{ revoked_only?: boolean }>({ action: "admin_delete_test", id: d.id }); return j.revoked_only ? "Accès coupé (suppression impossible : historique lié)." : "🗑️ Compte de test supprimé."; })}>🗑️ Supprimer</button></> : null}
           <span className={c.badge} style={{ background: d.active && !d.revoked_at ? "#e7f6ec" : "#f1f1f1", color: "#111" }}>{d.active && !d.revoked_at ? "Accès actif" : "Accès coupé"}</span>
           <span className={c.badge} style={{ background: done === required.length ? "#e7f6ec" : "#fffaeb", color: "#111" }}>{done}/{required.length} validés</span>
         </div>
