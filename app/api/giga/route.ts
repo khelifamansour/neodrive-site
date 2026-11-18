@@ -29,6 +29,9 @@ export async function GET(req: Request) {
   return NextResponse.json(r, { status: r.ok ? 200 : 500 });
 }
 
+/** Départements livrés depuis Toulouse / le sud (Serge, Fos). */
+const SUD_DEPTS = new Set(["04","05","06","07","09","11","12","13","15","16","17","19","24","26","30","31","32","33","34","40","43","46","47","48","63","64","65","66","81","82","83","84","87","2A","2B"]);
+
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, unknown>;
   const acc = await authorizeSection(req, b.passcode, "giga");
@@ -61,6 +64,18 @@ export async function POST(req: Request) {
     if (b.action === "meta_get") {
       if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "La méta-analyse réaliste est réservée au fondateur." }, { status: 403 });
       return NextResponse.json({ ok: true, ...runMeta() });
+    }
+    if (b.action === "sim_history") {
+      if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "La simulation est réservée au fondateur." }, { status: 403 });
+      const { data, error } = await db.from("reservations").select("created_at,statut,code_postal").neq("statut", "Annulée").limit(5000);
+      if (error) throw new Error(error.message);
+      const parMois: Record<string, number> = {}; let sud = 0, total = 0;
+      for (const r of data || []) {
+        const m = String(r.created_at).slice(0, 7); parMois[m] = (parMois[m] || 0) + 1;
+        const cp = String(r.code_postal || "").trim();
+        if (cp.length >= 2) { total++; if (SUD_DEPTS.has(cp.slice(0, 2))) sud++; }
+      }
+      return NextResponse.json({ ok: true, mois: Object.entries(parMois).sort(([a], [b]) => a.localeCompare(b)).map(([m, n]) => ({ m, n })), part_sud: total ? Math.round(sud / total * 100) : null });
     }
     if (b.action === "forecast_get" || b.action === "forecast_save") {
       if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Le prévisionnel est réservé au fondateur." }, { status: 403 });
