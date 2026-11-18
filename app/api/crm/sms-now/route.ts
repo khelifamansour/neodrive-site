@@ -5,7 +5,7 @@ import { sendSms } from "../../../../lib/brevo";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/** Envoi ponctuel d'un SMS à une liste de numéros, déclenché par un jeton à usage unique (admin_once_tokens.payload = { phones, text }). Copie au fondateur. */
+/** Envoi ponctuel d'un SMS à une liste de numéros, déclenché par un jeton à usage unique (admin_once_tokens.payload = { phones, text }). Copie au fondateur (sauf s'il est déjà destinataire). */
 async function run(req: Request) {
   const token = new URL(req.url).searchParams.get("token") || "";
   if (!/^[a-f0-9]{48}$/.test(token)) return NextResponse.json({ ok: false }, { status: 401 });
@@ -27,7 +27,8 @@ async function run(req: Request) {
       results.push({ tel, sent: true });
     } catch (e: any) { results.push({ tel, sent: false, error: e?.message || "erreur" }); }
   }
-  try { await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", payload.text); } catch (e) { console.error("[SMS-NOW] copie", e); }
+  const owner = normalizePhone(process.env.OWNER_SMS_PHONE || "0689781710");
+  if (!results.some(r => r.tel === owner)) { try { await sendSms(owner, payload.text); } catch (e) { console.error("[SMS-NOW] copie", e); } }
   return NextResponse.json({ ok: true, sent: results.filter(r => r.sent).length, results });
 }
 export const GET = run;
