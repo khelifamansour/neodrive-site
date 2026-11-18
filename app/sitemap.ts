@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
 import { commercialPages } from "../lib/seo-commercial";
 import { seoCities } from "../lib/seo-cities";
+import { NEW_SEO_PATHS } from "../lib/seo-pillars";
 
 const SITE = "https://www.easydrive-auto.fr";
 const BUILD_DATE = new Date();
@@ -25,7 +26,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ["/blog/meilleur-rapport-qualite-prix-voiturette-electrique", "monthly", 0.8],
     ["/blog/voiture-sans-permis-neuve-3990-euros", "monthly", 0.8],
     ["/blog/cout-recharge-voiture-sans-permis-electrique", "monthly", 0.8],
-    ["/blog/neodrive-ou-fiat-topolino", "monthly", 0.8],
     ["/guide-voiture-sans-permis", "weekly", 0.95], ["/QuiSommesNous", "monthly", 0.85],
     ["/a-propos", "weekly", 0.9], ["/financement", "weekly", 0.9],
     ["/voiture-sans-permis-electrique", "weekly", 0.95], ["/citroen-ami-ou-neodrive", "weekly", 0.95],
@@ -42,6 +42,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base: MetadataRoute.Sitemap = routes.map(([route, changeFrequency, priority]) => ({
     url: `${SITE}${route}`, lastModified: BUILD_DATE, changeFrequency, priority,
   }));
+  // Piliers « prix », « chinoise », « aides » et comparatifs NeoDrive face aux autres marques.
+  base.push(...NEW_SEO_PATHS.map(route => ({ url: `${SITE}${route}`, lastModified: BUILD_DATE, changeFrequency: "weekly" as const, priority: route.startsWith("/comparatif/") ? 0.85 : 0.95 })));
 
   const cityPages: MetadataRoute.Sitemap = seoCities.map((city) => ({
     url: `${SITE}/voiture-sans-permis/${city.slug}`,

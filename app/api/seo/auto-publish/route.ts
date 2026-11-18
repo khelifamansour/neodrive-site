@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { commercialPages } from "../../../../lib/seo-commercial";
+import { TOPIC_PLAN, isDuplicateTopic, pillarFor, DUPLICATE_THRESHOLD, topicSimilarity } from "../../../../lib/seo-topic-plan";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -55,27 +56,28 @@ export async function GET(req: Request) {
   try {
     const [{ data: topics }, { data: recentArticles }, { data: photos }, { data: videos }] = await Promise.all([
       sb.from("marketing_topics").select("id,topic,angle,target_audience,primary_keyword,secondary_keywords,business_priority,times_used,created_by,created_at").eq("status", "idea").order("times_used", { ascending: true }).order("business_priority", { ascending: false }).order("created_at", { ascending: false }).limit(100),
-      sb.from("seo_articles").select("slug,title,target_keyword,published_at").eq("status", "published").order("published_at", { ascending: false }).limit(50),
+      sb.from("seo_articles").select("slug,title,target_keyword,published_at").eq("status", "published").order("published_at", { ascending: false }).limit(500),
       sb.from("social_media_assets").select("public_url,title,context,ai_summary,ai_tags,ai_quality_score,times_used").eq("status", "ready").eq("media_type", "image").not("storage_path", "like", "generated/%").order("ai_quality_score", { ascending: false, nullsFirst: false }).limit(150),
       sb.from("social_media_assets").select("id,public_url,title,context,created_at").eq("status", "ready").eq("media_type", "video").not("storage_path", "like", "generated/%").order("created_at", { ascending: false }).limit(40),
     ]);
 
-    const recentKeys = new Set((recentArticles || []).flatMap((item: any) => [keyOf(String(item.title || "")), keyOf(String(item.target_keyword || ""))]).filter(Boolean));
-    const availableTopics = (topics || []).filter((item: any) => {
-      const topicKey = keyOf(String(item.topic || ""));
-      const keywordKey = keyOf(String(item.primary_keyword || ""));
-      return !recentKeys.has(topicKey) && !recentKeys.has(keywordKey);
-    });
+    // Anti-doublon : on compare chaque sujet candidat à TOUS les titres et mots-clés déjà publiés (similarité de mots, pas seulement égalité exacte).
+    const existingSubjects = (recentArticles || []).flatMap((item: any) => [String(item.title || ""), String(item.target_keyword || "")]).filter(Boolean);
+    const availableTopics = (topics || []).filter((item: any) => !isDuplicateTopic(String(item.topic || ""), existingSubjects) && !isDuplicateTopic(String(item.primary_keyword || item.topic || ""), existingSubjects));
     const chosen = requestedTopic
       ? topics?.find((item: any) => keyOf(String(item.topic || "")) === keyOf(requestedTopic) || keyOf(String(item.primary_keyword || "")) === keyOf(requestedTopic))
-      : availableTopics[0] || topics?.[0];
+      : availableTopics[0];
+    // Sinon : premier sujet du plan éditorial par clusters qui n'a pas encore été traité.
+    const planned = !requestedTopic && !chosen ? TOPIC_PLAN.find(t => !isDuplicateTopic(t.topic, existingSubjects) && !isDuplicateTopic(t.keyword, existingSubjects)) : undefined;
+    if (!requestedTopic && !chosen && !planned) return fail("Aucun sujet nouveau : tous les sujets disponibles sont déjà traités. Ajoutez des idées dans marketing_topics.", 409);
 
-    const topic = requestedTopic || chosen?.topic || "Combien coûte une voiture sans permis électrique en 2026 ?";
+    const topic = requestedTopic || chosen?.topic || planned!.topic;
+    const pillar = planned ? { pillar: planned.pillar, pillarLabel: planned.pillarLabel } : pillarFor(topic + " " + (chosen?.primary_keyword || ""));
     if (run?.id && !requestedTopic) await sb.from("seo_publish_runs").update({ topic }).eq("id", run.id);
 
     const offerLinks = commercialPages.map(page => `/offres/${page.slug} (${page.title})`).join("; ");
     const existingTitles = (recentArticles || []).map((item: any) => item.title).join(" | ");
-    const prompt = `Rédige un article SEO français très détaillé de 1800 à 2600 mots pour un acheteur réel de voiture sans permis. Sujet: ${topic}. Angle: ${chosen?.angle || "guide d'achat concret"}. Public: ${chosen?.target_audience || "acheteurs en France"}. Mot-clé principal: ${chosen?.primary_keyword || topic}. Mots-clés secondaires: ${(chosen?.secondary_keywords || []).join(", ")}. Articles récents à ne pas dupliquer: ${existingTitles || "aucun"}.
+    const prompt = `Rédige un article SEO français très détaillé de 1800 à 2600 mots pour un acheteur réel de voiture sans permis. Sujet: ${topic}. Angle: ${chosen?.angle || "guide d'achat concret"}. Public: ${chosen?.target_audience || "acheteurs en France"}. Mot-clé principal: ${chosen?.primary_keyword || planned?.keyword || topic}. Lien interne OBLIGATOIRE dans le premier tiers de l'article vers la page pilier ${pillar.pillar} (ancre naturelle autour de « ${pillar.pillarLabel} »). Mots-clés secondaires: ${(chosen?.secondary_keywords || []).join(", ")}. Articles récents à ne pas dupliquer: ${existingTitles || "aucun"}.
 
 Positionnement NeoDrive à intégrer quand pertinent: VSP électrique 2 places; Essentielle à partir de 3 990 € TTC sur commande avec délai confirmé par devis; Confort 4 990 € TTC; immatriculation et mise en route 150 €, livraison en supplément selon adresse; ne jamais présenter la version Essentielle comme disponible immédiatement; recharge sur prise 220 V; livraison en France; organisation centralisée à Toulouse; distribution directe sans réseau de concessions/showrooms; approvisionnement direct fabricant; modèle économique visant à réduire les intermédiaires et les coûts fixes; paiement du véhicule à la livraison selon les modalités commerciales en vigueur; un agent livre le véhicule, présente son fonctionnement et répond aux questions; châssis acier; philosophie de conception simple visant la maintenabilité et l'absence de complexité inutile. Présenter le prix bas comme la conséquence du modèle de distribution et de la simplicité, jamais comme une baisse de qualité non démontrée.
 
@@ -97,6 +99,9 @@ Exigences éditoriales: les photos et témoignages doivent être authentiques; p
 
     const out = JSON.parse(j.choices?.[0]?.message?.content || "{}");
     if (!out.title || !out.content) return fail("Le moteur SEO n'a pas retourné un article complet", 500);
+    const near = existingSubjects.find(e => topicSimilarity(String(out.title), e) >= DUPLICATE_THRESHOLD + 0.15);
+    if (near && !requestedTopic) return fail(`Article refusé : titre trop proche d'un article existant (« ${near} »)`, 409);
+    if (!String(out.content).includes(`href="${pillar.pillar}"`)) out.content = `${out.content}\n<p><strong>À lire aussi :</strong> <a href="${pillar.pillar}">${pillar.pillarLabel}</a></p>`;
 
     const baseSlug = slugify(out.title || topic) + "-" + new Date().toISOString().slice(0, 10);
     const { data: already } = await sb.from("seo_articles").select("id").eq("slug", baseSlug).limit(1).maybeSingle();
@@ -117,7 +122,7 @@ Exigences éditoriales: les photos et témoignages doivent être authentiques; p
     const links = relatedArticles ? `<section><h2>Autres guides NeoDrive</h2><ul>${relatedArticles}</ul></section>` : "";
     const content = `${image}${String(out.content || "")}${videoBlock}${links}<p><a href="https://wa.me/33676192234">Demander les photos, vidéos et tarifs NeoDrive sur WhatsApp</a></p>`;
 
-    const { data, error } = await sb.from("seo_articles").insert({ slug, title: out.title, meta_description: description, excerpt: description, description, content, target_keyword: chosen?.primary_keyword || topic, topic, keywords: Array.isArray(out.keywords) ? out.keywords : [], status: "published", published_at: now, publish_source: triggerSource }).select().single();
+    const { data, error } = await sb.from("seo_articles").insert({ slug, title: out.title, meta_description: description, excerpt: description, description, content, target_keyword: chosen?.primary_keyword || planned?.keyword || topic, topic, keywords: Array.isArray(out.keywords) ? out.keywords : [], status: "published", published_at: now, publish_source: triggerSource }).select().single();
     if (error) return fail(error.message, 500);
 
     if (chosen?.id) {

@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      // Doublon de /fiat-topolino-ou-neodrive : on concentre le référencement sur la page comparatif.
+      { source: "/blog/neodrive-ou-fiat-topolino", destination: "/fiat-topolino-ou-neodrive", permanent: true },
+    ];
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

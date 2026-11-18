@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "Voiture sans permis neuve ou occasion : laquelle choisir ? | NeoDrive",
   description:
     "Neuf ou occasion en voiture sans permis : comparez budget, batterie, historique, garanties, SAV et risque d’imprévu avant d’acheter.",
-  alternates: { canonical: URL },
+  alternates: { canonical: `${SITE}/voiture-sans-permis-occasion` }, // même intention que la page pilier : on concentre le référencement sur elle
   openGraph: {
     type: "article",
     locale: "fr_FR",

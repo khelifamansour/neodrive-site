@@ -2,6 +2,12 @@
 /** @type {import('next').NextConfig} */
 
 const nextConfig = {
+  async redirects() {
+    return [
+      // Doublon de /fiat-topolino-ou-neodrive : on concentre le référencement sur la page comparatif.
+      { source: "/blog/neodrive-ou-fiat-topolino", destination: "/fiat-topolino-ou-neodrive", permanent: true },
+    ];
+  },
 
   serverExternalPackages: ["pdfkit"],
   outputFileTracingIncludes: {
