@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import c from "../giga.module.css";
 import { Login, Unauthorized, gigaApi, storedCode } from "../client";
-import { DEFAULT_HUB, DEFAULT_SIM, SEASON, SIM_MONTHS, hubCost, milestones, simulate, type HubHyp, type SimHyp } from "../../../lib/sales-sim";
+import { DEFAULT_CASH, cashPlan, type CashHyp, DEFAULT_HUB, DEFAULT_SIM, SEASON, SIM_MONTHS, hubCost, milestones, simulate, type HubHyp, type SimHyp } from "../../../lib/sales-sim";
 
 const eur = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} €`;
 const KEY = "nd_sim_hyp_v2";
@@ -41,6 +41,7 @@ export default function SimulationPage() {
   const [hist, setHist] = useState<History | null>(null);
   const [h, setH] = useState<SimHyp>(DEFAULT_SIM);
   const [hub, setHub] = useState<HubHyp>(DEFAULT_HUB);
+  const [cash, setCash] = useState<CashHyp>(DEFAULT_CASH);
 
   const load = useCallback(async (code = storedCode()) => {
     try { const j = await gigaApi<History>({ action: "sim_history" }, code); setHist(j); try { const s = localStorage.getItem(KEY); if (s) setH({ ...DEFAULT_SIM, ...JSON.parse(s) }); } catch { /* rien */ } setState("ready"); }
@@ -57,6 +58,7 @@ export default function SimulationPage() {
   const sansHausse = useMemo(() => simulate({ ...h, hausse: 0 }), [h]);
   const jalons = useMemo(() => milestones(rows, h), [rows, h]);
   const hc = useMemo(() => hubCost(hub), [hub]);
+  const cp = useMemo(() => cashPlan(h, cash), [h, cash]);
   const sum = (r: typeof rows, f: (x: (typeof rows)[number]) => number) => r.reduce((t, x) => t + f(x), 0);
 
   if (state === "loading") return <main className={c.page}><p className={c.muted} style={{ padding: 30 }}>Chargement…</p></main>;
@@ -149,6 +151,29 @@ export default function SimulationPage() {
             👉 Ton dépôt devient rentable à partir d&apos;environ <b>{hc.seuil || "?"} voitures par mois</b> dans ce dépôt.
           </p>
           <p className={c.small}>Pas compté : le vol et la casse sur un terrain à toi, le temps pour trouver le terrain et les autorisations, et le fait que le loyer tombe même les mois creux.</p>
+        </div>
+      </section>
+
+      <section className={c.section}>
+        <h2 className={c.h2}>💶 Trésorerie : l&apos;argent gagné est réinvesti dans les commandes</h2>
+        <div className={c.card}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10 }}>
+            {([["caisse", "Argent disponible au départ (hors réserve 50 000 €)"], ["stock", "Voitures en stock ou arrivant avant fin décembre"], ["arrivee_due", "Voitures dont les frais d'arrivée restent à payer"], ["acompte", "Payé à la commande (€/voiture)"], ["solde", "Payé 1 mois après (€/voiture)"], ["delai", "Mois entre commande et arrivée"], ["seuil", "Minimum à garder sur le compte (€)"], ["prelevement", "Ce que tu te verses par mois (€)"], ["securite", "Stock de sécurité (mois de ventes)"]] as [keyof CashHyp, string][]).map(([k, l]) => (
+              <label key={k} className={c.small}>{l}<input className={c.input} type="number" step={k === "securite" ? 0.1 : 1} value={cash[k]} onChange={e => setCash(p => ({ ...p, [k]: Number(e.target.value) || 0 }))} style={{ width: "100%" }} /></label>
+            ))}
+          </div>
+          <div style={{ overflowX: "auto", marginTop: 12 }}>
+            <table style={{ borderCollapse: "collapse", fontSize: 14, width: "100%" }}>
+              <thead><tr style={{ color: "#666" }}><th style={tdl}>Mois</th><th style={th}>Demande</th><th style={th}>Vendues</th><th style={th}>Perdues</th><th style={th}>Commandées</th><th style={th}>En route</th><th style={th}>Stock fin</th><th style={th}>Payé usine</th><th style={th}>Payé arrivée</th><th style={th}>Compte fin de mois</th></tr></thead>
+              <tbody>{cp.map(r => (
+                <tr key={r.mois} style={{ borderTop: "1px solid #eee", background: r.perdues ? "#fff4ec" : undefined }}>
+                  <td style={tdl}><b>{r.mois}</b></td><td style={th}>{r.demande}</td><td style={th}>{r.ventes}</td><td style={{ ...th, color: r.perdues ? "#b42318" : undefined }}>{r.perdues || ""}</td>
+                  <td style={th}><b>{r.commande}</b></td><td style={th}>{r.en_route}</td><td style={th}>{r.stock_fin}</td><td style={th}>{eur(r.usine)}</td><td style={th}>{eur(r.arrivee)}</td><td style={th}><b>{eur(r.caisse_fin)}</b></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <p className={c.small}>Chaque voiture : acompte à la commande, solde de l&apos;usine le mois suivant, fret + douane + dépotage à l&apos;arrivée, encaissement à la vente. La commande du mois couvre les ventes du mois d&apos;arrivée + le stock de sécurité, dans la limite de l&apos;argent disponible. TVA et impôt sur les sociétés non comptés.</p>
         </div>
       </section>
 
