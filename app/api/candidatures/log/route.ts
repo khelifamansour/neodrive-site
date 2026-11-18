@@ -3,7 +3,7 @@ import { authorizeSection } from "../../../../lib/access";
 import { crmDatabase } from "../../../../lib/crm-agent";
 
 export const dynamic = "force-dynamic";
-const KINDS = ["appel", "pas de réponse", "entretien", "note", "recruté", "écarté"];
+const KINDS = ["appel", "pas de réponse", "entretien", "rdv", "retenu", "note", "recruté", "écarté"];
 
 /** Journal du recrutement par candidat (appels, entretiens, décisions). Code d'accès NeoDrive. */
 export async function PUT(req: Request) {

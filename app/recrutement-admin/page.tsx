@@ -5,6 +5,7 @@ import { COMMON, POSTES, type PosteKey } from "../../lib/hiring";
 import { supabase } from "../../lib/supabase";
 import { talentIndex } from "../../lib/excellence";
 import { PILLAR_LABEL, PILLAR_WEIGHTS, pillars, type PillarKey } from "../../lib/pillars";
+import { NOTE_LABEL, PASTE_EXCLUDE, SALARY_MAX, fmtK, noteNeoDrive, salaryRule, type NoteKey } from "../../lib/recruit-score";
 import { MARKET, TEMPLATES, fmtDA, money, freelanceCharges, monthly, salariedCost, warnings, type OfferParams } from "../../lib/offers";
 
 type Row = Record<string, any>;
@@ -15,7 +16,7 @@ const tail = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 
 export default function RecrutementAdmin() {
   const [code, setCode] = useState(""); const [apps, setApps] = useState<Row[] | null>(null); const [invs, setInvs] = useState<Row[]>([]); const [msg, setMsg] = useState("");
-  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"jour" | "top" | "all" | "offres" | "elite">("jour"); const [lvl, setLvl] = useState<1 | 2 | 3>(2); const [offers, setOffers] = useState<Row[]>([]); const [offerFor, setOfferFor] = useState<Dossier | null>(null); const [op, setOp] = useState<OfferParams | null>(null); const [created, setCreated] = useState<Row | null>(null); const [logs, setLogs] = useState<Row[]>([]); const [exc, setExc] = useState<Row[]>([]); const [deep, setDeep] = useState<Row[]>([]); const [imp, setImp] = useState<{ poste: PosteKey; busy: boolean; text: string; rows: Row[] }>({ poste: "closer", busy: false, text: "", rows: [] });
+  const [poste, setPoste] = useState<PosteKey | "tous">("tous"); const [open, setOpen] = useState<string | null>(null); const [hideOut, setHideOut] = useState(true); const [waOnly, setWaOnly] = useState(false); const [view, setView] = useState<"tableau" | "jour" | "top" | "all" | "offres" | "elite">("tableau"); const [lvl, setLvl] = useState<1 | 2 | 3>(2); const [offers, setOffers] = useState<Row[]>([]); const [offerFor, setOfferFor] = useState<Dossier | null>(null); const [op, setOp] = useState<OfferParams | null>(null); const [created, setCreated] = useState<Row | null>(null); const [logs, setLogs] = useState<Row[]>([]); const [exc, setExc] = useState<Row[]>([]); const [deep, setDeep] = useState<Row[]>([]); const [imp, setImp] = useState<{ poste: PosteKey; busy: boolean; text: string; rows: Row[] }>({ poste: "closer", busy: false, text: "", rows: [] });
   const call = async (url: string, method: string, body: object, pc = code) => { const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: pc, ...body }) }); const j = await r.json().catch(() => ({ ok: false })); if (!r.ok || !j.ok) throw new Error(j.error || "Erreur"); return j; };
   const load = async (pc = code) => { try { const [a, i] = await Promise.all([call("/api/candidatures", "PUT", { action: "list" }, pc), call("/api/candidatures/invite", "POST", { action: "list" }, pc)]); setApps(a.rows); setInvs(i.rows); call("/api/offres", "PUT", { action: "list" }, pc).then(o => setOffers(o.offers)).catch(() => null); call("/api/candidatures/log", "PUT", { action: "list" }, pc).then(o => setLogs(o.logs)).catch(() => null); call("/api/excellence", "PUT", { action: "list" }, pc).then(o => setExc(o.tests)).catch(() => null); call("/api/candidatures/deep", "PUT", { action: "list" }, pc).then(o => setDeep(o.rows)).catch(() => null); try { sessionStorage.setItem("nd_pc", pc) } catch { } } catch (e) { setMsg((e as Error).message) } };
   useEffect(() => { let pc = ""; try { pc = sessionStorage.getItem("nd_pc") || "" } catch { } setCode(pc); load(pc).then(() => { if (!pc) setMsg("") }); // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,16 +47,16 @@ export default function RecrutementAdmin() {
   const th: React.CSSProperties = { padding: "7px 6px", borderBottom: "1px solid #e5e7eb", textAlign: "center", whiteSpace: "nowrap", fontSize: 13 };
   const salaryK = (v: unknown) => { const n = Number(String(v ?? "").replace(/[^\d]/g, "")); return n >= 1000 ? `${Math.round(n / 1000)} k DA` : String(v ?? "?").slice(0, 14); };
   const board = (k: PosteKey) => {
-    const done = dossiers.filter(d => d.poste === k && d.app && !String(d.stage).startsWith("écarté")).sort((x, y) => (pil(y).global ?? talent(y) ?? 0) - (pil(x).global ?? talent(x) ?? 0));
+    const done = dossiers.filter(d => d.poste === k && d.app && !String(d.stage).startsWith("écarté")).sort((x, y) => talentScore(y) - talentScore(x));
     const out = dossiers.filter(d => d.poste === k && d.app && String(d.stage).startsWith("écarté")).length;
     const wait = dossiers.filter(d => d.poste === k && !d.app && d.stage === "invité").sort((x, y) => (y.cvScore ?? 0) - (x.cvScore ?? 0)).slice(0, 5);
     return <section key={k} className={s.card}>
       <h2>{POSTES[k].short} — {done.length} formulaire(s) rempli(s){out ? ` · ${out} écarté(s)` : ""}</h2>
-      {done.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["#", "Candidat", "Note NeoDrive", "Intellig.", "Français", "Expér.", "Stabilité", "Formation", "Cohérence", "Excellence", "Note finale", "Français /10", "Logique /8", "Rédaction /20", "Énigmes", "Bac", "Durée", "Collages", "Prétention", "Plan d'action", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead>
+      {done.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["#", "Candidat", "Note NeoDrive", "Intellig.", "Français", "Expér.", "Stabilité", "Formation", "Cohérence", "Excellence", "Avis IA (info)", "Français /10", "Logique /8", "Rédaction /20", "Énigmes", "Bac", "Durée", "Collages", "Prétention", "Plan d'action", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead>
         <tbody>{done.map((d, i) => { const a = d.app!; return <tr key={d.key} style={{ background: i < 3 ? "#f0fdf4" : undefined }}>
           <td style={th}><b>{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</b></td>
           <td style={{ ...th, textAlign: "left", whiteSpace: "normal", minWidth: 190 }}><b>{d.name}</b><br /><small style={{ color: "#5b6573" }}>{String(a.ai_summary || d.inv?.cv_summary || "").split(/(?<=\.)\s/)[0].slice(0, 140)}</small></td>
-          <td style={th}><b style={{ color: color(pil(d).global), fontSize: 17 }}>{pil(d).global ?? "–"}</b></td>{(["intelligence", "francais", "experience", "stabilite", "formation", "coherence"] as PillarKey[]).map(k => <td key={k} style={th}>{pilCell(pil(d)[k])}</td>)}<td style={th}>{excOf(d)?.finished_at ? <b>{excOf(d)!.score}</b> : excOf(d) ? "⏳" : "–"}</td><td style={th}>{d.score}</td>
+          <td style={th}><b style={{ color: color(talentScore(d)), fontSize: 17 }}>{talentScore(d)}</b></td>{(["intelligence", "francais", "experience", "stabilite", "formation", "coherence"] as PillarKey[]).map(k => <td key={k} style={th}>{pilCell(pil(d)[k])}</td>)}<td style={th}>{excOf(d)?.finished_at ? <b>{excOf(d)!.score}</b> : excOf(d) ? "⏳" : "–"}</td><td style={th}>{d.score}</td>
           <td style={th}>{a.test_french ?? "–"}</td><td style={th}>{a.test_logic ?? "–"}</td><td style={th}>{a.test_writing ?? "–"}</td>
           <td style={th}>{a.answers?.riddles_score ?? "–"}{a.riddle_sec ? <><br /><small>{a.riddle_sec} s</small></> : null}</td>
           <td style={th}>{a.bac_average ?? "?"}</td><td style={th}>{a.duration_sec ? `${Math.round(a.duration_sec / 60)} min` : "–"}</td>
@@ -156,7 +157,12 @@ export default function RecrutementAdmin() {
   const bacPct = (d: Dossier) => { const b = Number(String(d.app?.bac_average ?? "").replace(",", ".")); return b > 0 ? Math.max(0, Math.min(100, Math.round((b - 10) / 8 * 100))) : null; };
   const pilT = (d: Dossier) => ({ ...pil(d), bac: bacPct(d) }) as Record<string, number | null>;
   const PARTS = [["Français", "francais", 35], ["Intelligence", "intelligence", 35], ["Bac", "bac", 30]] as const;
-  const talentScore = (d: Dossier) => { const P = pilT(d); const ok = PARTS.filter(([, k]) => P[k] != null); if (!ok.length) return 0; const v = ok.reduce((n, [, k, w]) => n + (P[k] as number) * w, 0) / ok.reduce((n, [, , w]) => n + w, 0); return Math.min(100, Math.round(v + (english(d) ? 3 : 0))); };
+  // Note NeoDrive : la seule note du recrutement (français 25, intelligence 25, expérience 25, stabilité 15, bac 10, −5 par copier-coller).
+  const noteOf = (d: Dossier) => noteNeoDrive(d.app, excOf(d), deepOf(d));
+  const talentScore = (d: Dossier) => noteOf(d).note;
+  const exclusion = (d: Dossier) => { const n = noteOf(d); if (n.pastes >= PASTE_EXCLUDE) return `${n.pastes} copier-coller pendant les tests`; const v = salaryRule(n.note, d.app?.salary_expectation); return v.keep ? "" : v.reason; };
+  const salBadge = (d: Dossier) => salaryRule(talentScore(d), d.app?.salary_expectation).badge;
+  const talentScoreOld = (d: Dossier) => { const P = pilT(d); const ok = PARTS.filter(([, k]) => P[k] != null); if (!ok.length) return 0; const v = ok.reduce((n, [, k, w]) => n + (P[k] as number) * w, 0) / ok.reduce((n, [, , w]) => n + w, 0); return Math.min(100, Math.round(v + (english(d) ? 3 : 0))); };
   const pourquoi = (d: Dossier) => { const P = pilT(d); const ok = PARTS.filter(([, k]) => P[k] != null).map(([l, k]) => [l, P[k] as number] as const).sort((x, y) => y[1] - x[1]); if (!ok.length) return "Pas encore assez de données."; const best = ok.slice(0, 2).map(([l, v]) => `${l} ${v}`).join(", "); const weak = ok.length > 2 ? ok[ok.length - 1] : null; return `Forces : ${best}${english(d) ? ", bon anglais" : ""}${weak ? ` · Point faible : ${weak[0]} ${weak[1]}` : ""}`; };
   const [det, setDet] = useState<string | null>(null);
   const [more, setMore] = useState<Record<string, boolean>>({}); const [dos, setDos] = useState<Dossier | null>(null); const [callNote, setCallNote] = useState<Record<string, string>>({}); const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -219,7 +225,7 @@ export default function RecrutementAdmin() {
 
   // ── Feuille d'appels du jour : meilleurs talents (français 35 / intelligence 35 / bac 30) pas encore appelés ──
   const intl = (p: unknown) => { const d = String(p ?? "").replace(/\D/g, ""); return d.startsWith("00") ? d.slice(2) : d.startsWith("0") ? "213" + d.slice(1) : d; };
-  const isCalled = (d: Dossier) => logsOf(d).some(l => ["appel", "entretien", "recruté", "écarté"].includes(l.kind)) || !!excOf(d);
+  const isCalled = (d: Dossier) => logsOf(d).some(l => ["appel", "entretien", "rdv", "retenu", "recruté", "écarté"].includes(l.kind)) || !!excOf(d);
   const lastLog = (d: Dossier) => logsOf(d).filter(l => l.kind !== "pas de réponse").sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
   const preCall = (d: Dossier) => `https://wa.me/${intl(d.phone)}?text=${encodeURIComponent(`Bonjour ${d.name.split(" ")[0]}, ici Mansour, fondateur de NeoDrive. Félicitations : votre candidature fait partie des meilleures que nous avons reçues. J'aimerais vous appeler pour un premier échange d'une dizaine de minutes. Quand êtes-vous disponible aujourd'hui ou demain ?`)}`;
   const reasons = (d: Dossier) => {
@@ -297,13 +303,13 @@ export default function RecrutementAdmin() {
     </div>; };
   const callView = () => {
     const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }); const Today = today.charAt(0).toUpperCase() + today.slice(1);
-    const pools = (["closer", "coordinateur", "social"] as const).map(k => ({ k, list: dossiers.filter(d => d.poste === k && d.app && !String(d.stage).startsWith("écarté") && d.stage !== "recruté" && !isCalled(d)).map(d => ({ d, sc: talentScore(d) })).sort((x, y) => y.sc - x.sc) }));
+    const pools = (["closer", "coordinateur", "social"] as const).map(k => ({ k, list: dossiers.filter(d => d.poste === k && d.app && !String(d.stage).startsWith("écarté") && d.stage !== "recruté" && !isCalled(d) && !exclusion(d)).map(d => ({ d, sc: talentScore(d) })).sort((x, y) => y.sc - x.sc) }));
     const total = pools.reduce((n, p) => n + Math.min(p.list.length, more[p.k] ? 10 : 3), 0);
     const called = dossiers.filter(d => d.app && isCalled(d)).map(d => ({ d, l: lastLog(d) })).sort((x, y) => String(y.l?.created_at || "").localeCompare(String(x.l?.created_at || "")));
     return <>
       <section className={s.card} style={{ borderColor: "#86efac" }}>
         <h2>📞 À appeler aujourd'hui · {Today}</h2>
-        <p className={s.muted} style={{ margin: 0 }}><b>{total}</b> candidat(s) à appeler · classés par note talent (français 35 %, intelligence 35 %, bac 30 %, sans l'expérience). Conseil : envoyez d'abord le message WhatsApp « avant l'appel », puis appelez en fin de journée. Après l'appel, notez-le : la personne quitte la liste et passe dans « Appelés ».</p>
+        <p className={s.muted} style={{ margin: 0 }}><b>{total}</b> candidat(s) à appeler · classés par Note NeoDrive (français 25 %, intelligence 25 %, expérience 25 %, stabilité 15 %, bac 10 %), sans les candidats écartés pour le salaire ou le copier-coller. Conseil : envoyez d'abord le message WhatsApp « avant l'appel », puis appelez en fin de journée. Après l'appel, notez-le : la personne quitte la liste et passe dans « Appelés ».</p>
         {msg ? <p style={{ margin: "6px 0 0" }}><b>{msg}</b></p> : null}
       </section>
       {pools.map(({ k, list }) => <section key={k} className={s.card}>
@@ -376,7 +382,7 @@ export default function RecrutementAdmin() {
     <div style={{ display: "flex", gap: 12, alignItems: "center", cursor: "pointer" }} onClick={() => setOpen(open === d.key ? null : d.key)}>
       <b style={{ minWidth: 52, height: 52, borderRadius: 14, display: "grid", placeItems: "center", color: "#fff", background: color(a ? d.score : d.cvScore), fontSize: 18 }}>{a ? d.score : (d.cvScore ?? "–")}</b>
       <div style={{ flex: 1 }}><b>{d.name}</b> <small style={{ color: "#7a8594" }}>· {POSTES[d.poste]?.short} · {d.city}</small><br />
-        <small>{a ? `✅ Formulaire rempli · CV ${d.cvScore ?? "–"} · tests/IA ${a.ai_score ?? "–"}` : `⏳ Invité, formulaire non rempli · note CV ${d.cvScore ?? "–"}`} · <b>{d.stage}</b></small><br />
+        <small>{a ? `✅ Formulaire rempli · Note NeoDrive ${talentScore(d)} · avis IA (info) : ${a.ai_verdict || "–"}` : `⏳ Invité, formulaire non rempli · note CV ${d.cvScore ?? "–"}`} · <b>{d.stage}</b></small><br />
         <small style={{ color: "#5b6573" }}>{a?.ai_summary || d.inv?.cv_summary || ""}</small></div>
     </div>
     <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 14 }}>
@@ -406,12 +412,52 @@ export default function RecrutementAdmin() {
     </div> : null}
   </article>; };
 
+  // ── Tableau unique : une section par poste, classée par Note NeoDrive, avec le statut d'appel modifiable ──
+  const CALL_ST: [string, string, string][] = [["", "à appeler", "#eef2ff"], ["appel", "appelé", "#e0f2fe"], ["pas de réponse", "pas de réponse", "#fef3c7"], ["rdv", "RDV fixé", "#ede9fe"], ["retenu", "retenu", "#dcfce7"], ["écarté", "écarté", "#fee2e2"]];
+  const callState = (d: Dossier) => { const l = logsOf(d).filter(x => ["appel", "entretien", "pas de réponse", "rdv", "retenu", "recruté", "écarté"].includes(x.kind)).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0]; if (!l) return { k: "", at: "", note: "" }; const k = l.kind === "entretien" ? "appel" : l.kind === "recruté" ? "retenu" : l.kind; return { k, at: day(l.created_at), note: l.note || "" }; };
+  const setCallState = async (d: Dossier, kind: string) => {
+    if (!kind) return; const note = prompt(`${d.name} : ${CALL_ST.find(c => c[0] === kind)?.[1]}. Une note ? (facultatif)`) ?? ""; setBusyKey(d.key);
+    try { await call("/api/candidatures/log", "PUT", { action: "add", poste: d.poste, phone: d.phone, full_name: d.name, kind, note }); if (d.app && kind === "écarté") await update(d.app.id, { status: "écarté" }); if (d.app && kind === "retenu") await update(d.app.id, { status: "essai payé" }); setMsg(`✅ ${d.name} : ${CALL_ST.find(c => c[0] === kind)?.[1]}`); await load(); } catch (e) { setMsg((e as Error).message); } finally { setBusyKey(null); }
+  };
+  const copyPhone = (p: string) => { navigator.clipboard?.writeText(p).then(() => setMsg(`📋 ${p} copié`)).catch(() => null); };
+  const tableView = () => {
+    const td: React.CSSProperties = { padding: "6px 6px", borderBottom: "1px solid #eef0f3", fontSize: 13, whiteSpace: "nowrap", textAlign: "center" };
+    const sticky: React.CSSProperties = { position: "sticky", left: 0, background: "#fff", zIndex: 1, textAlign: "left", minWidth: 150, whiteSpace: "normal" };
+    const LABEL: Record<PosteKey, string> = { closer: "🟠 Commercial", coordinateur: "🔵 Manager / coordinateur", social: "🟣 Marketing" } as Record<PosteKey, string>;
+    return <>
+      <section className={s.card}><h2>📊 Tableau de recrutement</h2><p className={s.muted} style={{ margin: 0 }}>Une ligne par candidat, classée par <b>Note NeoDrive</b>. Changez le statut d’appel en un clic : il est partagé avec « À appeler aujourd’hui ». L’avis de l’IA n’est qu’une information, il ne compte pas dans la note.</p>{msg ? <p style={{ margin: "6px 0 0" }}><b>{msg}</b></p> : null}</section>
+      {(["closer", "coordinateur", "social"] as PosteKey[]).map(k => {
+        const all = dossiers.filter(d => d.poste === k && d.app).map(d => ({ d, n: noteOf(d), ex: exclusion(d) }));
+        const kept = all.filter(x => !x.ex && !["écarté (IA)"].includes(String(x.d.stage))).sort((a, b) => b.n.note - a.n.note);
+        const out = all.filter(x => x.ex || String(x.d.stage) === "écarté (IA)").sort((a, b) => b.n.note - a.n.note);
+        return <section key={k} className={s.card}>
+          <h2>{LABEL[k] || POSTES[k].short} · {kept.length} candidat(s)</h2>
+          <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}>
+            <thead><tr style={{ background: "#f4f6f9" }}>{["#", "Candidat", "Note", "Téléphone", "Ville", "Salaire", ...(["francais", "intelligence", "experience", "stabilite", "bac"] as NoteKey[]).map(x => NOTE_LABEL[x]), "Statut d'appel", "Dernière note", ""].map((h, i) => <th key={h + i} style={{ ...td, fontWeight: 700, ...(i === 1 ? { ...sticky, background: "#f4f6f9" } : {}) }}>{h}</th>)}</tr></thead>
+            <tbody>{kept.map(({ d, n }, i) => { const st = callState(d); const cs = CALL_ST.find(c => c[0] === st.k) || CALL_ST[0]; const b = salBadge(d); return <tr key={d.key} style={{ background: i < 3 ? "#f0fdf4" : undefined }}>
+              <td style={td}><b>{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</b></td>
+              <td style={{ ...td, ...sticky }}><b>{d.name}</b>{d.app?.ai_verdict ? <><br /><small style={{ color: "#6b7280" }}>avis IA (info) : {d.app.ai_verdict}</small></> : null}{n.pastes ? <><br /><small style={{ color: "#b91c1c" }}>⚠️ {n.pastes} copier-coller (−{n.penalty})</small></> : null}</td>
+              <td style={td}><b style={{ color: color(n.note), fontSize: 17 }}>{n.note}</b></td>
+              <td style={td}><button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => copyPhone(d.phone)}>📋 {d.phone}</button> <a href={`tel:+${intl(d.phone)}`}>📞</a> <a href={preCall(d)} target="_blank" rel="noreferrer">💬</a></td>
+              <td style={td}>{d.city || "—"}</td>
+              <td style={td}>{fmtK(d.app?.salary_expectation)}{b ? <><br /><small style={{ background: b === "à négocier" ? "#fef3c7" : "#f1f5f9", borderRadius: 999, padding: "1px 6px" }}>{b === "à négocier" ? "💬 à négocier" : b === "à clarifier" ? "❓ à clarifier" : "non précisé"}</small></> : null}</td>
+              {(["francais", "intelligence", "experience", "stabilite", "bac"] as NoteKey[]).map(x => <td key={x} style={td}><span style={{ color: color(n.parts[x]) }}>{n.parts[x] == null ? "–" : Math.round(n.parts[x] as number)}</span></td>)}
+              <td style={td}><select value={st.k} disabled={busyKey === d.key} onChange={e => setCallState(d, e.target.value)} style={{ background: cs[2], border: "1px solid #d1d5db", borderRadius: 8, padding: "4px 6px", font: "inherit", fontSize: 13 }}>{CALL_ST.map(([v, l]) => <option key={l} value={v} disabled={!v && !!st.k}>{l}</option>)}</select>{st.at ? <><br /><small>{st.at}</small></> : null}</td>
+              <td style={{ ...td, whiteSpace: "normal", minWidth: 140, textAlign: "left" }}><small>{st.note || "—"}</small></td>
+              <td style={td}><button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => setDos(d)}>🗂 Dossier</button></td>
+            </tr>; })}</tbody></table></div>
+          {out.length ? <details style={{ marginTop: 8 }}><summary style={{ cursor: "pointer", fontWeight: 700 }}>Écartés (salaire / copier-coller / IA) : {out.length}</summary><div style={{ display: "grid", gap: 4, marginTop: 6, fontSize: 13 }}>{out.map(({ d, n, ex }) => <div key={d.key}><b style={{ color: color(n.note) }}>{n.note}</b> · <b>{d.name}</b> · {fmtK(d.app?.salary_expectation)} · <span style={{ color: "#6b7280" }}>{ex || "écarté par l’IA"}</span></div>)}</div></details> : null}
+        </section>; })}
+    </>;
+  };
+
   return <main className={s.page}>
-    <div className={s.top}><div><h1>👥 Recrutement</h1><p>Note finale = 30 % CV + 70 % formulaire et tests. Mise à jour à chaque nouvelle candidature.</p></div><button className={s.ghost} onClick={() => load()}>↻ Actualiser</button></div>
-    <div className={s.seg} style={{ marginTop: 12 }}><button className={view === "jour" ? s.on : ""} onClick={() => setView("jour")}>📞 À appeler aujourd'hui</button><button className={view === "top" ? s.on : ""} onClick={() => setView("top")}>🏆 Classement par poste</button><button className={view === "elite" ? s.on : ""} onClick={() => setView("elite")}>🏅 Talents (top 10)</button><button className={view === "all" ? s.on : ""} onClick={() => setView("all")}>📂 Tous les dossiers</button><button className={view === "offres" ? s.on : ""} onClick={() => setView("offres")}>📝 Offres ({offers.length})</button></div>
+    <div className={s.top}><div><h1>👥 Recrutement</h1><p>Une seule note : la <b>Note NeoDrive</b> /100 (français 25, intelligence 25, expérience 25, stabilité 15, bac 10, −5 par copier-coller). Prétention au-dessus de {SALARY_MAX / 1000} k DA : écarté, sauf profil exceptionnel (note ≥ 75) jusqu’à 150 k DA, « à négocier ».</p></div><button className={s.ghost} onClick={() => load()}>↻ Actualiser</button></div>
+    <div className={s.seg} style={{ marginTop: 12 }}><button className={view === "tableau" ? s.on : ""} onClick={() => setView("tableau")}>📊 Tableau</button><button className={view === "jour" ? s.on : ""} onClick={() => setView("jour")}>📞 À appeler aujourd'hui</button><button className={view === "top" ? s.on : ""} onClick={() => setView("top")}>🏆 Classement par poste</button><button className={view === "elite" ? s.on : ""} onClick={() => setView("elite")}>🏅 Talents (top 10)</button><button className={view === "all" ? s.on : ""} onClick={() => setView("all")}>📂 Tous les dossiers</button><button className={view === "offres" ? s.on : ""} onClick={() => setView("offres")}>📝 Offres ({offers.length})</button></div>
     {offerPanel()}
-    {view !== "offres" && view !== "jour" ? importBox() : null}
+    {view !== "offres" && view !== "jour" && view !== "tableau" ? importBox() : null}
     {dossierPanel()}
+    {view === "tableau" ? tableView() : null}
     {view === "jour" ? callView() : null}
     {view === "elite" ? eliteView() : null}
     {view === "offres" ? <section className={s.card}><h2>📝 Offres envoyées</h2>{offers.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["Candidat", "Poste", "Fixe", "Commission", "Statut", "Envoyée", "Vue", "Signée", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead><tbody>{offers.map(o => <tr key={o.id}><td style={{ ...th, textAlign: "left" }}><b>{o.full_name}</b></td><td style={th}>{POSTES[o.poste as PosteKey]?.short}</td><td style={th}>{fmtDA(o.params?.fixe || 0)}</td><td style={th}>{o.params?.commission ? fmtDA(o.params.commission) : "—"}</td><td style={th}><b>{o.status}</b>{o.refuse_reason ? <><br /><small>{o.refuse_reason}</small></> : null}</td><td style={th}>{o.sent_at ? `${new Date(o.sent_at).toLocaleDateString("fr-FR")} (${o.sent_via})` : "—"}</td><td style={th}>{o.viewed_at ? new Date(o.viewed_at).toLocaleDateString("fr-FR") : "—"}</td><td style={th}>{o.signed_at ? `${new Date(o.signed_at).toLocaleDateString("fr-FR")} · ${o.signature_name}` : "—"}</td><td style={th}><a href={`https://www.easydrive-auto.fr/offre/${o.token}`} target="_blank" rel="noreferrer">👁</a>{!["signée", "annulée"].includes(o.status) ? <> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => sendOffer(o)}>📨</button> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => window.open(waOffer(o), "_blank")}>💬</button> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={async () => { if (confirm("Annuler cette offre ?")) { await call("/api/offres", "PUT", { action: "cancel", id: o.id }); load(); } }}>✕</button></> : null}</td></tr>)}</tbody></table></div> : <p className={s.muted}>Aucune offre pour l'instant. Cliquez sur « 📝 Offre » à côté d'un candidat.</p>}</section> : null}
