@@ -57,7 +57,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   const [sigMode, setSigMode] = useState(false); const [sent, setSent] = useState<{ sms: boolean; email: boolean; whatsapp: string | null } | null>(null);
   const [notif, setNotif] = useState({ date: "", from: "14:00", to: "16:00" }); const [pend, setPend] = useState({ montant: "", cles: false, documents: false }); const [vins, setVins] = useState<{ vin: string; container: string | null }[]>([]);
   const [sel, setSel] = useState<number | null>(null); const [busy, setBusy] = useState("");
-  const [vin, setVin] = useState(""); const [photo, setPhoto] = useState("");
+  const [vin, setVin] = useState(""); const [photo, setPhoto] = useState(""); const [tail, setTail] = useState("");
   const [ck, setCk] = useState<Record<string, boolean>>({}); const [reserves, setReserves] = useState(""); const [signer, setSigner] = useState(""); const [sig, setSig] = useState<string | null>(null);
   const [done, setDone] = useState<{ url: string; emailed: boolean; whatsapp: string | null } | null>(null);
 
@@ -163,10 +163,12 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
 
         <div className={c.card} style={{ display: "grid", gap: 8 }}>
           <b>1. Numéro de série (VIN)</b>
-          <small className={c.muted}>Lisez la plaque du véhicule (17 caractères) et photographiez-la.</small>
+          <small className={c.muted}>Lisez la plaque du véhicule (17 caractères) et photographiez-la. Sans appareil photo : tapez juste la fin du VIN (ex. 483) et touchez la bonne voiture ; la photo est alors facultative.</small>
+          <input className={c.input} value={tail} placeholder="Derniers chiffres du VIN (3 à 6)" onChange={e => setTail(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))} style={{ fontFamily: "monospace" }} />
+          {tail.length >= 3 ? (() => { const hits = vins.filter(v => v.vin.endsWith(tail)).slice(0, 8); return hits.length ? <div style={{ display: "grid", gap: 6 }}>{hits.map(v => <button key={v.vin} className={`${c.btn} ${c.btnGhost}`} style={{ fontFamily: "monospace", justifyContent: "flex-start" }} onClick={() => { setVin(v.vin); setTail(""); }}>{v.vin}{v.container ? ` · ${v.container}` : ""}</button>)}</div> : <small className={c.err}>Aucun VIN libre ne finit par « {tail} » : tapez le VIN complet.</small>; })() : null}
           <datalist id="dlv-vins">{vins.map(v => <option key={v.vin} value={v.vin}>{v.container || ""}</option>)}</datalist>
           <input className={c.input} list="dlv-vins" value={vin} maxLength={17} autoCapitalize="characters" spellCheck={false} placeholder="Ex. LP4SE0D0…" onChange={e => setVin(e.target.value.toUpperCase())} style={{ fontFamily: "monospace", fontSize: 18, letterSpacing: 1 }} />
-          <label className={`${c.btn} ${c.btnGhost}`} style={{ ...big, opacity: busy === "photo" ? .6 : 1 }}>{busy === "photo" ? "Envoi…" : photo || r.has_vin_photo ? "📷 Reprendre la photo de la plaque" : "📷 Photographier la plaque VIN"}
+          <label className={`${c.btn} ${c.btnGhost}`} style={{ ...big, opacity: busy === "photo" ? .6 : 1 }}>{busy === "photo" ? "Envoi…" : photo || r.has_vin_photo ? "📷 Reprendre la photo de la plaque" : "📷 Photographier la plaque VIN (facultatif)"}
             <input type="file" accept="image/*" capture="environment" hidden disabled={!!busy} onChange={e => { uploadPhoto(e.target.files?.[0]); e.target.value = ""; }} /></label>
           {photo || r.has_vin_photo ? <small className={c.muted}>✅ Photo de la plaque enregistrée.</small> : null}
           <button className={`${c.btn} ${c.btnBrand}`} style={big} disabled={!!busy || vin.length !== 17} onClick={saveVin}>{busy === "vin" ? "…" : r.vin === vin && !photo ? "✅ Numéro enregistré" : "Enregistrer le numéro de série"}</button>

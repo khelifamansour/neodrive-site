@@ -30,9 +30,10 @@ function Driver() {
   const [deliverId, setDeliverId] = useState<string | null>(null); const [vplate, setVplate] = useState<Record<number, string>>({});
   const [err, setErr] = useState(""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
   const [depot, setDepot] = useState(""); const [photo, setPhoto] = useState(""); const [match, setMatch] = useState<Match | null>(null); const [vin, setVin] = useState(""); const [client, setClient] = useState(""); const [driver, setDriver] = useState("");
+  const [tail, setTail] = useState(""); const [found, setFound] = useState<{ vin: string; label: string; here: boolean }[] | null>(null); const [owner, setOwner] = useState(false);
   const call = async (body: object) => { const r = await fetch("/api/chauffeur", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ k, driver, ...body }) }); const j = await r.json().catch(() => ({ ok: false, error: "Connexion impossible" })); if (!j.ok && !j.conflict) throw new Error(j.error || "Erreur"); return j; };
   const load = async () => { try { const j = await call({ action: "get" }); setData(j); if (!depot) { const d = j.depots.find((x: any) => x.id === j.tour?.hubId); if (d) setDepot(d.id); } } catch (e) { setErr((e as Error).message); } };
-  useEffect(() => { if (!k) { setErr("Lien incomplet : utilisez le lien envoyé par NeoDrive."); return; } try { setDriver(localStorage.getItem("nd_driver") || ""); } catch { } load(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!k) { setErr("Lien incomplet : utilisez le lien envoyé par NeoDrive."); return; } try { setDriver(localStorage.getItem("nd_driver") || ""); } catch { } try { setOwner(!!sessionStorage.getItem("nd_pc")); } catch { } load(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Suivi en direct (paiement confirmé, accusé signé par le client) : rafraîchi toutes les 15 s
   useEffect(() => { if (!k) return; const it = setInterval(() => { if (document.visibilityState === "visible") load(); }, 15000); return () => clearInterval(it); // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -47,6 +48,9 @@ function Driver() {
     setMatch(j.match); setVin(j.match.vehicle?.vin || j.match.vin);
     if (j.match.vehicle?.client_id) setClient(j.match.vehicle.client_id);
   });
+  // Appareil photo en panne : recherche par les derniers caractères du VIN (ex. « 483 » → LP4SE0D05T1600483)
+  const searchTail = (q: string) => { setTail(q); if (q.length < 3) { setFound(null); return; } call({ action: "search_vin", q, depot: depot || null }).then(j => setFound(j.results || [])).catch(() => setFound([])); };
+  const pick = (x: string) => run("match", async () => { setVin(x); setFound(null); setTail(""); const j = await call({ action: "match", vin: x }); setMatch(j.match); if (j.match.vehicle?.client_id) setClient(j.match.vehicle.client_id); });
   const check = () => run("match", async () => { const j = await call({ action: "match", vin }); setMatch(j.match); if (j.match.vehicle?.client_id) setClient(j.match.vehicle.client_id); });
   const confirmLoad = (force = false): Promise<void> => run("load", async () => {
     const veh = match?.vehicle; if (!veh) return "Choisissez d'abord le véhicule.";
@@ -56,9 +60,9 @@ function Driver() {
     setMatch(null); setPhoto(""); setVin(""); setClient(""); await load();
     return `✅ ${veh.vin} chargé${client ? " pour " + (data?.clients.find(c => c.id === client)?.name || "") : ""}`;
   });
-  const deliver = (v: Veh, f?: File) => run("dl" + v.id, async () => {
+  const deliver = (v: Veh, f?: File, vinConfirm?: string) => run("dl" + v.id, async () => {
     const path = f ? await uploadPhoto(f) : null;
-    const j = await call({ action: "deliver", vehicle_id: v.id, path, plate_path: vplate[v.id] || null }); await load();
+    const j = await call({ action: "deliver", vehicle_id: v.id, path, plate_path: vplate[v.id] || null, vin_confirm: vinConfirm || null }); await load();
     const ri = v.client_id ? data?.res?.[v.client_id] : undefined;
     if (ri && !ri.signed_at) { if (confirm("✅ Livraison enregistrée. Faire signer l'accusé au client maintenant, sur ce téléphone ? (Annuler = lui envoyer le lien par SMS plus bas)")) await signHere(v.client_id!); }
     else if (j.reception) { if (confirm("✅ Livraison enregistrée. Faire signer l'accusé de réception au client maintenant ?")) window.location.href = j.reception; }
@@ -91,6 +95,9 @@ function Driver() {
       <label className={s.primary} style={{ ...big, opacity: busy === "read" ? .6 : 1 }}>{busy === "read" ? "Lecture du VIN…" : "📷 Photographier la plaque VIN"}
         <input type="file" accept="image/*" capture="environment" hidden disabled={!!busy} onChange={e => { onPlate(e.target.files?.[0]); e.target.value = ""; }} /></label>
       <div style={{ display: "flex", gap: 8 }}><input value={vin} onChange={e => setVin(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 17))} placeholder="ou tapez le VIN (17 caractères)" style={{ fontFamily: "monospace", flex: 1 }} /><button className={s.ghost} disabled={vin.length !== 17 || !!busy} onClick={check}>Vérifier</button></div>
+      <label className={s.field}>Ou les derniers chiffres du VIN (3 à 6)<input value={tail} inputMode="text" onChange={e => searchTail(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))} placeholder="ex. 483" style={{ fontFamily: "monospace", fontSize: 18 }} /></label>
+      <small className={s.muted}>Nos VIN commencent par <code>LP4SE0D0</code> et finissent par <code>T1600…</code> : tapez juste la fin, puis touchez la bonne voiture.</small>
+      {found ? found.length ? <div style={{ display: "grid", gap: 6 }}>{found.map(x => <button key={x.vin} className={s.ghost} style={{ textAlign: "left", fontFamily: "monospace", ...(x.here ? { borderColor: "#16a34a" } : {}) }} disabled={!!busy} onClick={() => pick(x.vin)}><b>{x.vin}</b><br /><small style={{ fontFamily: "inherit" }}>{x.here ? "✅ au dépôt · " : ""}{x.label}</small></button>)}</div> : <small className={s.err}>Aucun VIN connu ne finit par « {tail} ». Tapez le VIN complet ci-dessus.</small> : null}
       {vin.length === 17 ? <small style={{ color: vinValid(vin) ? "#15803d" : "#b91c1c" }}>{vinValid(vin) ? "✅ VIN valide (clé de contrôle OK)" : "⚠️ Clé de contrôle incorrecte : vérifiez chaque caractère"}</small> : null}
 
       {match && !v ? <div className={s.err} style={{ fontWeight: 400 }}><b>VIN {match.vin} inconnu dans les conteneurs.</b>{match.suggestions.length ? <><br />VIN proches (erreur de lecture ?) :{match.suggestions.map(x => <button key={x.id} className={s.ghost} style={{ display: "block", margin: "6px 0", fontFamily: "monospace", width: "100%" }} onClick={() => { setMatch({ ...match, vehicle: x }); setVin(x.vin); if (x.client_id) setClient(x.client_id); }}>{x.vin} · {x.shipment}</button>)}</> : <><br />Vérifiez la plaque ou appelez Mansour.</>}{match.vin.length === 17 ? <button className={s.primary} style={{ display: "block", marginTop: 8, width: "100%" }} disabled={!!busy} onClick={addVehicle}>{busy === "add" ? "…" : `➕ C'est bien ce VIN : ajouter ce véhicule au stock du dépôt (ancien stock, hors conteneur)`}</button> : null}</div> : null}
@@ -119,7 +126,7 @@ function Driver() {
         </> : <>
           {data.tour && !x.has_plate ? <label className={s.ghost} style={{ cursor: "pointer" }}>{busy === "vp" + x.id ? "Envoi…" : vplate[x.id] ? "✅ Plaque VIN photographiée" : "📷 Photo de la plaque VIN (obligatoire)"}<input type="file" accept="image/*" capture="environment" hidden disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) run("vp" + x.id, async () => { const p = await uploadPhoto(f); setVplate(v => ({ ...v, [x.id]: p })); return "✅ Photo de la plaque VIN prête."; }); }} /></label> : null}
           <label className={s.primary} style={big}>{busy === "dl" + x.id ? "…" : "📷 Livré : photo du véhicule chez le client"}<input type="file" accept="image/*" capture="environment" hidden disabled={!!busy || (!!data.tour && !x.has_plate && !vplate[x.id])} onChange={e => { deliver(x, e.target.files?.[0]); e.target.value = ""; }} /></label>
-          <div style={{ display: "flex", gap: 8 }}><button className={s.ghost} style={{ flex: 1 }} disabled={!!busy || (!!data.tour && !x.has_plate && !vplate[x.id])} onClick={() => deliver(x)}>Livré sans photo</button><button className={s.ghost} disabled={!!busy} onClick={() => undo(x)}>Annuler</button></div>
+          <div style={{ display: "flex", gap: 8 }}><button className={s.ghost} style={{ flex: 1 }} disabled={!!busy} onClick={() => { if (data.tour && !x.has_plate && !vplate[x.id]) { const typed = prompt(`Pas d'appareil photo ? Retapez les 4 derniers caractères du VIN de la voiture (prévu : …${x.vin.slice(-6, -4)}••••)`); if (typed) deliver(x, undefined, typed); } else deliver(x); }}>Livré sans photo</button><button className={s.ghost} disabled={!!busy} onClick={() => undo(x)}>Annuler</button></div>
         </>}
       </div>; })}
     </section>
@@ -134,6 +141,7 @@ function Driver() {
           return <div style={{ display: "grid", gap: 4, fontSize: 14 }}>
             <span>{ri.vin ? "✅" : "⏳"} Numéro de série {ri.vin ? <code>{ri.vin}</code> : "pas encore chargé"}</span>
             <span>{ri.paid ? `✅ Paiement confirmé par Mansour (${hhmm(ri.paid)})` : ri.pending ? "🟠 Livraison avec paiement en attente (clés et papiers gardés)" : "⏳ Paiement pas encore confirmé par Mansour : ne remettez pas les clés"}</span>
+            {!ri.paid && !ri.pending && (owner || String(data.tour?.id || "").startsWith("test-")) ? <a className={s.ghost} href="/reservations-admin" target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>👉 Mansour : Réservations clients → {c.name} → 💶 Confirmer le paiement</a> : null}
             <span>{ri.signed_at ? <b style={{ color: "#15803d" }}>✅ Accusé signé par le client le {hhmm(ri.signed_at)}</b> : ri.sent_at ? `📩 Lien de signature envoyé le ${hhmm(ri.sent_at)} : en attente de la signature du client` : "✍️ Accusé pas encore signé"}</span>
             {ri.signed_at && ri.reglement?.length ? <span>💶 Règlement déclaré : {ri.reglement.map(x => `${MODE[x.mode] || x.mode}${x.mode === "especes" && ri.driver_name ? " " + ri.driver_name : ""} : ${Math.round(x.amount).toLocaleString("fr-FR")} €`).join(" ; ")}</span> : null}
             {ri.signed_at && ri.pdf ? <a className={s.ghost} href={ri.pdf} target="_blank" rel="noreferrer">📄 Voir l&apos;accusé signé (PDF)</a> : null}

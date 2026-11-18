@@ -31,6 +31,8 @@ export async function POST(req: Request) {
     const { data } = await db.from("reservations").select("id,vin,accuse_token").eq("plan_client_id", clientId).order("id", { ascending: false }).limit(1).maybeSingle();
     return data;
   };
+  /** Sans appareil photo : le chauffeur retape les 4 derniers caractères du VIN chargé (contrôle de la bonne voiture). */
+  const vinTyped = (vin: string, typed: unknown) => { const x = String(typed || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return x.length >= 4 && vin.toUpperCase().endsWith(x.slice(-4)) && x.length <= 17 && vin.toUpperCase().endsWith(x); };
   const photoOk = (p: unknown) => typeof p === "string" && p.startsWith(`vehicles/${tour}/`) && !p.includes("..");
 
   try {
@@ -98,8 +100,9 @@ export async function POST(req: Request) {
         const v = (vs || []).find(x => x.status !== "livrée");
         if (!v) return NextResponse.json({ ok: false, error: (vs || []).length ? "Ce client est déjà marqué livré." : "Aucune voiture chargée pour ce client : faites d'abord le chargement avec la photo de la plaque VIN (« Charger un véhicule »)." }, { status: 400 });
         const plate = photoOk(b.plate_path) ? String(b.plate_path) : null;
-        if (!v.plate_photo && !plate) return NextResponse.json({ ok: false, needPlate: true, error: "Photographiez la plaque VIN de la voiture avant « Livré »." }, { status: 400 });
-        let note = "";
+        const manual = !v.plate_photo && !plate && vinTyped(v.vin, b.vin_confirm);
+        if (!v.plate_photo && !plate && !manual) return NextResponse.json({ ok: false, needPlate: true, error: b.vin_confirm ? `Les caractères tapés ne correspondent pas au VIN prévu (${v.vin}). Vérifiez la plaque.` : "Photographiez la plaque VIN, ou retapez ses 4 derniers caractères, avant « Livré »." }, { status: 400 });
+        let note = manual ? "sans photo : VIN confirmé à la main (4 derniers caractères)" : "";
         if (plate) {
           const { data: blob } = await db.storage.from(PHOTO_BUCKET).download(plate);
           const read = blob ? await readVinPhoto(Buffer.from(await blob.arrayBuffer()), "image/jpeg").catch(() => null) : null;
@@ -136,6 +139,21 @@ export async function POST(req: Request) {
       const read = await readVinPhoto(Buffer.from(await blob.arrayBuffer()), "image/jpeg");
       if (!read) return NextResponse.json({ ok: true, read: null, match: null });
       return NextResponse.json({ ok: true, read, match: await matchVin(db, read.vin, read.candidates) });
+    }
+    // Recherche par les derniers caractères du VIN (appareil photo en panne) : stock du dépôt d'abord, puis tous les VIN connus
+    if (b.action === "search_vin") {
+      const q = String(b.q || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(-8);
+      if (q.length < 3) return NextResponse.json({ ok: true, results: [] });
+      const depot = isDepot(b.depot) ? b.depot : (t?.hubId && isDepot(t.hubId) ? t.hubId : null);
+      const [{ data: sv }, { data: rv }] = await Promise.all([
+        db.from("shipment_vehicles").select("vin,status,depot,client_name,shipments(name)").ilike("vin", `%${q}`).limit(40),
+        db.from("reservations").select("vin,prenom,nom").ilike("vin", `%${q}`).limit(20),
+      ]);
+      const seen = new Set<string>(); const out: { vin: string; label: string; here: boolean }[] = [];
+      for (const v of (sv || []) as unknown as { vin: string; status: string; depot: string | null; client_name: string | null; shipments?: { name?: string } | null }[]) { if (seen.has(v.vin)) continue; seen.add(v.vin); out.push({ vin: v.vin, here: !!depot && v.depot === depot && v.status !== "livrée", label: [v.status, v.depot ? `dépôt ${v.depot}` : "", v.client_name ? `pour ${v.client_name}` : "", v.shipments?.name || ""].filter(Boolean).join(" · ") }); }
+      for (const r of rv || []) { if (!r.vin || seen.has(r.vin)) continue; seen.add(r.vin); out.push({ vin: r.vin, here: false, label: `réservation ${`${r.prenom || ""} ${r.nom || ""}`.trim()} (hors stock)` }); }
+      out.sort((a, z) => Number(z.here) - Number(a.here) || a.vin.localeCompare(z.vin));
+      return NextResponse.json({ ok: true, results: out.slice(0, 12) });
     }
     if (b.action === "match") return NextResponse.json({ ok: true, match: await matchVin(db, String(b.vin || "")) });
     // Véhicule hors conteneur (ancien stock, véhicule déjà au dépôt) : ajouté au stock pour pouvoir le charger.
@@ -192,11 +210,13 @@ export async function POST(req: Request) {
       if (t && v.tour_id !== tour) return NextResponse.json({ ok: false, error: "Ce véhicule n'est pas sur cette tournée." }, { status: 400 });
       // Sur une tournée : la photo de la plaque VIN est obligatoire avant « Livré »
       const plate = photoOk(b.plate_path) ? String(b.plate_path) : null;
-      if (t && !v.plate_photo && !plate) return NextResponse.json({ ok: false, needPlate: true, error: "Photographiez la plaque VIN de la voiture avant « Livré »." }, { status: 400 });
+      const manual = !v.plate_photo && !plate && vinTyped(v.vin, b.vin_confirm);
+      if (t && !v.plate_photo && !plate && !manual) return NextResponse.json({ ok: false, needPlate: true, error: b.vin_confirm ? `Les caractères tapés ne correspondent pas au VIN prévu (${v.vin}).` : "Photographiez la plaque VIN, ou retapez ses 4 derniers caractères, avant « Livré »." }, { status: 400 });
       const photo = photoOk(b.path) ? String(b.path) : null;
+      const note = manual ? "sans photo : VIN confirmé à la main (4 derniers caractères)" : undefined;
       // Véhicule « livrée » + réservation « livré » dans le planificateur (l'accusé de réception client reste à signer)
-      const { reception } = await deliverVehicle(db, v, { driver, photo, plate });
-      if (t) { const geo = cleanGeo(b); try { await addEvent(db, { tour_id: tour, kind: "livre", client_id: v.client_id || null, stop_index: stopIndexOf(t, v.client_id), ...geo, photo_path: photo || plate, author: driver, note: null }); } catch (e) { console.error("[CHAUFFEUR] event", e); } }
+      const { reception } = await deliverVehicle(db, v, { driver, photo, plate, note });
+      if (t) { const geo = cleanGeo(b); try { await addEvent(db, { tour_id: tour, kind: "livre", client_id: v.client_id || null, stop_index: stopIndexOf(t, v.client_id), ...geo, photo_path: photo || plate, author: driver, note: note || null }); } catch (e) { console.error("[CHAUFFEUR] event", e); } }
       return NextResponse.json({ ok: true, reception });
     }
     if (b.action === "undo") {

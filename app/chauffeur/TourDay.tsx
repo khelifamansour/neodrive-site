@@ -33,6 +33,7 @@ export default function TourDay({ data, call, upload, reload, onMsg, deliverId, 
   const [geo, setGeo] = useState<"oui" | "non" | "">(""); const [busy, setBusy] = useState("");
   const [now, setNow] = useState(() => Date.now()); const [all, setAll] = useState(false);
   const [plate, setPlate] = useState<Record<string, string>>({}); const [handover, setHandover] = useState<Record<string, string>>({});
+  const [manual, setManual] = useState<Record<string, string>>({}); const [noCam, setNoCam] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   useEffect(() => { try { const g = localStorage.getItem("nd_geo"); if (g === "oui" || g === "non") setGeo(g); } catch { /* privé */ } const it = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(it); }, []);
   const chooseGeo = async (v: "oui" | "non") => { setGeo(v); try { localStorage.setItem("nd_geo", v); } catch { /* privé */ } if (v === "oui") { const p = await getPos(); if (!p) onMsg("⚠️ Position refusée ou indisponible : ce n’est pas grave, les boutons suffisent."); } };
@@ -74,7 +75,7 @@ export default function TourDay({ data, call, upload, reload, onMsg, deliverId, 
   const confirmDelivery = async () => {
     if (!deliverClient) return;
     const i = stops.indexOf(deliverClient);
-    const j = await send("livre", { kind: "livre", client_id: deliverClient.id, stop_index: i, plate_path: plate[deliverClient.id] || null, path: handover[deliverClient.id] || null }, `✅ ${deliverClient.name} livré${dv ? ` (VIN ${dv.vin})` : ""}. Merci !`);
+    const j = await send("livre", { kind: "livre", client_id: deliverClient.id, stop_index: i, plate_path: plate[deliverClient.id] || null, path: handover[deliverClient.id] || null, vin_confirm: manual[deliverClient.id] || null }, `✅ ${deliverClient.name} livré${dv ? ` (VIN ${dv.vin})` : ""}. Merci !`);
     if (j?.ok) { setDeliverId(null); if (j.reception && confirm("✅ Livraison enregistrée. Faire signer l’accusé de réception au client maintenant ?")) window.location.href = j.reception; }
   };
 
@@ -118,10 +119,11 @@ export default function TourDay({ data, call, upload, reload, onMsg, deliverId, 
         <h3>✅ Livraison : {deliverClient.name}</h3>
         {!dv ? <p className={s.err}>Aucune voiture chargée pour ce client. Faites d’abord « Charger un véhicule » plus bas (photo de la plaque VIN et choix du client).</p> : <>
           <span>Voiture : <b style={{ fontFamily: "monospace" }}>{dv.vin}</b></span>
-          {dv.has_plate ? <p className={s.okTxt}>✅ Plaque VIN déjà photographiée au chargement.</p> : plate[deliverClient.id] ? <p className={s.okTxt}>✅ Plaque VIN photographiée.</p> : <p className={s.muted}>Obligatoire : photographiez la plaque VIN de la voiture.</p>}
+          {dv.has_plate ? <p className={s.okTxt}>✅ Plaque VIN déjà photographiée au chargement.</p> : plate[deliverClient.id] ? <p className={s.okTxt}>✅ Plaque VIN photographiée.</p> : <p className={s.muted}>Photographiez la plaque VIN de la voiture (ou, sans appareil photo, retapez ses 4 derniers caractères).</p>}
           {!dv.has_plate ? <label className={s.primary} style={{ ...big, opacity: busy === "plate" ? .6 : 1 }}>{busy === "plate" ? "Envoi…" : plate[deliverClient.id] ? "📷 Reprendre la plaque VIN" : "📷 Photographier la plaque VIN"}<input type="file" accept="image/*" capture="environment" hidden disabled={!!busy} onChange={e => { onPlate(deliverClient.id, e.target.files?.[0]); e.target.value = ""; }} /></label> : null}
           <label className={s.ghost} style={{ cursor: "pointer" }}>{busy === "hand" ? "Envoi…" : handover[deliverClient.id] ? "✅ Photo de remise prête (reprendre)" : "📷 Photo de la remise (facultatif)"}<input type="file" accept="image/*" capture="environment" hidden disabled={!!busy} onChange={e => { onHandover(deliverClient.id, e.target.files?.[0]); e.target.value = ""; }} /></label>
-          <button className={s.primary} style={big} disabled={!!busy || (!dv.has_plate && !plate[deliverClient.id])} onClick={confirmDelivery}>{busy === "livre" ? "Enregistrement…" : "✅ Confirmer : voiture livrée"}</button>
+          {!dv.has_plate && !plate[deliverClient.id] ? (noCam ? <label className={s.field}>Retapez les 4 derniers caractères du VIN lus sur la plaque<input value={manual[deliverClient.id] || ""} maxLength={6} onChange={e => setManual(m => ({ ...m, [deliverClient.id]: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") }))} placeholder="ex. 0483" style={{ fontFamily: "monospace", fontSize: 20, letterSpacing: 2 }} />{(manual[deliverClient.id] || "").length >= 4 ? (dv.vin.endsWith(manual[deliverClient.id]) ? <small className={s.okTxt}>✅ Correspond au VIN prévu</small> : <small className={s.err}>⚠️ Ne correspond pas au VIN prévu : vérifiez la voiture</small>) : null}</label> : <button className={s.ghost} onClick={() => setNoCam(true)}>Je n&apos;ai pas d&apos;appareil photo : confirmer le VIN à la main</button>) : null}
+          <button className={s.primary} style={big} disabled={!!busy || (!dv.has_plate && !plate[deliverClient.id] && !((manual[deliverClient.id] || "").length >= 4 && dv.vin.endsWith(manual[deliverClient.id])))} onClick={confirmDelivery}>{busy === "livre" ? "Enregistrement…" : "✅ Confirmer : voiture livrée"}</button>
         </>}
         <button className={s.ghost} onClick={() => setDeliverId(null)}>Fermer</button>
       </div> : null}
