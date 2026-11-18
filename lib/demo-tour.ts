@@ -9,6 +9,9 @@ import { PLAN_CLIENTS, PLAN_TOURS } from "./fleet";
 import type { PlanClient, PlanTour, Stop } from "./planif";
 
 export const DEMO_TOUR_ID = "test-demo-serge";
+/** VIN fictif (clé de contrôle valide) déjà chargé pour « Client TEST 1 » : permet d'essayer la livraison sans voiture. */
+export const DEMO_VIN = "LTESTDEM700000001";
+const TEST_SHIPMENT = "TEST – démo Serge (véhicule fictif)";
 const HUB = { id: "lamasquere", name: "Lamasquère (Muret)", address: "1021 Route de Moundas, 31600 Lamasquère", lat: 43.4836, lng: 1.2483 };
 const CLIENTS = [
   { id: "test-client-1", prenom: "Client", nom: "TEST 1", adresse: "Mairie de Muret, Place Léon Blum", code_postal: "31600", ville: "Muret", lat: 43.4617, lng: 1.3265 },
@@ -41,6 +44,13 @@ export async function createDemoTour(db: SupabaseClient, date = "2026-11-19") {
     warning: "Tournée de test : à supprimer après la démo.",
   };
   await writeJson(db, `${PLAN_TOURS}/${DEMO_TOUR_ID}.json`, tour);
+  // Véhicule fictif déjà chargé pour Client TEST 1 (Client TEST 2 reste sans VIN : on scanne la vraie voiture)
+  const sh = await db.from("shipments").insert({ name: TEST_SHIPMENT, status: "dédouané", pipeline: "en stock", auto_send: false, arrived_at: now, notes: "TEST – à supprimer (démo livreur)" }).select("id").single();
+  if (sh.error) throw new Error("Conteneur de test : " + sh.error.message);
+  const c1 = CLIENTS[0];
+  const veh = await db.from("shipment_vehicles").insert({ shipment_id: sh.data.id, vin: DEMO_VIN, status: "chargée", depot: "lamasquere", depot_at: now, picked_at: now, tour_id: DEMO_TOUR_ID, driver: "Serge", client_id: c1.id, client_name: `${c1.prenom} ${c1.nom}`, note: "TEST – véhicule fictif de démonstration", history: [{ at: now, stage: "chargée", by: "démo", note: "véhicule fictif de test" }] }).select("id").single();
+  if (veh.error) throw new Error("Véhicule de test : " + veh.error.message);
+  await db.from("reservations").update({ vin: DEMO_VIN }).eq("id", resIds[0]);
   return { tour: DEMO_TOUR_ID, reservations: resIds, clients: CLIENTS.map(c => c.id) };
 }
 
@@ -51,6 +61,12 @@ export async function deleteTestData(db: SupabaseClient, opt: { keepHoursAndInvo
   const paths = [...tours.map(t => `${PLAN_TOURS}/${t.id}.json`), ...clients.map(c => `${PLAN_CLIENTS}/${c.id}.json`)];
   if (paths.length) await removeJson(db, paths);
   const { data: res } = await db.from("reservations").delete().eq("source", "test").select("id");
+  // Véhicules : le fictif est supprimé ; un vrai véhicule chargé ou « livré » à un client test revient au dépôt, sans client.
+  const { data: tsh } = await db.from("shipments").select("id").like("name", "TEST –%");
+  const tshIds = (tsh || []).map(x => x.id);
+  if (tshIds.length) { await db.from("shipment_vehicles").delete().in("shipment_id", tshIds); await db.from("shipments").delete().in("id", tshIds); }
+  await db.from("shipment_vehicles").delete().like("note", "TEST –%");
+  await db.from("shipment_vehicles").update({ status: "au dépôt", client_id: null, client_name: null, tour_id: null, picked_at: null, delivered_at: null, delivery_photo: null, updated_at: new Date().toISOString() }).like("client_id", "test-%");
   let hours = 0, invoices = 0;
   if (!opt.keepHoursAndInvoices) {
     const { data: testers } = await db.from("team_members").select("id").eq("is_test", true);

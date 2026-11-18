@@ -10,6 +10,7 @@ import type { PlanClient, PlanTour } from "../../../lib/planif";
 import { readVinPhoto } from "../conteneurs/extract";
 import { addTickets } from "../../../lib/driver-tickets";
 import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType, isPaidBy } from "../../../lib/driver-hours";
+import { AccuseError, accuseLink, sendAccuseLink } from "../../../lib/accuse-link";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -24,6 +25,12 @@ export async function POST(req: Request) {
   const t = tour === "libre" ? null : await readJson<PlanTour>(db, `${PLAN_TOURS}/${tour}.json`);
   if (tour !== "libre" && !t) return NextResponse.json({ ok: false, error: "Tournée introuvable (supprimée ?)." }, { status: 404 });
   const driver = clean(b.driver, 60) || t?.driver || "chauffeur";
+  /** Réservation liée à un client de la tournée (planificateur ↔ réservations). */
+  const resOf = async (clientId: string) => {
+    if (!t || !t.clientIds.includes(clientId)) return null;
+    const { data } = await db.from("reservations").select("id,vin,accuse_token").eq("plan_client_id", clientId).order("id", { ascending: false }).limit(1).maybeSingle();
+    return data;
+  };
   const photoOk = (p: unknown) => typeof p === "string" && p.startsWith(`vehicles/${tour}/`) && !p.includes("..");
 
   try {
@@ -36,7 +43,16 @@ export async function POST(req: Request) {
       q = t ? q.eq("tour_id", tour) : q.eq("status", "chargée");
       const { data: veh } = await q;
       const events = t ? await listEvents(db, [tour]) : [];
-      return NextResponse.json({ ok: true, tour: t ? { id: t.id, name: t.name, date: t.date, driver: t.driver, hubId: t.hubId, status: t.status, departTime: t.departTime || "", stops: t.stops || [], km: t.km || 0, rate: t.driverRate || DEFAULT_DRIVER_RATE, estH: estimateHours(t), closed_at: t.closed_at || null, en_route: t.en_route || [] } : null, clients, depots: DEPOTS, events, vehicles: (veh || []).map((v: any) => ({ ...v, has_plate: !!v.plate_photo, plate_photo: undefined, shipment: v.shipments?.name || "", stage: vehicleStage(v, v.shipments), shipments: undefined })) });
+      // Suivi par client : VIN, paiement confirmé par Mansour, lien d'accusé envoyé, accusé signé (et règlement déclaré)
+      const res: Record<string, unknown> = {};
+      if (t && t.clientIds.length) {
+        const { data: rs } = await db.from("reservations").select("id,plan_client_id,vin,paiement_confirme_at,paiement_en_attente,confirm_sent_at,accuse_token,accuse_data,livre_at").in("plan_client_id", t.clientIds);
+        for (const r of rs || []) {
+          const d = (r.accuse_data || {}) as { signed_at?: string; reglement?: { mode: string; amount: number }[] | null; driver_name?: string | null };
+          res[String(r.plan_client_id)] = { id: r.id, vin: r.vin, paid: r.paiement_confirme_at, pending: !!r.paiement_en_attente, sent_at: r.confirm_sent_at, signed_at: r.accuse_token ? (d.signed_at || r.livre_at) : null, reglement: d.reglement || null, driver_name: d.driver_name || null, pdf: r.accuse_token ? `/api/accuse/${r.accuse_token}` : null };
+        }
+      }
+      return NextResponse.json({ ok: true, tour: t ? { id: t.id, name: t.name, date: t.date, driver: t.driver, hubId: t.hubId, status: t.status, departTime: t.departTime || "", stops: t.stops || [], km: t.km || 0, rate: t.driverRate || DEFAULT_DRIVER_RATE, estH: estimateHours(t), closed_at: t.closed_at || null, en_route: t.en_route || [] } : null, res, clients, depots: DEPOTS, events, vehicles: (veh || []).map((v: any) => ({ ...v, has_plate: !!v.plate_photo, plate_photo: undefined, shipment: v.shipments?.name || "", stage: vehicleStage(v, v.shipments), shipments: undefined })) });
     }
     // Journal de tournée : départ, pause, reprise, arrivée, livraison, problème, position GPS
     if (b.action === "event") {
@@ -122,6 +138,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, read, match: await matchVin(db, read.vin, read.candidates) });
     }
     if (b.action === "match") return NextResponse.json({ ok: true, match: await matchVin(db, String(b.vin || "")) });
+    // Véhicule hors conteneur (ancien stock, véhicule déjà au dépôt) : ajouté au stock pour pouvoir le charger.
+    if (b.action === "add_vehicle") {
+      const vin = normVin(String(b.vin || ""));
+      if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) return NextResponse.json({ ok: false, error: "VIN invalide (17 caractères, sans I, O ni Q)." }, { status: 400 });
+      const { data: ex } = await db.from("shipment_vehicles").select("id").eq("vin", vin).limit(1);
+      if (ex?.length) return NextResponse.json({ ok: true, match: await matchVin(db, vin) });
+      const name = "Stock dépôt (hors conteneur)";
+      let { data: sh } = await db.from("shipments").select("id").eq("name", name).limit(1).maybeSingle();
+      if (!sh) { const ins = await db.from("shipments").insert({ name, status: "dédouané", pipeline: "en stock", auto_send: false, arrived_at: new Date().toISOString(), notes: "Véhicules ajoutés depuis la page chauffeur (ancien stock, hors conteneur). Pas de dossier transitaire." }).select("id").single(); if (ins.error) throw new Error(ins.error.message); sh = ins.data; }
+      const test = tour.startsWith("test-");
+      const depot = isDepot(b.depot) ? b.depot : (t?.hubId && isDepot(t.hubId) ? t.hubId : null);
+      const { error } = await db.from("shipment_vehicles").insert({ shipment_id: sh!.id, vin, status: "au dépôt", depot, depot_at: new Date().toISOString(), note: test ? "TEST – ajouté pendant la démo" : `ajouté par ${driver} (hors conteneur)`, history: [{ at: new Date().toISOString(), stage: "au dépôt", by: driver, note: "ajouté depuis la page chauffeur" }] });
+      if (error) throw new Error(error.message);
+      return NextResponse.json({ ok: true, match: await matchVin(db, vin) });
+    }
+    // Accusé de réception : lien de signature envoyé au client (SMS + e-mail) ou ouvert sur ce téléphone
+    if (b.action === "accuse_send" || b.action === "accuse_link") {
+      const r = await resOf(clean(b.client_id, 80));
+      if (!r) return NextResponse.json({ ok: false, error: "Pas de réservation liée à ce client : appelez Mansour." }, { status: 404 });
+      try {
+        if (b.action === "accuse_link") return NextResponse.json({ ok: true, url: await accuseLink(db, r.id) });
+        const sent = await sendAccuseLink(db, r.id);
+        return NextResponse.json({ ok: true, sent });
+      } catch (e) { if (e instanceof AccuseError) return NextResponse.json({ ok: false, error: e.message }, { status: e.status }); throw e; }
+    }
 
     const id = Number(b.vehicle_id);
     const { data: v } = id ? await db.from("shipment_vehicles").select("*").eq("id", id).single() : { data: null };
@@ -140,6 +181,9 @@ export async function POST(req: Request) {
         if (other?.length && !b.force) return NextResponse.json({ ok: false, conflict: other[0].vin, error: `Ce client est déjà lié au VIN ${other[0].vin}. Confirmez pour le remplacer par ce véhicule.` }, { status: 409 });
         for (const o of other || []) await patchVehicle(db, o.id, { client_id: null, client_name: null }, { by: driver, note: `client ${clientName(c)} réattribué au VIN ${v.vin}` });
         patch.client_id = c.id; patch.client_name = clientName(c); note = `pour ${clientName(c)}`;
+        // Même VIN sur la réservation (espace livreur, accusé de réception)
+        const r = await resOf(c.id);
+        if (r && !r.accuse_token && r.vin !== v.vin) await db.from("reservations").update({ vin: v.vin, updated_at: new Date().toISOString() }).eq("id", r.id);
       }
       await patchVehicle(db, id, patch, { stage: "chargée", by: driver, note: [t ? `tournée ${t.name || t.id}` : "", note].filter(Boolean).join(" · ") });
       return NextResponse.json({ ok: true });

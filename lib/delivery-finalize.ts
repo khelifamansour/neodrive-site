@@ -61,7 +61,7 @@ export async function finalizeDelivery(db: DB, r: any, data: ReceiptData, signat
       if (r.email) emailed = !!(await sendEmail(r.email, data.client, "Votre accusé de réception NeoDrive", html, att, { cc: [OWNER_EMAIL], replyTo: OWNER_EMAIL }));
       else await sendEmail(OWNER_EMAIL, "Mansour", `Accusé de réception – ${data.client} (VIN ${r.vin})`, `<p>Accusé ${esc(how)} pour ${esc(data.client)} (pas d'e-mail client connu).</p><p><a href="${url}">${url}</a></p>`, att);
     } catch (e) { console.error("[LIVRAISON] email accusé", e); }
-    try { await sendSms(OWNER_SMS(), `NeoDrive : livraison de ${data.client} ${paid ? "terminee" : "faite, PAIEMENT EN ATTENTE"}, accuse ${data.mode === "distance" ? "confirme a distance" : "signe"} (VIN ${r.vin}).`); } catch (e) { console.error("[LIVRAISON] SMS fondateur", e); }
+    try { await sendSms(OWNER_SMS(), `NeoDrive : livraison de ${data.client} ${paid ? "terminee" : "faite, PAIEMENT EN ATTENTE"}, accuse ${data.mode === "distance" ? "confirme a distance" : "signe"} (VIN ${r.vin}).`, "transactional"); } catch (e) { console.error("[LIVRAISON] SMS fondateur", e); }
   }
   const wa = r.telephone ? `https://wa.me/${intlPhone(r.telephone)}?text=${encodeURIComponent(`Bonjour, voici votre accusé de réception NeoDrive : ${url} Bonne route ! NeoDrive`)}` : null;
   return { url, emailed, whatsapp: wa, paid };

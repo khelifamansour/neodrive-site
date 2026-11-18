@@ -9,6 +9,9 @@ import TourDay, { type TourData } from "./TourDay";
 type Client = { id: string; name: string; adresse: string; telephone: string; modele: string; couleur: string; status: string; received_at: string | null; reception: string | null };
 type Veh = { id: number; vin: string; container?: string; depot?: string | null; client_id?: string | null; client_name?: string | null; tour_id?: string | null; shipment: string; stage: Stage; delivered_at?: string | null; has_plate?: boolean };
 type Match = { vin: string; valid: boolean; vehicle: Veh | null; suggestions: Veh[] };
+type ResInfo = { id: number; vin: string | null; paid: string | null; pending: boolean; sent_at: string | null; signed_at: string | null; reglement: { mode: string; amount: number }[] | null; driver_name: string | null; pdf: string | null };
+const hhmm = (d: string) => new Date(d).toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const MODE: Record<string, string> = { virement: "Virement", especes: "Espèces remises au chauffeur", carte: "Carte bancaire", autre: "Autre" };
 const big: React.CSSProperties = { fontSize: 18, padding: 16, width: "100%", textAlign: "center", cursor: "pointer" };
 
 /** Réduit la photo (≤ 2000 px, JPEG) : envoi rapide en 4G, plaque toujours lisible. */
@@ -23,7 +26,7 @@ async function shrink(file: File): Promise<Blob> {
 
 function Driver() {
   const k = useSearchParams().get("k") || "";
-  const [data, setData] = useState<{ tour: any; clients: Client[]; depots: { id: string; name: string }[]; vehicles: Veh[]; events?: TourData["events"] } | null>(null);
+  const [data, setData] = useState<{ tour: any; res?: Record<string, ResInfo>; clients: Client[]; depots: { id: string; name: string }[]; vehicles: Veh[]; events?: TourData["events"] } | null>(null);
   const [deliverId, setDeliverId] = useState<string | null>(null); const [vplate, setVplate] = useState<Record<number, string>>({});
   const [err, setErr] = useState(""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
   const [depot, setDepot] = useState(""); const [photo, setPhoto] = useState(""); const [match, setMatch] = useState<Match | null>(null); const [vin, setVin] = useState(""); const [client, setClient] = useState(""); const [driver, setDriver] = useState("");
@@ -31,6 +34,9 @@ function Driver() {
   const load = async () => { try { const j = await call({ action: "get" }); setData(j); if (!depot) { const d = j.depots.find((x: any) => x.id === j.tour?.hubId); if (d) setDepot(d.id); } } catch (e) { setErr((e as Error).message); } };
   useEffect(() => { if (!k) { setErr("Lien incomplet : utilisez le lien envoyé par NeoDrive."); return; } try { setDriver(localStorage.getItem("nd_driver") || ""); } catch { } load(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Suivi en direct (paiement confirmé, accusé signé par le client) : rafraîchi toutes les 15 s
+  useEffect(() => { if (!k) return; const it = setInterval(() => { if (document.visibilityState === "visible") load(); }, 15000); return () => clearInterval(it); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [k]);
   const run = async (key: string, fn: () => Promise<string | void>) => { setBusy(key); setMsg(""); try { const m = await fn(); if (m) setMsg(m); } catch (e) { setMsg("❌ " + (e as Error).message); } setBusy(""); };
   const uploadPhoto = async (file: File) => { const u = await call({ action: "upload_url" }); const blob = await shrink(file); const { error } = await supabase.storage.from(u.bucket).uploadToSignedUrl(u.path, u.token, blob, { contentType: "image/jpeg" }); if (error) throw new Error("Envoi de la photo impossible, réessayez."); return u.path as string; };
 
@@ -53,9 +59,14 @@ function Driver() {
   const deliver = (v: Veh, f?: File) => run("dl" + v.id, async () => {
     const path = f ? await uploadPhoto(f) : null;
     const j = await call({ action: "deliver", vehicle_id: v.id, path, plate_path: vplate[v.id] || null }); await load();
-    if (j.reception) { if (confirm("✅ Livraison enregistrée. Faire signer l'accusé de réception au client maintenant ?")) window.location.href = j.reception; }
+    const ri = v.client_id ? data?.res?.[v.client_id] : undefined;
+    if (ri && !ri.signed_at) { if (confirm("✅ Livraison enregistrée. Faire signer l'accusé au client maintenant, sur ce téléphone ? (Annuler = lui envoyer le lien par SMS plus bas)")) await signHere(v.client_id!); }
+    else if (j.reception) { if (confirm("✅ Livraison enregistrée. Faire signer l'accusé de réception au client maintenant ?")) window.location.href = j.reception; }
     return `✅ ${v.vin} livré`;
   });
+  const signHere = async (clientId: string) => { const j = await call({ action: "accuse_link", client_id: clientId }); window.location.href = j.url; };
+  const sendLink = (clientId: string) => run("al" + clientId, async () => { const j = await call({ action: "accuse_send", client_id: clientId }); await load(); return `📩 Lien envoyé au client${j.sent?.sms ? " par SMS" : ""}${j.sent?.email ? (j.sent?.sms ? " et e-mail" : " par e-mail") : ""}. Son accusé apparaîtra ici dès qu'il aura signé.`; });
+  const addVehicle = () => run("add", async () => { const j = await call({ action: "add_vehicle", vin, depot: depot || null }); setMatch(j.match); return "✅ Véhicule ajouté au stock du dépôt : choisissez le client puis confirmez le chargement."; });
   const undo = (v: Veh) => confirm(`Annuler le chargement de ${v.vin} ?`) && run("u" + v.id, async () => { await call({ action: "undo", vehicle_id: v.id }); await load(); return "Chargement annulé"; });
 
   if (err) return <main className={s.page}><section className={s.card}><h1>🚚 Chauffeur</h1><p className={s.err}>{err}</p></section></main>;
@@ -82,7 +93,7 @@ function Driver() {
       <div style={{ display: "flex", gap: 8 }}><input value={vin} onChange={e => setVin(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 17))} placeholder="ou tapez le VIN (17 caractères)" style={{ fontFamily: "monospace", flex: 1 }} /><button className={s.ghost} disabled={vin.length !== 17 || !!busy} onClick={check}>Vérifier</button></div>
       {vin.length === 17 ? <small style={{ color: vinValid(vin) ? "#15803d" : "#b91c1c" }}>{vinValid(vin) ? "✅ VIN valide (clé de contrôle OK)" : "⚠️ Clé de contrôle incorrecte : vérifiez chaque caractère"}</small> : null}
 
-      {match && !v ? <div className={s.err} style={{ fontWeight: 400 }}><b>VIN {match.vin} inconnu dans les conteneurs.</b>{match.suggestions.length ? <><br />VIN proches (erreur de lecture ?) :{match.suggestions.map(x => <button key={x.id} className={s.ghost} style={{ display: "block", margin: "6px 0", fontFamily: "monospace", width: "100%" }} onClick={() => { setMatch({ ...match, vehicle: x }); setVin(x.vin); if (x.client_id) setClient(x.client_id); }}>{x.vin} · {x.shipment}</button>)}</> : <><br />Vérifiez la plaque ou appelez Mansour.</>}</div> : null}
+      {match && !v ? <div className={s.err} style={{ fontWeight: 400 }}><b>VIN {match.vin} inconnu dans les conteneurs.</b>{match.suggestions.length ? <><br />VIN proches (erreur de lecture ?) :{match.suggestions.map(x => <button key={x.id} className={s.ghost} style={{ display: "block", margin: "6px 0", fontFamily: "monospace", width: "100%" }} onClick={() => { setMatch({ ...match, vehicle: x }); setVin(x.vin); if (x.client_id) setClient(x.client_id); }}>{x.vin} · {x.shipment}</button>)}</> : <><br />Vérifiez la plaque ou appelez Mansour.</>}{match.vin.length === 17 ? <button className={s.primary} style={{ display: "block", marginTop: 8, width: "100%" }} disabled={!!busy} onClick={addVehicle}>{busy === "add" ? "…" : `➕ C'est bien ce VIN : ajouter ce véhicule au stock du dépôt (ancien stock, hors conteneur)`}</button> : null}</div> : null}
       {v ? <div className={s.ok} style={{ fontWeight: 400, display: "grid", gap: 6 }}>
         <b style={{ fontFamily: "monospace", fontSize: 17 }}>{v.vin}</b>
         <span>{v.shipment}{v.container ? ` · conteneur ${v.container}` : ""} · {STAGE_ICON[v.stage]} {v.stage}</span>
@@ -117,8 +128,20 @@ function Driver() {
       <h2>Clients de la tournée</h2>
       {data.clients.map(c => { const veh = data.vehicles.find(x => x.client_id === c.id); return <div key={c.id} style={{ borderBottom: "1px solid #eee", padding: "6px 0", display: "grid", gap: 4 }}>
         <span><b>{c.name}</b> · {c.modele} {c.couleur}</span>
-        <small className={s.muted}>{veh ? `${STAGE_ICON[veh.stage]} ${veh.stage} · ${veh.vin}` : "pas encore de VIN"}{c.received_at ? " · ✍️ réception signée" : ""}</small>
-        {veh?.stage === "livrée" && c.reception && !c.received_at ? <a className={s.ghost} href={c.reception}>✍️ Faire signer l'accusé de réception</a> : null}
+        <small className={s.muted}>{veh ? `${STAGE_ICON[veh.stage]} ${veh.stage} · ${veh.vin}` : "pas encore de VIN : chargez la voiture (étape 1)"}{c.received_at ? " · ✍️ réception signée" : ""}</small>
+        {(() => { const ri = data.res?.[c.id]; if (!ri) return veh?.stage === "livrée" && c.reception && !c.received_at ? <a className={s.ghost} href={c.reception}>✍️ Faire signer l'accusé de réception</a> : null;
+          const paid = !!ri.paid || ri.pending; const canSign = !!ri.vin && paid && !ri.signed_at;
+          return <div style={{ display: "grid", gap: 4, fontSize: 14 }}>
+            <span>{ri.vin ? "✅" : "⏳"} Numéro de série {ri.vin ? <code>{ri.vin}</code> : "pas encore chargé"}</span>
+            <span>{ri.paid ? `✅ Paiement confirmé par Mansour (${hhmm(ri.paid)})` : ri.pending ? "🟠 Livraison avec paiement en attente (clés et papiers gardés)" : "⏳ Paiement pas encore confirmé par Mansour : ne remettez pas les clés"}</span>
+            <span>{ri.signed_at ? <b style={{ color: "#15803d" }}>✅ Accusé signé par le client le {hhmm(ri.signed_at)}</b> : ri.sent_at ? `📩 Lien de signature envoyé le ${hhmm(ri.sent_at)} : en attente de la signature du client` : "✍️ Accusé pas encore signé"}</span>
+            {ri.signed_at && ri.reglement?.length ? <span>💶 Règlement déclaré : {ri.reglement.map(x => `${MODE[x.mode] || x.mode}${x.mode === "especes" && ri.driver_name ? " " + ri.driver_name : ""} : ${Math.round(x.amount).toLocaleString("fr-FR")} €`).join(" ; ")}</span> : null}
+            {ri.signed_at && ri.pdf ? <a className={s.ghost} href={ri.pdf} target="_blank" rel="noreferrer">📄 Voir l&apos;accusé signé (PDF)</a> : null}
+            {canSign ? <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className={s.primary} style={{ flex: 1 }} disabled={!!busy} onClick={() => run("sh" + c.id, () => signHere(c.id))}>✍️ Faire signer sur ce téléphone</button>
+              <button className={s.ghost} style={{ flex: 1 }} disabled={!!busy} onClick={() => sendLink(c.id)}>{busy === "al" + c.id ? "Envoi…" : ri.sent_at ? "📩 Renvoyer le lien au client" : "📩 Envoyer le lien de signature au client (SMS + e-mail)"}</button>
+            </div> : !ri.signed_at && ri.vin && !paid ? <small className={s.muted}>Les boutons de signature apparaissent dès que Mansour a confirmé le paiement (la page se met à jour toute seule).</small> : null}
+          </div>; })()}
       </div>; })}
     </section> : null}
   </main>;
