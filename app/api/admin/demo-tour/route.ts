@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { crmDatabase } from "../../../../lib/crm-agent";
-import { createDemoTour, deleteTestData } from "../../../../lib/demo-tour";
+import { createDemoTour, createRealTour, createSimulationTour, deleteTestData } from "../../../../lib/demo-tour";
+import { driverKey } from "../../../../lib/driver-link";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -15,6 +16,12 @@ async function run(req: Request) {
   if (!p?.action) return NextResponse.json({ ok: false }, { status: 401 });
   try {
     if (p.action === "create") return NextResponse.json({ ok: true, ...(await createDemoTour(db, /^\d{4}-\d{2}-\d{2}$/.test(p.date || "") ? p.date : undefined)) });
+    if (p.action === "real" || p.action === "simulation") {
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(p.date || "") ? p.date : undefined;
+      const r = p.action === "real" ? await createRealTour(db, date) : await createSimulationTour(db, date);
+      const k = driverKey(r.tour);
+      return NextResponse.json({ ok: true, ...r, link: k ? `https://www.easydrive-auto.fr/chauffeur?k=${encodeURIComponent(k)}` : null });
+    }
     if (p.action === "delete") return NextResponse.json({ ok: true, ...(await deleteTestData(db)) });
     return NextResponse.json({ ok: false, error: "Action inconnue" }, { status: 400 });
   } catch (e) { return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 }); }
