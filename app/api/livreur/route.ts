@@ -7,7 +7,8 @@ import { PLAN_CLIENTS, PLAN_TOURS } from "../../../lib/fleet";
 import { driverKey } from "../../../lib/driver-link";
 import { brevoReady, sendEmail, sendSms } from "../../../lib/brevo";
 import { newCode, sha } from "../../../lib/team";
-import { CONTRACT_VERSION, DOC_KINDS, DRIVER_BUCKET, REQUIRED_DOCS, isDocKind } from "../../../lib/driver-docs";
+import { CONTRACT_VERSION, DEFAULT_JOB_TITLE, DOC_KINDS, DRIVER_BUCKET, EMPLOYEE_CONTRACT_VERSION, EMPLOYEE_DOC_KINDS, EMPLOYEE_REQUIRED, REQUIRED_DOCS, contractVersionFor, docKindsFor, isDocKind, isSalarie, requiredFor, type Employment } from "../../../lib/driver-docs";
+import { monthLabel, monthReport, monthReportPdf, hmTxt as hmReport, type HourRow } from "../../../lib/employee-hours";
 import { roadKm, splitTrips, type PlanClient, type PlanTour, type Stop } from "../../../lib/planif";
 import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType } from "../../../lib/driver-hours";
 import { addTickets, readTicket, type TicketData } from "../../../lib/driver-tickets";
@@ -36,10 +37,10 @@ async function latestDocs(db: DB, memberId: number) {
   for (const d of (data || []) as Doc[]) if (!out[d.kind]) out[d.kind] = d;
   return out;
 }
-const publicDoc = (d?: Doc) => {
+const publicDoc = (d?: Doc, version = CONTRACT_VERSION) => {
   if (!d) return { status: "manquant" };
-  // Contrat : seule une signature à la main sur la version en vigueur compte.
-  if (d.kind === "contrat" && (d.data?.version !== CONTRACT_VERSION || !d.data?.signature)) return { status: "manquant", outdated: true };
+  // Contrat : seule une signature à la main sur la version en vigueur (prestataire ou CDD) compte.
+  if (d.kind === "contrat" && (d.data?.version !== version || !d.data?.signature)) return { status: "manquant", outdated: true };
   return { status: d.status, filename: d.filename, uploaded_at: d.uploaded_at, note: d.note, signed_name: d.data?.signed_name || null, signed_at: d.data?.signed_at || null, signature: d.kind === "contrat" ? d.data?.signature || null : undefined };
 };
 
@@ -73,6 +74,18 @@ function controlSms(driver: string, tour: string, number: string, total: number,
 
 /** Livreur imité par le compte de test. */
 const TEST_DRIVER = "Serge";
+const RELEVE_FOLDER = "releves";
+const isoDate = (v: unknown) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? String(v) : "";
+/** Conditions d'emploi d'un salarié (CDD), nettoyées. */
+function cleanEmployment(b: Record<string, unknown>): Employment {
+  const start = isoDate(b.start) || new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" });
+  const endDef = new Date(start + "T12:00:00Z"); endDef.setUTCMonth(endDef.getUTCMonth() + 6); endDef.setUTCDate(endDef.getUTCDate() - 1);
+  const end = isoDate(b.end) && isoDate(b.end) > start ? isoDate(b.end) : endDef.toISOString().slice(0, 10);
+  const salary = Math.round(Math.min(Math.max(Number(b.salary) || 2000, 500), 20000) * 100) / 100;
+  const hours = Math.min(Math.max(Number(b.hours) || 35, 1), 48);
+  return { start, end, salary, hours, title: clean(b.title, 120) || DEFAULT_JOB_TITLE };
+}
+const PERSONAL_KEYS = ["birth_date", "birth_place", "nationality", "address", "ssn"] as const;
 
 /** Tournées du livreur : nom du livreur de la tournée qui contient son prénom (ou toutes pour le fondateur). */
 const isMine = (t: PlanTour, name: string | null) => {
@@ -116,7 +129,7 @@ export async function POST(req: Request) {
     if (typeof b.action === "string" && b.action.startsWith("admin_")) {
       if (!isAuthorized(req, String(b.passcode || ""))) return NextResponse.json({ ok: false, error: "Code incorrect" }, { status: 401 });
       if (b.action === "admin_list") {
-        const { data: members } = await db.from("team_members").select("id,name,role,phone,email,active,expires_at,revoked_at,last_seen_at,sections,created_at,is_test").order("created_at", { ascending: false });
+        const { data: members } = await db.from("team_members").select("id,name,role,phone,email,active,expires_at,revoked_at,last_seen_at,sections,created_at,is_test,contract_type,employment,personal").order("created_at", { ascending: false });
         const drivers = (members || []).filter(m => m.role === "livreur" || (Array.isArray(m.sections) && m.sections.includes("livreur")));
         const out = [];
         for (const m of drivers) {
@@ -124,9 +137,16 @@ export async function POST(req: Request) {
           const paths = Object.values(docs).map(d => d.path).filter(Boolean) as string[];
           const urls: Record<string, string> = {};
           if (paths.length) { const { data } = await db.storage.from(DRIVER_BUCKET).createSignedUrls(paths, 1800); for (const x of data || []) if (x.path && x.signedUrl) urls[x.path] = x.signedUrl; }
-          out.push({ ...m, docs: Object.fromEntries(Object.entries(docs).map(([k, d]) => [k, { id: d.id, status: d.status, filename: d.filename, uploaded_at: d.uploaded_at, validated_at: d.validated_at, note: d.note, url: d.path ? urls[d.path] || null : null, data: d.data }])) });
+          // Relevés d'heures mensuels (salariés)
+          const { data: rel } = await db.from("driver_documents").select("id,path,filename,uploaded_at,data").eq("member_id", m.id).eq("kind", "releve_heures").order("uploaded_at", { ascending: false }).limit(24);
+          const relPaths = (rel || []).map(r => r.path).filter(Boolean) as string[];
+          const relUrls: Record<string, string> = {};
+          if (relPaths.length) { const { data } = await db.storage.from(DRIVER_BUCKET).createSignedUrls(relPaths, 1800); for (const x of data || []) if (x.path && x.signedUrl) relUrls[x.path] = x.signedUrl; }
+          const contrat = docs.contrat && docs.contrat.data?.version === contractVersionFor(m.contract_type) && docs.contrat.data?.signature ? docs.contrat : undefined;
+          const docMap = { ...docs, ...(contrat ? { contrat } : {}) }; if (!contrat) delete (docMap as Record<string, Doc>).contrat;
+          out.push({ ...m, docs: Object.fromEntries(Object.entries(docMap).filter(([k]) => k !== "releve_heures").map(([k, d]) => [k, { id: d.id, status: d.status, filename: d.filename, uploaded_at: d.uploaded_at, validated_at: d.validated_at, note: d.note, url: d.path ? urls[d.path] || null : null, data: d.data }])), reports: (rel || []).map(r => ({ id: r.id, month: (r.data as { month?: string })?.month || "", filename: r.filename, uploaded_at: r.uploaded_at, totals: r.data, url: r.path ? relUrls[r.path] || null : null })) });
         }
-        return NextResponse.json({ ok: true, drivers: out, kinds: DOC_KINDS, required: REQUIRED_DOCS });
+        return NextResponse.json({ ok: true, drivers: out, kinds: DOC_KINDS, required: REQUIRED_DOCS, employee_kinds: EMPLOYEE_DOC_KINDS, employee_required: EMPLOYEE_REQUIRED });
       }
       if (b.action === "admin_validate") {
         const status = b.status === "valide" ? "valide" : b.status === "refuse" ? "refuse" : null;
@@ -206,29 +226,36 @@ export async function POST(req: Request) {
       if (b.action === "admin_resend_code") {
         // Nouveau code personnel envoyé par SMS (l'ancien ne marche plus) ; le code n'est jamais affiché ici.
         const id = Number(b.id);
-        const { data: m } = await db.from("team_members").select("id,name,phone,role").eq("id", id).maybeSingle();
+        const { data: m } = await db.from("team_members").select("id,name,phone,role,contract_type").eq("id", id).maybeSingle();
         if (!m || m.role !== "livreur" || !m.phone) return NextResponse.json({ ok: false, error: "Livreur introuvable ou sans téléphone." }, { status: 400 });
         await applyStoredSecrets();
         if (!brevoReady()) return NextResponse.json({ ok: false, error: "Envoi SMS indisponible (Brevo non configuré)" }, { status: 503 });
         const code = newCode();
         await db.from("team_members").update({ code_hash: sha(code), active: true, revoked_at: null }).eq("id", id);
         const first = String(m.name || "").split(/\s+/)[0];
-        await sendSms(m.phone, `Bonjour ${first}, voici votre nouveau code NeoDrive : ${code}. Ouvrez ${SITE}/organisation?changer=1 puis « Espace prestataire ».`, "transactional");
+        await sendSms(m.phone, `Bonjour ${first}, voici votre nouveau code NeoDrive : ${code}. Ouvrez ${SITE}/organisation?changer=1 puis « ${isSalarie(m.contract_type) ? "Mon espace" : "Espace prestataire"} ».`, "transactional");
         return NextResponse.json({ ok: true });
       }
       if (b.action === "admin_invite") {
         const name = clean(b.name, 80); if (name.length < 2) return NextResponse.json({ ok: false, error: "Nom manquant" }, { status: 400 });
         const phone = clean(b.phone, 30), email = clean(b.email, 160);
-        const days = Math.min(Math.max(Number(b.days) || 90, 1), 365); const code = newCode();
-        const { data, error } = await db.from("team_members").insert({ name, role: "livreur", phone: phone || null, email: email || null, code_hash: sha(code), expires_at: new Date(Date.now() + days * 86400e3).toISOString(), can_see_numbers: true, max_views_per_hour: 60, note: "Livreur prestataire (invitation espace livreur)", sections: ["livreur"] }).select("id").single();
+        const salarie = isSalarie(b.contract_type);
+        const employment = salarie ? cleanEmployment(b) : null;
+        // Salarié : accès valable jusqu'à 30 jours après la fin du CDD.
+        const days = salarie && employment?.end ? Math.min(Math.max(Math.ceil((Date.parse(employment.end + "T12:00:00Z") - Date.now()) / 86400e3) + 30, 1), 730) : Math.min(Math.max(Number(b.days) || 90, 1), 365);
+        const code = newCode();
+        const { data, error } = await db.from("team_members").insert({ name, role: "livreur", phone: phone || null, email: email || null, code_hash: sha(code), expires_at: new Date(Date.now() + days * 86400e3).toISOString(), can_see_numbers: true, max_views_per_hour: 60, note: salarie ? `Salarié CDD (${employment?.title})` : "Livreur prestataire (invitation espace livreur)", sections: ["livreur"], contract_type: salarie ? "salarie" : "prestataire", employment }).select("id").single();
         if (error) throw new Error(error.message);
         const first = name.split(/\s+/)[0];
-        const text = `Bonjour ${first}, voici votre accès NeoDrive : ${SITE}/organisation?changer=1 - code personnel : ${code}. Ouvrez « Espace prestataire » pour déposer vos documents et signer votre contrat.`;
+        const text = salarie
+          ? `Bonjour ${first}, voici votre accès NeoDrive : ${SITE}/organisation?changer=1 - code personnel : ${code}. Ouvrez « Mon espace » pour déposer vos documents d'embauche et signer votre contrat.`
+          : `Bonjour ${first}, voici votre accès NeoDrive : ${SITE}/organisation?changer=1 - code personnel : ${code}. Ouvrez « Espace prestataire » pour déposer vos documents et signer votre contrat.`;
         const sent = { sms: false, email: false, errors: [] as string[] };
         await applyStoredSecrets();
         if (brevoReady()) {
           if (phone) { try { sent.sms = !!(await sendSms(phone, text, "transactional")); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
-          if (email) { try { sent.email = !!(await sendEmail(email, name, "Votre accès NeoDrive (espace prestataire)", `<p>Bonjour ${esc(first)},</p><p>Voici votre accès à l'espace prestataire NeoDrive (livraison, préparation).</p><p>1. Ouvrez <a href="${SITE}/organisation?changer=1">${SITE}/organisation</a><br>2. Entrez votre code personnel : <b style="font-size:18px;letter-spacing:2px">${esc(code)}</b><br>3. Ouvrez « Espace prestataire » : déposez vos documents (SIRET, assurance RC pro, permis, pièce d'identité, RIB) et signez votre contrat.</p><p>Ce code est personnel : ne le communiquez à personne.</p><p>À bientôt,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
+          if (email && salarie) { try { sent.email = !!(await sendEmail(email, name, "Votre accès NeoDrive", `<p>Bonjour ${esc(first)},</p><p>Bienvenue chez NeoDrive ! Voici votre accès à votre espace (livraison, préparation).</p><p>1. Ouvrez <a href="${SITE}/organisation?changer=1">${SITE}/organisation</a><br>2. Entrez votre code personnel : <b style="font-size:18px;letter-spacing:2px">${esc(code)}</b><br>3. Ouvrez « Mon espace » : déposez vos documents d'embauche (pièce d'identité, carte Vitale, RIB, permis, justificatif de domicile), complétez vos informations et signez votre contrat.</p><p>Ce code est personnel : ne le communiquez à personne.</p><p>À bientôt,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
+          else if (email) { try { sent.email = !!(await sendEmail(email, name, "Votre accès NeoDrive (espace prestataire)", `<p>Bonjour ${esc(first)},</p><p>Voici votre accès à l'espace prestataire NeoDrive (livraison, préparation).</p><p>1. Ouvrez <a href="${SITE}/organisation?changer=1">${SITE}/organisation</a><br>2. Entrez votre code personnel : <b style="font-size:18px;letter-spacing:2px">${esc(code)}</b><br>3. Ouvrez « Espace prestataire » : déposez vos documents (SIRET, assurance RC pro, permis, pièce d'identité, RIB) et signez votre contrat.</p><p>Ce code est personnel : ne le communiquez à personne.</p><p>À bientôt,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
         } else sent.errors.push("Envoi automatique indisponible (Brevo non configuré)");
         return NextResponse.json({ ok: true, id: data.id, code, text, sent });
       }
@@ -242,11 +269,26 @@ export async function POST(req: Request) {
     const name = acc.who === "member" ? acc.member.name : null;
     // Compte de test (is_test) : voit exactement ce que voit Serge (ses tournées et ses livraisons)
     const tourName = acc.who === "member" && (acc.member as { is_test?: boolean }).is_test ? TEST_DRIVER : name;
+    const { data: mInfo } = memberId ? await db.from("team_members").select("contract_type,employment,personal").eq("id", memberId).maybeSingle() : { data: null };
+    const ctype = isSalarie(mInfo?.contract_type) ? "salarie" : "prestataire";
 
     if (b.action === "me") {
       const docs = memberId ? await latestDocs(db, memberId) : {};
       const { data: mb } = memberId ? await db.from("team_members").select("billing").eq("id", memberId).maybeSingle() : { data: null };
-      return NextResponse.json({ ok: true, who: acc.who, name: acc.name, kinds: DOC_KINDS, required: REQUIRED_DOCS, docs: Object.fromEntries([...DOC_KINDS.map(k => k.id), "contrat"].map(k => [k, publicDoc(docs[k])])), contractVersion: CONTRACT_VERSION, billing: (mb?.billing || null) as Billing | null });
+      const kinds = docKindsFor(ctype); const version = contractVersionFor(ctype);
+      return NextResponse.json({ ok: true, who: acc.who, name: acc.name, contract_type: ctype, employment: mInfo?.employment || null, personal: mInfo?.personal || {}, kinds, required: requiredFor(ctype), docs: Object.fromEntries([...kinds.map(k => k.id), "contrat"].map(k => [k, publicDoc(docs[k], version)])), contractVersion: version, billing: (mb?.billing || null) as Billing | null });
+    }
+    if (b.action === "personal_save") {
+      if (!memberId) return NextResponse.json({ ok: false, error: "À remplir depuis le compte du salarié." }, { status: 403 });
+      const p: Record<string, string> = {};
+      for (const k of PERSONAL_KEYS) p[k] = clean(b[k], k === "address" ? 240 : 120);
+      p.ssn = p.ssn.replace(/[\s.-]/g, "").toUpperCase();
+      if (p.birth_date && !isoDate(p.birth_date)) return NextResponse.json({ ok: false, error: "Date de naissance invalide." }, { status: 400 });
+      if (p.ssn && !/^[1-478][0-9]{4}(?:[0-9]{2}|2[AB])[0-9]{6}([0-9]{2})?$/.test(p.ssn)) return NextResponse.json({ ok: false, error: "Numéro de sécurité sociale invalide : 13 chiffres (15 avec la clé)." }, { status: 400 });
+      const { error } = await db.from("team_members").update({ personal: { ...p, updated_at: new Date().toISOString() } }).eq("id", memberId);
+      if (error) throw new Error(error.message);
+      await logSection(acc, "salarie_infos", {});
+      return NextResponse.json({ ok: true });
     }
     if (b.action === "reservations") {
       const { data, error } = await db.from("reservations").select("id,prenom,nom,ville,code_postal,departement,telephone,statut,date_promise,modele,priorite").in("statut", ["Nouvelle", "Confirmée", "Planifiée"]).order("date_promise", { ascending: true, nullsFirst: false }).limit(500);
@@ -485,6 +527,35 @@ export async function POST(req: Request) {
       if (error) throw new Error(error.message);
       return NextResponse.json({ ok: true });
     }
+    if ((b.action === "hours_invoice" || b.action === "invoice_send" || b.action === "invoice_prepare" || b.action === "invoice_preview") && ctype === "salarie") return NextResponse.json({ ok: false, error: "Salarié : pas de facture. Vos heures sont transmises par le relevé d'heures du mois." }, { status: 400 });
+    if (b.action === "hours_report" || b.action === "my_reports") {
+      if (!memberId) return NextResponse.json({ ok: false, error: "Depuis le compte du salarié." }, { status: 403 });
+      if (b.action === "my_reports") {
+        const { data } = await db.from("driver_documents").select("id,path,filename,uploaded_at,data").eq("member_id", memberId).eq("kind", "releve_heures").order("uploaded_at", { ascending: false }).limit(24);
+        const paths = (data || []).map(r => r.path).filter(Boolean) as string[]; const urls: Record<string, string> = {};
+        if (paths.length) { const { data: su } = await db.storage.from(DRIVER_BUCKET).createSignedUrls(paths, 1800); for (const x of su || []) if (x.path && x.signedUrl) urls[x.path] = x.signedUrl; }
+        return NextResponse.json({ ok: true, reports: (data || []).map(r => ({ id: r.id, month: (r.data as { month?: string })?.month || "", uploaded_at: r.uploaded_at, totals: r.data, url: r.path ? urls[r.path] || null : null })) });
+      }
+      const month = /^\d{4}-\d{2}$/.test(String(b.month || "")) ? String(b.month) : new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" }).slice(0, 7);
+      const { data: rows, error } = await db.from("driver_hours").select("date,kind,start_time,end_time,pause_min,worked_min,note").eq("member_id", memberId).gte("date", month + "-01").lte("date", month + "-31").order("date");
+      if (error) throw new Error(error.message);
+      const emp = (mInfo?.employment || {}) as Employment;
+      const rep = monthReport(month, (rows || []) as HourRow[], Number(emp.hours) > 0 ? Number(emp.hours) : 35);
+      if (!rep.rows.length) return NextResponse.json({ ok: false, error: `Aucune heure saisie en ${monthLabel(month)}.` }, { status: 400 });
+      const employee = name || "Salarié";
+      const pdf = await monthReportPdf(rep, employee);
+      const path = `${RELEVE_FOLDER}/${memberId}/${month}-${Date.now()}.pdf`;
+      const up = await db.storage.from(DRIVER_BUCKET).upload(path, pdf, { contentType: "application/pdf", upsert: true });
+      if (up.error) throw new Error("Enregistrement du relevé impossible : " + up.error.message);
+      const totals = { month, total_min: rep.total_min, normal_min: rep.normal_min, ot25_min: rep.ot25_min, ot50_min: rep.ot50_min, lines: rep.rows.length };
+      const { error: insErr } = await db.from("driver_documents").insert({ member_id: memberId, kind: "releve_heures", path, filename: `Relevé d'heures ${monthLabel(month)}.pdf`, status: "recu", data: totals });
+      if (insErr) throw new Error(insErr.message);
+      await applyStoredSecrets();
+      if (brevoReady()) { try { await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", `NeoDrive : releve d'heures de ${employee} pour ${monthLabel(month)} : ${hmReport(rep.total_min)} (dont ${hmReport(rep.ot25_min + rep.ot50_min)} sup.). A voir dans Prestataires.`, "transactional"); } catch (e) { console.error("[LIVREUR] SMS relevé", e); } }
+      await logSection(acc, "salarie_releve_heures", { month });
+      const { data: su } = await db.storage.from(DRIVER_BUCKET).createSignedUrl(path, 1800);
+      return NextResponse.json({ ok: true, totals, url: su?.signedUrl || null });
+    }
     if (b.action === "hours_invoice") {
       const ids = (Array.isArray(b.ids) ? b.ids : []).map(Number).filter(Number.isFinite).slice(0, 200);
       if (!ids.length) return NextResponse.json({ ok: false, error: "Sélectionnez au moins une ligne d'heures." }, { status: 400 });
@@ -606,9 +677,10 @@ export async function POST(req: Request) {
       if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(signature) || signature.length < 2000 || signature.length > 600000) return NextResponse.json({ ok: false, error: "Signez à la main dans le cadre (avec le doigt)." }, { status: 400 });
       const at = new Date().toISOString();
       const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || null;
-      const { error } = await db.from("driver_documents").insert({ member_id: memberId, kind: "contrat", path: null, filename: `Contrat de prestation v${CONTRACT_VERSION}`, status: "recu", data: { signed_name: signed, signed_at: at, version: CONTRACT_VERSION, signature, ip, ua: clean(req.headers.get("user-agent"), 200), member_name: name, rate: 25 } });
+      const version = contractVersionFor(ctype);
+      const { error } = await db.from("driver_documents").insert({ member_id: memberId, kind: "contrat", path: null, filename: ctype === "salarie" ? `Contrat de travail CDD v${EMPLOYEE_CONTRACT_VERSION}` : `Contrat de prestation v${CONTRACT_VERSION}`, status: "recu", data: { signed_name: signed, signed_at: at, version, signature, ip, ua: clean(req.headers.get("user-agent"), 200), member_name: name, ...(ctype === "salarie" ? { employment: mInfo?.employment || null } : { rate: 25 }) } });
       if (error) throw new Error(error.message);
-      await logSection(acc, "livreur_contrat_signe", { version: CONTRACT_VERSION });
+      await logSection(acc, "livreur_contrat_signe", { version });
       return NextResponse.json({ ok: true, signed_at: at });
     }
     return NextResponse.json({ ok: false, error: "Action inconnue" }, { status: 400 });

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import c from "../giga/giga.module.css";
 import { supabase } from "../../lib/supabase";
-import { DOC_STATUS_LABEL } from "../../lib/driver-docs";
+import { DOC_STATUS_LABEL, type Employment } from "../../lib/driver-docs";
 import Contract from "./Contract";
 import Delivery from "./Delivery";
 import Billing, { type BillingInfo } from "./Billing";
@@ -14,7 +14,8 @@ import TourMap from "../planificateur/TourMap";
 import type { Stop } from "../../lib/planif";
 
 type DocInfo = { status: string; filename?: string | null; uploaded_at?: string; note?: string | null; signed_name?: string | null; signed_at?: string | null; signature?: string | null; outdated?: boolean };
-type Me = { who: "owner" | "member"; name: string; kinds: { id: string; label: string; hint: string }[]; required: string[]; docs: Record<string, DocInfo>; billing?: BillingInfo };
+type Personal = { birth_date?: string; birth_place?: string; nationality?: string; address?: string; ssn?: string; updated_at?: string };
+type Me = { who: "owner" | "member"; name: string; contract_type?: "prestataire" | "salarie"; employment?: Employment | null; personal?: Personal; kinds: { id: string; label: string; hint: string }[]; required: string[]; docs: Record<string, DocInfo>; billing?: BillingInfo };
 type MyInvoice = { id: number; tour_id: string; tour_name: string; number: string; status: string; worked_min: number; total: number; sent_at: string; paid_at: string | null; url: string | null };
 type Res = { id: number; prenom: string; nom: string; ville: string; code_postal: string; departement: string; telephone: string; statut: string; date_promise: string | null; modele: string; priorite: string };
 type LL = [number, number];
@@ -50,6 +51,7 @@ export default function Livreur() {
   const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
   const [sign, setSign] = useState(""); const [accept, setAccept] = useState(false); const [sigPng, setSigPng] = useState<string | null>(null);
   const [guide, setGuide] = useState(true);
+  const [pers, setPers] = useState<Personal>({});
   useEffect(() => { try { if (localStorage.getItem("nd_livreur_guide") === "0") setGuide(false); } catch { /* privé */ } }, []);
   const toggleGuide = (v: boolean) => { setGuide(v); try { localStorage.setItem("nd_livreur_guide", v ? "1" : "0"); } catch { /* privé */ } };
   const go = (t: "livraisons" | "tournees" | "factures" | "documents" | "contrat") => { setTab(t); setTimeout(() => document.getElementById("nd-tab-zone")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); };
@@ -60,7 +62,7 @@ export default function Livreur() {
       const m = await api<Me>({ action: "me" });
       // Tournées et réservations chargées à part : une erreur sur l'une ne vide pas tout l'espace.
       const [r, t] = await Promise.allSettled([m.who === "owner" ? api<{ reservations: Res[] }>({ action: "reservations" }) : Promise.resolve({ reservations: [] as Res[] }), api<{ tours: Tour[] }>({ action: "tours" })]);
-      setMe(m); setRes(r.status === "fulfilled" ? r.value.reservations : []); setTours(t.status === "fulfilled" ? t.value.tours : []); setState("ready");
+      setMe(m); setPers(m.personal || {}); setRes(r.status === "fulfilled" ? r.value.reservations : []); setTours(t.status === "fulfilled" ? t.value.tours : []); setState("ready");
       if (t.status === "rejected") setMsg("❌ Tournées : " + (t.reason as Error).message);
       if (m.who === "member") api<{ invoices: MyInvoice[] }>({ action: "my_invoices" }).then(j => setInvoices(j.invoices)).catch(() => null);
     } catch (e) { if (e instanceof Unauthorized) setState("login"); else { setMsg("❌ " + (e as Error).message); setState("ready"); } }
@@ -80,6 +82,11 @@ export default function Livreur() {
     } catch (e) { setMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
   })();
 
+  const savePersonal = async () => {
+    setBusy("pers"); setMsg("");
+    try { await api({ action: "personal_save", ...pers }); await load(); setMsg("✅ Informations enregistrées."); }
+    catch (e) { setMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
+  };
   const signContract = async () => {
     setBusy("sign"); setMsg("");
     try { await api({ action: "contract_sign", signed_name: sign, accept, signature: sigPng }); await load(); setMsg("✅ Contrat signé. Merci !"); }
@@ -88,7 +95,7 @@ export default function Livreur() {
 
   if (state === "loading") return <main className={c.page}><p className={c.muted} style={{ padding: 30 }}>Chargement…</p></main>;
   if (state === "login") return <main className={c.page}><div className={c.login}>
-    <h1>🧰 Espace prestataire</h1>
+    <h1>🧰 Mon espace NeoDrive</h1>
     <p className={c.muted}>Livraison, préparation</p>
     <p className={c.muted}>Connectez-vous avec votre code personnel sur la page Organisation, puis revenez ici.</p>
     <a className={`${c.btn} ${c.btnBrand}`} href="/organisation" style={{ textAlign: "center", textDecoration: "none" }}>Se connecter</a>
@@ -98,7 +105,9 @@ export default function Livreur() {
   const signed = contract && contract.status !== "manquant" && contract.status !== "refuse";
   const missing = (me?.required || []).filter(k => ["manquant", "refuse"].includes(me?.docs[k]?.status || "manquant")).length + (signed ? 0 : 1);
   const member = me?.who === "member";
-  const tabs: [typeof tab, string][] = [["livraisons", "🚗 Livraisons"], ["tournees", `🚚 Mes tournées (${tours.length})`], ["factures", "🧾 Heures, tickets et factures"], ...(member ? [] : [["reservations", `📋 Réservations en cours (${res.length})`]] as [typeof tab, string][]), ["documents", `🪪 Mes documents${missing ? ` (${missing} à faire)` : " ✅"}`], ["contrat", signed ? "✍️ Contrat ✅" : "✍️ Contrat à signer"]];
+  const salarie = me?.contract_type === "salarie";
+  const persDone = !!(me?.personal?.birth_date && me.personal.ssn && me.personal.address);
+  const tabs: [typeof tab, string][] = [["livraisons", "🚗 Livraisons"], ["tournees", `🚚 Mes tournées (${tours.length})`], ["factures", salarie ? "🧾 Heures et tickets" : "🧾 Heures, tickets et factures"], ...(member ? [] : [["reservations", `📋 Réservations en cours (${res.length})`]] as [typeof tab, string][]), ["documents", `🪪 Mes documents${missing ? ` (${missing} à faire)` : " ✅"}`], ["contrat", signed ? "✍️ Contrat ✅" : "✍️ Contrat à signer"]];
   const drafts = tours.filter(t => t.plan.draft);
   const validated = tours.filter(t => !t.plan.draft).length;
   const docsTotal = (me?.required || []).length;
@@ -109,6 +118,7 @@ export default function Livreur() {
   const closeBox = (t: Tour) => {
     if (t.plan.draft) return <div style={{ padding: 10, borderRadius: 10, background: "#fffaeb", fontSize: 14 }}>⏳ Tournée prévisionnelle : Mansour la revoit avec vous avant le départ. Une fois validée, vous la ferez, puis vous la clôturerez ici (heures, tickets, facture).</div>;
     if (!member) return <small className={c.muted}>Aperçu fondateur : la clôture se fait depuis le compte du prestataire.</small>;
+    if (salarie) return <small className={c.muted}>Fin de tournée : saisissez vos heures et vos pauses dans « 🧾 Heures et tickets » (type « Tournée »), et déposez vos tickets chaque soir. Pas de facture : vos heures sont transmises par le relevé du mois.</small>;
     const inv = invoices.find(x => x.tour_id === t.id);
     if (inv) return <div style={{ padding: 10, borderRadius: 10, background: inv.status === "payee" ? "#e7f6ec" : "#fffaeb" }}>🧾 Facture <b>{inv.number}</b> · {inv.total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {inv.status === "payee" ? "✅ payée" : "⏳ à payer par NeoDrive"}{inv.url ? <> · <a href={inv.url} target="_blank" rel="noreferrer">PDF</a></> : null}</div>;
     return <div style={{ display: "grid", gap: 6 }}>
@@ -119,17 +129,21 @@ export default function Livreur() {
 
   return <main className={c.page}><div className={c.wrap}>
     <div className={c.top}><a href="/organisation" className={c.back}>← Organisation</a></div>
-    <h1 style={{ margin: "14px 0 4px" }}>🧰 Espace prestataire</h1>
-    <p className={c.muted}>Livraison, préparation. Bonjour {me?.name?.split(" ")[0] || ""} : vos tournées, vos heures, vos documents et votre contrat.</p>
+    <h1 style={{ margin: "14px 0 4px" }}>{salarie ? "🧰 Mon espace – Livraison, préparation" : "🧰 Espace prestataire"}</h1>
+    <p className={c.muted}>{salarie ? "" : "Livraison, préparation. "}Bonjour {me?.name?.split(" ")[0] || ""} : vos tournées, vos heures, vos documents et votre contrat.</p>
     {msg ? <p className={c.msg} style={{ fontWeight: 700 }}>{msg}</p> : null}
     {guide ? <section className={c.card} style={{ display: "grid", gap: 10, margin: "14px 0", background: "#fffdf8" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><b style={{ fontSize: 19 }}>🧭 Comment ça marche</b><button className={`${c.btn} ${c.btnGhost}`} style={{ padding: "6px 10px", fontSize: 13 }} onClick={() => toggleGuide(false)}>Masquer le guide</button></div>
       {([
-        { n: "①", t: "Mes documents", d: "SIRET, assurance RC pro, permis, pièce d’identité, RIB : une photo ou un PDF chacun.", st: `${docsDone}/${docsTotal} déposés`, done: docsTotal > 0 && docsDone >= docsTotal, b: "Déposer mes documents", to: "documents" as const },
-        { n: "②", t: "Contrat", d: "Lisez le contrat de prestation, puis signez-le avec le doigt.", st: signed ? `Signé le ${contract?.signed_at ? new Date(contract.signed_at).toLocaleDateString("fr-FR") : ""}` : "À signer", done: !!signed, b: "Lire et signer", to: "contrat" as const },
+        salarie
+          ? { n: "①", t: "Mes documents d’embauche", d: "Pièce d’identité, carte Vitale (n° de sécurité sociale), RIB, permis, justificatif de domicile, et vos informations (date et lieu de naissance, adresse) : c’est ce qu’il faut pour votre déclaration d’embauche et votre paie.", st: `${docsDone}/${docsTotal} déposés${persDone ? " · infos ✅" : " · infos à remplir"}`, done: docsTotal > 0 && docsDone >= docsTotal && persDone, b: "Déposer mes documents", to: "documents" as const }
+          : { n: "①", t: "Mes documents", d: "SIRET, assurance RC pro, permis, pièce d’identité, RIB : une photo ou un PDF chacun.", st: `${docsDone}/${docsTotal} déposés`, done: docsTotal > 0 && docsDone >= docsTotal, b: "Déposer mes documents", to: "documents" as const },
+        { n: "②", t: "Contrat", d: salarie ? "Lisez votre contrat de travail (CDD), puis signez-le avec le doigt." : "Lisez le contrat de prestation, puis signez-le avec le doigt.", st: signed ? `Signé le ${contract?.signed_at ? new Date(contract.signed_at).toLocaleDateString("fr-FR") : ""}` : "À signer", done: !!signed, b: "Lire et signer", to: "contrat" as const },
         { n: "③", t: "Mes tournées", d: "Mansour prépare la tournée, vous la revoyez ensemble avant le départ.", st: `${validated} validée${validated > 1 ? "s" : ""}${drafts.length ? ` · ${drafts.length} prévisionnelle${drafts.length > 1 ? "s" : ""}` : ""}`, done: validated > 0, b: "Voir mes tournées", to: "tournees" as const },
         { n: "④", t: "Livraisons", d: "Pour chaque client : numéro de série + photo de la plaque → paiement confirmé par Mansour → le client déclare comment il a payé et signe l’accusé.", st: validated ? "Clients des tournées validées" : "Dès qu’une tournée est validée", done: false, b: "Voir les livraisons", to: "livraisons" as const },
-        { n: "⑤", t: "Heures et factures", d: "Saisissez vos heures (tournée ou autre mission : préparation, contrôle, réparation, transport), déposez vos tickets chaque soir, puis générez votre facture (heures × 25 € HT) : elle arrive chez Mansour automatiquement.", st: invoices.length ? `${invoices.length} facture${invoices.length > 1 ? "s" : ""}` : "Aucune facture", done: false, b: "Saisir mes heures", to: "factures" as const },
+        salarie
+          ? { n: "⑤", t: "Heures", d: "Saisissez vos heures et vos pauses après chaque mission (tournée, préparation, contrôle, réparation, transport), déposez vos tickets chaque soir, puis générez le relevé d’heures du mois : il arrive chez Mansour pour votre paie.", st: "Relevé mensuel", done: false, b: "Saisir mes heures", to: "factures" as const }
+          : { n: "⑤", t: "Heures et factures", d: "Saisissez vos heures (tournée ou autre mission : préparation, contrôle, réparation, transport), déposez vos tickets chaque soir, puis générez votre facture (heures × 25 € HT) : elle arrive chez Mansour automatiquement.", st: invoices.length ? `${invoices.length} facture${invoices.length > 1 ? "s" : ""}` : "Aucune facture", done: false, b: "Saisir mes heures", to: "factures" as const },
       ]).map(x => <div key={x.n} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center", padding: 10, borderRadius: 12, background: x.done ? "#e7f6ec" : "#fff", border: "1px solid #eee" }}>
         <div style={{ display: "grid", gap: 2 }}><b style={{ fontSize: 16 }}>{x.done ? "✅" : x.n} {x.t} <span className={c.badge} style={{ background: x.done ? "#d1fadf" : "#f1f1f1", color: "#111", marginLeft: 4 }}>{x.st}</span></b><small className={c.muted}>{x.d}</small></div>
         <button className={`${c.btn} ${x.done ? c.btnGhost : c.btnBrand}`} style={{ padding: "12px 14px", fontSize: 15 }} onClick={() => go(x.to)}>{x.b}</button>
@@ -149,8 +163,8 @@ export default function Livreur() {
       </section> : null}
     </div> : null}
     {tab === "factures" ? <div style={{ display: "grid", gap: 10 }}>
-      {member ? <Hours api={api} onMsg={setMsg} tours={tours.filter(t => !t.plan.draft).map(t => ({ id: t.id, name: t.name }))} onInvoiced={() => api<{ invoices: MyInvoice[] }>({ action: "my_invoices" }).then(j => setInvoices(j.invoices)).catch(() => null)} /> : <p className={c.muted} style={{ margin: 0 }}>Aperçu fondateur : la saisie des heures se fait depuis le compte du livreur.</p>}
-      <p className={c.muted} style={{ margin: 0 }}>Une facture par tournée : à la fin de chaque tournée, cliquez « Clôturer cette tournée » et suivez les étapes (heures et pauses → tickets → facture). Déposez vos tickets chaque soir (photos) et gardez les originaux papier pour Mansour. Hôtel max 70 €/nuit, repas max 30 €/jour.</p>
+      {member ? <Hours api={api} onMsg={setMsg} salarie={salarie} tours={tours.filter(t => !t.plan.draft).map(t => ({ id: t.id, name: t.name }))} onInvoiced={() => api<{ invoices: MyInvoice[] }>({ action: "my_invoices" }).then(j => setInvoices(j.invoices)).catch(() => null)} /> : <p className={c.muted} style={{ margin: 0 }}>Aperçu fondateur : la saisie des heures se fait depuis le compte du livreur.</p>}
+      <p className={c.muted} style={{ margin: 0 }}>{salarie ? "Saisissez vos heures après chaque mission et générez le relevé du mois pour la paie. Déposez vos tickets chaque soir (photos) et gardez les originaux papier pour Mansour. Repas en tournée remboursés jusqu’à 30 €/jour." : "Une facture par tournée : à la fin de chaque tournée, cliquez « Clôturer cette tournée » et suivez les étapes (heures et pauses → tickets → facture). Déposez vos tickets chaque soir (photos) et gardez les originaux papier pour Mansour. Hôtel max 70 €/nuit, repas max 30 €/jour."}</p>
       {[...tours].sort((a, z) => String(z.date).localeCompare(String(a.date))).map(t => <section key={t.id} className={c.card} style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}><b style={{ fontSize: 17 }}>{t.name}</b><span className={c.muted}>📅 {fmt(t.date)}</span>
           {t.plan.draft ? <span className={c.badge} style={{ background: "#fef0c7", color: "#93370d" }}>Prévisionnelle</span> : <span className={c.badge} style={{ background: "#e8f0fe", color: "#111" }}>{t.status === "termine" ? "Terminée" : "Validée"}</span>}
@@ -158,7 +172,7 @@ export default function Livreur() {
         {closeBox(t)}
       </section>)}
       {!tours.length ? emptyTours : null}
-      {member ? <Billing initial={me?.billing || null} api={api} onSaved={load} onMsg={setMsg} /> : null}
+      {member && !salarie ? <Billing initial={me?.billing || null} api={api} onSaved={load} onMsg={setMsg} /> : null}
       {invoices.length ? <section className={c.card} style={{ display: "grid", gap: 6, padding: 14 }}><b>🧾 Toutes mes factures</b>{invoices.map(x => <span key={x.id}>{x.number} · {x.tour_name} · {x.total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {x.status === "payee" ? `✅ payée le ${x.paid_at ? new Date(x.paid_at).toLocaleDateString("fr-FR") : ""}` : "⏳ à payer"}{x.url ? <> · <a href={x.url} target="_blank" rel="noreferrer">PDF</a></> : null}</span>)}</section> : null}
     </div> : null}
     {tab === "tournees" ? <div style={{ display: "grid", gap: 10 }}>
@@ -218,6 +232,18 @@ export default function Livreur() {
 
     {tab === "documents" && me ? <div style={{ display: "grid", gap: 10 }}>
       {invoices.length ? <section className={c.card} style={{ display: "grid", gap: 6, padding: 14 }}><b>🧾 Mes factures</b>{invoices.map(x => <span key={x.id}>{x.number} · {x.tour_name} · {x.total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {x.status === "payee" ? `✅ payée le ${x.paid_at ? new Date(x.paid_at).toLocaleDateString("fr-FR") : ""}` : "⏳ à payer"}{x.url ? <> · <a href={x.url} target="_blank" rel="noreferrer">PDF</a></> : null}</span>)}</section> : null}
+      {salarie && member ? <section className={c.card} style={{ display: "grid", gap: 8, padding: 14 }}>
+        <b>👤 Mes informations pour l’embauche {persDone ? "✅" : ""}</b>
+        <small className={c.muted}>Nécessaires pour votre déclaration d’embauche et vos fiches de paie. Elles ne sont visibles que par Mansour.</small>
+        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))" }}>
+          <label className={c.small}>Date de naissance<input className={c.input} type="date" value={pers.birth_date || ""} onChange={e => setPers({ ...pers, birth_date: e.target.value })} style={{ width: "100%" }} /></label>
+          <label className={c.small}>Lieu de naissance (ville, pays)<input className={c.input} value={pers.birth_place || ""} onChange={e => setPers({ ...pers, birth_place: e.target.value })} style={{ width: "100%" }} /></label>
+          <label className={c.small}>Nationalité<input className={c.input} value={pers.nationality || ""} onChange={e => setPers({ ...pers, nationality: e.target.value })} style={{ width: "100%" }} /></label>
+          <label className={c.small}>N° de sécurité sociale<input className={c.input} inputMode="numeric" value={pers.ssn || ""} onChange={e => setPers({ ...pers, ssn: e.target.value })} placeholder="1 85 12 31 555 123 45" style={{ width: "100%" }} /></label>
+          <label className={c.small} style={{ gridColumn: "1 / -1" }}>Adresse complète<input className={c.input} value={pers.address || ""} onChange={e => setPers({ ...pers, address: e.target.value })} placeholder="N°, rue, code postal, ville" style={{ width: "100%" }} /></label>
+        </div>
+        <button className={`${c.btn} ${c.btnBrand}`} style={{ justifyContent: "center" }} disabled={busy === "pers"} onClick={savePersonal}>{busy === "pers" ? "…" : "Enregistrer mes informations"}</button>
+      </section> : null}
       <p style={{ margin: 0, padding: 12, borderRadius: 12, background: "#fff4ec", fontWeight: 600 }}>📄 Déposez ici vos documents : appuyez sur le bouton orange de chaque document, prenez-le en photo (ou choisissez un PDF). NeoDrive vérifie chaque document et le valide.</p>
       {me.kinds.map(k => { const d = me.docs[k.id] || { status: "manquant" }; const [bg, col] = ST_COLOR[d.status] || ST_COLOR.manquant; const req = me.required.includes(k.id);
         return <section key={k.id} className={c.card} style={{ display: "grid", gap: 6, padding: 14 }}>
@@ -234,13 +260,13 @@ export default function Livreur() {
     </div> : null}
 
     {tab === "contrat" ? <section className={c.card} style={{ display: "grid", gap: 12 }}>
-      <Contract />
+      <Contract salarie={salarie} name={me?.name || ""} employment={me?.employment || null} />
       {signed ? <p style={{ margin: 0, padding: 12, borderRadius: 12, background: "#e7f6ec", color: "#067647", fontWeight: 700 }}>✅ Signé par {contract?.signed_name} le {contract?.signed_at ? new Date(contract.signed_at).toLocaleString("fr-FR") : ""}{contract?.status === "valide" ? " · validé par NeoDrive" : ""}{contract?.signature ? <img src={contract.signature} alt="Signature" style={{ display: "block", maxWidth: 260, marginTop: 8, background: "#fff", borderRadius: 8 }} /> : null}</p>
         : me?.who === "member" ? <div style={{ display: "grid", gap: 10, borderTop: "1px solid #eee", paddingTop: 12 }}>
           {contract?.outdated ? <p style={{ margin: 0, padding: 10, borderRadius: 10, background: "#fffaeb" }}>Le contrat a été mis à jour : merci de le relire et de le signer à nouveau, à la main.</p> : null}
           <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Nom et prénom (signature)<input className={c.input} value={sign} onChange={e => setSign(e.target.value)} placeholder="Ex. : Jean Dupont" /></label>
           <div style={{ display: "grid", gap: 4 }}><b>Signature à la main</b><SignaturePad onChange={setSigPng} btnClass={`${c.btn} ${c.btnGhost}`} /></div>
-          <label style={{ display: "flex", gap: 10, alignItems: "flex-start" }}><input type="checkbox" checked={accept} onChange={e => setAccept(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2 }} /><span>Lu et approuvé : j’ai lu le contrat de prestation et je l’accepte. Je signe aujourd’hui, le {new Date().toLocaleDateString("fr-FR")}.</span></label>
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start" }}><input type="checkbox" checked={accept} onChange={e => setAccept(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2 }} /><span>Lu et approuvé : j’ai lu {salarie ? "mon contrat de travail" : "le contrat de prestation"} et je l’accepte. Je signe aujourd’hui, le {new Date().toLocaleDateString("fr-FR")}.</span></label>
           <button className={`${c.btn} ${c.btnBrand}`} disabled={busy === "sign" || sign.trim().length < 3 || !accept || !sigPng} onClick={signContract}>{busy === "sign" ? "…" : "✍️ Signer le contrat"}</button>
         </div> : <p className={c.muted}>Aperçu fondateur : la signature se fait depuis le compte du prestataire.</p>}
     </section> : null}
