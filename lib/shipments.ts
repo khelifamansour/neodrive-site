@@ -202,3 +202,8 @@ export const pipelineIndex = (k: unknown) => Math.max(0, PIPELINE.findIndex(p =>
 /** Rôles des prestataires d'un port. */
 export const FORWARDER_ROLES = ["dédouanement", "dépotage", "transport", "stockage", "compagnie"] as const;
 export const FOLLOWUP_KINDS = ["usine", "transitaire", "compagnie", "transport", "stockage", "autre"] as const;
+
+/** Adresses e-mail d'un champ (séparées par virgule, point-virgule ou espace), sans doublon, 4 au plus. */
+export const mailList = (v: unknown) => [...new Set(String(v || "").split(/[,; ]+/).map(x => x.trim().toLowerCase()).filter(x => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(x)))].slice(0, 4);
+/** Transitaire au départ de Chine (Shanghai Yihai, Lilian) : reçoit les commandes et le lien de dépôt des documents. */
+export const ORIGIN_FORWARDER_EMAIL = "oceanexp1@yihaifreight.com";

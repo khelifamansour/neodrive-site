@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { applyStoredSecrets, isAuthorized } from "../../../../lib/integrations";
 import { crmDatabase } from "../../../../lib/crm-agent";
 import { brevoReady, sendEmail, OWNER_EMAIL, SITE } from "../../../../lib/brevo";
-import { DOC_TYPES, factoryChecks, pipelineIndex } from "../../../../lib/shipments";
+import { DOC_TYPES, factoryChecks, mailList, pipelineIndex } from "../../../../lib/shipments";
 import { notifyOwner } from "../../../../lib/import-notify";
 import { genDocs } from "../gen";
 
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
 ${errors.length ? `<p><b>To correct:</b></p><ul>${errors.map(i => `<li style="color:#b91c1c">${esc(i.en)}</li>`).join("")}</ul>` : ""}
 <p>Please upload them here (no login needed): <a href="${link}">${link}</a></p><p>Thank you,<br>Mansour Khelifa<br>MK HOLDING – NeoDrive (France)</p></div>`;
       if (!dry && brevoReady()) {
-        await sendEmail(String(s.factory_email).split(/[,; ]+/)[0], "", `Documents needed – order ${s.name} – MK HOLDING`, html).catch(() => null);
+        for (const to of mailList(s.factory_email)) await sendEmail(to, "", `Documents needed – order ${s.name} – MK HOLDING`, html, [], { replyTo: "khelifamansour@hotmail.fr" }).catch(() => null);
         await db.from("shipments").update({ factory_reminded_at: new Date().toISOString() }).eq("id", s.id);
       }
       reminded.push(`${s.name} (${c.missing.length} missing, ${errors.length} to correct)`);

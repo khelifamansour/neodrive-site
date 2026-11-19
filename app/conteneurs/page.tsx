@@ -73,8 +73,9 @@ export default function Conteneurs() {
           <label className={s.field}>Port<select name="port">{["Le Havre", "Fos-sur-Mer"].map(p => <option key={p}>{p}</option>)}</select></label>
           <label className={s.field}>Nb de véhicules<input name="vehicles" type="number" /></label>
           <label className={s.field}>Modèle<input name="model" /></label>
-          <label className={s.field}>E-mail de l’usine<input name="factory_email" type="email" /></label></div>
-        <label style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" name="send" style={{ width: "auto" }} /> Envoyer aussi l’e-mail de commande à l’usine (en anglais)</label>
+          <label className={s.field}>E-mail de l’usine<input name="factory_email" type="email" /></label>
+          <label className={s.field}>Transitaire Chine (Lilian)<input name="origin_email" type="email" defaultValue="oceanexp1@yihaifreight.com" /></label></div>
+        <label style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" name="send" style={{ width: "auto" }} /> Envoyer l’e-mail de commande à l’usine et au transitaire Chine (en anglais), avec le lien de dépôt des documents</label>
         <button className={s.primary} disabled={busy === "order"}>{busy === "order" ? "Création…" : "Créer la commande"}</button></form>
       {order ? <div style={box("#f0fdf4")}><b>Lien usine</b><code style={{ wordBreak: "break-all" }}>{order.link}</code><button className={s.ghost} onClick={() => copy(order.link, "🔗 Lien usine copié")}>Copier le lien</button>
         <b>Texte WeChat (anglais)</b><textarea readOnly value={order.wechat} rows={6} /><button className={s.ghost} onClick={() => copy(order.wechat, "💬 Texte WeChat copié")}>Copier le texte WeChat</button></div> : null}</section> : null}

@@ -3,7 +3,7 @@ import { applyStoredSecrets } from "../../../lib/integrations";
 import { authorizeSection } from "../../../lib/access";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail, SITE } from "../../../lib/brevo";
-import { FOLLOWUP_KINDS, FORWARDER_ROLES, isDepot, isDocType, isPipelineStage, portKey } from "../../../lib/shipments";
+import { FOLLOWUP_KINDS, FORWARDER_ROLES, isDepot, isDocType, isPipelineStage, mailList, portKey } from "../../../lib/shipments";
 import { notifyOwner } from "../../../lib/import-notify";
 import { storeFiles } from "./store";
 import { genDocs } from "./gen";
@@ -93,15 +93,15 @@ export async function PUT(req: Request) {
   }
   if (b.action === "new_order") {
     const name = clean(b.name, 160); if (!name) return NextResponse.json({ ok: false, error: "Nom obligatoire" }, { status: 400 });
-    const row = { name, port: clean(b.port, 40) || "Le Havre", vehicles: Number(b.vehicles) || null, model: clean(b.model, 160) || null, factory_email: clean(b.factory_email, 200) || null, status: "en production", pipeline: "commandé", pipeline_history: [{ at: new Date().toISOString(), stage: "commandé", by: acc.name }] };
+    const row = { name, port: clean(b.port, 40) || "Le Havre", vehicles: Number(b.vehicles) || null, model: clean(b.model, 160) || null, factory_email: mailList([b.factory_email, b.origin_email].join(",")).join(", ") || null, status: "en production", pipeline: "commandé", pipeline_history: [{ at: new Date().toISOString(), stage: "commandé", by: acc.name }] };
     const { data, error } = await db.from("shipments").insert(row).select("id,factory_token").single(); if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     const link = `${SITE}/factory/${data.factory_token}`;
     const wechat = `Hello! New order from MK HOLDING (NeoDrive): ${name}${row.vehicles ? `, ${row.vehicles} vehicles` : ""}${row.model ? ` (${row.model})` : ""}. Please upload all the documents for this order on this page (no login): ${link}\nNeeded: proforma invoice, commercial invoice, packing list with the VIN of each vehicle container by container, COC for every VIN, B/L and loading photos. Thank you!`;
     let mailed = false;
     if (b.send && row.factory_email && brevoReady()) {
       const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6"><p>Hello,</p><p>Please find our new order <b>${name.replace(/[<>&]/g, "")}</b>${row.vehicles ? ` (${row.vehicles} vehicles${row.model ? `, ${row.model.replace(/[<>&]/g, "")}` : ""})` : ""}.</p><p>When the vehicles are ready, please upload all the documents on this private page (no login needed): <a href="${link}">${link}</a></p><ul><li>Proforma invoice and commercial invoice</li><li>Packing list with the VIN of each vehicle, container by container</li><li>Certificate of conformity (COC) for every VIN</li><li>Bill of lading and loading photos</li></ul><p>The page checks the VIN, quantities and totals automatically.</p><p>Thank you,<br>Mansour Khelifa<br>MK HOLDING – NeoDrive (France)</p></div>`;
-      await sendEmail(String(row.factory_email).split(/[,; ]+/)[0], "", `New order ${name} – MK HOLDING`, html, [], { replyTo: "khelifamansour@hotmail.fr" });
-      await db.from("shipment_followups").insert({ shipment_id: data.id, kind: "usine", label: "Commande envoyée à l'usine", recipient: String(row.factory_email).split(/[,; ]+/)[0], subject: `New order ${name} – MK HOLDING`, auto: false });
+      for (const to of mailList(row.factory_email)) await sendEmail(to, "", `New order ${name} – MK HOLDING`, html, [], { replyTo: "khelifamansour@hotmail.fr" });
+      await db.from("shipment_followups").insert({ shipment_id: data.id, kind: "usine", label: "Commande envoyée à l'usine et au transitaire Chine", recipient: mailList(row.factory_email).join(", "), subject: `New order ${name} – MK HOLDING`, auto: false });
       mailed = true;
     }
     return NextResponse.json({ ok: true, id: data.id, link, wechat, mailed });
