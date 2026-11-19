@@ -2,6 +2,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import PDFDocument from "pdfkit";
+import { safeText } from "./pdf-text";
 import { COMPANY } from "./driver-docs";
 
 export * from "./driver-invoice-shared";
@@ -15,7 +16,7 @@ export type InvoicePdf = { number: string; issued: string; driver: string; billi
 
 export function invoicePdf(d: InvoicePdf): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margin: 40, info: { Title: `Facture ${d.number}`, Author: d.billing.legal_name || d.driver } });
+    const doc = safeText(new PDFDocument({ size: "A4", margin: 40, info: { Title: `Facture ${d.number}`, Author: d.billing.legal_name || d.driver } }));
     const chunks: Buffer[] = [];
     doc.on("data", (b: Buffer) => chunks.push(b)); doc.on("end", () => resolve(Buffer.concat(chunks))); doc.on("error", reject);
     const ink = "#111", grey = "#666", accent = "#ff5a1f";

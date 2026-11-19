@@ -1,6 +1,7 @@
 /** Pièces détachées NeoDrive : base de données, facture pro forma (PDF) et e-mails. Serveur uniquement. */
 // @ts-ignore
 import PDFDocument from "pdfkit";
+import { safeText } from "./pdf-text";
 import { crmDatabase } from "./crm-agent";
 import { brevoReady, OWNER_EMAIL, sendEmail, SITE } from "./brevo";
 import seed from "./parts-seed.json";
@@ -36,7 +37,7 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { tim
 /** PDF « FACTURE PRO FORMA » (pdfkit, polices standard). */
 export function proformaPdf(o: PartsOrder): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margin: 40, info: { Title: `Facture pro forma ${o.order_number}`, Author: "MK HOLDING - NeoDrive" } });
+    const doc = safeText(new PDFDocument({ size: "A4", margin: 40, info: { Title: `Facture pro forma ${o.order_number}`, Author: "MK HOLDING - NeoDrive" } }));
     const chunks: Buffer[] = [];
     doc.on("data", (b: Buffer) => chunks.push(b)); doc.on("end", () => resolve(Buffer.concat(chunks))); doc.on("error", reject);
     const ink = "#111", grey = "#666", accent = "#ff5a1f";

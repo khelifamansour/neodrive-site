@@ -50,6 +50,12 @@ export async function POST(req: Request) {
     const signer = clean(b.name, 120);
     if (!b.accept) return NextResponse.json({ ok: false, error: "Cochez « J'ai bien reçu mon véhicule »." }, { status: 400 });
     if (signer.length < 3) return NextResponse.json({ ok: false, error: "Écrivez votre nom et prénom." }, { status: 400 });
+    // Signature manuscrite tracée au doigt par le client (PNG en data URL).
+    const sigRaw = String(b.signature || "");
+    const sigM = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(sigRaw);
+    const signature = sigM ? Buffer.from(sigM[1], "base64") : null;
+    if (!signature || signature.length < 1500) return NextResponse.json({ ok: false, error: "Signez avec le doigt dans le cadre." }, { status: 400 });
+    if (signature.length > 1_500_000) return NextResponse.json({ ok: false, error: "Signature trop lourde, effacez et recommencez." }, { status: 400 });
     const reglement = cleanPayment(b.payment);
     if (!reglement) return NextResponse.json({ ok: false, error: "Indiquez comment vous avez réglé (moyen et montant)." }, { status: 400 });
     const driverName = (await tourDriver(r)) || driverDisplay(clean(b.driver_name, 80));
@@ -63,13 +69,13 @@ export async function POST(req: Request) {
       numero: `LIV-${at.slice(0, 4)}-${String(r.id).padStart(6, "0")}`,
       client: `${r.prenom || ""} ${r.nom || ""}`.trim(), adresse: [r.adresse, `${r.code_postal || ""} ${r.ville || ""}`.trim()].filter(Boolean).join(", "),
       telephone: r.telephone || "", email: r.email || "", modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin,
-      checks, reserves: clean(b.remarks, 600), signer, signed_at: at, livreur: "NeoDrive", paiement_confirme_at: r.paiement_confirme_at,
+      checks, reserves: clean(b.remarks, 600), signer, signed_at: at, livreur: driverName || "NeoDrive", paiement_confirme_at: r.paiement_confirme_at,
       mode: "distance", remote: { at, ip, phone: r.telephone || "", ua },
       pending: pending ? { montant_du: r.montant_du == null ? null : Number(r.montant_du) } : null,
       reglement, driver_name: driverName || null,
     };
-    await crmDatabase().from("reservations").update({ remote_confirm: { name: signer, at, ip, ua, phone: r.telephone || "", remarks: data.reserves } }).eq("id", r.id);
-    const out = await finalizeDelivery(crmDatabase(), r, data, null);
+    await crmDatabase().from("reservations").update({ remote_confirm: { name: signer, at, ip, ua, phone: r.telephone || "", remarks: data.reserves, signed: true } }).eq("id", r.id);
+    const out = await finalizeDelivery(crmDatabase(), r, data, signature);
     return NextResponse.json({ ok: true, done: true, accuse_url: out.url.replace(/^https?:\/\/[^/]+/, ""), emailed: out.emailed });
   } catch (e) {
     console.error("[ACCUSE-CONFIRMER]", e);

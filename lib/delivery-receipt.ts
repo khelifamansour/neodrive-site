@@ -3,6 +3,7 @@
 // @ts-ignore
 import PDFDocument from "pdfkit";
 
+import { safeText } from "./pdf-text";
 export const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
 export const RECEIPT_FOLDER = "livraisons";
 
@@ -74,7 +75,7 @@ const fr = (iso: string | null) => iso ? new Date(iso).toLocaleString("fr-FR", {
 /** PDF « Accusé de réception du véhicule » avec la signature manuscrite du client (PNG). */
 export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margin: 40, info: { Title: `Accusé de réception ${d.numero}`, Author: "MK HOLDING - NeoDrive" } });
+    const doc = safeText(new PDFDocument({ size: "A4", margin: 40, info: { Title: `Accusé de réception ${d.numero}`, Author: "MK HOLDING - NeoDrive" } }));
     const chunks: Buffer[] = [];
     doc.on("data", (b: Buffer) => chunks.push(b)); doc.on("end", () => resolve(Buffer.concat(chunks))); doc.on("error", reject);
     const ink = "#111", grey = "#666", accent = "#ff5a1f";
@@ -127,14 +128,17 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
     y += 46;
 
     const remote = d.mode === "distance";
-    doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text(remote ? "Confirmation du client" : "Signature du client", 40, y).text("Remis par", 330, y);
-    doc.roundedRect(40, y + 14, 270, 110, 6).lineWidth(0.6).stroke("#bbb");
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text("Signature du client", 40, y).text("Remis par", 330, y);
+    doc.roundedRect(40, y + 14, 270, 112, 6).lineWidth(0.6).stroke("#bbb");
+    if (signaturePng) { try { doc.image(signaturePng, 48, y + 18, { fit: [254, remote ? 56 : 84], align: "center", valign: "center" }); } catch { /* signature illisible : le nom reste */ } }
     if (remote) {
-      doc.font("Helvetica-Bold").fontSize(10).fillColor("#067647").text("CONFIRMÉ À DISTANCE PAR LE CLIENT", 48, y + 24, { width: 254 });
-      doc.font("Helvetica").fontSize(8.5).fillColor(ink).text(`Case « J'ai bien reçu mon véhicule » cochée et nom saisi par le client sur son téléphone, via le lien sécurisé envoyé au ${d.remote?.phone || d.telephone || "numéro du client"}.${d.remote?.ip ? `\nAdresse IP : ${d.remote.ip}` : ""}`, 48, y + 42, { width: 254 });
-    } else if (signaturePng) { try { doc.image(signaturePng, 48, y + 20, { fit: [254, 84], align: "center", valign: "center" }); } catch { /* signature illisible : le nom reste */ } }
-    doc.font("Helvetica").fontSize(8.5).fillColor(grey).text(`${d.signer} · ${fr(remote ? d.remote?.at || d.signed_at : d.signed_at)}`, 48, y + 108, { width: 254 });
-    doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(`${d.livreur || "NeoDrive"}\npour MK HOLDING - NeoDrive`, 330, y + 18, { width: 225 });
+      const top = signaturePng ? y + 76 : y + 24;
+      doc.font("Helvetica-Bold").fontSize(signaturePng ? 8 : 10).fillColor("#067647").text(signaturePng ? "SIGNÉ À DISTANCE PAR LE CLIENT" : "CONFIRMÉ À DISTANCE PAR LE CLIENT", 48, top, { width: 254 });
+      doc.font("Helvetica").fontSize(7.5).fillColor(ink).text(`${signaturePng ? "Signature manuscrite tracée" : "Case cochée et nom saisi"} par le client sur son téléphone, via le lien sécurisé envoyé au ${d.remote?.phone || d.telephone || "numéro du client"}.${d.remote?.ip ? ` Adresse IP : ${d.remote.ip}` : ""}`, 48, top + 10, { width: 254 });
+    }
+    doc.font("Helvetica").fontSize(8.5).fillColor(grey).text(`${d.signer} · ${fr(remote ? d.remote?.at || d.signed_at : d.signed_at)}`, 48, y + 112, { width: 254 });
+    const remis = driverDisplay(d.driver_name) || (d.livreur && d.livreur !== "NeoDrive" ? driverDisplay(d.livreur) : "");
+    doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(remis ? `${remis}${/mansour/i.test(remis) ? "" : " (chauffeur)"}\npour MK HOLDING – NeoDrive` : "MK HOLDING – NeoDrive", 330, y + 18, { width: 225 });
     y += 140;
 
     doc.font("Helvetica").fontSize(7.5).fillColor(grey).text(

@@ -1,5 +1,6 @@
 // @ts-ignore
 import PDFDocument from "pdfkit";
+import { safeText } from "../../../lib/pdf-text";
 import type { ContainerInfo, ExtraLine } from "../../../lib/shipments";
 
 type Ship = Record<string, any>;
@@ -18,7 +19,7 @@ const NAVY = "#0f2742", ACC = "#e2552b", GREY = "#5b6573", LINE = "#cfd6df", ZEB
 
 /** Rendu A4 au format NeoDrive : bandeau, pied de page orange, numéros de page. */
 function render(build: (doc: Doc) => void) {
-  return new Promise<Buffer>((resolve, reject) => { const doc = new PDFDocument({ size: "A4", margin: M, bufferPages: true }); const c: Buffer[] = []; doc.on("data", (b: Buffer) => c.push(b)); doc.on("end", () => resolve(Buffer.concat(c))); doc.on("error", reject); build(doc); const r = doc.bufferedPageRange(); for (let i = 0; i < r.count; i++) { doc.switchToPage(r.start + i); doc.page.margins.bottom = 0; doc.moveTo(M, 812).lineTo(W - M, 812).lineWidth(2).stroke(ACC); doc.font("Helvetica").fontSize(7).fillColor(GREY).text(`MK HOLDING SAS – SIREN 908 645 393 – 31600 Muret, France – contact@easydrive-auto.fr – Page ${i + 1}/${r.count}`, M, 820, { width: W - 2 * M, align: "center", lineBreak: false }); } doc.end(); });
+  return new Promise<Buffer>((resolve, reject) => { const doc = safeText(new PDFDocument({ size: "A4", margin: M, bufferPages: true })); const c: Buffer[] = []; doc.on("data", (b: Buffer) => c.push(b)); doc.on("end", () => resolve(Buffer.concat(c))); doc.on("error", reject); build(doc); const r = doc.bufferedPageRange(); for (let i = 0; i < r.count; i++) { doc.switchToPage(r.start + i); doc.page.margins.bottom = 0; doc.moveTo(M, 812).lineTo(W - M, 812).lineWidth(2).stroke(ACC); doc.font("Helvetica").fontSize(7).fillColor(GREY).text(`MK HOLDING SAS – SIREN 908 645 393 – 31600 Muret, France – contact@easydrive-auto.fr – Page ${i + 1}/${r.count}`, M, 820, { width: W - 2 * M, align: "center", lineBreak: false }); } doc.end(); });
 }
 
 /** Conteneurs concernés par ce jeu de documents. */

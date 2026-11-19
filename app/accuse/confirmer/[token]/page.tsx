@@ -1,6 +1,7 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import PaymentDeclare, { payValid, type PayDecl } from "../../../_components/PaymentDeclare";
+import SignaturePad from "../../../livreur/SignaturePad";
 
 /** Page client : confirmation de la réception du véhicule (lien personnel reçu par SMS ou e-mail). */
 type Info = { ok: boolean; error?: string; done: boolean; accuse_url: string | null; client: string; modele: string; couleur: string; vin: string; date: string; pending: boolean; montant_du: number | null; driver: string; total: number | null; checks: { id: string; label: string }[] };
@@ -10,12 +11,12 @@ const btn: React.CSSProperties = { width: "100%", padding: "16px", fontSize: 18,
 export default function Confirmer({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const [info, setInfo] = useState<Info | null>(null); const [err, setErr] = useState("");
-  const [accept, setAccept] = useState(false); const [ck, setCk] = useState<Record<string, boolean>>({}); const [name, setName] = useState(""); const [remarks, setRemarks] = useState(""); const [busy, setBusy] = useState(false); const [pay, setPay] = useState<PayDecl>({ lines: [], driver: "" });
+  const [accept, setAccept] = useState(false); const [ck, setCk] = useState<Record<string, boolean>>({}); const [name, setName] = useState(""); const [remarks, setRemarks] = useState(""); const [busy, setBusy] = useState(false); const [pay, setPay] = useState<PayDecl>({ lines: [], driver: "" }); const [sig, setSig] = useState<string | null>(null);
   useEffect(() => { fetch(`/api/accuse-confirmer?token=${encodeURIComponent(token)}`).then(r => r.json()).then((j: Info) => { if (!j.ok) setErr(j.error || "Lien invalide."); else { setInfo(j); setName(j.client); setCk(Object.fromEntries(j.checks.map(c => [c.id, true]))); } }).catch(() => setErr("Connexion impossible, réessayez.")); }, [token]);
   const send = async () => {
     setBusy(true); setErr("");
     try {
-      const r = await fetch("/api/accuse-confirmer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, accept, name, remarks, checks: ck, payment: pay.lines, driver_name: pay.driver }) });
+      const r = await fetch("/api/accuse-confirmer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, accept, name, remarks, checks: ck, payment: pay.lines, driver_name: pay.driver, signature: sig }) });
       const j = await r.json(); if (!j.ok) throw new Error(j.error || "Erreur");
       setInfo(i => i ? { ...i, done: true, accuse_url: j.accuse_url } : i);
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
@@ -48,8 +49,10 @@ export default function Confirmer({ params }: { params: Promise<{ token: string 
         <div style={box}>
           <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 17, fontWeight: 700 }}><input type="checkbox" checked={accept} onChange={e => setAccept(e.target.checked)} style={{ width: 24, height: 24, flex: "0 0 24px" }} />J’ai bien reçu mon véhicule</label>
           <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Votre nom et prénom<input value={name} onChange={e => setName(e.target.value)} autoComplete="name" style={{ padding: 12, borderRadius: 10, border: "1px solid #d8d2c8", fontSize: 17 }} /></label>
+          <b>Votre signature</b>
+          <SignaturePad onChange={setSig} />
           {err ? <b style={{ color: "#b42318" }}>{err}</b> : null}
-          <button style={{ ...btn, opacity: accept && name.trim().length >= 3 && payValid(pay) && !busy ? 1 : .5 }} disabled={!accept || name.trim().length < 3 || !payValid(pay) || busy} onClick={send}>{busy ? "Envoi…" : "Je confirme la réception"}</button>
+          <button style={{ ...btn, opacity: accept && sig && name.trim().length >= 3 && payValid(pay) && !busy ? 1 : .5 }} disabled={!accept || !sig || name.trim().length < 3 || !payValid(pay) || busy} onClick={send}>{busy ? "Envoi…" : "Je signe et confirme la réception"}</button>
           <small style={{ color: "#666" }}>En confirmant, vous reconnaissez avoir reçu ce véhicule, sous réserve de vos remarques. Votre accusé de réception vous est envoyé en PDF.</small>
         </div>
       </> : null}
