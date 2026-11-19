@@ -11,7 +11,7 @@ type R = {
   acompte: number | null; priorite: string; notes: string; plan_client_id: string | null; options: string;
   vin?: string | null; avis_google?: string | null; avis_at?: string | null;
   paiement_confirme_at?: string | null; livre_at?: string | null; accuse_token?: string | null;
-  paiement_en_attente?: boolean | null; montant_du?: number | null; remote_confirm?: { name?: string; at?: string } | null;
+  paiement_en_attente?: boolean | null; montant_du?: number | null; remote_confirm?: { name?: string; at?: string } | null; reserve_token?: string | null; reserve_due?: string | null;
 };
 const STATUTS = ["Nouvelle", "Confirmée", "Planifiée", "Livrée", "Annulée"];
 const PRIOS = ["Urgente", "Haute", "Normale", "Basse"];
@@ -139,7 +139,9 @@ export default function ReservationsAdmin() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <span className={c.badge} style={{ background: ST_BG[r.statut] || "#eee", color: "#111" }}>{r.statut}</span>
-              {r.livre_at && r.paiement_en_attente && !r.paiement_confirme_at ? <span className={c.badge} style={{ background: "#fde8e7", color: "#b42318" }}>Livrée – paiement en attente{r.montant_du ? ` (${Math.round(Number(r.montant_du)).toLocaleString("fr-FR")} €)` : ""}</span> : null}
+              {r.reserve_token && !r.paiement_confirme_at ? <span className={c.badge} style={{ background: "#fde8e7", color: "#b42318" }}>🔒 Remis avec réserve de propriété – {r.montant_du ? `${Math.round(Number(r.montant_du)).toLocaleString("fr-FR")} €` : "montant"} en attente{r.reserve_due ? ` (échéance ${new Date(r.reserve_due + "T12:00:00").toLocaleDateString("fr-FR")})` : ""} – clés et papiers conservés par NeoDrive</span>
+                : r.reserve_token && r.paiement_confirme_at && !r.accuse_token ? <span className={c.badge} style={{ background: "#e7f6ec", color: "#067647" }}>✅ Payé – clés et papiers à remettre</span>
+                : r.livre_at && r.paiement_en_attente && !r.paiement_confirme_at ? <span className={c.badge} style={{ background: "#fde8e7", color: "#b42318" }}>Livrée – paiement en attente{r.montant_du ? ` (${Math.round(Number(r.montant_du)).toLocaleString("fr-FR")} €)` : ""}</span> : null}
               {r.priorite !== "Normale" ? <span className={c.badge} style={{ background: r.priorite === "Urgente" ? "#fde8e7" : r.priorite === "Haute" ? "#fff4d6" : "#f1f1f1", color: "#111" }}>{r.priorite}</span> : null}
               {r.plan_client_id ? <span className={c.badge} style={{ background: "#ede7fb", color: "#111" }}>🚚 au planificateur</span> : null}
               {hs ? <span className={c.badge} style={{ background: "#d92d20", color: "#fff" }}>Hors stock — rappeler</span> : null}
@@ -155,6 +157,7 @@ export default function ReservationsAdmin() {
               {r.telephone ? <a className={`${c.btn} ${c.btnGhost}`} target="_blank" rel="noreferrer" href={`https://wa.me/${r.telephone.replace(/[^\d]/g, "").replace(/^0/, "33")}`}>💬 WhatsApp</a> : null}
               {r.telephone ? <button className={`${c.btn} ${c.btnBrand}`} onClick={() => setContact(contact === r.id ? null : r.id)}>💬 Contacter</button> : null}
               {r.accuse_token ? <a className={`${c.btn} ${c.btnGhost}`} href={`/api/accuse/${r.accuse_token}`} target="_blank" rel="noreferrer">📄 {r.remote_confirm ? "Accusé confirmé à distance" : "Accusé signé"}</a> : null}
+              {r.reserve_token ? <a className={`${c.btn} ${c.btnGhost}`} href={`/api/accuse/${r.reserve_token}`} target="_blank" rel="noreferrer">🔒 Remise avec réserve (PDF)</a> : null}
               {!["Livrée", "Annulée"].includes(r.statut) ? <button className={`${c.btn} ${r.paiement_confirme_at ? c.btnGhost : c.btnBrand}`} title={r.livre_at && r.paiement_en_attente ? "Paiement reçu après livraison : passe en Livrée et prévient le client" : undefined} style={r.paiement_confirme_at ? { background: "#e7f6ec" } : undefined} onClick={() => setPaid(r)}>{r.paiement_confirme_at ? "💶 Paiement confirmé ✅" : "💶 Confirmer le paiement"}</button> : null}
               <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { setOpen(isOpen ? null : r.id); setEdit({ statut: r.statut, priorite: r.priorite, date_promise: r.date_promise, acompte: r.acompte, notes: r.notes }); }}>{isOpen ? "Fermer" : "✏️ Modifier"}</button>
             </div>

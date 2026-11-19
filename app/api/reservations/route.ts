@@ -120,7 +120,7 @@ export async function POST(req: Request) {
           // Livrée avec paiement en attente : le paiement arrive → « Livrée », clés et papiers à envoyer en lettre suivie.
           if (cur?.livre_at && cur.paiement_en_attente) {
             patch.statut = "Livrée"; patch.paiement_en_attente = false; paidAfterDelivery = cur;
-            patch.notes = [cur.notes, `[${new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] Paiement reçu après livraison : clés et papiers à envoyer en lettre suivie.`].filter(Boolean).join("\n");
+            patch.notes = [cur.notes, `[${new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] Paiement reçu après remise : clés et papiers à remettre ou envoyer, accusé final à faire signer.`].filter(Boolean).join("\n");
           }
         }
       }
@@ -134,8 +134,8 @@ export async function POST(req: Request) {
         try {
           await applyStoredSecrets();
           if (brevoReady()) {
-            await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", `NeoDrive : paiement de ${client} recu. Envoyer cles et papiers en lettre suivie a ${client}, ${adresse || "adresse a verifier"}.`);
-            if (p.telephone) await sendSms(p.telephone, `Bonjour ${String(p.prenom || "").split(/\s+/)[0]}, NeoDrive : paiement recu, merci ! Vos cles et papiers partent par la Poste en lettre suivie. Bonne route !`);
+            await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", `NeoDrive : paiement de ${client} recu. Cles et papiers a remettre ou envoyer a ${client}, ${adresse || "adresse a verifier"} ; faire signer l'accuse final.`, "transactional");
+            if (p.telephone) await sendSms(p.telephone, `Bonjour ${String(p.prenom || "").split(/\s+/)[0]}, NeoDrive : paiement recu, merci ! Vos cles et documents vous sont remis ou envoyes tres vite. Bonne route !`, "transactional");
           }
         } catch (e) { console.error("[RESERVATIONS] SMS paiement apres livraison", e); }
       }

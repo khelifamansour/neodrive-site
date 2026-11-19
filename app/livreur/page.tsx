@@ -88,7 +88,8 @@ export default function Livreur() {
 
   if (state === "loading") return <main className={c.page}><p className={c.muted} style={{ padding: 30 }}>Chargement…</p></main>;
   if (state === "login") return <main className={c.page}><div className={c.login}>
-    <h1>🚚 Espace livreur</h1>
+    <h1>🧰 Espace prestataire</h1>
+    <p className={c.muted}>Livraison, préparation</p>
     <p className={c.muted}>Connectez-vous avec votre code personnel sur la page Organisation, puis revenez ici.</p>
     <a className={`${c.btn} ${c.btnBrand}`} href="/organisation" style={{ textAlign: "center", textDecoration: "none" }}>Se connecter</a>
   </div></main>;
@@ -107,7 +108,7 @@ export default function Livreur() {
   /** Fin de tournée : heures et pauses → tickets → facture de CETTE tournée (heures × taux), dans cet ordre. */
   const closeBox = (t: Tour) => {
     if (t.plan.draft) return <div style={{ padding: 10, borderRadius: 10, background: "#fffaeb", fontSize: 14 }}>⏳ Tournée prévisionnelle : Mansour la revoit avec vous avant le départ. Une fois validée, vous la ferez, puis vous la clôturerez ici (heures, tickets, facture).</div>;
-    if (!member) return <small className={c.muted}>Aperçu fondateur : la clôture se fait depuis le compte du livreur.</small>;
+    if (!member) return <small className={c.muted}>Aperçu fondateur : la clôture se fait depuis le compte du prestataire.</small>;
     const inv = invoices.find(x => x.tour_id === t.id);
     if (inv) return <div style={{ padding: 10, borderRadius: 10, background: inv.status === "payee" ? "#e7f6ec" : "#fffaeb" }}>🧾 Facture <b>{inv.number}</b> · {inv.total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {inv.status === "payee" ? "✅ payée" : "⏳ à payer par NeoDrive"}{inv.url ? <> · <a href={inv.url} target="_blank" rel="noreferrer">PDF</a></> : null}</div>;
     return <div style={{ display: "grid", gap: 6 }}>
@@ -118,8 +119,8 @@ export default function Livreur() {
 
   return <main className={c.page}><div className={c.wrap}>
     <div className={c.top}><a href="/organisation" className={c.back}>← Organisation</a></div>
-    <h1 style={{ margin: "14px 0 4px" }}>🚚 Espace livreur</h1>
-    <p className={c.muted}>Bonjour {me?.name?.split(" ")[0] || ""}. Vos tournées, les réservations en cours, vos documents et votre contrat.</p>
+    <h1 style={{ margin: "14px 0 4px" }}>🧰 Espace prestataire</h1>
+    <p className={c.muted}>Livraison, préparation. Bonjour {me?.name?.split(" ")[0] || ""} : vos tournées, vos heures, vos documents et votre contrat.</p>
     {msg ? <p className={c.msg} style={{ fontWeight: 700 }}>{msg}</p> : null}
     {guide ? <section className={c.card} style={{ display: "grid", gap: 10, margin: "14px 0", background: "#fffdf8" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><b style={{ fontSize: 19 }}>🧭 Comment ça marche</b><button className={`${c.btn} ${c.btnGhost}`} style={{ padding: "6px 10px", fontSize: 13 }} onClick={() => toggleGuide(false)}>Masquer le guide</button></div>
@@ -241,7 +242,7 @@ export default function Livreur() {
           <div style={{ display: "grid", gap: 4 }}><b>Signature à la main</b><SignaturePad onChange={setSigPng} btnClass={`${c.btn} ${c.btnGhost}`} /></div>
           <label style={{ display: "flex", gap: 10, alignItems: "flex-start" }}><input type="checkbox" checked={accept} onChange={e => setAccept(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2 }} /><span>Lu et approuvé : j’ai lu le contrat de prestation et je l’accepte. Je signe aujourd’hui, le {new Date().toLocaleDateString("fr-FR")}.</span></label>
           <button className={`${c.btn} ${c.btnBrand}`} disabled={busy === "sign" || sign.trim().length < 3 || !accept || !sigPng} onClick={signContract}>{busy === "sign" ? "…" : "✍️ Signer le contrat"}</button>
-        </div> : <p className={c.muted}>Aperçu fondateur : la signature se fait depuis le compte du livreur.</p>}
+        </div> : <p className={c.muted}>Aperçu fondateur : la signature se fait depuis le compte du prestataire.</p>}
     </section> : null}
   </div></main>;
 }

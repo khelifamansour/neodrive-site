@@ -10,7 +10,7 @@ import type { PlanClient, PlanTour } from "../../../lib/planif";
 import { readVinPhoto } from "../conteneurs/extract";
 import { addTickets } from "../../../lib/driver-tickets";
 import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType, isPaidBy } from "../../../lib/driver-hours";
-import { AccuseError, accuseLink, sendAccuseLink } from "../../../lib/accuse-link";
+import { AccuseError, accuseLink, sendAccuseLink, startReserve } from "../../../lib/accuse-link";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -48,10 +48,10 @@ export async function POST(req: Request) {
       // Suivi par client : VIN, paiement confirmé par Mansour, lien d'accusé envoyé, accusé signé (et règlement déclaré)
       const res: Record<string, unknown> = {};
       if (t && t.clientIds.length) {
-        const { data: rs } = await db.from("reservations").select("id,plan_client_id,vin,paiement_confirme_at,paiement_en_attente,confirm_sent_at,accuse_token,accuse_data,livre_at").in("plan_client_id", t.clientIds);
+        const { data: rs } = await db.from("reservations").select("id,plan_client_id,vin,paiement_confirme_at,paiement_en_attente,confirm_sent_at,accuse_token,accuse_data,livre_at,total,montant_du,reserve_token,reserve_due,reserve_data").in("plan_client_id", t.clientIds);
         for (const r of rs || []) {
           const d = (r.accuse_data || {}) as { signed_at?: string; reglement?: { mode: string; amount: number }[] | null; driver_name?: string | null };
-          res[String(r.plan_client_id)] = { id: r.id, vin: r.vin, paid: r.paiement_confirme_at, pending: !!r.paiement_en_attente, sent_at: r.confirm_sent_at, signed_at: r.accuse_token ? (d.signed_at || r.livre_at) : null, reglement: d.reglement || null, driver_name: d.driver_name || null, pdf: r.accuse_token ? `/api/accuse/${r.accuse_token}` : null };
+          res[String(r.plan_client_id)] = { id: r.id, vin: r.vin, paid: r.paiement_confirme_at, pending: !!r.paiement_en_attente, sent_at: r.confirm_sent_at, signed_at: r.accuse_token ? (d.signed_at || r.livre_at) : null, reglement: d.reglement || null, driver_name: d.driver_name || null, pdf: r.accuse_token ? `/api/accuse/${r.accuse_token}` : null, total: r.total == null ? null : Number(r.total), montant_du: r.montant_du == null ? null : Number(r.montant_du), reserve_at: r.reserve_token ? ((r.reserve_data as { signed_at?: string } | null)?.signed_at || r.livre_at) : null, reserve_pdf: r.reserve_token ? `/api/accuse/${r.reserve_token}` : null, reserve_due: r.reserve_due || null };
         }
       }
       return NextResponse.json({ ok: true, tour: t ? { id: t.id, name: t.name, date: t.date, driver: t.driver, hubId: t.hubId, status: t.status, departTime: t.departTime || "", stops: t.stops || [], km: t.km || 0, rate: t.driverRate || DEFAULT_DRIVER_RATE, estH: estimateHours(t), closed_at: t.closed_at || null, en_route: t.en_route || [] } : null, res, clients, depots: DEPOTS, events, vehicles: (veh || []).map((v: any) => ({ ...v, has_plate: !!v.plate_photo, plate_photo: undefined, shipment: v.shipments?.name || "", stage: vehicleStage(v, v.shipments), shipments: undefined })) });
@@ -172,6 +172,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, match: await matchVin(db, vin) });
     }
     // Accusé de réception : lien de signature envoyé au client (SMS + e-mail) ou ouvert sur ce téléphone
+    // Paiement pas encore reçu : remise avec réserve de propriété (montant dû + échéance), puis signature du client.
+    if (b.action === "reserve_start") {
+      const r = await resOf(clean(b.client_id, 80));
+      if (!r) return NextResponse.json({ ok: false, error: "Pas de réservation liée à ce client : appelez Mansour." }, { status: 404 });
+      try { return NextResponse.json({ ok: true, ...(await startReserve(db, r.id, { montant: b.montant_du, due: b.due, by: driver })) }); }
+      catch (e) { if (e instanceof AccuseError) return NextResponse.json({ ok: false, error: e.message }, { status: e.status }); throw e; }
+    }
     if (b.action === "accuse_send" || b.action === "accuse_link") {
       const r = await resOf(clean(b.client_id, 80));
       if (!r) return NextResponse.json({ ok: false, error: "Pas de réservation liée à ce client : appelez Mansour." }, { status: 404 });

@@ -5,11 +5,13 @@ import c from "../giga/giga.module.css";
 import { supabase } from "../../lib/supabase";
 
 /** Livraisons : numéro de série (VIN) + photo de la plaque, puis accusé de réception confirmé par le client (lien SMS) ou signé sur le téléphone du livreur. */
+/** Échéance par défaut : 3 jours ouvrés. */
+const dueDefault = () => { const d = new Date(); let n = 0; while (n < 3) { d.setDate(d.getDate() + 1); if (d.getDay() % 6) n++; } return d.toISOString().slice(0, 10); };
 export type Dlv = {
   id: number; prenom: string; nom: string; adresse: string; code_postal: string; ville: string; telephone: string; has_email: boolean;
   modele: string; couleur: string; statut: string; date_promise: string | null; vin: string | null; has_vin_photo: boolean;
   paiement_confirme_at: string | null; livre_at: string | null; accuse_url: string | null;
-  confirm_sent_at: string | null; remote_confirmed: boolean; paiement_en_attente: boolean; montant_du: number | null; prevenu_at: string | null; total: number | null;
+  confirm_sent_at: string | null; remote_confirmed: boolean; paiement_en_attente: boolean; montant_du: number | null; prevenu_at: string | null; total: number | null; reserve_url?: string | null; reserve_due?: string | null;
   /** Tournée du livreur qui contient ce client (ordre de passage, position GPS). */
   tour_id?: string; tour_name?: string; tour_date?: string; ordre?: number; lat?: number | null; lng?: number | null; link?: string | null;
 };
@@ -55,7 +57,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   const [pay, setPay] = useState<PayDecl>({ lines: [], driver: driverName });
   const [list, setList] = useState<Dlv[]>([]); const [mine, setMine] = useState(false); const [checksAll, setChecks] = useState<Check[]>([]); const [checksPending, setChecksPending] = useState<Check[]>([]);
   const [sigMode, setSigMode] = useState(false); const [sent, setSent] = useState<{ sms: boolean; email: boolean; whatsapp: string | null } | null>(null);
-  const [notif, setNotif] = useState({ date: "", from: "14:00", to: "16:00" }); const [pend, setPend] = useState({ montant: "", cles: false, documents: false }); const [vins, setVins] = useState<{ vin: string; container: string | null }[]>([]);
+  const [notif, setNotif] = useState({ date: "", from: "14:00", to: "16:00" }); const [pend, setPend] = useState({ montant: "", cles: false, documents: false, due: "" }); const [vins, setVins] = useState<{ vin: string; container: string | null }[]>([]);
   const [sel, setSel] = useState<number | null>(null); const [busy, setBusy] = useState("");
   const [vin, setVin] = useState(""); const [photo, setPhoto] = useState(""); const [tail, setTail] = useState("");
   const [ck, setCk] = useState<Record<string, boolean>>({}); const [reserves, setReserves] = useState(""); const [signer, setSigner] = useState(""); const [sig, setSig] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   useEffect(() => { load(); }, [load]);
 
   const r = list.find(x => x.id === sel) || null;
-  const open = (x: Dlv) => { setSel(x.id); setVin(x.vin || ""); setPhoto(""); setCk({}); setReserves(""); setSigner(`${x.prenom} ${x.nom}`.replace(/\(.*?\)/g, "").trim()); setSig(null); setDone(null); setSigMode(false); setSent(null); setNotif({ date: x.date_promise || "", from: "14:00", to: "16:00" }); setPend({ montant: x.montant_du != null ? String(x.montant_du) : x.total != null ? String(x.total) : "", cles: false, documents: false }); window.scrollTo({ top: 0 }); };
+  const open = (x: Dlv) => { setSel(x.id); setVin(x.vin || ""); setPhoto(""); setCk({}); setReserves(""); setSigner(`${x.prenom} ${x.nom}`.replace(/\(.*?\)/g, "").trim()); setSig(null); setDone(null); setSigMode(false); setSent(null); setNotif({ date: x.date_promise || "", from: "14:00", to: "16:00" }); setPend({ montant: x.montant_du != null ? String(x.montant_du) : x.total != null ? String(x.total) : "", cles: false, documents: false, due: "" }); window.scrollTo({ top: 0 }); };
 
   const uploadPhoto = async (f?: File) => {
     if (!f || !r) return; setBusy("photo");
@@ -112,7 +114,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   };
   const setPending = async (on: boolean) => {
     if (!r) return; setBusy("pend");
-    try { await api({ action: "pending_mode", id: r.id, on, montant_du: pend.montant, kept: { cles: pend.cles, documents: pend.documents } }); onMsg(on ? "✅ Livraison avec paiement en attente : gardez les clés et les documents." : "Paiement en attente annulé."); await load(); }
+    try { await api({ action: "pending_mode", id: r.id, on, montant_du: pend.montant, due: pend.due || dueDefault(), kept: { cles: pend.cles, documents: pend.documents } }); onMsg(on ? "✅ Livraison avec paiement en attente : gardez les clés et les documents." : "Paiement en attente annulé."); await load(); }
     catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); }
   };
   const sendConfirm = async () => {
@@ -127,7 +129,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   };
 
   if (r) {
-    const paid = !!r.paiement_confirme_at; const pending = !paid && r.paiement_en_attente; const ready = !!r.vin && (paid || pending);
+    const paid = !!r.paiement_confirme_at; const pending = !paid && r.paiement_en_attente; const ready = !!r.vin && (paid || (pending && !r.reserve_url));
     const checks = pending ? checksPending : checksAll; const allChecked = checks.every(x => ck[x.id]);
     const canSign = ready && signer.trim().length >= 3 && !!sig && !r.accuse_url && payValid(pay);
     return <section style={{ display: "grid", gap: 12, marginTop: 12 }}>
@@ -176,25 +178,27 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
 
         <div className={c.card} style={{ display: "grid", gap: 8, background: paid ? "#e7f6ec" : pending ? "#fde8e7" : "#fff4d6" }}>
           <b>2. Paiement</b>
-          {paid ? <span>✅ <b>Paiement reçu : confirmé par NeoDrive.</b> Vous pouvez remettre les clés après l’accusé.</span>
+          {paid ? <span>✅ <b>Paiement reçu : confirmé par NeoDrive.</b> {r.reserve_url ? "Payé – clés et papiers à remettre : faites signer l’accusé final." : "Vous pouvez remettre les clés après l’accusé."}</span>
+            : pending && r.reserve_url ? <span>🔒 <b>Remis avec réserve de propriété{r.montant_du ? ` – ${Math.round(r.montant_du).toLocaleString("fr-FR")} € en attente` : ""}{r.reserve_due ? ` (échéance ${new Date(r.reserve_due + "T12:00:00").toLocaleDateString("fr-FR")})` : ""}</b> – clés et papiers conservés par NeoDrive. <a href={r.reserve_url} target="_blank" rel="noreferrer">📄 Remise signée (PDF)</a></span>
             : pending ? <span>💶 <b>Livraison avec paiement en attente{r.montant_du ? ` (${Math.round(r.montant_du).toLocaleString("fr-FR")} € dus)` : ""}.</b> Laissez la voiture, mais <b>gardez les clés et les documents</b>. NeoDrive les enverra au client par courrier suivi dès réception du paiement.</span>
             : <span>⏳ <b>Paiement pas encore confirmé.</b> Ne remettez pas les clés. Le client fait son virement instantané, Mansour le confirme, puis appuyez sur « Vérifier ».</span>}
           {!paid ? <button className={`${c.btn} ${c.btnGhost}`} style={big} onClick={load}>🔄 Vérifier le paiement</button> : null}
           {!paid && !pending ? <details>
-            <summary style={{ cursor: "pointer", fontWeight: 700 }}>Le virement n’est pas instantané ? Livraison avec paiement en attente</summary>
+            <summary style={{ cursor: "pointer", fontWeight: 700 }}>⏳ Paiement pas encore reçu : remise avec réserve de propriété</summary>
             <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
               <small className={c.muted}>Seulement avec l’accord de Mansour. La voiture reste chez le client, vous repartez avec les clés et les documents.</small>
               <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Montant restant dû (€)<input className={c.input} inputMode="decimal" value={pend.montant} onChange={e => setPend({ ...pend, montant: e.target.value })} /></label>
+              <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Paiement à recevoir au plus tard le<input className={c.input} type="date" value={pend.due || dueDefault()} onChange={e => setPend({ ...pend, due: e.target.value })} /></label>
               <label style={{ display: "flex", gap: 10, alignItems: "center" }}><input type="checkbox" checked={pend.cles} onChange={e => setPend({ ...pend, cles: e.target.checked })} style={{ width: 22, height: 22 }} />Je garde les clés (2)</label>
               <label style={{ display: "flex", gap: 10, alignItems: "center" }}><input type="checkbox" checked={pend.documents} onChange={e => setPend({ ...pend, documents: e.target.checked })} style={{ width: 22, height: 22 }} />Je garde les documents du véhicule</label>
-              <button className={`${c.btn} ${c.btnBrand}`} style={big} disabled={!!busy || !pend.cles || !pend.documents} onClick={() => setPending(true)}>{busy === "pend" ? "…" : "Livrer avec paiement en attente"}</button>
+              <button className={`${c.btn} ${c.btnBrand}`} style={big} disabled={!!busy || !pend.cles || !pend.documents} onClick={() => setPending(true)}>{busy === "pend" ? "…" : "Valider puis faire signer la remise au client"}</button>
             </div>
           </details> : null}
           {pending && !r.accuse_url ? <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { if (confirm("Annuler la livraison avec paiement en attente ?")) setPending(false); }}>Annuler le paiement en attente</button> : null}
         </div>
 
         <div className={c.card} style={{ display: "grid", gap: 10 }}>
-          <b>3. Accusé de réception</b>
+          <b>{pending ? "3. Remise avec réserve de propriété (à faire signer)" : "3. Accusé de réception"}</b>
           <small className={c.muted}>Le plus simple : le client reçoit un lien par SMS et confirme sur son propre téléphone. Sinon, il signe sur le vôtre.</small>
           <button className={`${c.btn} ${c.btnBrand}`} style={{ ...big, opacity: ready ? 1 : .5 }} disabled={!ready || !!busy} onClick={sendConfirm}>{busy === "send" ? "Envoi…" : r.confirm_sent_at ? "📲 Renvoyer le lien au client" : "📲 Envoyer l’accusé au client"}</button>
           {r.confirm_sent_at ? <div style={{ display: "grid", gap: 6, background: "#e8f0fe", borderRadius: 10, padding: 10 }}>

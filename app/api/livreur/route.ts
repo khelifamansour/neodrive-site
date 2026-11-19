@@ -12,8 +12,9 @@ import { roadKm, splitTrips, type PlanClient, type PlanTour, type Stop } from ".
 import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType } from "../../../lib/driver-hours";
 import { addTickets, readTicket, type TicketData } from "../../../lib/driver-tickets";
 import { randomBytes } from "crypto";
-import { RECEIPT_FOLDER, VIN_RE, checksFor, cleanPayment, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
-import { finalizeDelivery, intlPhone } from "../../../lib/delivery-finalize";
+import { RECEIPT_FOLDER, VIN_RE, checksFor, cleanPayment, defaultDue, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
+import { finalizeDelivery, finalizeReserve, intlPhone } from "../../../lib/delivery-finalize";
+import { AccuseError, sendAccuseLink } from "../../../lib/accuse-link";
 import { createDemoTour, deleteTestData } from "../../../lib/demo-tour";
 import { OWNER_EMAIL } from "../../../lib/brevo";
 import { PHOTO_BUCKET } from "../../../lib/fleet";
@@ -212,7 +213,7 @@ export async function POST(req: Request) {
         const code = newCode();
         await db.from("team_members").update({ code_hash: sha(code), active: true, revoked_at: null }).eq("id", id);
         const first = String(m.name || "").split(/\s+/)[0];
-        await sendSms(m.phone, `Bonjour ${first}, voici votre nouveau code NeoDrive (livreur) : ${code}. Ouvrez ${SITE}/organisation?changer=1 puis « Espace livreur ».`, "transactional");
+        await sendSms(m.phone, `Bonjour ${first}, voici votre nouveau code NeoDrive : ${code}. Ouvrez ${SITE}/organisation?changer=1 puis « Espace prestataire ».`, "transactional");
         return NextResponse.json({ ok: true });
       }
       if (b.action === "admin_invite") {
@@ -222,12 +223,12 @@ export async function POST(req: Request) {
         const { data, error } = await db.from("team_members").insert({ name, role: "livreur", phone: phone || null, email: email || null, code_hash: sha(code), expires_at: new Date(Date.now() + days * 86400e3).toISOString(), can_see_numbers: true, max_views_per_hour: 60, note: "Livreur prestataire (invitation espace livreur)", sections: ["livreur"] }).select("id").single();
         if (error) throw new Error(error.message);
         const first = name.split(/\s+/)[0];
-        const text = `Bonjour ${first}, voici votre accès NeoDrive (livreur) : ${SITE}/organisation?changer=1 - code personnel : ${code}. Ouvrez « Espace livreur » pour déposer vos documents et signer votre contrat.`;
+        const text = `Bonjour ${first}, voici votre accès NeoDrive : ${SITE}/organisation?changer=1 - code personnel : ${code}. Ouvrez « Espace prestataire » pour déposer vos documents et signer votre contrat.`;
         const sent = { sms: false, email: false, errors: [] as string[] };
         await applyStoredSecrets();
         if (brevoReady()) {
           if (phone) { try { sent.sms = !!(await sendSms(phone, text, "transactional")); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
-          if (email) { try { sent.email = !!(await sendEmail(email, name, "Votre accès NeoDrive (espace livreur)", `<p>Bonjour ${esc(first)},</p><p>Voici votre accès à l'espace livreur NeoDrive.</p><p>1. Ouvrez <a href="${SITE}/organisation?changer=1">${SITE}/organisation</a><br>2. Entrez votre code personnel : <b style="font-size:18px;letter-spacing:2px">${esc(code)}</b><br>3. Ouvrez « Espace livreur » : déposez vos documents (SIRET, assurance RC pro, permis, pièce d'identité, RIB) et signez votre contrat.</p><p>Ce code est personnel : ne le communiquez à personne.</p><p>À bientôt,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
+          if (email) { try { sent.email = !!(await sendEmail(email, name, "Votre accès NeoDrive (espace prestataire)", `<p>Bonjour ${esc(first)},</p><p>Voici votre accès à l'espace prestataire NeoDrive (livraison, préparation).</p><p>1. Ouvrez <a href="${SITE}/organisation?changer=1">${SITE}/organisation</a><br>2. Entrez votre code personnel : <b style="font-size:18px;letter-spacing:2px">${esc(code)}</b><br>3. Ouvrez « Espace prestataire » : déposez vos documents (SIRET, assurance RC pro, permis, pièce d'identité, RIB) et signez votre contrat.</p><p>Ce code est personnel : ne le communiquez à personne.</p><p>À bientôt,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
         } else sent.errors.push("Envoi automatique indisponible (Brevo non configuré)");
         return NextResponse.json({ ok: true, id: data.id, code, text, sent });
       }
@@ -271,7 +272,7 @@ export async function POST(req: Request) {
         const ids = order.length ? order.map(x => x.id) : t.clientIds;
         ids.forEach((id, k) => { if (!where.has(id)) { const st = order.find(x => x.id === id); where.set(id, { tour_id: t.id, tour_name: t.name, tour_date: t.date, ordre: k + 1, lat: st?.lat ?? null, lng: st?.lng ?? null, link: (() => { const k = driverKey(t.id); return k ? `/chauffeur?k=${encodeURIComponent(k)}` : null; })() }); } });
       }
-      const cols = "id,prenom,nom,adresse,code_postal,ville,telephone,email,modele,couleur,statut,date_promise,vin,vin_photo_path,paiement_confirme_at,livre_at,accuse_token,confirm_sent_at,remote_confirm,paiement_en_attente,montant_du,prevenu_at,total,remise_data,plan_client_id";
+      const cols = "id,prenom,nom,adresse,code_postal,ville,telephone,email,modele,couleur,statut,date_promise,vin,vin_photo_path,paiement_confirme_at,livre_at,accuse_token,confirm_sent_at,remote_confirm,paiement_en_attente,montant_du,prevenu_at,total,remise_data,plan_client_id,reserve_token,reserve_due";
       const mine = acc.who === "member";
       const { data, error } = mine
         ? await db.from("reservations").select(cols).in("plan_client_id", where.size ? [...where.keys()] : ["-"]).neq("statut", "Annulée").or(`livre_at.is.null,livre_at.gte.${since}`).limit(200)
@@ -279,7 +280,7 @@ export async function POST(req: Request) {
       if (error) throw new Error(error.message);
       const rows = (data || []).map(r => ({ ...r, ...(r.plan_client_id ? where.get(r.plan_client_id) || {} : {}) })) as (Record<string, unknown> & { tour_date?: string; tour_id?: string; ordre?: number })[];
       if (mine) rows.sort((a, z) => String(a.tour_date || "").localeCompare(String(z.tour_date || "")) || String(a.tour_id || "").localeCompare(String(z.tour_id || "")) || (a.ordre || 0) - (z.ordre || 0));
-      return NextResponse.json({ ok: true, mine, deliveries: rows.map(r => ({ ...r, plan_client_id: undefined, email: undefined, has_email: !!r.email, has_vin_photo: !!r.vin_photo_path, vin_photo_path: undefined, accuse_url: r.accuse_token ? `${SITE}/api/accuse/${r.accuse_token}` : null, accuse_token: undefined, remote_confirmed: !!r.remote_confirm, remote_confirm: undefined })), checks: checksFor(false), checks_pending: checksFor(true) });
+      return NextResponse.json({ ok: true, mine, deliveries: rows.map(r => ({ ...r, plan_client_id: undefined, email: undefined, has_email: !!r.email, has_vin_photo: !!r.vin_photo_path, vin_photo_path: undefined, accuse_url: r.accuse_token ? `${SITE}/api/accuse/${r.accuse_token}` : null, accuse_token: undefined, reserve_url: r.reserve_token ? `${SITE}/api/accuse/${r.reserve_token}` : null, reserve_token: undefined, remote_confirmed: !!r.remote_confirm, remote_confirm: undefined })), checks: checksFor(false), checks_pending: checksFor(true) });
     }
     if (b.action === "free_vins") {
       const [{ data: sv }, { data: used }] = await Promise.all([db.from("shipment_vehicles").select("vin,container,status,client_name").neq("status", "livrée").order("vin").limit(500), db.from("reservations").select("vin").not("vin", "is", null)]);
@@ -341,6 +342,14 @@ export async function POST(req: Request) {
         pending: pending ? { montant_du: r.montant_du == null ? null : Number(r.montant_du) } : null,
         reglement, driver_name: driverName,
       };
+      if (pending) {
+        if (r.reserve_token) return NextResponse.json({ ok: false, error: "La remise avec réserve est déjà signée : l'accusé final se signe après le paiement." }, { status: 409 });
+        data.numero = `RES-${at.slice(0, 4)}-${String(id).padStart(6, "0")}`;
+        data.reserve = { due: r.reserve_due || defaultDue(), montant_du: r.montant_du == null ? null : Number(r.montant_du), lieu: data.adresse };
+        const out = await finalizeReserve(db, r, data, Buffer.from(m[1], "base64"));
+        await logSection(acc, "livraison_reserve", { id, vin: r.vin });
+        return NextResponse.json({ ok: true, ...out });
+      }
       const out = await finalizeDelivery(db, r, data, Buffer.from(m[1], "base64"));
       await logSection(acc, "livraison_accuse", { id, vin: r.vin, pending });
       return NextResponse.json({ ok: true, ...out });
@@ -348,9 +357,9 @@ export async function POST(req: Request) {
     // Livraison avec paiement en attente : le livreur peut l'activer, jamais confirmer un paiement.
     if (b.action === "pending_mode") {
       const id = Number(b.id);
-      const { data: r } = await db.from("reservations").select("id,prenom,nom,total,paiement_confirme_at,accuse_token,notes").eq("id", id).maybeSingle();
+      const { data: r } = await db.from("reservations").select("id,prenom,nom,total,paiement_confirme_at,accuse_token,reserve_token,notes").eq("id", id).maybeSingle();
       if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
-      if (r.accuse_token) return NextResponse.json({ ok: false, error: "Cette livraison est déjà confirmée." }, { status: 409 });
+      if (r.accuse_token || r.reserve_token) return NextResponse.json({ ok: false, error: "Cette livraison est déjà confirmée." }, { status: 409 });
       if (r.paiement_confirme_at) return NextResponse.json({ ok: false, error: "Le paiement est déjà confirmé : livraison normale." }, { status: 409 });
       const on = !!b.on;
       const montant = Number(String(b.montant_du ?? "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -358,7 +367,7 @@ export async function POST(req: Request) {
       if (on && (!kept.cles || !kept.documents)) return NextResponse.json({ ok: false, error: "Cochez que vous gardez les clés et les documents du véhicule." }, { status: 400 });
       const at = new Date().toISOString();
       const line = `[${new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] ${on ? `Livraison avec paiement en attente (${name || acc.name}) : clés et documents gardés par le livreur` : "Paiement en attente annulé"}`;
-      const { error } = await db.from("reservations").update({ paiement_en_attente: on, montant_du: on ? (Number.isFinite(montant) && montant > 0 ? montant : r.total ?? null) : null, remise_data: on ? { kept, by: name || acc.name, at } : null, notes: [r.notes, line].filter(Boolean).join("\n"), updated_at: at }).eq("id", id);
+      const { error } = await db.from("reservations").update({ paiement_en_attente: on, montant_du: on ? (Number.isFinite(montant) && montant > 0 ? montant : r.total ?? null) : null, remise_data: on ? { kept, by: name || acc.name, at } : null, reserve_due: on && /^\d{4}-\d{2}-\d{2}$/.test(String(b.due || "")) ? String(b.due) : null, notes: [r.notes, line].filter(Boolean).join("\n"), updated_at: at }).eq("id", id);
       if (error) throw new Error(error.message);
       await logSection(acc, "livraison_paiement_attente", { id, on });
       return NextResponse.json({ ok: true });
@@ -366,26 +375,14 @@ export async function POST(req: Request) {
     // Accusé confirmé à distance : lien personnel envoyé au client par SMS (et e-mail si connu).
     if (b.action === "send_confirm") {
       const id = Number(b.id);
-      const { data: r } = await db.from("reservations").select("id,prenom,nom,telephone,email,vin,modele,paiement_confirme_at,paiement_en_attente,accuse_token,confirm_token,notes").eq("id", id).maybeSingle();
-      if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
-      if (r.accuse_token) return NextResponse.json({ ok: false, error: "Cette livraison est déjà confirmée." }, { status: 409 });
-      if (!r.vin) return NextResponse.json({ ok: false, error: "Enregistrez d'abord le numéro de série (VIN)." }, { status: 400 });
-      if (!r.paiement_confirme_at && !r.paiement_en_attente) return NextResponse.json({ ok: false, error: "Le paiement n'est pas encore confirmé par NeoDrive : appelez Mansour avant de remettre le véhicule." }, { status: 409 });
-      if (!r.telephone && !r.email) return NextResponse.json({ ok: false, error: "Ni téléphone ni e-mail pour ce client : faites signer sur votre téléphone." }, { status: 400 });
-      const token = r.confirm_token || randomBytes(24).toString("hex");
-      const link = `${SITE}/accuse/confirmer/${token}`;
-      const first = String(r.prenom || "").split(/\s+/)[0];
-      const sent = { sms: false, email: false, errors: [] as string[] };
-      await applyStoredSecrets();
-      if (!brevoReady()) return NextResponse.json({ ok: false, error: "Envoi indisponible (Brevo non configuré) : faites signer sur votre téléphone." }, { status: 503 });
-      if (r.telephone) { try { sent.sms = !!(await sendSms(r.telephone, `Bonjour ${first}, NeoDrive : merci de confirmer la reception de votre vehicule en 30 secondes sur ce lien : ${link}`, "transactional")); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
-      if (r.email) { try { sent.email = !!(await sendEmail(r.email, `${r.prenom || ""} ${r.nom || ""}`.trim(), "Confirmez la réception de votre NeoDrive", `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive ${esc(r.modele || "")} (n° de série ${esc(r.vin)}) vient de vous être remise. Merci de confirmer sa réception en 30 secondes :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Je confirme la réception</a></p><p>Vous recevrez ensuite votre accusé de réception en PDF.</p><p>Merci,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
-      if (!sent.sms && !sent.email) return NextResponse.json({ ok: false, error: "Envoi impossible : " + sent.errors.join(" · ") }, { status: 502 });
-      const at = new Date().toISOString();
-      await db.from("reservations").update({ confirm_token: token, confirm_sent_at: at, updated_at: at }).eq("id", id);
-      await logSection(acc, "livraison_lien_accuse", { id });
-      const wa = r.telephone ? `https://wa.me/${intlPhone(r.telephone)}?text=${encodeURIComponent(`Bonjour ${first}, merci de confirmer la réception de votre NeoDrive sur ce lien : ${link}`)}` : null;
-      return NextResponse.json({ ok: true, sent, whatsapp: wa });
+      try {
+        const sent = await sendAccuseLink(db, id);
+        const { data: r } = await db.from("reservations").select("prenom,telephone,confirm_token").eq("id", id).maybeSingle();
+        await logSection(acc, "livraison_lien_accuse", { id });
+        const link = r?.confirm_token ? `${SITE}/accuse/confirmer/${r.confirm_token}` : "";
+        const wa = r?.telephone && link ? `https://wa.me/${intlPhone(r.telephone)}?text=${encodeURIComponent(`Bonjour ${String(r.prenom || "").split(/\s+/)[0]}, voici votre lien NeoDrive à signer : ${link}`)}` : null;
+        return NextResponse.json({ ok: true, sent, whatsapp: wa });
+      } catch (e) { if (e instanceof AccuseError) return NextResponse.json({ ok: false, error: e.message }, { status: e.status }); throw e; }
     }
     if (b.action === "confirm_status") {
       const { data: r } = await db.from("reservations").select("id,accuse_token,remote_confirm").eq("id", Number(b.id)).maybeSingle();

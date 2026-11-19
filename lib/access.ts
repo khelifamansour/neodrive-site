@@ -18,7 +18,7 @@ export const SECTIONS = {
   rentabilite: "Rentabilité (estimation)",
   giga: "Giga Analyse",
   conformite: "Conformité (banques, documents)",
-  livreur: "Espace livreur prestataire (réservations en cours, ses tournées, ses documents)",
+  livreur: "Espace prestataire : livraison, préparation (ses tournées, ses heures, ses documents)",
 } as const;
 export type SectionKey = keyof typeof SECTIONS;
 export const isSection = (s: unknown): s is SectionKey => typeof s === "string" && s in SECTIONS;

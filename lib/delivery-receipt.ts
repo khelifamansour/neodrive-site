@@ -67,7 +67,30 @@ export type ReceiptData = {
   reglement?: PayLine[] | null;
   /** Chauffeur à qui d'éventuelles espèces ont été remises. */
   driver_name?: string | null;
+  /** Remise avec paiement en attente (réserve de propriété) : échéance du paiement et lieu de remise. */
+  reserve?: { due: string | null; montant_du: number | null; lieu: string } | null;
 };
+
+const dateFr = (iso: string | null | undefined) => iso ? new Date(iso.length === 10 ? iso + "T12:00:00" : iso).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+const eurFr = (n: number | null | undefined) => n == null ? "le montant restant dû" : `${n.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €`;
+/** Échéance par défaut : 3 jours ouvrés après la remise (AAAA-MM-JJ). */
+export function defaultDue(from = new Date()) {
+  const d = new Date(from); let n = 0;
+  while (n < 3) { d.setDate(d.getDate() + 1); const w = d.getDay(); if (w !== 0 && w !== 6) n++; }
+  return d.toISOString().slice(0, 10);
+}
+/** Clauses de la remise avec réserve de propriété (affichées au client avant de signer, puis dans le PDF). */
+export function reserveClauses(x: { modele: string; couleur: string; vin: string; date: string; lieu: string; montant_du: number | null; due: string | null }) {
+  const veh = `${x.modele}${x.couleur ? `, ${x.couleur}` : ""}, n° de série ${x.vin}`;
+  return [
+    `Le client reconnaît que le véhicule ${veh} lui a été remis le ${new Date(x.date).toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}${x.lieu ? ` à l'adresse suivante : ${x.lieu}` : ""}, alors que le paiement de ${eurFr(x.montant_du)} n'a pas encore été reçu par MK HOLDING (NeoDrive).`,
+    `Il déclare avoir effectué, ou s'engage à effectuer, le virement de cette somme, et s'engage à ce qu'elle soit reçue par MK HOLDING au plus tard le ${dateFr(x.due)}.`,
+    `Réserve de propriété (articles 2367 et suivants du Code civil) : le véhicule reste la propriété de MK HOLDING jusqu'au paiement intégral du prix.`,
+    `Les clés et les documents du véhicule (certificat de conformité, carte grise ou documents d'immatriculation) sont conservés par NeoDrive et seront remis ou envoyés au client dès réception du paiement. Le véhicule est laissé fermé à clé.`,
+    `Jusqu'au paiement, le client s'engage à ne pas utiliser, déplacer, prêter, vendre ou modifier le véhicule, à en assurer la garde, et à le restituer à NeoDrive sur simple demande. Il autorise NeoDrive à venir le récupérer à son adresse en cas de non-paiement à l'échéance.`,
+    `À défaut de paiement à l'échéance, NeoDrive pourra reprendre le véhicule et engager toute action en justice pour obtenir le paiement ou la restitution. Le fait de disposer du véhicule (vente, cession, dissimulation) avant paiement peut constituer une infraction pénale.`,
+  ];
+}
 
 const SELLER = ["MK HOLDING - NeoDrive", "31600 Muret, France", "SIREN 908 645 393", "Tél. 06 89 78 17 10 · contact.neodrivefrance@gmail.com"];
 const fr = (iso: string | null) => iso ? new Date(iso).toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -144,6 +167,58 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
     doc.font("Helvetica").fontSize(7.5).fillColor(grey).text(
       `${remote ? "Confirmation électronique simple recueillie sur l'appareil du client (lien personnel à usage unique)" : "Signature électronique simple recueillie sur l'appareil du livreur"}${d.lat != null && d.lng != null ? `, position du livreur ${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}` : ""}. Document généré automatiquement par NeoDrive ; un exemplaire est remis au client par e-mail ou lien sécurisé.`,
       40, Math.min(y, 770), { width: 515 });
+    doc.end();
+  });
+}
+
+/** PDF « Remise du véhicule – paiement en attente (réserve de propriété) », signé par le client. */
+export function reservePdf(d: ReceiptData, signaturePng: Buffer | null): Promise<Buffer> {
+  return new Promise<Buffer>((resolve, reject) => {
+    const doc = safeText(new PDFDocument({ size: "A4", margin: 40, info: { Title: `Remise avec réserve de propriété ${d.numero}`, Author: "MK HOLDING - NeoDrive" } }));
+    const chunks: Buffer[] = [];
+    doc.on("data", (b: Buffer) => chunks.push(b)); doc.on("end", () => resolve(Buffer.concat(chunks))); doc.on("error", reject);
+    const ink = "#111", grey = "#666", accent = "#b42318";
+    const rv = d.reserve || { due: null, montant_du: d.pending?.montant_du ?? null, lieu: d.adresse };
+    doc.font("Helvetica-Bold").fontSize(18).fillColor(ink).text("NeoDrive", 40, 40);
+    doc.font("Helvetica").fontSize(8.5).fillColor(grey).text(SELLER.join("\n"), 40, 62, { width: 230 });
+    doc.font("Helvetica-Bold").fontSize(13).fillColor(accent).text("REMISE DU VÉHICULE – PAIEMENT EN ATTENTE", 230, 40, { width: 325, align: "right" });
+    doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Réserve de propriété", 230, 58, { width: 325, align: "right" });
+    doc.font("Helvetica").fontSize(9).text(`N° ${d.numero}`, 230, 74, { width: 325, align: "right" }).text(`Remis le ${fr(d.signed_at)}`, 230, 86, { width: 325, align: "right" });
+    let y = 128;
+    const box = (title: string, lines: string[], x: number, w: number, h: number) => {
+      doc.roundedRect(x, y, w, h, 6).lineWidth(0.6).stroke("#bbb");
+      doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text(title, x + 10, y + 8);
+      doc.font("Helvetica").fontSize(9).fillColor(ink).text(lines.filter(Boolean).join("\n"), x + 10, y + 21, { width: w - 20, height: h - 26, ellipsis: true });
+    };
+    box("CLIENT", [d.client, d.adresse, d.telephone ? `Tél. ${d.telephone}` : "", d.email], 40, 250, 86);
+    box("VÉHICULE", [d.modele, d.couleur ? `Couleur : ${d.couleur}` : "", `N° de série (VIN) : ${d.vin}`, `Montant restant dû : ${eurFr(rv.montant_du)}`, `Échéance du paiement : ${dateFr(rv.due)}`], 305, 250, 86);
+    y += 100;
+    const clauses = reserveClauses({ modele: d.modele, couleur: d.couleur, vin: d.vin, date: d.signed_at, lieu: rv.lieu, montant_du: rv.montant_du, due: rv.due });
+    clauses.forEach((t, i) => {
+      doc.font("Helvetica").fontSize(9.2).fillColor(ink).text(`${i + 1}. ${t}`, 40, y, { width: 515 });
+      y += doc.heightOfString(`${i + 1}. ${t}`, { width: 515 }) + 6;
+    });
+    if (d.reglement?.length) {
+      const t = `Règlement déclaré par le client : ${paymentText(d.reglement, driverDisplay(d.driver_name))}.`;
+      doc.font("Helvetica-Bold").fontSize(9.2).fillColor(ink).text(t, 40, y, { width: 515 }); y += doc.heightOfString(t, { width: 515 }) + 6;
+    }
+    if (d.reserves) { const t = `Remarques du client : ${d.reserves}`; doc.font("Helvetica").fontSize(9).fillColor(ink).text(t, 40, y, { width: 515 }); y += doc.heightOfString(t, { width: 515 }) + 6; }
+    doc.font("Helvetica-Bold").fontSize(9.2).fillColor(ink).text(`Je soussigné(e) ${d.signer} déclare avoir lu et accepté les conditions ci-dessus.`, 40, y, { width: 515 });
+    y += 22;
+    const remote = d.mode === "distance";
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text("Signature du client", 40, y).text("Remis par", 330, y);
+    doc.roundedRect(40, y + 14, 270, 112, 6).lineWidth(0.6).stroke("#bbb");
+    if (signaturePng) { try { doc.image(signaturePng, 48, y + 18, { fit: [254, remote ? 56 : 84], align: "center", valign: "center" }); } catch { /* le nom reste */ } }
+    if (remote) {
+      doc.font("Helvetica-Bold").fontSize(8).fillColor("#067647").text("SIGNÉ À DISTANCE PAR LE CLIENT", 48, y + 76, { width: 254 });
+      doc.font("Helvetica").fontSize(7.5).fillColor(ink).text(`Signature tracée par le client sur son téléphone, via le lien sécurisé envoyé au ${d.remote?.phone || d.telephone || "numéro du client"}.${d.remote?.ip ? ` Adresse IP : ${d.remote.ip}` : ""}`, 48, y + 86, { width: 254 });
+    }
+    doc.font("Helvetica").fontSize(8.5).fillColor(grey).text(`${d.signer} · ${fr(remote ? d.remote?.at || d.signed_at : d.signed_at)}`, 48, y + 112, { width: 254 });
+    const remis = driverDisplay(d.driver_name) || (d.livreur && d.livreur !== "NeoDrive" ? driverDisplay(d.livreur) : "");
+    doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(remis ? `${remis}${/mansour/i.test(remis) ? "" : " (chauffeur)"}\npour MK HOLDING – NeoDrive` : "MK HOLDING – NeoDrive", 330, y + 18, { width: 225 });
+    doc.font("Helvetica").fontSize(8.5).fillColor(accent).text("Clés et documents conservés par NeoDrive jusqu'au paiement.", 330, y + 60, { width: 225 });
+    y += 140;
+    doc.font("Helvetica").fontSize(7.5).fillColor(grey).text("Signature électronique simple recueillie sur l'appareil du client ou du livreur. Document généré automatiquement par NeoDrive ; un exemplaire est remis au client par e-mail.", 40, Math.min(y, 790), { width: 515 });
     doc.end();
   });
 }

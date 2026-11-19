@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { crmDatabase } from "../../../lib/crm-agent";
-import { checksFor, cleanPayment, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
+import { checksFor, cleanPayment, defaultDue, driverDisplay, reserveClauses, type ReceiptData } from "../../../lib/delivery-receipt";
 import { listJson } from "../../../lib/datastore";
 import { PLAN_TOURS } from "../../../lib/fleet";
 import type { PlanTour } from "../../../lib/planif";
-import { finalizeDelivery } from "../../../lib/delivery-finalize";
+import { finalizeDelivery, finalizeReserve } from "../../../lib/delivery-finalize";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -33,8 +33,15 @@ export async function GET(req: Request) {
   const r = await find(new URL(req.url).searchParams.get("token") || "");
   if (!r) return NextResponse.json({ ok: false, error: "Lien invalide ou expiré." }, { status: 404 });
   const pending = !r.paiement_confirme_at && !!r.paiement_en_attente;
+  // Paiement en attente : le client signe la remise avec réserve de propriété (puis l'accusé final après paiement).
+  const reserve = pending && !r.reserve_token;
+  const lieu = [r.adresse, `${r.code_postal || ""} ${r.ville || ""}`.trim()].filter(Boolean).join(", ");
+  const due = r.reserve_due || defaultDue();
+  const montant = r.montant_du == null ? null : Number(r.montant_du);
+  const reserveDone = pending && !!r.reserve_token;
   return NextResponse.json({
-    ok: true, done: !!r.accuse_token, accuse_url: r.accuse_token ? `/api/accuse/${r.accuse_token}` : null,
+    ok: true, done: !!r.accuse_token || reserveDone, accuse_url: r.accuse_token ? `/api/accuse/${r.accuse_token}` : reserveDone ? `/api/accuse/${r.reserve_token}` : null,
+    reserve, reserve_done: reserveDone, due, clauses: reserve ? reserveClauses({ modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin || "", date: new Date().toISOString(), lieu, montant_du: montant, due }) : null,
     client: `${r.prenom || ""} ${r.nom || ""}`.replace(/\(.*?\)/g, "").trim(), modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin || "",
     date: new Date().toISOString(), pending, montant_du: pending && r.montant_du != null ? Number(r.montant_du) : null, checks: checksFor(pending), driver: await tourDriver(r), total: r.total == null ? null : Number(r.total),
   });
@@ -46,9 +53,10 @@ export async function POST(req: Request) {
     const r = await find(String(b.token || ""));
     if (!r) return NextResponse.json({ ok: false, error: "Lien invalide ou expiré." }, { status: 404 });
     if (r.accuse_token) return NextResponse.json({ ok: true, done: true, accuse_url: `/api/accuse/${r.accuse_token}` });
+    if (!r.paiement_confirme_at && r.reserve_token) return NextResponse.json({ ok: true, done: true, accuse_url: `/api/accuse/${r.reserve_token}` });
     if (!r.vin || (!r.paiement_confirme_at && !r.paiement_en_attente)) return NextResponse.json({ ok: false, error: "Cette livraison n'est pas prête à être confirmée. Contactez NeoDrive au 06 89 78 17 10." }, { status: 409 });
     const signer = clean(b.name, 120);
-    if (!b.accept) return NextResponse.json({ ok: false, error: "Cochez « J'ai bien reçu mon véhicule »." }, { status: 400 });
+    if (!b.accept) return NextResponse.json({ ok: false, error: (!r.paiement_confirme_at && r.paiement_en_attente) ? "Cochez « J'ai lu et j'accepte les conditions de remise »." : "Cochez « J'ai bien reçu mon véhicule »." }, { status: 400 });
     if (signer.length < 3) return NextResponse.json({ ok: false, error: "Écrivez votre nom et prénom." }, { status: 400 });
     // Signature manuscrite tracée au doigt par le client (PNG en data URL).
     const sigRaw = String(b.signature || "");
@@ -74,6 +82,12 @@ export async function POST(req: Request) {
       pending: pending ? { montant_du: r.montant_du == null ? null : Number(r.montant_du) } : null,
       reglement, driver_name: driverName || null,
     };
+    if (pending) {
+      data.numero = `RES-${at.slice(0, 4)}-${String(r.id).padStart(6, "0")}`;
+      data.reserve = { due: r.reserve_due || defaultDue(), montant_du: r.montant_du == null ? null : Number(r.montant_du), lieu: data.adresse };
+      const out = await finalizeReserve(crmDatabase(), r, data, signature);
+      return NextResponse.json({ ok: true, done: true, reserve: true, accuse_url: out.url.replace(/^https?:\/\/[^/]+/, ""), emailed: out.emailed });
+    }
     await crmDatabase().from("reservations").update({ remote_confirm: { name: signer, at, ip, ua, phone: r.telephone || "", remarks: data.reserves, signed: true } }).eq("id", r.id);
     const out = await finalizeDelivery(crmDatabase(), r, data, signature);
     return NextResponse.json({ ok: true, done: true, accuse_url: out.url.replace(/^https?:\/\/[^/]+/, ""), emailed: out.emailed });
