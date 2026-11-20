@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 import {supabase} from "../../lib/supabase";
+import Scripts from "./Scripts";
 
 type Out={hook:string;tiktok:string;facebook:string;instagram:string;idea:string};
 const TYPES=[["livraison","🚚 Livraison"],["question","❓ Question client"],["face","🎙️ Face caméra"],["essai","🚗 Prise en main"],["arrivage","📦 Arrivage"],["avis","⭐ Avis client"]] as const;
@@ -16,6 +17,7 @@ export default function Studio(){
  const [videoUrl,setVideoUrl]=useState("");
  const [tt,setTt]=useState("");
  const [copied,setCopied]=useState("");
+ const [tab,setTab]=useState<"publier"|"scripts">("publier");
  useEffect(()=>{try{const pc=sessionStorage.getItem("nd_pc");if(pc){setCode(pc);setAuthed(true);}}catch{}},[]);
  const enter=(e:React.FormEvent)=>{e.preventDefault();if(code.length<3)return;try{sessionStorage.setItem("nd_pc",code)}catch{};setAuthed(true);};
 
@@ -49,6 +51,8 @@ export default function Studio(){
 
  return <main className="s">
   <h1>Studio</h1><p className="sub">Vous filmez, l’IA écrit, ça se publie.</p>
+  <div className="chips">{([["publier","🎬 Publier une vidéo"],["scripts","📝 Scripts et idées"]] as const).map(([k,l])=><button key={k} type="button" className={tab===k?"on":""} onClick={()=>setTab(k)}>{l}</button>)}</div>
+  {tab==="scripts"?<Scripts code={code}/>:<>
   <div className="chips">{TYPES.map(([k,l])=><button key={k} type="button" className={type===k?"on":""} onClick={()=>setType(k)}>{l}</button>)}</div>
   <label className="file"><input type="file" accept="video/mp4,video/quicktime,video/*,image/jpeg,image/png" onChange={e=>setFile(e.target.files?.[0]||null)}/>{file?<><b>🎬 {file.name}</b><small>{(file.size/1024/1024).toFixed(0)} Mo · toucher pour changer</small></>:<><b>＋ Choisir la vidéo</b><small>Facultatif : sans vidéo, l’IA écrit seulement les textes</small></>}</label>
   <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={3} placeholder="En quelques mots : ex. « Livraison à Brest, Martine, Confort grise, très contente »"/>
@@ -62,6 +66,7 @@ export default function Studio(){
    {tt?<p className={tt.startsWith("✅")?"ok":"err"}>{tt}</p>:null}
    <div className="card idea"><small>💡 Idée pour la prochaine vidéo</small><p>{out.idea}</p></div>
   </div>:null}
+  </>}
   <style jsx>{css}</style>
  </main>;
 }
