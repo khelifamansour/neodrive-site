@@ -3,6 +3,7 @@
 
 import React, { useRef, useState } from "react";
 import Script from "next/script";
+import { deliveryPriceForDepartment } from "../../lib/neodrive-pricing";
 
 export default function ReservationCarteGrise() {
 
@@ -44,19 +45,8 @@ const [manualTransport, setManualTransport] = useState("");
 const [discount, setDiscount] = useState(0);
   
 
-  const getTransportPrice = (dept: string) => {
-  if (["31","81","82","32","09"].includes(dept)) return 350;
-
-  if (["11","12","46","47","33","65","66",
-       "34","30","40","24","19","87","15"].includes(dept)) return 490;
-
-  if (["75","77","78","91","92","93","94","95",
-       "13","69","63","16","17","86"].includes(dept)) return 690;
-
-  if (["44","35","56","29","22","53","49","67","68"].includes(dept)) return 790;
-
-  return 790;
-};
+  // Même barème que le simulateur de réservation (lib/neodrive-pricing) : un seul prix par département.
+  const getTransportPrice = (dept: string) => deliveryPriceForDepartment(dept) ?? 790;
 const transport = noDelivery
   ? 0
   : manualTransport
@@ -280,7 +270,7 @@ const totalTTC =
   <option value="">Sélectionner votre département</option>
 
   {/* ZONE 1 */}
-  <optgroup label="Zone 1 — 350 €">
+  <optgroup label="Zone 1 — 450 €">
     <option value="31">Haute-Garonne (31)</option>
     <option value="81">Tarn (81)</option>
     <option value="82">Tarn-et-Garonne (82)</option>
@@ -289,7 +279,7 @@ const totalTTC =
   </optgroup>
 
   {/* ZONE 2 + 3 fusionnées */}
-  <optgroup label="Zone 2 — 490 €">
+  <optgroup label="Zone 2 — 590 €">
     <option value="11">Aude (11)</option>
     <option value="12">Aveyron (12)</option>
     <option value="46">Lot (46)</option>
