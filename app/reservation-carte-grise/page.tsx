@@ -1,91 +1,130 @@
 "use client";
 
-
-import React, { useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Script from "next/script";
-import { deliveryPriceForDepartment } from "../../lib/neodrive-pricing";
+import { VEHICLES, REGISTRATION_PRICE, calculateQuote, AVAILABILITY, type VehicleKey } from "../../lib/neodrive-pricing";
+import s from "../reservation-devis/reservation.module.css";
+import c from "./carte-grise.module.css";
 
-export default function ReservationCarteGrise() {
-
-  const today = new Date().toLocaleDateString("fr-FR");
-const versions = {
-  essentiel: {
-    label: " VSP Version Essentiel",
-    prix: 3990,
-  },
-  confort: {
-    label: "VSP Version Confort",
-    prix: 4990,
-  },
-  confortPlus: {
-    label: " VSP Version Confort Plus+",
-    prix: 5990,
-  },
+// Bibliothèques chargées par CDN (balises Script ci-dessous) : html2canvas pour le devis, jsPDF pour le devis et le mandat.
+type JsPdfCtor = new (...args: unknown[]) => {
+  setFontSize: (n: number) => void;
+  text: (t: string, x: number, y: number, o?: { maxWidth?: number }) => void;
+  line: (x1: number, y1: number, x2: number, y2: number) => void;
+  addImage: (data: string, format: string, x: number, y: number, w: number, h: number) => void;
+  addPage: () => void;
+  save: (name: string) => void;
+};
+type PdfGlobals = {
+  jspdf?: { jsPDF: JsPdfCtor };
+  html2canvas?: (el: HTMLElement, o: { scale: number; useCORS: boolean; windowWidth?: number; onclone?: (doc: Document) => void }) => Promise<HTMLCanvasElement>;
 };
 
-const [version, setVersion] = useState<keyof typeof versions>("confort");
+const euro = (n: number) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+const WHATSAPP = "https://wa.me/33676192234?text=" + encodeURIComponent("Bonjour, j'ai une question sur mon dossier carte grise NeoDrive.");
 
-const prixVehicule = versions[version].prix;
-  const packMiseEnRouteCarteGrise = 150;
-  const [client, setClient] = useState({
-    nom: "",
-    prenom: "",
-    telephone: "",
-    email: "",
-    adresse: "",
-    code_postal: "",
-    ville: ""
-  });
+/** Valeur postée dans le champ « version » (inchangée pour le traitement du dossier) et libellé du devis. */
+const VERSION_FORM: Record<VehicleKey, { value: string; devis: string }> = {
+  essentielle: { value: "essentiel", devis: "VSP Version Essentiel" },
+  confort: { value: "confort", devis: "VSP Version Confort" },
+  confortPlus: { value: "confortPlus", devis: "VSP Version Confort Plus+" },
+};
+const MODELS: Record<VehicleKey, { img: string; tagline: string; badge?: string }> = {
+  essentielle: { img: "/reservation/essentielle.svg", tagline: "L’essentiel au meilleur prix" },
+  confort: { img: "/reservation/confort.svg", tagline: "Le meilleur équilibre", badge: "Le plus équilibré" },
+  confortPlus: { img: "/reservation/confort-plus.svg", tagline: "Tout le confort" },
+};
+
+const Icon = {
+  truck: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z" /><circle cx="7" cy="17.5" r="1.8" /><circle cx="17.5" cy="17.5" r="1.8" /></svg>,
+  shield: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z" /><path d="M8.8 12.2l2.2 2.2 4.4-4.6" /></svg>,
+  doc: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5M10 13h6M10 17h4" /></svg>,
+  pin: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0113 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.4" /></svg>,
+  user: <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.2-4 4.3-6 8-6s6.8 2 8 6" /></svg>,
+  check: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>,
+  chat: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19l1.3-3.6A7.8 7.8 0 1112 20a8 8 0 01-3.9-1z" /></svg>,
+  download: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>,
+  lock: <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 018 0v3" /></svg>,
+  upload: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V9M7 14l5-5 5 5M5 4h14" /></svg>,
+};
+
+export default function ReservationCarteGrise() {
+  const today = new Date().toLocaleDateString("fr-FR");
+
+  const [model, setModel] = useState<VehicleKey>("confort");
+  const [client, setClient] = useState({ nom: "", prenom: "", telephone: "", email: "", adresse: "", code_postal: "", ville: "" });
   const [noDelivery, setNoDelivery] = useState(false);
   const [wantsCarteGrise, setWantsCarteGrise] = useState(true);
-  const [departementLivraison, setDepartementLivraison] = useState("");
+  // Options conseiller (non envoyées dans le formulaire, elles ne servent qu'au devis).
+  const [quantity, setQuantity] = useState(1);
+  const [manualTransport, setManualTransport] = useState("");
+  const [discount, setDiscount] = useState(0);
+  const [files, setFiles] = useState<Record<string, string>>({});
 
-const [quantity, setQuantity] = useState(1);
-const [manualTransport, setManualTransport] = useState("");
-const [discount, setDiscount] = useState(0);
-  
-
-  // Même barème que le simulateur de réservation (lib/neodrive-pricing) : un seul prix par département.
-  const getTransportPrice = (dept: string) => deliveryPriceForDepartment(dept) ?? 790;
-const transport = noDelivery
-  ? 0
-  : manualTransport
-      ? Number(manualTransport)
-      : getTransportPrice(
-          departementLivraison || client.code_postal?.substring(0,2) || ""
-        );
-const totalTTC =
-  (prixVehicule * quantity)
-  + transport
-  + (packMiseEnRouteCarteGrise * quantity)
-  - discount;
+  // Résultat de la vérification geo.api.gouv.fr pour un code postal donné.
+  const [geo, setGeo] = useState<{ postal: string; cities: string[]; unchecked: boolean } | null>(null);
 
   const printRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
+  const postal = client.code_postal;
 
+  // Même vérification de commune que /reservation-devis (geo.api.gouv.fr), sans bloquer si le service ne répond pas.
+  useEffect(() => {
+    if (!/^[0-9]{5}$/.test(postal)) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => { controller.abort(); setGeo({ postal, cities: [], unchecked: true }); }, 6000);
+    fetch("https://geo.api.gouv.fr/communes?codePostal=" + postal + "&fields=nom&format=json", { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error("geo " + r.status); return r.json(); })
+      .then(d => {
+        if (controller.signal.aborted) return;
+        const cities: string[] = Array.isArray(d) ? d.map((x: { nom: string }) => x.nom) : [];
+        setGeo({ postal, cities, unchecked: false });
+        if (cities.length === 1) setClient(p => p.ville ? p : { ...p, ville: cities[0] });
+      })
+      .catch(() => { if (!controller.signal.aborted) setGeo({ postal, cities: [], unchecked: true }); })
+      .finally(() => clearTimeout(timer));
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [postal]);
+  const geoCurrent = geo && geo.postal === postal ? geo : null;
+  const postalCities = geoCurrent ? geoCurrent.cities : [];
+  const postalVerified = postalCities.length > 0;
+  const postalUnchecked = !!geoCurrent?.unchecked;
+  const postalLoading = /^[0-9]{5}$/.test(postal) && !geoCurrent;
 
- 
+  // Barème unique (lib/neodrive-pricing) : mêmes montants que le simulateur /reservation-devis.
+  const quote = useMemo(() => calculateQuote(model, postal, wantsCarteGrise), [model, postal, wantsCarteGrise]);
+  const manualAmount = manualTransport.trim() !== "" && Number.isFinite(Number(manualTransport)) ? Number(manualTransport) : null;
+  const transport: number | null = noDelivery ? 0 : manualAmount !== null ? manualAmount : quote.delivery.status === "estimated" ? quote.delivery.price : null;
+  const vehiclesTotal = quote.vehiclePrice * quantity;
+  const registrationTotal = quote.registrationPrice * quantity;
+  const totalTTC = transport === null ? null : vehiclesTotal + transport + registrationTotal - discount;
 
+  const postalComplete = /^[0-9]{5}$/.test(postal);
+  const departementLivraison = quote.delivery.department ?? "";
+  const livraisonValue = noDelivery ? "retrait sur place" : manualAmount !== null ? String(manualAmount) : quote.delivery.status === "estimated" ? String(quote.delivery.price) : "sur devis";
+  const deliveryLabel = noDelivery ? "Retrait sur place" : manualAmount !== null ? euro(manualAmount) : !postalComplete ? "—" : postalLoading ? "Calcul…" : quote.delivery.status === "estimated" ? euro(quote.delivery.price) : "Sur devis";
+  const deliveryOk = noDelivery || manualAmount !== null || quote.delivery.status === "estimated";
+  const totalLabel = totalTTC === null ? (postalComplete ? "Sur devis" : null) : euro(totalTTC);
+
+  const normalizeCity = (v: string) => v.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const cityMatches = postalCities.some(city => normalizeCity(city) === normalizeCity(client.ville));
+  const contactDone = !!(client.nom && client.prenom && client.telephone && client.email && client.adresse && client.ville && postalComplete);
+  const docsDone = !!(files.cni && files.justificatif_domicile && (!wantsCarteGrise || files.mandat_carte_grise_signe));
+  const stepState = [true, contactDone, true, docsDone, !!files.devis_signe];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-
-    setClient((previousClient) => ({
-      ...previousClient,
-      [name]: value
-    }));
-
-    if (name === "code_postal") {
-      const normalizedPostalCode = value.replace(/\s/g, "");
-      if (/^\d{5}$/.test(normalizedPostalCode)) {
-        setDepartementLivraison(normalizedPostalCode.substring(0, 2));
-      }
-    }
+    const { name } = e.target;
+    const value = name === "code_postal" ? e.target.value.replace(/[^0-9]/g, "").slice(0, 5) : e.target.value;
+    setClient(previousClient => ({ ...previousClient, [name]: value }));
+  };
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, files: list } = e.target;
+    setFiles(p => ({ ...p, [name]: list?.[0]?.name || "" }));
   };
 
   const downloadMandat = () => {
-    const jsPDF = (window as any).jspdf?.jsPDF;
+    const jsPDF = (window as unknown as PdfGlobals).jspdf?.jsPDF;
 
     if (!jsPDF) {
       alert(
@@ -157,7 +196,7 @@ const totalTTC =
 
     const safeName = mandatClient.nom
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[̀-ͯ]/g, "")
       .replace(/[^a-zA-Z0-9_-]/g, "-");
 
     pdf.save(`mandat-carte-grise-${safeName || "client"}.pdf`);
@@ -166,13 +205,25 @@ const totalTTC =
   const downloadPDF = async () => {
     if (!printRef.current) return;
 
-    const html2canvas = (window as any).html2canvas;
-    const jsPDF = (window as any).jspdf.jsPDF;
+    const w = window as unknown as PdfGlobals;
+    const html2canvas = w.html2canvas;
+    const jsPDF = w.jspdf?.jsPDF;
+    if (!html2canvas || !jsPDF) {
+      alert("Le générateur PDF est encore en cours de chargement. Merci de réessayer dans quelques secondes.");
+      return;
+    }
 
-    const canvas = await html2canvas(printRef.current, {
+    // Capture toujours au format A4 (794 px de large), même depuis un téléphone.
+    const el = printRef.current;
+    const previousWidth = el.style.width;
+    el.style.width = "794px";
+    const canvas = await html2canvas(el, {
       scale: 2,
-      useCORS: true
-    });
+      useCORS: true,
+      windowWidth: 1024,
+      // À l'écran les CGV défilent dans un cadre ; dans le PDF elles sont reproduites en entier.
+      onclone: (doc) => doc.querySelectorAll<HTMLElement>("[data-cgv]").forEach(node => { node.style.maxHeight = "none"; node.style.overflow = "visible"; node.style.border = "0"; node.style.padding = "0"; })
+    }).finally(() => { el.style.width = previousWidth; });
 
     const imgData = canvas.toDataURL("image/png");
 
@@ -200,348 +251,341 @@ const totalTTC =
     pdf.save("devis-neodrive.pdf");
   };
 
+  type ClientField = keyof typeof client;
+  const field = (name: ClientField, label: string, opts: { type?: string; autoComplete?: string; wide?: boolean; placeholder?: string; list?: string; inputMode?: "text" | "tel" | "email" } = {}) => {
+    const { type = "text", autoComplete, wide, placeholder, list, inputMode } = opts;
+    return <label className={`${s.field} ${wide ? s.wide : ""}`}>
+      <span>{label}</span>
+      <span className={s.inputWrap}>
+        <input name={name} required type={type} autoComplete={autoComplete} placeholder={placeholder} list={list} inputMode={inputMode} value={client[name]} onChange={handleChange} />
+        {client[name].trim() ? <i className={s.ok}>{Icon.check}</i> : null}
+      </span>
+    </label>;
+  };
+  const fileInput = (name: string, title: string, hint: string, required: boolean) => (
+    <label className={`${c.file} ${files[name] ? c.fileDone : ""}`}>
+      <span className={c.fileHead}><span><b>{title}</b><small>{hint}</small></span><em className={required ? c.req : ""}>{files[name] ? "Ajouté" : required ? "Obligatoire" : "Facultatif"}</em></span>
+      <input type="file" name={name} accept=".pdf,image/*" required={required} onChange={onFile} />
+    </label>
+  );
+
+  const summary = <div className={s.summary}>
+    <div className={s.summaryHead}><img src={MODELS[model].img} alt="" /><div><small>Votre véhicule</small><strong>{VEHICLES[model].label}{quantity > 1 ? ` × ${quantity}` : ""}</strong></div></div>
+    <dl>
+      <div><dt>Véhicule</dt><dd>{euro(vehiclesTotal)}</dd></div>
+      <div><dt>{noDelivery ? "Retrait sur place" : "Livraison à domicile"}{!noDelivery && quote.delivery.status === "estimated" ? <small> · {postal}</small> : null}</dt><dd className={deliveryOk ? "" : s.muted}>{noDelivery ? euro(0) : deliveryLabel}</dd></div>
+      <div><dt>Carte grise (formalités)</dt><dd className={wantsCarteGrise ? "" : s.muted}>{wantsCarteGrise ? euro(registrationTotal) : "Non demandée"}</dd></div>
+      {discount > 0 ? <div><dt>Remise</dt><dd>- {euro(discount)}</dd></div> : null}
+    </dl>
+    <div className={s.summaryTotal}><span>Total TTC</span>{totalLabel && totalTTC !== null ? <strong>{totalLabel}</strong> : <em>{totalLabel || "Saisissez votre code postal pour voir le prix livré"}</em>}</div>
+    <ul className={s.summaryPerks}>
+      <li>{Icon.check} Prix livré selon votre code postal</li>
+      <li>{Icon.check} Carte grise gérée par NeoDrive</li>
+      <li>{Icon.check} Garantie 2 ans selon conditions</li>
+    </ul>
+  </div>;
+
   return (
-    <main style={container}>
+    <main className={s.page}>
 
       {/* CDN FIXED FOR NEXT */}
       <Script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" />
       <Script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" />
 
-      <h2 style={{ textAlign: "center" }}>Réservation véhicule + Carte grise</h2>
+      {/* HERO */}
+      <section className={s.hero}>
+        <div className={s.heroCopy}>
+          <span className={s.kicker}><i /> Carte grise · dossier en ligne</span>
+          <h1>Votre dossier<br /><span>carte grise.</span></h1>
+          <p>Un seul formulaire pour choisir votre véhicule, obtenir votre prix livré et préparer son immatriculation. <b>Vos informations ne sont demandées qu’une seule fois.</b></p>
+          <div className={s.heroPrice}><small>À partir de</small><strong>{euro(VEHICLES.essentielle.price)}</strong><span>TTC</span></div>
+          <div className={s.heroCtas}>
+            <a href="#dossier" className={s.btnPrimary}>Commencer mon dossier</a>
+            <a href={WHATSAPP} target="_blank" rel="noreferrer" className={s.btnLink}>{Icon.chat} Parler à un conseiller</a>
+          </div>
+        </div>
+        <figure className={s.heroMedia}>
+          <picture>
+            <img src="/reservation/neodrive-jardin-mobile.webp" alt="NeoDrive Confort grise garée dans un jardin ensoleillé" fetchPriority="high" />
+          </picture>
+          <figcaption><i /> NeoDrive Confort · véhicule réel</figcaption>
+          <div className={s.heroFloat}><span className={s.heroFloatIcon}>{Icon.doc}</span><div><strong>Carte grise gérée</strong><small>Formalités {euro(REGISTRATION_PRICE)}</small></div></div>
+        </figure>
+      </section>
 
-      <div style={intro}>
-        <p><strong>Un seul formulaire pour réserver votre véhicule et préparer son immatriculation.</strong></p>
-        <p>Vos informations ne seront demandées qu’une seule fois.</p>
+      <ul className={s.trust}>
+        <li><span>{Icon.truck}</span><div><b>Livraison à domicile</b><small>Prix selon votre code postal</small></div></li>
+        <li><span>{Icon.doc}</span><div><b>Carte grise gérée</b><small>Formalités {euro(REGISTRATION_PRICE)}</small></div></li>
+        <li><span>{Icon.upload}</span><div><b>Documents en ligne</b><small>Photo ou PDF acceptés</small></div></li>
+        <li><span>{Icon.shield}</span><div><b>Garantie 2 ans</b><small>Selon conditions de garantie</small></div></li>
+      </ul>
+
+      <div className={s.layout} id="dossier">
+        <form
+          ref={formRef}
+          action="https://formspree.io/f/xjgjrqqg"
+          method="POST"
+          encType="multipart/form-data"
+          className={s.form}
+        >
+
+          <input type="hidden" name="_subject" value="Nouvelle réservation véhicule + carte grise" />
+          <input type="hidden" name="version" value={VERSION_FORM[model].value} />
+          <input type="hidden" name="departement_livraison" value={departementLivraison} />
+          <input type="hidden" name="livraison" value={livraisonValue} />
+
+          <ol className={`${s.progress} ${c.progress5}`} aria-label="Étapes du dossier">
+            {["Véhicule", "Livraison", "Carte grise", "Documents", "Devis"].map((t, i) => <li key={t} className={stepState[i] ? s.done : ""}><b>{stepState[i] ? Icon.check : i + 1}</b><span>{t}</span></li>)}
+          </ol>
+
+          {/* ÉTAPE 1 — VÉHICULE */}
+          <section className={s.card}>
+            <header className={s.cardHead}><span className={s.stepNum}>1</span><div><h2>Version souhaitée</h2><p>Même carrosserie, trois niveaux d’équipement.</p></div></header>
+            <div className={s.models} role="radiogroup" aria-label="Version du véhicule">
+              {(Object.keys(VEHICLES) as VehicleKey[]).map(key => {
+                const v = VEHICLES[key]; const m = MODELS[key]; const on = model === key;
+                return <button type="button" role="radio" aria-checked={on} key={key} onClick={() => setModel(key)} className={`${s.model} ${on ? s.modelOn : ""}`}>
+                  {m.badge ? <span className={s.badge}>{m.badge}</span> : null}
+                  <span className={s.radio}>{on ? Icon.check : null}</span>
+                  <img src={m.img} alt="" />
+                  <strong>{v.label.replace("NeoDrive ", "")}</strong>
+                  <small>{m.tagline}</small>
+                  <b>{euro(v.price)}<em> TTC</em></b>
+                  <small style={{ display: "block", marginTop: 4, fontWeight: 800, color: AVAILABILITY[key].inStock ? "#15803d" : "#b45309" }}>{AVAILABILITY[key].inStock ? "✅ " : "⏳ "}{AVAILABILITY[key].short}</small>
+                </button>;
+              })}
+            </div>
+          </section>
+
+          {/* ÉTAPE 2 — LIVRAISON & COORDONNÉES */}
+          <section className={s.card}>
+            <header className={s.cardHead}><span className={s.stepNum}>2</span><div><h2>Livraison et coordonnées</h2><p>Le prix de livraison s’affiche dès votre code postal.</p></div></header>
+            <div className={s.postalRow}>
+              <label className={s.field}><span>Code postal de livraison</span>
+                <span className={s.inputWrap}><i className={s.inputIcon}>{Icon.pin}</i><input name="code_postal" className={s.withIcon} inputMode="numeric" autoComplete="postal-code" maxLength={5} pattern="[0-9]{5}" required value={client.code_postal} onChange={handleChange} placeholder="Ex. 31600" />{postalVerified ? <i className={s.ok}>{Icon.check}</i> : null}</span>
+              </label>
+              <div className={`${s.deliveryBox} ${deliveryOk && (postalComplete || noDelivery) ? s.deliveryOk : ""}`} aria-live="polite" data-testid="delivery-price">
+                <small>{noDelivery ? "Remise du véhicule" : "Livraison à votre porte"}</small>
+                <strong>{deliveryLabel}</strong>
+                <span>{noDelivery ? "Aucun frais de livraison" : manualAmount !== null ? "Transport personnalisé" : !postalComplete ? "Saisissez vos 5 chiffres" : quote.delivery.status === "estimated" ? (postalVerified ? postalCities.slice(0, 2).join(", ") + (postalCities.length > 2 ? "…" : "") : "Tarif forfaitaire de la zone") : "Tarif personnalisé avant confirmation"}</span>
+              </div>
+            </div>
+            {!noDelivery && manualAmount === null && quote.delivery.status === "manual" && postalComplete ? <p className={s.note}>{quote.delivery.reason}. Nous vous communiquerons un tarif personnalisé avant toute confirmation — ou <a href={WHATSAPP} target="_blank" rel="noreferrer">demandez-le sur WhatsApp</a>.</p> : null}
+            {postalComplete && !postalLoading && !postalVerified && !postalUnchecked && quote.delivery.status === "estimated" ? <p className={s.note}>Nous ne trouvons pas ce code postal. Vérifiez-le pour continuer.</p> : null}
+            <label className={c.pickup}><input type="checkbox" checked={noDelivery} onChange={e => setNoDelivery(e.target.checked)} /> Retrait sur place (pas de livraison)</label>
+
+            <div className={s.subHead}><i>{Icon.user}</i><div><h3>Vos coordonnées</h3><p>Elles servent au devis, au mandat et à la carte grise.</p></div></div>
+            <div className={s.fields}>
+              {field("prenom", "Prénom", { autoComplete: "given-name", placeholder: "Prénom" })}
+              {field("nom", "Nom", { autoComplete: "family-name", placeholder: "Nom" })}
+              {field("telephone", "Téléphone", { type: "tel", autoComplete: "tel", inputMode: "tel", placeholder: "06 12 34 56 78" })}
+              {field("email", "Adresse e-mail", { type: "email", autoComplete: "email", inputMode: "email", placeholder: "vous@exemple.fr" })}
+              {field("adresse", "Adresse", { autoComplete: "street-address", wide: true, placeholder: "N° et rue" })}
+              {field("ville", "Ville", { autoComplete: "address-level2", list: "cg-cities", wide: true })}
+            </div>
+            <datalist id="cg-cities">{postalCities.map(city => <option key={city} value={city} />)}</datalist>
+            {postalVerified && client.ville && !cityMatches ? <p className={s.note}>Vérifiez la ville : elle ne correspond pas au code postal {postal} (communes possibles&nbsp;: {postalCities.slice(0, 6).join(", ")}).</p> : null}
+          </section>
+
+          {/* ÉTAPE 3 — CARTE GRISE */}
+          <section className={s.card}>
+            <header className={s.cardHead}><span className={s.stepNum}>3</span><div><h2>Carte grise</h2><p>Souhaitez-vous que Neodrive réalise les démarches d’immatriculation&nbsp;?</p></div></header>
+            <div className={c.choices}>
+              <label className={`${c.choice} ${wantsCarteGrise ? c.choiceOn : ""}`}>
+                <input type="radio" name="service_carte_grise" value="oui" checked={wantsCarteGrise} onChange={() => setWantsCarteGrise(true)} />
+                <span><b>Oui, je confie la carte grise à Neodrive</b><small>Nous réalisons les démarches avec votre mandat signé.</small><strong>{euro(REGISTRATION_PRICE)}</strong></span>
+              </label>
+              <label className={`${c.choice} ${!wantsCarteGrise ? c.choiceOn : ""}`}>
+                <input type="radio" name="service_carte_grise" value="non" checked={!wantsCarteGrise} onChange={() => setWantsCarteGrise(false)} />
+                <span><b>Non, je réaliserai moi-même les démarches</b><small>Aucun mandat à fournir.</small><strong>{euro(0)}</strong></span>
+              </label>
+            </div>
+          </section>
+
+          {/* ÉTAPE 4 — DOCUMENTS */}
+          <section className={s.card}>
+            <header className={s.cardHead}><span className={s.stepNum}>4</span><div><h2>Documents obligatoires</h2><p>Photo lisible ou PDF, depuis votre téléphone ou votre ordinateur.</p></div></header>
+            <div className={c.docGrid}>
+              {fileInput("cni", "Carte nationale d’identité", "Du titulaire — recto et verso", true)}
+              {fileInput("justificatif_domicile", "Justificatif de domicile", "De moins de 6 mois", true)}
+            </div>
+
+            {wantsCarteGrise && (
+              <div className={c.mandat}>
+                <h3>Mandat carte grise</h3>
+                <ol>
+                  <li>Téléchargez le mandat pré-rempli</li>
+                  <li>Signez-le avec la mention « Lu et approuvé »</li>
+                  <li>Importez le mandat signé ci-dessous</li>
+                </ol>
+                <button type="button" onClick={downloadMandat} className={s.btnGhost}>{Icon.download} Télécharger le mandat pré-rempli</button>
+                <div className={c.docGrid}>
+                  {fileInput("mandat_carte_grise_signe", "Mandat signé", "Avec la mention « Lu et approuvé »", wantsCarteGrise)}
+                  {fileInput("coc", "Certificat de conformité européen (COC)", "Peut être ajouté plus tard", false)}
+                  {fileInput("cnit", "CNIT / document d’homologation", "Peut être ajouté plus tard", false)}
+                </div>
+                <p className={s.note}>Le COC et le CNIT peuvent être ajoutés ici au dossier. Ils restent facultatifs lors de l’envoi initial.</p>
+              </div>
+            )}
+          </section>
+
+          {/* ÉTAPE 5 — DEVIS */}
+          <section className={s.card} id="devis">
+            <header className={s.cardHead}><span className={s.stepNum}>5</span><div><h2>Votre devis</h2><p>Téléchargez-le, signez-le, puis importez-le.</p></div></header>
+
+            <div className={c.devisWrap}>
+              <div ref={printRef} style={pdf}>
+
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div>
+                    <h2 style={{ margin: "0 0 6px" }}>NEODRIVE</h2>
+                    <p style={pLine}>MK HOLDING</p>
+                    <p style={pLine}>SIREN : 908 645 393</p>
+                    <p style={pLine}>Muret (31), France</p>
+                  </div>
+
+                  <div style={{ textAlign: "right" }}>
+                    <h1 style={{ margin: "0 0 6px" }}>DEVIS</h1>
+                    <p style={pLine}>Date : {today}</p>
+                  </div>
+                </div>
+
+                <hr style={{ border: 0, borderTop: "1px solid #ddd", margin: "18px 0" }} />
+
+                <h3 style={h3}>Acheteur</h3>
+                <p style={pLine}>{client.nom} {client.prenom}</p>
+                <p style={pLine}>{client.adresse}</p>
+                <p style={pLine}>{client.code_postal} {client.ville}</p>
+                <p style={pLine}>{client.telephone}</p>
+                <p style={pLine}>{client.email}</p>
+
+                <h3 style={h3}>Détail achat voiture sans permis</h3>
+
+                <table style={table}>
+                  <tbody>
+                    <tr>
+                      <td>{VERSION_FORM[model].devis} x{quantity}</td>
+                      <td style={right}>{vehiclesTotal} €</td>
+                    </tr>
+
+                    {!noDelivery && (
+                      <tr>
+                        <td>
+                          Livraison à domicile{postalComplete ? ` (code postal ${postal})` : ""}
+                          <div style={{ fontSize: 12, color: "#555" }}>
+                            {manualAmount !== null ? "Transport personnalisé" : "Prix automatique selon votre code postal"}
+                          </div>
+                        </td>
+                        <td style={right}>{transport === null ? "Sur devis" : `${transport} €`}</td>
+                      </tr>
+                    )}
+
+                    {noDelivery && (
+                      <tr>
+                        <td colSpan={2} style={{ color: "green", textAlign: "center" }}>
+                          Retrait sur place – aucun frais de livraison
+                        </td>
+                      </tr>
+                    )}
+
+                    {wantsCarteGrise ? (
+                      <tr>
+                        <td>Pack mise en route et accompagnement administratif x{quantity}</td>
+                        <td style={right}>{registrationTotal} €</td>
+                      </tr>
+                    ) : (
+                      <tr>
+                        <td>Carte grise : démarches réalisées par le client</td>
+                        <td style={right}>0 €</td>
+                      </tr>
+                    )}
+
+                    {discount > 0 && (
+                      <tr>
+                        <td>Remise commerciale</td>
+                        <td style={right}>- {discount} €</td>
+                      </tr>
+                    )}
+
+                    <tr style={totalRow}>
+                      <td>Total TTC</td>
+                      <td style={right}>{totalTTC === null ? "Sur devis" : `${totalTTC} €`}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div style={bank}>{BANK}</div>
+
+                <div style={{ marginTop: 60 }}>
+                  <p>Signature précédée de « Lu et approuvé »</p>
+                  <div style={signature}></div>
+                </div>
+
+                <div style={{ pageBreakBefore: "always", marginTop: 40 }}></div>
+
+                <div data-cgv style={cgvStyle} tabIndex={0} aria-label="Conditions générales de vente">{CGV}</div>
+
+                <div style={{ marginTop: 40 }}>
+                  <p>Signature CGV précédée de « Lu et approuvé »</p>
+                  <div style={{ borderTop: "1px solid black", width: 250 }}></div>
+                </div>
+
+              </div>
+            </div>
+
+            <ol className={c.howto}>
+              <li>Télécharger le devis</li>
+              <li>Signer</li>
+              <li>Réimporter ici</li>
+              <li>Envoyer</li>
+            </ol>
+
+            <div className={c.upload}>
+              {fileInput("devis_signe", "Devis signé", "Le devis ci-dessus, signé", true)}
+            </div>
+
+            <details className={c.advisor}>
+              <summary>Options conseiller</summary>
+              <div className={c.advisorGrid}>
+                <label>Nombre de véhicules
+                  <input type="number" min="1" step="1" inputMode="numeric" value={quantity} onChange={e => setQuantity(Math.max(1, Math.floor(Number(e.target.value)) || 1))} placeholder="Nombre de véhicules" />
+                </label>
+                <label>Transport personnalisé (€)
+                  <input type="number" min="0" inputMode="numeric" value={manualTransport} onChange={e => setManualTransport(e.target.value)} placeholder="Barème auto" />
+                </label>
+                <label>Remise / Promotion (€)
+                  <input type="number" min="0" inputMode="numeric" value={discount || ""} onChange={e => setDiscount(Number(e.target.value) || 0)} placeholder="0" />
+                </label>
+              </div>
+              <p>Laissez « Transport personnalisé » vide pour appliquer le barème de livraison du simulateur.</p>
+            </details>
+
+            <div className={c.devisActions}>
+              <button type="button" onClick={downloadPDF} className={s.btnGhost}>{Icon.download} Télécharger le devis PDF</button>
+              <button type="submit" className={s.btnPrimary}>{Icon.lock} Envoyer mon dossier</button>
+            </div>
+          </section>
+
+        </form>
+
+        <aside className={s.aside}>
+          {summary}
+          <a className={s.help} href={WHATSAPP} target="_blank" rel="noreferrer"><span>{Icon.chat}</span><div><b>Une question sur votre dossier&nbsp;?</b><small>Un conseiller vous répond sur WhatsApp</small></div></a>
+        </aside>
       </div>
 
-      <form
-        ref={formRef}
-        action="https://formspree.io/f/xjgjrqqg"
-        method="POST"
-        encType="multipart/form-data"
-      >
+      {/* BARRE MOBILE */}
+      <div className={s.mobileBar}>
+        <div><small>{VEHICLES[model].label.replace("NeoDrive ", "")} · total TTC</small><strong data-testid="mobile-total">{totalTTC !== null ? euro(totalTTC) : postalComplete ? "Sur devis" : euro(vehiclesTotal + registrationTotal - discount) + " + livr."}</strong></div>
+        <a href={contactDone ? "#devis" : "#dossier"} className={s.btnPrimary}>Continuer</a>
+      </div>
+    </main>
+  );
+}
 
-        <input type="hidden" name="_subject" value="Nouvelle réservation véhicule + carte grise" />
+/* TEXTES DU DEVIS */
 
-        <div style={section}>
-          <h3>Informations client</h3>
-          <p style={label}>Version souhaitée</p>
-
-<select
-  name="version"
-  value={version}
-  onChange={(e) => setVersion(e.target.value as keyof typeof versions)}
-  style={input}
-  required
->
-  <option value="essentiel">Version Essentiel — 3 990 € TTC</option>
-  <option value="confort">Version Confort — 4 990 € TTC</option>
-  <option value="confortPlus">Version Confort Plus+ — 5 990 € TTC</option>
-</select>
-
-          <p style={label}>Nom</p>
-          <input name="nom" value={client.nom} placeholder="Nom" style={input} onChange={handleChange} required />
-
-          <p style={label}>Prénom</p>
-          <input name="prenom" value={client.prenom} placeholder="Prénom" style={input} onChange={handleChange} required />
-
-          <p style={label}>Téléphone</p>
-          <input name="telephone" value={client.telephone} placeholder="Téléphone" style={input} onChange={handleChange} required />
-
-          <p style={label}>Adresse e-mail</p>
-          <input name="email" value={client.email} type="email" placeholder="Email" style={input} onChange={handleChange} required />
-
-          <p style={label}>Adresse</p>
-          <input name="adresse" value={client.adresse} placeholder="Adresse" style={input} onChange={handleChange} required />
-
-          <p style={label}>Code postal</p>
-          <input name="code_postal" value={client.code_postal} placeholder="Code postal" style={input} onChange={handleChange} required />
-
-          <p style={label}>Ville</p>
-          <input name="ville" value={client.ville} placeholder="Ville" style={input} onChange={handleChange} required />
-          <p style={label}>Département de livraison</p>
-        <select
-  name="departement_livraison"
-  style={input}
-  value={departementLivraison}
-  onChange={(e) => setDepartementLivraison(e.target.value)}
-  required
->
-  <option value="">Sélectionner votre département</option>
-
-  {/* ZONE 1 */}
-  <optgroup label="Zone 1 — 450 €">
-    <option value="31">Haute-Garonne (31)</option>
-    <option value="81">Tarn (81)</option>
-    <option value="82">Tarn-et-Garonne (82)</option>
-    <option value="32">Gers (32)</option>
-    <option value="09">Ariège (09)</option>
-  </optgroup>
-
-  {/* ZONE 2 + 3 fusionnées */}
-  <optgroup label="Zone 2 — 590 €">
-    <option value="11">Aude (11)</option>
-    <option value="12">Aveyron (12)</option>
-    <option value="46">Lot (46)</option>
-    <option value="47">Lot-et-Garonne (47)</option>
-    <option value="33">Gironde (33)</option>
-    <option value="65">Hautes-Pyrénées (65)</option>
-    <option value="66">Pyrénées-Orientales (66)</option>
-
-    <option value="34">Hérault (34)</option>
-    <option value="30">Gard (30)</option>
-    <option value="40">Landes (40)</option>
-    <option value="24">Dordogne (24)</option>
-    <option value="19">Corrèze (19)</option>
-    <option value="87">Haute-Vienne (87)</option>
-    <option value="15">Cantal (15)</option>
-  </optgroup>
-
-  {/* ZONE 3 */}
-  <optgroup label="Zone 3 — 690 €">
-    <option value="75">Paris (75)</option>
-    <option value="77">Seine-et-Marne (77)</option>
-    <option value="78">Yvelines (78)</option>
-    <option value="91">Essonne (91)</option>
-    <option value="92">Hauts-de-Seine (92)</option>
-    <option value="93">Seine-Saint-Denis (93)</option>
-    <option value="94">Val-de-Marne (94)</option>
-    <option value="95">Val-d’Oise (95)</option>
-    <option value="13">Bouches-du-Rhône (13)</option>
-    <option value="69">Rhône (69)</option>
-    <option value="63">Puy-de-Dôme (63)</option>
-    <option value="16">Charente (16)</option>
-    <option value="17">Charente-Maritime (17)</option>
-    <option value="86">Vienne (86)</option>
-  </optgroup>
-
-  {/* ZONE 4 */}
-  <optgroup label="Zone 4 — 790 €">
-    <option value="44">Loire-Atlantique (44)</option>
-    <option value="35">Ille-et-Vilaine (35)</option>
-    <option value="56">Morbihan (56)</option>
-    <option value="29">Finistère (29)</option>
-    <option value="22">Côtes-d’Armor (22)</option>
-    <option value="53">Mayenne (53)</option>
-    <option value="49">Maine-et-Loire (49)</option>
-    <option value="67">Bas-Rhin (67)</option>
-    <option value="68">Haut-Rhin (68)</option>
-  </optgroup>
-</select>
-
-<div style={choiceBox}>
-  <h3>Carte grise</h3>
-  <p style={small}>Souhaitez-vous que Neodrive réalise les démarches d’immatriculation ?</p>
-
-  <label style={radioLabel}>
-    <input
-      type="radio"
-      name="service_carte_grise"
-      value="oui"
-      checked={wantsCarteGrise}
-      onChange={() => setWantsCarteGrise(true)}
-    />
-    Oui, je confie la carte grise à Neodrive
-  </label>
-
-  <label style={radioLabel}>
-    <input
-      type="radio"
-      name="service_carte_grise"
-      value="non"
-      checked={!wantsCarteGrise}
-      onChange={() => setWantsCarteGrise(false)}
-    />
-    Non, je réaliserai moi-même les démarches
-  </label>
-</div>
-
-<p style={label}>Nombre de véhicules</p>
-<input
-  type="number"
-  min="1"
-  value={quantity}
-  onChange={(e) =>
-    setQuantity(Number(e.target.value))
-  }
-  style={input}
-  placeholder="Nombre de véhicules"
-/>
-
-<p style={label}>Transport personnalisé (€)</p>
-<input
-  type="number"
-  value={manualTransport}
-  onChange={(e) =>
-    setManualTransport(e.target.value)
-  }
-  style={input}
-  placeholder="Transport personnalisé (€)"
-/>
-
-<p style={label}>Remise / Promotion (€)</p>
-<input
-  type="number"
-  value={discount}
-  onChange={(e) =>
-    setDiscount(Number(e.target.value) || 0)
-  }
-  style={input}
-  placeholder="Remise / Promotion (€)"
-/>
-      
-          <label style={{ display: "flex", alignItems: "center", marginTop: 10 }}>
-  <input
-    type="checkbox"
-    checked={noDelivery}
-    onChange={(e) => setNoDelivery(e.target.checked)}
-    style={{ marginRight: 8 }}
-  />
-
-            
-  Retrait sur place (pas de livraison)
-</label>
-
-        </div>
-
-        <div style={section}>
-          <h3>Documents obligatoires</h3>
-
-          <div style={documentBox}>
-            <h4 style={{ marginTop: 0 }}>Pièces d’identité obligatoires</h4>
-
-            <p style={small}>
-              Carte nationale d’identité du titulaire — recto et verso :
-            </p>
-            <input
-              type="file"
-              name="cni"
-              accept=".pdf,image/*"
-              required
-            />
-
-            <p style={small}>
-              Justificatif de domicile de moins de 6 mois :
-            </p>
-            <input
-              type="file"
-              name="justificatif_domicile"
-              accept=".pdf,image/*"
-              required
-            />
-          </div>
-
-          {wantsCarteGrise && (
-            <div style={carteGriseBox}>
-              <h3>Mandat carte grise</h3>
-              <p style={small}>
-                1. Téléchargez le mandat pré-rempli<br />
-                2. Signez-le avec la mention « Lu et approuvé »<br />
-                3. Importez le mandat signé ci-dessous
-              </p>
-
-              <button type="button" onClick={downloadMandat} style={secondaryBtn}>
-                Télécharger le mandat pré-rempli
-              </button>
-
-              <p style={small}>Mandat signé :</p>
-              <input type="file" name="mandat_carte_grise_signe" accept=".pdf,image/*" required={wantsCarteGrise} />
-               <p style={small}>Certificat de conformité européen (COC) :</p>
-               <input type="file" name="coc" accept=".pdf,image/*" />
-
-               <p style={small}>CNIT / document d’homologation :</p>
-               <input type="file" name="cnit" accept=".pdf,image/*" />
-
-               <p style={notice}>
-                 Le COC et le CNIT peuvent être ajoutés ici au dossier. Ils restent facultatifs lors de l’envoi initial.
-               </p>
-            </div>
-          )}
-
-          <p style={small}>Devis signé :</p>
-          <input type="file" name="devis_signe" accept=".pdf,image/*" required />
-
-          <p style={small}>
-            1. Télécharger le devis<br/>
-            2. Signer<br/>
-            3. Réimporter ici<br/>
-            4. Envoyer
-          </p>
-        </div>
-
-        <div ref={printRef} style={pdf}>
-
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div>
-              <h2>NEODRIVE</h2>
-              <p>MK HOLDING</p>
-              <p>SIREN : 908 645 393</p>
-              <p>31 rue Jean Nougaro, 31600 Muret</p>
-            </div>
-
-            <div style={{ textAlign: "right" }}>
-              <h1>DEVIS</h1>
-              <p>Date : {today}</p>
-            </div>
-          </div>
-
-          <hr />
-
-          <h3>Acheteur</h3>
-          <p>{client.nom} {client.prenom}</p>
-          <p>{client.adresse}</p>
-          <p>{client.code_postal} {client.ville}</p>
-          <p>{client.telephone}</p>
-          <p>{client.email}</p>
-
-          <h3>Détail achat voiture sans permis </h3>
-
-          <table style={table}>
-           <tbody>
-  <tr>
-<td>{versions[version].label} x{quantity}</td>
-<td style={right}>{prixVehicule * quantity} €</td>
-  </tr>
-
-  {!noDelivery && (
-    <tr>
-      <td>
-        Livraison (calculée selon département)
-        <div style={{ fontSize: 12, color: "#555" }}>
-          Prix automatique selon votre localisation
-        </div>
-      </td>
-      <td style={right}>{transport} €</td>
-    </tr>
-  )}
-
-  {noDelivery && (
-    <tr>
-      <td colSpan={2} style={{ color: "green", textAlign: "center" }}>
-        Retrait sur place – aucun frais de livraison
-      </td>
-    </tr>
-  )}
-
-  <tr>
-  <td>Pack mise en route et accompagnement administratif x{quantity}</td>
-<td style={right}>{packMiseEnRouteCarteGrise * quantity} €</td>
-  </tr>
-
-{discount > 0 && (
-  <tr>
-    <td>Remise commerciale</td>
-    <td style={right}>- {discount} €</td>
-  </tr>
-)}
-
-<tr style={totalRow}>
-  <td>Total TTC</td>
-  <td style={right}>{totalTTC} €</td>
-</tr>
-</tbody>
-          </table>
-     COORDONNÉES BANCAIRES
+const BANK = `COORDONNÉES BANCAIRES
 
 Titulaire du compte :
 MK HOLDING
@@ -568,19 +612,9 @@ IMPORTANT
 
 Merci d'indiquer votre nom et prénom dans le motif du virement.
 
-La livraison ou la remise du véhicule est effectuée après réception du règlement selon les modalités convenues entre les parties.
+La livraison ou la remise du véhicule est effectuée après réception du règlement selon les modalités convenues entre les parties.`;
 
-          
-
-          <div style={{ marginTop: 60 }}>
-            <p>Signature précédée de "Lu et approuvé"</p>
-            <div style={signature}></div>
-          </div>
-
-          <div style={{ pageBreakBefore: "always", marginTop: 40 }}></div>
-
-          <div style={cgvStyle}>
-{`CONDITIONS GÉNÉRALES DE VENTE
+const CGV = `CONDITIONS GÉNÉRALES DE VENTE
 
 GARANTIE NEODRIVE
 
@@ -598,8 +632,6 @@ Les présentes Conditions Générales de Vente sont proposées par :
 MK HOLDING SAS
 
 SIREN : 908 645 393
-
-31 Rue Jean Nougaro
 
 31600 Muret
 
@@ -1123,64 +1155,22 @@ Signature précédée de la mention :
 
 "Lu et approuvé"
 
-`}
-          </div>
+`;
 
-          <div style={{ marginTop: 40 }}>
-            <p>Signature CGV précédée de "Lu et approuvé"</p>
-            <div style={{ borderTop: "1px solid black", width: 250 }}></div>
-          </div>
-
-        </div>
-
-        <button type="button" onClick={downloadPDF} style={btn}>
-          Télécharger le devis PDF
-        </button>
-
-        <button type="submit" style={btn}>
-          Envoyer mon dossier
-        </button>
-
-      </form>
-
-    </main>
-  );
-}
-
-/* STYLES */
-
-const container: React.CSSProperties = {
-  maxWidth: 800,
-  margin: "0 auto",
-  padding: 20,
-  fontFamily: "Arial"
-};
-
-const section: React.CSSProperties = {
-  marginBottom: 25
-};
-
-const input: React.CSSProperties = {
-  width: "100%",
-  padding: 10,
-  marginTop: 8,
-  border: "1px solid #ccc",
-  borderRadius: 4
-};
-
-const label: React.CSSProperties = {
-  marginTop: 12,
-  marginBottom: 2,
-  fontWeight: "bold",
-  fontSize: 14
-};
+/* STYLES DU DEVIS (couleurs simples pour la capture html2canvas) */
 
 const pdf: React.CSSProperties = {
   background: "#fff",
-  padding: 30,
-  border: "1px solid #ddd",
-  marginTop: 30
+  color: "#111",
+  padding: "24px 20px",
+  fontFamily: "Arial, sans-serif",
+  fontSize: 14,
+  lineHeight: 1.45
 };
+
+const pLine: React.CSSProperties = { margin: "2px 0" };
+
+const h3: React.CSSProperties = { margin: "18px 0 8px", fontSize: 16 };
 
 const table: React.CSSProperties = {
   width: "100%",
@@ -1188,7 +1178,9 @@ const table: React.CSSProperties = {
 };
 
 const right: React.CSSProperties = {
-  textAlign: "right"
+  textAlign: "right",
+  whiteSpace: "nowrap",
+  paddingLeft: 12
 };
 
 const totalRow: React.CSSProperties = {
@@ -1196,89 +1188,27 @@ const totalRow: React.CSSProperties = {
   borderTop: "2px solid black"
 };
 
+const bank: React.CSSProperties = {
+  marginTop: 24,
+  fontSize: 13,
+  whiteSpace: "pre-line"
+};
+
 const signature: React.CSSProperties = {
   marginTop: 40,
   width: 250,
+  maxWidth: "100%",
   borderTop: "1px solid black"
-};
-
-const small: React.CSSProperties = {
-  fontSize: 12,
-  color: "#555"
-};
-
-const btn: React.CSSProperties = {
-  marginTop: 15,
-  padding: 12,
-  width: "100%",
-  background: "#000",
-  color: "#fff",
-  border: "none",
-  borderRadius: 6
-};
-
-const intro: React.CSSProperties = {
-  background: "#f7f7f7",
-  border: "1px solid #e5e5e5",
-  borderRadius: 8,
-  padding: 16,
-  marginBottom: 25
-};
-
-const choiceBox: React.CSSProperties = {
-  marginTop: 20,
-  padding: 16,
-  border: "1px solid #ddd",
-  borderRadius: 8,
-  background: "#fafafa"
-};
-
-const radioLabel: React.CSSProperties = {
-  display: "flex",
-  gap: 8,
-  alignItems: "center",
-  marginTop: 10
-};
-
-const carteGriseBox: React.CSSProperties = {
-  marginTop: 22,
-  padding: 16,
-  border: "1px solid #ddd",
-  borderRadius: 8
-};
-
-const secondaryBtn: React.CSSProperties = {
-  marginTop: 8,
-  marginBottom: 12,
-  padding: 11,
-  width: "100%",
-  background: "#fff",
-  color: "#000",
-  border: "1px solid #000",
-  borderRadius: 6,
-  cursor: "pointer"
-};
-
-const notice: React.CSSProperties = {
-  marginTop: 14,
-  padding: 10,
-  background: "#f4f4f4",
-  borderRadius: 6,
-  fontSize: 12
-};
-
-const documentBox: React.CSSProperties = {
-  marginTop: 16,
-  marginBottom: 20,
-  padding: 16,
-  border: "1px solid #ddd",
-  borderRadius: 8,
-  background: "#fafafa"
 };
 
 const cgvStyle: React.CSSProperties = {
   fontSize: 10,
   lineHeight: "1.6",
   marginTop: 20,
-  whiteSpace: "pre-line"
+  whiteSpace: "pre-line",
+  maxHeight: 360,
+  overflowY: "auto",
+  border: "1px solid #eee",
+  borderRadius: 10,
+  padding: "10px 12px"
 };
