@@ -43,21 +43,43 @@ export async function reservationTemplateStatus(create = false) {
   ], "UTILITY");
 }
 
+/** Équipements de la Confort absents de l'Essentielle (arguments de passage à la Confort). */
+export const CONFORT_EXTRAS = [
+  "le chauffage",
+  "la caméra de recul et le radar de recul",
+  "l'assistance en côte : dans une montée, par exemple à un feu rouge, la voiture se bloque automatiquement pour ne pas reculer sur celle de derrière",
+  "une alerte au siège si vous oubliez de couper le contact",
+  "la radio, le Bluetooth et la prise USB",
+  "le toit ouvrant avec ventilateurs",
+  "les pare-soleil",
+  "les enjoliveurs de roues",
+];
+export const UPGRADE_ARGS = "Elle est beaucoup plus confortable au quotidien, elle sera aussi plus facile à revendre le jour où vous voudrez changer, et son prix reste déjà très bas pour une voiture aussi équipée.";
+
 /** Textes envoyés au client (SMS sans émoji ni caractère hors GSM, pour tenir en 2 SMS). */
 export function confirmationTexts(r: Pick<Reservation, "prenom" | "nom" | "modele" | "ville" | "total">) {
   const p = prenomOf(r); const m = modeleOf(r.modele); const bonjour = `Bonjour${p ? " " + p : ""}`;
   const onOrder = isOnOrder(r.modele);
   const ess = /essentiel/i.test(r.modele || "");
   const delaiCmd = ess ? "Ce modèle est fabriqué sur commande : délai de 6 à 8 mois environ" : "Ce modèle est fabriqué sur commande";
-  const sms0 = onOrder
+  const smsEss = `${bonjour}, merci pour votre réservation NeoDrive Essentielle. Ce modèle est fabriqué sur commande : 6 à 8 mois. La Confort est livrée en 2 à 3 semaines, pour 1 000 € de plus : chauffage, caméra et radar de recul, assistance en montée, alerte au siège, radio Bluetooth USB, toit ouvrant avec ventilateurs, pare-soleil, enjoliveurs. Plus confortable, plus facile à revendre, et un prix déjà très bas. Un conseiller vous appelle sous 48 h. Paiement à la livraison. NeoDrive`;
+  const sms0 = ess ? smsEss : onOrder
     ? `${bonjour}, merci pour votre réservation NeoDrive ${m}, bien enregistrée. ${delaiCmd}. Un conseiller vous appelle sous 48 h et peut vous proposer la Confort, en stock et livrée en 2 à 3 semaines. Paiement à la livraison. NeoDrive`
     : `${bonjour}, merci pour votre réservation NeoDrive ${m}, bien enregistrée. Délai indicatif de livraison chez vous : 2 à 3 semaines environ. Un conseiller vous appelle pour la date exacte dès que la tournée de votre région est planifiée. Paiement à la livraison. NeoDrive`;
   // 2 SMS maximum (306 caractères GSM) : sans le prénom si besoin.
-  const sms = sms0.length > 306 ? sms0.replace(`${bonjour},`, "Bonjour,") : sms0;
-  const whatsapp = onOrder
+  const sms = sms0.length > (ess ? 612 : 306) ? sms0.replace(`${bonjour},`, "Bonjour,") : sms0;
+  const whatsapp = ess
+    ? `${bonjour}, merci pour votre réservation NeoDrive Essentielle ✅ Elle est bien enregistrée.\n\nL'Essentielle est fabriquée sur commande, avec un délai de 6 à 8 mois. La NeoDrive Confort, elle, peut vous être livrée en 2 à 3 semaines, pour seulement 1 000 € de plus (4 990 € au lieu de 3 990 €).\n\nVoici tout ce qu'elle a en plus :\n${CONFORT_EXTRAS.map(x => "- " + x).join("\n")}\n\n${UPGRADE_ARGS}\n\nUn conseiller vous appelle sous 48 h pour en parler.\nPaiement uniquement à la livraison.\nMansour - NeoDrive`
+    : onOrder
     ? `${bonjour}, merci pour votre réservation NeoDrive ${m} ✅ Elle est bien enregistrée.\n\n${delaiCmd}. Un conseiller vous appelle sous 48 h et peut vous proposer, si vous le souhaitez, la Confort, en stock et livrée en 2 à 3 semaines.\n\nPaiement uniquement à la livraison.\nMansour - NeoDrive`
     : TEMPLATE_BODY.replace("{{1}}", p || "et merci").replace("{{2}}", m);
-  const lines = onOrder
+  const lines = ess
+    ? [`Merci pour votre réservation NeoDrive <b>Essentielle</b> ✅ Elle est bien enregistrée.`,
+       `L'Essentielle est <b>fabriquée sur commande</b>, avec un délai de <b>6 à 8 mois environ</b>. La <b>NeoDrive Confort</b>, elle, peut vous être <b>livrée en 2 à 3 semaines</b>, pour seulement <b>1 000 € de plus</b> (4 990 € au lieu de 3 990 €).`,
+       `Voici tout ce qu'elle a en plus :<br>${CONFORT_EXTRAS.map(x => "• " + x).join("<br>")}`,
+       UPGRADE_ARGS,
+       `Un conseiller vous appelle <b>sous 48 h</b> pour en parler.`]
+    : onOrder
     ? [`Merci pour votre réservation NeoDrive <b>${m}</b> ✅ Elle est bien enregistrée.`,
        `Ce modèle est <b>fabriqué sur commande</b>${ess ? " : délai de <b>6 à 8 mois environ</b>" : ""}. Un conseiller vous appelle <b>sous 48 h</b> et peut vous proposer, si vous le souhaitez, la <b>Confort, en stock et livrée en 2 à 3 semaines</b>.`]
     : [`Merci pour votre réservation NeoDrive <b>${m}</b> ✅ Elle est bien enregistrée, vous n'avez rien d'autre à faire.`,
@@ -70,7 +92,7 @@ ${recap.length ? `<p style="background:#f4f4f5;border-radius:10px;padding:12px 1
 <p>En attendant, préparez sereinement votre livraison : <a href="${SITE}/preparer-ma-livraison">${SITE.replace("https://", "")}/preparer-ma-livraison</a></p>
 <p>Merci pour votre confiance,<br>Mansour<br>NeoDrive</p></div>`;
   const subject = onOrder ? `Votre réservation NeoDrive ${m} est enregistrée` : `Votre réservation NeoDrive ${m} est enregistrée ✅`;
-  const note = onOrder ? (ess ? "Essentielle : 6 à 8 mois annoncés ; " : "modèle sur commande ; ") + "un conseiller rappelle sous 48 h (proposition Confort)" : "délai indicatif 2 à 3 semaines ; un conseiller rappelle pour la date exacte";
+  const note = onOrder ? (ess ? "Essentielle : 6 à 8 mois annoncés, arguments Confort envoyés (+1 000 €, équipements, revente) ; " : "modèle sur commande ; ") + "un conseiller rappelle sous 48 h (proposition Confort)" : "délai indicatif 2 à 3 semaines ; un conseiller rappelle pour la date exacte";
   return { sms, whatsapp, html, subject, note, onOrder };
 }
 

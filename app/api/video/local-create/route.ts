@@ -42,7 +42,7 @@ const COPY_ANGLES: CopyAngle[] = [
   { theme: "images terrain", hook: "Pas de studio : de vraies images NeoDrive." },
   { theme: "mobilité électrique", hook: "La mobilité électrique, en vrai." },
   { theme: "format compact", hook: "Compacte dehors, pratique au quotidien." },
-  { theme: "NeoDrive en action", hook: "De l’entrepôt à la route : NeoDrive en action." },
+  { theme: "NeoDrive en action", hook: "De l’atelier à la route : NeoDrive en action." },
   { theme: "expérience réelle", hook: "Livrée, conduite, vécue : NeoDrive." },
   { theme: "aperçu réel", hook: "Un aperçu réel avant de choisir votre VSP." },
   { theme: "terrain NeoDrive", hook: "NeoDrive vue à travers nos vraies vidéos terrain." },
