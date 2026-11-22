@@ -90,8 +90,12 @@ export function smsCampaignText() {
   return `Bonjour, vous nous aviez contactés au sujet d'une voiture sans permis. NeoDrive, leader des prix en France : modèles neufs dès 3990 €, garantie 2 ans et service après-vente national. Nos clients livrés en vidéo : ${W}/videos Réservez ici : ${W}/reservation`;
 }
 
-export function smsText(nom: string | null) {
-  void nom; // pas de prénom ; 3 SMS avec le lien catalogue (accents é/è/à autorisés : alphabet SMS standard, pas de surcoût ; éviter ê, â, î, ô, ç)
+export function smsText(nom: string | null, source?: string | null) {
+  void nom;
+  if (/leboncoin/i.test(source || "")) {
+    const W = "www.easydrive-auto.fr";
+    return `Bonjour, merci d'avoir contacté NeoDrive sur Leboncoin. Marque toulousaine de voitures sans permis électriques neuves, dès 3990 €, livrées chez vous. Catalogue : ${W}/catalogue Nos clients livrés en vidéo : ${W}/videos Réservez la Confort sans acompte : ${W}/reservation`;
+  } // pas de prénom ; 3 SMS avec le lien catalogue (accents é/è/à autorisés : alphabet SMS standard, pas de surcoût ; éviter ê, â, î, ô, ç)
   const W = "www.easydrive-auto.fr"; // sans https:// pour tenir en 2 SMS
   return `Bonjour, merci d'avoir contacté NeoDrive, leader des prix en France de la voiture sans permis neuve, dès 3990 €. Garantie 2 ans et service après-vente national. Feuilletez notre catalogue : ${W}/catalogue Nos clients livrés en vidéo : ${W}/videos Réservez ici : ${W}/reservation`;
 }
@@ -135,7 +139,7 @@ export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN 
     // SMS : un seul, à tous (beaucoup de clients ne lisent pas WhatsApp), au moins 1 h après le package.
     if (!stopped && smsSent < smsLimit && !sms && normalizePhone(l.telephone) && pkg?.sent_at && now - new Date(pkg.sent_at).getTime() > 3600000) {
       try {
-        const at = new Date().toISOString(); const text = smsText(l.nom);
+        const at = new Date().toISOString(); const text = smsText(l.nom, l.source);
         const id = await sendSms(l.telephone, text);
         await db.from("crm_messages").insert({ lead_id: l.id, direction: "outbound", channel: "sms", body: text, provider_message_id: id, status: "sent", ai_generated: false });
         h = [...h, { type: "sms", sent_at: at }].slice(-60);
