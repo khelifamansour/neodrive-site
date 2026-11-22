@@ -63,7 +63,7 @@ function header(doc: Doc, title: string, s: Ship, d: DocSet) {
     ["Bill of lading", String(s.bl_number || "-")],
     ["Container / seal", conts.map(c => `${c.no} (40' HQ)${c.seal ? `  /  seal ${c.seal}` : ""}`).join(" ; ") || String(s.containers || "-")],
     ["Ocean vessel", String(s.vessel || "-")],
-    ["Route", `Qingdao, China  →  ${pl}, France${s.eta ? ` – ETA ${String(s.eta).slice(0, 10)}` : ""}`],
+    ["Route", `Qingdao, China – ${pl}, France${s.eta ? ` – ETA ${String(s.eta).slice(0, 10)}` : ""}`],
     ["Country of origin", "China"],
   ]);
 }
