@@ -11,14 +11,13 @@ export const metadata: Metadata = {
 
 const PAGES = [
   { n: 1, title: "Devenez partenaire NeoDrive" },
-  { n: 2, title: "L'entreprise" },
+  { n: 2, title: "NeoDrive, marque toulousaine" },
   { n: 3, title: "La NeoDrive Confort" },
-  { n: 4, title: "Un produit simple à vendre" },
-  { n: 5, title: "Ce que vous gagnez à devenir partenaire" },
-  { n: 6, title: "Pack de démarrage : démonstration et pièces" },
-  { n: 7, title: "Du port directement à votre parc" },
-  { n: 8, title: "Accompagnement" },
-  { n: 9, title: "Démarrer en 5 étapes" },
+  { n: 4, title: "Très bien équipée" },
+  { n: 5, title: "Ce que vous gagnez avec NeoDrive" },
+  { n: 6, title: "Pièces détachées et pack de démarrage" },
+  { n: 7, title: "Accompagnement" },
+  { n: 8, title: "Démarrer en 5 étapes" },
 ];
 const PDF = "/catalogue-partenaires-neodrive.pdf";
 
@@ -28,7 +27,7 @@ export default function CatalogueProPage() {
       <section className={s.hero}>
         <span className={s.eyebrow}>CATALOGUE PARTENAIRES 2027</span>
         <h1>Devenez partenaire NeoDrive.</h1>
-        <p>Feuilletez notre catalogue professionnel directement ici : l’entreprise, la NeoDrive Confort, ce que vous gagnez à devenir partenaire et le pack de démarrage. Ouverture du réseau en avril 2027.</p>
+        <p>Feuilletez notre catalogue professionnel directement ici : la marque NeoDrive, la Confort, ce que vous gagnez à devenir partenaire et le pack de démarrage. Ouverture du réseau en avril 2027.</p>
         <div className={s.actions}>
           <a className={s.primary} href="/devenir-partenaire">Déposer ma candidature</a>
           <a className={s.secondary} href={PDF} target="_blank" rel="noreferrer" download>📄 Télécharger le PDF</a>
@@ -38,7 +37,7 @@ export default function CatalogueProPage() {
       <nav className={s.thumbs} aria-label="Pages du catalogue">
         {PAGES.map(p => (
           <a key={p.n} href={`#page-${p.n}`}>
-            <img src={`/catalogue-pro/p-${p.n}.jpg`} alt="" loading="lazy" />
+            <img src={`/catalogue-pro/p-${p.n}.jpg?v=2`} alt="" loading="lazy" />
             <span>{String(p.n).padStart(2, "0")}</span>
           </a>
         ))}
@@ -47,8 +46,8 @@ export default function CatalogueProPage() {
       <div className={s.pages}>
         {PAGES.map(p => (
           <figure key={p.n} id={`page-${p.n}`} className={s.sheet}>
-            <a href={`/catalogue-pro/p-${p.n}.jpg`} target="_blank" rel="noreferrer" aria-label={`Agrandir la page ${p.n}`}>
-              <img src={`/catalogue-pro/p-${p.n}.jpg`} alt={`Catalogue partenaires NeoDrive, page ${p.n} : ${p.title}`} loading={p.n <= 1 ? "eager" : "lazy"} width={909} height={1287} />
+            <a href={`/catalogue-pro/p-${p.n}.jpg?v=2`} target="_blank" rel="noreferrer" aria-label={`Agrandir la page ${p.n}`}>
+              <img src={`/catalogue-pro/p-${p.n}.jpg?v=2`} alt={`Catalogue partenaires NeoDrive, page ${p.n} : ${p.title}`} loading={p.n <= 1 ? "eager" : "lazy"} width={909} height={1287} />
             </a>
             <figcaption><b>Page {p.n} / {PAGES.length}</b><span>{p.title}</span></figcaption>
           </figure>
