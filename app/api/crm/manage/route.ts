@@ -48,7 +48,13 @@ export async function POST(request: Request) {
   const action = String(body.action || "list");
 
   if (action === "list") {
-    const { data, error } = await db.from("leads").select("*").order("id", { ascending: false }).limit(1000);
+    // Supabase renvoie au plus 1 000 lignes par requête : on lit par pages pour afficher tout le CRM.
+    const data: any[] = []; let error: { message: string } | null = null;
+    for (let from = 0; from < 20000; from += 1000) {
+      const r = await db.from("leads").select("*").order("id", { ascending: false }).range(from, from + 999);
+      if (r.error) { error = r.error; break; }
+      data.push(...(r.data || [])); if ((r.data || []).length < 1000) break;
+    }
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, leads: data || [], whatsappConfigured: whatsappConfigured(), aiConfigured: Boolean(process.env.OPENAI_API_KEY), templateConfigured: Boolean(process.env.WHATSAPP_TEMPLATE_NAME), webhookConfigured: Boolean(process.env.WHATSAPP_VERIFY_TOKEN && process.env.WHATSAPP_APP_SECRET), automationReady: Boolean(whatsappConfigured() && process.env.WHATSAPP_TEMPLATE_NAME) });
   }
@@ -57,7 +63,11 @@ export async function POST(request: Request) {
     const text = String(body.csv || "").replace(/^\uFEFF/, "");
     if (!text || text.length > 2_000_000) return NextResponse.json({ ok: false, error: "Fichier CSV manquant ou trop volumineux" }, { status: 400 });
     const rows = splitCsv(text); if (rows.length < 2) return NextResponse.json({ ok: false, error: "Aucun prospect trouvé dans ce fichier" }, { status: 400 });
-    const { data: existing } = await db.from("leads").select("telephone,email").limit(10000);
+    const existing: { telephone: string | null; email: string | null }[] = [];
+    for (let from = 0; from < 50000; from += 1000) {
+      const r = await db.from("leads").select("telephone,email").order("id", { ascending: true }).range(from, from + 999);
+      existing.push(...(r.data || [])); if (r.error || (r.data || []).length < 1000) break;
+    }
     const phones = new Set((existing || []).map(item => normalizePhone(item.telephone)).filter(Boolean));
     const emails = new Set((existing || []).map(item => String(item.email || "").toLowerCase()).filter(Boolean));
     const inserts: any[] = []; let duplicates = 0; let invalid = 0;
