@@ -59,37 +59,7 @@ export const POSTES: Record<PosteKey, { title: string; short: string; summary: s
 
 export const isPoste = (v: unknown): v is PosteKey => v === "closer" || v === "coordinateur" || v === "social";
 
-/** Tests communs aux 3 postes (les bonnes réponses sont uniquement côté serveur : lib/hiring-keys.ts). */
-export type Mcq = { id: string; q: string; options: string[] };
-export const FRENCH_TEST: Mcq[] = [
-  { id: "fr1", q: "Les factures que je vous ai ___ parvenir sont jointes.", options: ["fait", "faite", "faites", "faits"] },
-  { id: "fr2", q: "Bien que le conteneur ___ en retard, il sera dédouané cette semaine.", options: ["est", "soit", "sera", "serait"] },
-  { id: "fr3", q: "Après que le client ___ signé, nous lançons la commande.", options: ["ait", "a", "aie", "aura"] },
-  { id: "fr4", q: "Quelle orthographe est correcte ?", options: ["occurence", "occurrence", "ocurrence", "occurrance"] },
-  { id: "fr5", q: "Les clients ___ nous avons parlé hier ont réservé.", options: ["que", "dont", "qu'", "lesquels"] },
-  { id: "fr6", q: "Quelle phrase est correcte ?", options: ["Quelque soit le prix, nous livrons.", "Quel que soit le prix, nous livrons.", "Quelque soient le prix, nous livrons.", "Quels que soit le prix, nous livrons."] },
-  { id: "fr7", q: "Elle s'est ___ les mains en déchargeant la voiture.", options: ["blessée", "blessé", "blessées", "blessés"] },
-  { id: "fr8", q: "Ci-___ la facture que vous avez demandée.", options: ["joint", "jointe", "joints", "jointes"] },
-  { id: "fr9", q: "Les trois heures que le chargement a ___ nous ont retardés.", options: ["duré", "durées", "durés", "durée"] },
-  { id: "fr10", q: "Quelle réponse est la plus professionnelle à un client mécontent ?", options: ["Ce n'est pas de notre faute, voyez avec le transporteur.", "Je comprends votre inquiétude : je vérifie votre dossier et je vous rappelle avant 17 h.", "Calmez-vous, tout va bien se passer.", "On fait ce qu'on peut, il faut attendre."] },
-];
-export const LOGIC_TEST: Mcq[] = [
-  { id: "lo1", q: "Complétez la suite : 3, 7, 15, 31, 63, …", options: ["94", "126", "127", "128"] },
-  { id: "lo2", q: "Une voiture achetée 1 800 € est revendue 5 400 €. La marge représente quel pourcentage du prix de vente ?", options: ["50 %", "66,7 %", "200 %", "300 %"] },
-  { id: "lo3", q: "Un prix augmente de 20 %, puis baisse de 20 %. Par rapport au prix de départ, il est :", options: ["identique", "4 % plus bas", "4 % plus haut", "20 % plus bas"] },
-  { id: "lo4", q: "3 chauffeurs livrent 12 voitures en 2 jours. Au même rythme, combien de jours faut-il à 2 chauffeurs pour livrer 24 voitures ?", options: ["3", "4", "6", "8"] },
-  { id: "lo5", q: "Aucun conteneur arrivé à Fos n'est bloqué. Certains conteneurs bloqués contiennent des pièces. Donc :", options: ["Certains conteneurs de Fos contiennent des pièces", "Aucun conteneur contenant des pièces n'est arrivé à Fos", "Certains conteneurs contenant des pièces ne sont pas arrivés à Fos", "Tous les conteneurs bloqués sont arrivés à Fos"] },
-  { id: "lo6", q: "Un client verse un acompte de 30 % sur une voiture à 5 990 €. Combien reste-t-il à payer ?", options: ["4 093 €", "4 193 €", "4 293 €", "1 797 €"] },
-  { id: "lo7", q: "Nous sommes mardi. Quel jour serons-nous dans 100 jours ?", options: ["Mercredi", "Jeudi", "Vendredi", "Samedi"] },
-  { id: "lo8", q: "Une remorque transporte 3 voitures et chaque aller-retour dure 5 h. Combien d'heures faut-il au minimum pour livrer 14 voitures avec une seule remorque ?", options: ["20 h", "23 h", "25 h", "30 h"] },
-];
-export const WRITING_PROMPT = "Rédaction (10 à 15 lignes, sans copier-coller ni outil de rédaction) : un client écrit « J'ai versé un acompte il y a 3 semaines et je n'ai aucune nouvelle. C'est une arnaque ? Je veux être remboursé. ». Rédigez l'e-mail que vous lui envoyez : rassurer, expliquer où en est sa commande, proposer une solution concrète et une date, sans promettre ce que vous ne pouvez pas tenir.";
-
-export const RIDDLES = [
-  { id: "ri1", q: "Énigme 1 : un éleveur a 17 moutons. Tous meurent sauf 9. Combien lui en reste-t-il ?" },
-  { id: "ri2", q: "Énigme 2 : chaque voiture livrée rapporte 1 000 € de marge. Chaque trajet de livraison coûte 200 €. Un client commande 3 voitures : la 1re part seule, la 2e et la 3e partent ensemble sur la même remorque. Quelle est la marge totale, en euros ?" },
-  { id: "ri3", q: "Énigme 3 : un vendeur vend 2 voitures à 6 000 € chacune. Sur la première, il gagne 20 % de son prix d'achat ; sur la seconde, il perd 20 % de son prix d'achat. Quel est son résultat total, en euros (écrivez seulement le nombre) ?" },
-];
+/** Les tests (français, logique, énigmes, sujet de rédaction) sont tirés par candidat côté serveur : lib/recruit-test.ts. */
 export const BAC_SUBJECTS = [["bac_maths", "Mathématiques"], ["bac_francais", "Français"], ["bac_arabe", "Arabe"], ["bac_anglais", "Anglais"]] as const;
 /** Matières facultatives (selon la filière). */
 export const BAC_OPTIONAL = [["bac_physique", "Physique"], ["bac_philo", "Philosophie"]] as const;

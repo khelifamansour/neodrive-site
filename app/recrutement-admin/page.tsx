@@ -12,6 +12,11 @@ type Row = Record<string, any>;
 type Dossier = { key: string; poste: PosteKey; name: string; city: string; phone: string; email: string; cvScore: number | null; app: Row | null; inv: Row | null; score: number; stage: string };
 const STATUSES = ["nouveau", "à appeler", "test téléphone", "essai payé", "recruté", "écarté", "écarté (IA)"];
 const color = (n?: number | null) => n == null ? "#9ca3af" : n >= 75 ? "#15803d" : n >= 60 ? "#b45309" : "#b91c1c";
+/** Signaux anti-triche du test en ligne (answers.test_signals) : sorties de page, temps par question, redémarrages. */
+const testSig = (a?: Row | null) => { const t = a?.answers?.test_signals; if (!t) return null;
+  const bad = (t.hidden ?? 0) > 0 || (t.restarts ?? 0) > 0 || t.other_device || t.phone_mismatch || (t.fast ?? 0) >= 4;
+  const parts = [`👁 ${t.hidden ?? 0}`, `⏱ ${t.avg_sec ?? "?"} s/q`, t.timeouts ? `⌛ ${t.timeouts}` : "", t.restarts ? `🔁 ${t.restarts}${t.other_device ? " (autre appareil)" : ""}` : "", t.fast ? `⚡ ${t.fast}` : "", t.phone_mismatch ? "☎️≠" : ""].filter(Boolean);
+  return <span title={`Test en ligne : ${t.hidden ?? 0} sortie(s) de la page pendant le test (${t.hidden_total ?? "?"} sur tout le formulaire) · ${t.avg_sec ?? "?"} s par question en moyenne · ${t.timeouts ?? 0} question(s) sans réponse à temps · ${t.fast ?? 0} réponse(s) en 3 s ou moins · ${t.restarts ?? 0} redémarrage(s)${t.other_device ? " dont un depuis un autre appareil (même numéro)" : ""}${t.phone_mismatch ? " · test commencé avec un autre numéro" : ""}`} style={{ color: bad ? "#b91c1c" : "#374151", whiteSpace: "nowrap" }}>{bad ? "⚠️ " : ""}{parts.join(" · ")}</span>; };
 const tail = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 
 export default function RecrutementAdmin() {
@@ -52,7 +57,7 @@ export default function RecrutementAdmin() {
     const wait = dossiers.filter(d => d.poste === k && !d.app && d.stage === "invité").sort((x, y) => (y.cvScore ?? 0) - (x.cvScore ?? 0)).slice(0, 5);
     return <section key={k} className={s.card}>
       <h2>{POSTES[k].short} — {done.length} formulaire(s) rempli(s){out ? ` · ${out} écarté(s)` : ""}</h2>
-      {done.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["#", "Candidat", "Note NeoDrive", "Intellig.", "Français", "Expér.", "Stabilité", "Formation", "Cohérence", "Excellence", "Avis IA (info)", "Français /10", "Logique /8", "Rédaction /20", "Énigmes", "Bac", "Durée", "Collages", "Prétention", "Plan d'action", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead>
+      {done.length ? <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr style={{ background: "#f4f6f9" }}>{["#", "Candidat", "Note NeoDrive", "Intellig.", "Français", "Expér.", "Stabilité", "Formation", "Cohérence", "Excellence", "Avis IA (info)", "Français /10", "Logique /8", "Rédaction /20", "Énigmes", "Bac", "Durée", "Collages", "Anti-triche", "Prétention", "Plan d'action", ""].map(h => <th key={h} style={{ ...th, fontWeight: 700 }}>{h}</th>)}</tr></thead>
         <tbody>{done.map((d, i) => { const a = d.app!; return <tr key={d.key} style={{ background: i < 3 ? "#f0fdf4" : undefined }}>
           <td style={th}><b>{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</b></td>
           <td style={{ ...th, textAlign: "left", whiteSpace: "normal", minWidth: 190 }}><b>{d.name}</b><br /><small style={{ color: "#5b6573" }}>{String(a.ai_summary || d.inv?.cv_summary || "").split(/(?<=\.)\s/)[0].slice(0, 140)}</small></td>
@@ -60,7 +65,7 @@ export default function RecrutementAdmin() {
           <td style={th}>{a.test_french ?? "–"}</td><td style={th}>{a.test_logic ?? "–"}</td><td style={th}>{a.test_writing ?? "–"}</td>
           <td style={th}>{a.answers?.riddles_score ?? "–"}{a.riddle_sec ? <><br /><small>{a.riddle_sec} s</small></> : null}</td>
           <td style={th}>{a.bac_average ?? "?"}</td><td style={th}>{a.duration_sec ? `${Math.round(a.duration_sec / 60)} min` : "–"}</td>
-          <td style={{ ...th, color: a.paste_count ? "#b91c1c" : undefined }}>{a.paste_count ? `⚠️ ${a.paste_count}` : "0"}</td>
+          <td style={{ ...th, color: a.paste_count ? "#b91c1c" : undefined }}>{a.paste_count ? `⚠️ ${a.paste_count}` : "0"}</td><td style={th}>{testSig(a) ?? "–"}</td>
           <td style={th}>{salaryK(a.salary_expectation)}</td><td style={{ ...th, whiteSpace: "normal", minWidth: 170, textAlign: "left", background: plan(d).color }}>{plan(d).text}</td>
           <td style={th}><a href={`tel:+${String(d.phone).replace(/\D/g, "")}`}>📞</a> <a href={wa(d)} target="_blank" rel="noreferrer">💬</a> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => { setView("all"); setPoste(k); setOpen(d.key); }}>Fiche</button> <button className={s.ghost} style={{ padding: "2px 8px" }} onClick={() => openOffer(d)}>📝 Offre</button><br />{offerBadge(d)}</td>
         </tr>; })}</tbody></table></div> : <p className={s.muted}>Aucun formulaire rempli pour l'instant.</p>}
@@ -236,7 +241,7 @@ export default function RecrutementAdmin() {
     if (!why.length) { const best = PARTS.filter(([, k]) => P[k] != null).sort((x, y) => (P[y[1]] as number) - (P[x[1]] as number))[0]; if (best) why.push(`meilleur point : ${best[0].toLowerCase()} (${P[best[1]]})`); }
     if (!(bac > 0)) check.push("demander sa moyenne au bac"); if (a.test_logic != null && lo <= 5) check.push(`logique faible (${lo}/8) : le tester à l'oral`);
     if (a.test_writing != null && wr < 12) check.push(`rédaction moyenne (${wr}/20)`); if (Number(a.paste_count) > 0) check.push(`${a.paste_count} copier-coller : vérifier qu'il a fait le test seul`);
-    if (a.riddle_ok === false) check.push("énigme ratée"); if (!a.cv_path && !d.inv?.cv_path) check.push("pas de CV : le demander");
+    if (a.riddle_ok === false) check.push("énigme ratée"); { const t = a.answers?.test_signals; if (t?.restarts) check.push(`test recommencé ${t.restarts} fois${t.other_device ? " (autre appareil)" : ""}`); if ((t?.hidden ?? 0) >= 2) check.push(`${t.hidden} sorties de la page pendant le test`); } if (!a.cv_path && !d.inv?.cv_path) check.push("pas de CV : le demander");
     if (a.salary_expectation) check.push(`prétention : ${a.salary_expectation}`);
     return { why: why.slice(0, 3), check: check.slice(0, 4) };
   };
@@ -262,7 +267,7 @@ export default function RecrutementAdmin() {
       </div>
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div>🎓 {school || a.education || "formation non précisée"} · Bac {a.bac_average ? `${a.bac_average}/20` : "❔"}{a.bac_stream ? ` (${a.bac_stream})` : ""}</div>
-        <div>🇫🇷 {a.test_french ?? "–"}/10 · 🧠 logique {a.test_logic ?? "–"}/8 · ✍️ rédaction {a.test_writing ?? "–"}/20 · 🧩 énigme {a.riddle_ok ? "✅" : a.riddle_ok === false ? "❌" : "–"} · {Number(a.paste_count) ? <span style={{ color: "#b91c1c" }}>⚠️ {a.paste_count} copier-coller</span> : "0 copier-coller"}</div>
+        <div>🇫🇷 {a.test_french ?? "–"}/10 · 🧠 logique {a.test_logic ?? "–"}/8 · ✍️ rédaction {a.test_writing ?? "–"}/20 · 🧩 énigme {a.riddle_ok ? "✅" : a.riddle_ok === false ? "❌" : "–"} · {Number(a.paste_count) ? <span style={{ color: "#b91c1c" }}>⚠️ {a.paste_count} copier-coller</span> : "0 copier-coller"}{a.answers?.test_signals ? <> · {testSig(a)}</> : null}</div>
       </div>
       {R.why.length ? <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "6px 10px", fontSize: 14 }}><b>👍 Pourquoi l'appeler :</b> {R.why.join(" · ")}</div> : null}
       {R.check.length ? <div style={{ background: "#fffbeb", borderRadius: 10, padding: "6px 10px", fontSize: 14 }}><b>🔎 À vérifier pendant l'appel :</b> {R.check.join(" · ")}</div> : null}
@@ -286,7 +291,7 @@ export default function RecrutementAdmin() {
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: 16, width: "min(760px, 100%)", display: "grid", gap: 10, fontSize: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}><h2 style={{ margin: 0 }}>🗂 {d.name}</h2><button className={s.ghost} onClick={() => setDos(null)}>Fermer ✕</button></div>
         <div>{POSTES[d.poste]?.short} · {d.city || "ville ?"} · {d.phone}{d.email ? ` · ${d.email}` : ""} · note talent <b style={{ color: color(talentScore(d)) }}>{talentScore(d)}</b>/100</div>
-        <div style={{ background: "#f8fafc", borderRadius: 10, padding: 10 }}>🇫🇷 Français {a.test_french ?? "–"}/10 · 🧠 Logique {a.test_logic ?? "–"}/8 · ✍️ Rédaction {a.test_writing ?? "–"}/20 · 🧩 Énigme {a.riddle_ok ? "réussie" : a.riddle_ok === false ? "ratée" : "–"}{a.riddle_sec ? ` (${a.riddle_sec} s)` : ""} · Copier-coller {a.paste_count ?? 0} · Durée {a.duration_sec ? `${Math.round(a.duration_sec / 60)} min` : "–"}{ex?.finished_at ? ` · Test d'excellence ${ex.score}/100` : ex ? " · Test d'excellence envoyé" : ""}</div>
+        <div style={{ background: "#f8fafc", borderRadius: 10, padding: 10 }}>🇫🇷 Français {a.test_french ?? "–"}/10 · 🧠 Logique {a.test_logic ?? "–"}/8 · ✍️ Rédaction {a.test_writing ?? "–"}/20 · 🧩 Énigme {a.riddle_ok ? "réussie" : a.riddle_ok === false ? "ratée" : "–"}{a.riddle_sec ? ` (${a.riddle_sec} s)` : ""} · Copier-coller {a.paste_count ?? 0}{a.answers?.test_signals ? <> · {testSig(a)}</> : null} · Durée {a.duration_sec ? `${Math.round(a.duration_sec / 60)} min` : "–"}{ex?.finished_at ? ` · Test d'excellence ${ex.score}/100` : ex ? " · Test d'excellence envoyé" : ""}</div>
         {item("Bac", [a.bac_stream, a.bac_year, a.bac_average ? `${a.bac_average}/20` : "moyenne non donnée"].filter(Boolean).join(" · "))}
         {item("Notes au bac", a.bac_grades ? Object.entries(a.bac_grades).map(([k, v]) => `${k} ${v ?? "?"}`).join(" · ") : null)}
         {item("Formation", a.education)}{item("Expérience (années)", a.experience_years)}{item("Prétention", a.salary_expectation)}{item("Disponibilité", a.availability)}{item("Statut freelance", [a.freelance_ok, a.billing_structure].filter(Boolean).join(" · "))}
@@ -294,10 +299,11 @@ export default function RecrutementAdmin() {
         <hr />
         <b>🤖 Analyse IA du formulaire</b>{item("Résumé", a.ai_summary)}{item("Points forts", a.ai_strengths)}{item("Risques", a.ai_risks)}{item("Questions d'entretien suggérées", a.ai_questions)}
         {D && !D.missing ? <><hr /><b>🔬 Analyse approfondie du CV</b>{item("Résumé", D.summary)}{item("Parcours", (D.jobs || []).map((j: Row) => `• ${j.role} — ${j.company} (${j.start || "?"} → ${j.end || "?"})`).join("\n"))}{item("Formation", (D.education || []).map((e: Row) => `${e.degree} – ${e.school}${e.year ? ` (${e.year})` : ""}`).join(" · "))}{item("Fiabilité du CV", D.fiabilite != null ? `${D.fiabilite}/100` : null)}{D.lie_signals?.length ? item("🚩 Possible exagération", D.lie_signals.join(" · ")) : null}{D.verify?.length ? item("À vérifier", D.verify.join(" · ")) : null}</> : null}
-        <hr /><b>✍️ Test de rédaction</b><div style={{ whiteSpace: "pre-wrap", background: "#fafaf9", borderRadius: 10, padding: 10 }}>{a.answers?.writing || "—"}</div>
+        {a.answers?.test_log?.length ? <><hr /><details><summary style={{ cursor: "pointer" }}><b>🕵️ Test en ligne, question par question</b> · {testSig(a)}</summary><ol style={{ margin: "6px 0 0", paddingLeft: 20, fontSize: 13 }}>{(a.answers.test_log as Row[]).map((x, i) => <li key={i} style={{ color: x.ok ? "#15803d" : "#b91c1c" }}>{x.k === "fr" ? "🇫🇷" : "🧠"} {x.q} → {x.chosen ?? "(temps écoulé)"}{x.ok ? " ✅" : ` ❌ (attendu : ${x.correct})`} · {x.sec ?? "?"} s{x.hidden ? ` · 👁 ${x.hidden}` : ""}</li>)}{((a.answers.riddle_log || []) as Row[]).map((x, i) => <li key={`r${i}`} style={{ color: x.ok ? "#15803d" : "#b91c1c" }}>🧩 {x.q} → {x.given || "—"}{x.ok ? " ✅" : ` ❌ (attendu : ${x.correct})`}</li>)}</ol></details></> : null}
+        <hr /><b>✍️ Test de rédaction</b>{a.answers?.writing_prompt ? <div style={{ fontSize: 13, color: "#5b6573" }}>Sujet tiré : {a.answers.writing_prompt}</div> : null}<div style={{ whiteSpace: "pre-wrap", background: "#fafaf9", borderRadius: 10, padding: 10 }}>{a.answers?.writing || "—"}</div>
         <hr /><b>📝 Toutes ses réponses</b>
         {[...COMMON, ...(POSTES[d.poste]?.questions || [])].map(q => <div key={q.id}><small style={{ color: "#7a8594" }}>{q.label}</small><div style={{ whiteSpace: "pre-wrap" }}>{a.answers?.[q.id] || "—"}</div></div>)}
-        {(() => { const known = new Set<string>([...COMMON, ...(POSTES[d.poste]?.questions || [])].map(q => q.id).concat(["writing"])); const extra = Object.entries(a.answers || {}).filter(([k, v]) => !known.has(k) && v != null && typeof v !== "object" && String(v).length > 0); return extra.length ? <details><summary style={{ cursor: "pointer" }}>Autres réponses enregistrées ({extra.length})</summary>{extra.map(([k, v]) => item(k, v))}</details> : null; })()}
+        {(() => { const known = new Set<string>([...COMMON, ...(POSTES[d.poste]?.questions || [])].map(q => q.id).concat(["writing", "writing_prompt"])); const extra = Object.entries(a.answers || {}).filter(([k, v]) => !known.has(k) && v != null && typeof v !== "object" && String(v).length > 0); return extra.length ? <details><summary style={{ cursor: "pointer" }}>Autres réponses enregistrées ({extra.length})</summary>{extra.map(([k, v]) => item(k, v))}</details> : null; })()}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{(a.cv_path || d.inv?.cv_path) ? <button className={s.ghost} onClick={() => openCv(a.cv_path || d.inv?.cv_path)}>📄 Ouvrir le CV</button> : null}<button className={s.ghost} onClick={() => setDos(null)}>Fermer</button></div>
       </div>
     </div>; };
@@ -388,7 +394,7 @@ export default function RecrutementAdmin() {
     <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 14 }}>
       <a href={`tel:+${String(d.phone).replace(/\D/g, "")}`}>📞 {d.phone}</a><a href={wa(d)} target="_blank" rel="noreferrer" onClick={() => { if (d.inv && !d.inv.whatsapp_at && !d.app) markWa(d.inv.id, true); }}>💬 WhatsApp</a>{d.email ? <a href={`mailto:${d.email}`}>✉️ e-mail</a> : null}
       {cvPath ? <button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openCv(cvPath)}>📄 CV</button> : null}<button className={s.ghost} style={{ padding: "4px 10px" }} onClick={() => openOffer(d)}>📝 Offre</button>{offerBadge(d)}
-      {a ? <><span>🇫🇷 {a.test_french ?? "–"}/10</span><span>🧠 {a.test_logic ?? "–"}/8</span><span>✍️ {a.test_writing ?? "–"}/20</span><span>🧩 {a.answers?.riddles_score ?? "–"}{a.riddle_sec ? ` en ${a.riddle_sec}s` : ""}</span><span>🎓 {a.bac_average ?? "?"}/20</span>{a.paste_count ? <span style={{ color: "#b91c1c" }}>⚠️ {a.paste_count} collage(s)</span> : null}{a.duration_sec ? <span>⏱ {Math.round(a.duration_sec / 60)} min</span> : null}<span>💰 {a.salary_expectation || "?"}</span></> : null}
+      {a ? <><span>🇫🇷 {a.test_french ?? "–"}/10</span><span>🧠 {a.test_logic ?? "–"}/8</span><span>✍️ {a.test_writing ?? "–"}/20</span><span>🧩 {a.answers?.riddles_score ?? "–"}{a.riddle_sec ? ` en ${a.riddle_sec}s` : ""}</span><span>🎓 {a.bac_average ?? "?"}/20</span>{a.paste_count ? <span style={{ color: "#b91c1c" }}>⚠️ {a.paste_count} collage(s)</span> : null}{testSig(a)}{a.duration_sec ? <span>⏱ {Math.round(a.duration_sec / 60)} min</span> : null}<span>💰 {a.salary_expectation || "?"}</span></> : null}
     </div>
     {planBox(d)}
     {d.inv ? <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 13 }}>

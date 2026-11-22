@@ -3,9 +3,9 @@ import { applyStoredSecrets } from "../../../lib/integrations";
 import { authorizeSection } from "../../../lib/access";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { brevoReady, sendEmail, sendSms, OWNER_EMAIL } from "../../../lib/brevo";
-import { COMMON, POSTES, WRITING_PROMPT, FRENCH_TEST, LOGIC_TEST, isPoste, type PosteKey } from "../../../lib/hiring";
-import { FRENCH_KEY, LOGIC_KEY, RIDDLE_KEY } from "../../../lib/hiring-keys";
-import { BAC_SUBJECTS, BAC_OPTIONAL, RIDDLES } from "../../../lib/hiring";
+import { COMMON, POSTES, isPoste, type PosteKey } from "../../../lib/hiring";
+import { BAC_SUBJECTS, BAC_OPTIONAL } from "../../../lib/hiring";
+import { grade as gradeTest, linkApplication, loadSession, mcqDone, phoneTail, scenarioText } from "../../../lib/recruit-test";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -13,12 +13,14 @@ const BUCKET = "job-applications";
 const clean = (v: unknown, max = 3000) => String(v ?? "").replace(/[<>]/g, "").trim().slice(0, max);
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+const testSignalsText = (t: any) => t ? `${t.hidden ?? 0} sortie(s) de la page pendant le test, ${t.restarts ?? 0} redémarrage(s)${t.other_device ? " dont un depuis un autre appareil" : ""}, ${t.timeouts ?? 0} question(s) sans réponse à temps, ${t.avg_sec ?? "?"} s par question en moyenne` : "?";
+
 /** Analyse IA : CV (PDF/image) + réponses → note sur 100, verdict, points forts, risques, questions d'entretien. */
 async function evaluate(poste: PosteKey, row: Record<string, any>, cv?: { mime: string; b64: string; name: string }) {
   const key = process.env.OPENAI_API_KEY; if (!key) return null;
   const p = POSTES[poste];
   const qa = [...COMMON, ...p.questions].map(q => `Q: ${q.label}\nR: ${row.answers?.[q.id] ?? row[q.id] ?? "—"}`).join("\n\n");
-  const content: any[] = [{ type: "input_text", text: `Poste : ${p.title}\nMission : ${p.summary}\nCritères d'évaluation : ${p.rubric}\n\nCandidat : ${row.full_name}, ${row.city || "?"}. Formation : ${row.education || "?"}. Expérience : ${row.experience_years || "?"} ans. Bac : ${row.bac_stream || "?"} ${row.bac_year || ""}, moyenne ${row.bac_average ?? "?"}/20.\nNotes au bac par matière : ${JSON.stringify(row.bac_grades)}. Dernier employeur : ${JSON.stringify(row.last_employer)} (un départ en conflit ou une raison floue est un risque ; un départ en bons termes avec une référence est un bon signe).\nTests corrigés automatiquement : français ${row.test_french}/10, logique ${row.test_logic}/8, énigmes ${row.answers?.riddles_score} en ${row.riddle_sec ?? "?"} s. Durée de remplissage : ${Math.round((row.duration_sec || 0) / 60)} min. Collages de texte détectés : ${row.paste_count || 0}.\n\n${WRITING_PROMPT}\nRédaction du candidat :\n${row.answers?.writing || "—"}\n\nRéponses au questionnaire :\n${qa}\n\nÉvalue ce candidat de façon très exigeante et factuelle (nous ne retenons que les meilleurs : un candidat moyen doit avoir 50, pas 70). Vérifie la cohérence entre le CV, les notes du bac déclarées et le niveau réel montré dans les tests ; un CV brillant avec des tests faibles est suspect (le CV éventuel est joint). Pénalise fortement : français approximatif, réponses vagues ou copiées, refus du freelance, du présentiel à Alger ou des horaires. Réponds en JSON : {"score": entier 0-100 (tient compte des tests, de la rédaction et des réponses), "writing": note de la rédaction sur 20, notée sévèrement : compte les fautes (orthographe, accords, conjugaison, ponctuation) ; 0-2 fautes possible jusqu'à 20, 3-5 fautes max 14, 6-9 fautes max 10, 10 fautes ou plus max 6 ; exige une structure claire (salutation, empathie, état précis de la commande, solution et date, formule de politesse), un ton professionnel rassurant et une solution concrète ; un texte générique, creux ou qui ressemble à une réponse d'IA (formules toutes faites, aucun détail concret) ne dépasse pas 10, "verdict": "à convoquer" | "à revoir" | "à écarter", "summary": "2 phrases", "strengths": "3 points courts", "risks": "3 points courts", "questions": "3 questions précises à poser en entretien"}` }];
+  const content: any[] = [{ type: "input_text", text: `Poste : ${p.title}\nMission : ${p.summary}\nCritères d'évaluation : ${p.rubric}\n\nCandidat : ${row.full_name}, ${row.city || "?"}. Formation : ${row.education || "?"}. Expérience : ${row.experience_years || "?"} ans. Bac : ${row.bac_stream || "?"} ${row.bac_year || ""}, moyenne ${row.bac_average ?? "?"}/20.\nNotes au bac par matière : ${JSON.stringify(row.bac_grades)}. Dernier employeur : ${JSON.stringify(row.last_employer)} (un départ en conflit ou une raison floue est un risque ; un départ en bons termes avec une référence est un bon signe).\nTests corrigés automatiquement : français ${row.test_french}/10, logique ${row.test_logic}/8, énigmes ${row.answers?.riddles_score} en ${row.riddle_sec ?? "?"} s. Durée de remplissage : ${Math.round((row.duration_sec || 0) / 60)} min. Collages de texte détectés : ${row.paste_count || 0}. Signaux du test (questions tirées au hasard, une à la fois, chronométrées) : ${testSignalsText(row.answers?.test_signals)}.\n\n${row.answers?.writing_prompt || ""}\nRédaction du candidat :\n${row.answers?.writing || "—"}\n\nRéponses au questionnaire :\n${qa}\n\nÉvalue ce candidat de façon très exigeante et factuelle (nous ne retenons que les meilleurs : un candidat moyen doit avoir 50, pas 70). Vérifie la cohérence entre le CV, les notes du bac déclarées et le niveau réel montré dans les tests ; un CV brillant avec des tests faibles est suspect (le CV éventuel est joint). Pénalise fortement : français approximatif, réponses vagues ou copiées, refus du freelance, du présentiel à Alger ou des horaires. Réponds en JSON : {"score": entier 0-100 (tient compte des tests, de la rédaction et des réponses), "writing": note de la rédaction sur 20, notée sévèrement : compte les fautes (orthographe, accords, conjugaison, ponctuation) ; 0-2 fautes possible jusqu'à 20, 3-5 fautes max 14, 6-9 fautes max 10, 10 fautes ou plus max 6 ; exige une structure claire (salutation, empathie, état précis du dossier, solution et date, formule de politesse), un ton professionnel rassurant et une solution concrète ; un texte générique, creux ou qui ressemble à une réponse d'IA (formules toutes faites, aucun détail concret) ne dépasse pas 10, "verdict": "à convoquer" | "à revoir" | "à écarter", "summary": "2 phrases", "strengths": "3 points courts", "risks": "3 points courts", "questions": "3 questions précises à poser en entretien"}` }];
   if (cv?.mime === "application/pdf") content.push({ type: "input_file", filename: cv.name || "cv.pdf", file_data: `data:application/pdf;base64,${cv.b64}` });
   else if (cv && /^image\//.test(cv.mime)) content.push({ type: "input_image", image_url: `data:${cv.mime};base64,${cv.b64}` });
   const r = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ model: process.env.OPENAI_HIRING_MODEL || "gpt-4.1-mini", input: [{ role: "user", content }], text: { format: { type: "json_object" } }, max_output_tokens: 900, store: false }) });
@@ -37,18 +39,24 @@ export async function POST(req: Request) {
   const poste = clean(fd.get("poste"), 20);
   if (!isPoste(poste)) return NextResponse.json({ ok: false, error: "Poste inconnu." }, { status: 400 });
   const questions = [...COMMON, ...POSTES[poste].questions];
-  const answers: Record<string, string> = {};
+  const answers: Record<string, any> = {};
   for (const q of questions) { answers[q.id] = clean(fd.get(q.id)); if (q.required && !answers[q.id] && !(q.id === "presentation" && !fd.has("presentation"))) return NextResponse.json({ ok: false, error: `Merci de répondre : « ${q.label.slice(0, 60)}… »` }, { status: 400 }); }
   const row: Record<string, any> = {
     poste, full_name: clean(fd.get("full_name"), 120), email: clean(fd.get("email"), 160), phone: clean(fd.get("phone"), 40), city: clean(fd.get("city"), 80),
     education: clean(fd.get("education"), 300), experience_years: clean(fd.get("experience_years"), 20),
     freelance_ok: answers.freelance_ok, billing_structure: answers.billing_structure, availability: answers.availability, salary_expectation: answers.salary_expectation, answers,
   };
-  const score = (tests: { id: string }[], key: Record<string, string>) => tests.reduce((n, q) => n + (clean(fd.get(q.id), 200) === key[q.id] ? 1 : 0), 0);
-  for (const q of [...FRENCH_TEST, ...LOGIC_TEST]) answers[q.id] = clean(fd.get(q.id), 200);
+  // Test tiré et corrigé côté serveur (lib/recruit-test.ts) : on ne fait jamais confiance au navigateur pour les notes.
+  const test = await loadSession(fd.get("test_sid"));
+  if (!test) return NextResponse.json({ ok: false, error: "Test introuvable : faites le test (français, logique, énigmes) avant d'envoyer. Si vous l'avez déjà fait, rechargez la page et appuyez sur « Reprendre le test »." }, { status: 400 });
+  if (!mcqDone(test.state) || !test.state.riddleAnswers) return NextResponse.json({ ok: false, error: "Terminez d'abord le test (français, logique et énigmes) avant d'envoyer votre candidature." }, { status: 400 });
+  const g = gradeTest(test.state);
   answers.writing = clean(fd.get("writing"), 4000);
   if (answers.writing.length < 500) return NextResponse.json({ ok: false, error: "La rédaction est trop courte (10 à 15 lignes demandées)." }, { status: 400 });
-  row.test_french = score(FRENCH_TEST, FRENCH_KEY); row.test_logic = score(LOGIC_TEST, LOGIC_KEY);
+  row.test_french = g.french; row.test_logic = g.logic;
+  answers.writing_prompt = scenarioText(test.state);
+  answers.test_signals = { ...g.signals, hidden_total: Math.min(999, Number(fd.get("hidden_total")) || 0), phone_mismatch: !!test.state.phone && test.state.phone !== phoneTail(fd.get("phone")), reused: test.applicationId != null, storage: test.sid.startsWith("d.") ? "table" : "jeton" };
+  answers.test_log = g.log; answers.riddle_log = g.riddleLog;
   row.bac_stream = clean(fd.get("bac_stream"), 80); row.bac_year = clean(fd.get("bac_year"), 10);
   const avg = Number(String(fd.get("bac_average") || "").replace(",", ".")); row.bac_average = Number.isFinite(avg) && avg > 0 && avg <= 20 ? avg : null;
   const started = Number(fd.get("started_at")); row.duration_sec = started > 0 ? Math.max(0, Math.round((Date.now() - started) / 1000)) : null;
@@ -58,10 +66,8 @@ export async function POST(req: Request) {
   const missing = BAC_SUBJECTS.filter(([id]) => grade(fd.get(id)) == null).map(([, l]) => l);
   if (missing.length) return NextResponse.json({ ok: false, error: `Merci d'indiquer vos notes au bac en : ${missing.join(", ")} (sur 20, même approximatives).` }, { status: 400 });
   row.bac_grades = Object.fromEntries([...BAC_SUBJECTS.map(([id, l]) => [l, grade(fd.get(id))]), ...BAC_OPTIONAL.map(([id, l]) => [l, grade(fd.get(id))]).filter(([, v]) => v != null), [clean(fd.get("bac_main_subject"), 60) || "Matière principale", grade(fd.get("bac_main_grade"))]]);
-  for (const r of RIDDLES) answers[r.id] = clean(fd.get(r.id), 40);
-  const riddles = RIDDLES.filter(r => answers[r.id].replace(/\D/g, "") === RIDDLE_KEY[r.id]).length;
-  row.riddle_ok = riddles === RIDDLES.length; answers.riddles_score = `${riddles}/${RIDDLES.length}`;
-  row.riddle_sec = Math.min(36000, Number(fd.get("riddle_sec")) || 0) || null;
+  row.riddle_ok = g.riddlesOk === g.riddleLog.length; answers.riddles_score = `${g.riddlesOk}/${g.riddleLog.length}`;
+  row.riddle_sec = test.state.riddleSec || null; // mesuré par le serveur
   row.last_employer = { entreprise: clean(fd.get("emp_company"), 120), poste: clean(fd.get("emp_role"), 120), dates: clean(fd.get("emp_dates"), 60), depart: clean(fd.get("emp_departure"), 60), raison: clean(fd.get("emp_reason"), 1500), reference: clean(fd.get("ref_name"), 120), reference_tel: clean(fd.get("ref_phone"), 40), accord_contact: fd.get("ref_consent") === "oui" };
   if (!row.full_name || !row.phone) return NextResponse.json({ ok: false, error: "Nom et téléphone obligatoires." }, { status: 400 });
   const db = crmDatabase();
@@ -78,6 +84,7 @@ export async function POST(req: Request) {
   }
   const { data, error } = await db.from("job_applications").insert(row).select("id").single();
   if (error) return NextResponse.json({ ok: false, error: "Enregistrement impossible, réessayez." }, { status: 502 });
+  await linkApplication(test.sid, data.id).catch(() => null);
   const ai = await evaluate(poste, row, cv).catch(() => null);
   // Note finale : 30 % présélection du CV (si le candidat avait été invité) + 70 % formulaire et tests.
   const tail = String(row.phone).replace(/\D/g, "").slice(-9);

@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import s from "../devenir-partenaire/partenaire.module.css";
-import { COMMON, POSTES, FRENCH_TEST, LOGIC_TEST, WRITING_PROMPT, RIDDLES, BAC_SUBJECTS, BAC_OPTIONAL, isPoste, type Mcq, type PosteKey, type Question } from "../../lib/hiring";
+import { COMMON, POSTES, BAC_SUBJECTS, BAC_OPTIONAL, isPoste, type PosteKey, type Question } from "../../lib/hiring";
+import RecruitTest, { type TestInfo } from "./RecruitTest";
 
 export default function CandidaturePage() {
   const [poste, setPoste] = useState<PosteKey | "">("");
@@ -9,13 +10,25 @@ export default function CandidaturePage() {
   const [err, setErr] = useState("");
   const [startedAt, setStartedAt] = useState(0);
   const [pastes, setPastes] = useState(0);
-  const [riddleStart, setRiddleStart] = useState(0); const [riddleSec, setRiddleSec] = useState(0); const [riddleDone, setRiddleDone] = useState(false);
-  useEffect(() => { if (!riddleStart || riddleDone) return; const t = setInterval(() => setRiddleSec(Math.round((Date.now() - riddleStart) / 1000)), 1000); return () => clearInterval(t); }, [riddleStart, riddleDone]);
+  const [test, setTest] = useState<TestInfo | null>(null);
+  const [hiddenTotal, setHiddenTotal] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  const identity = useCallback(() => { const f = formRef.current; const v = (n: string) => String((f?.elements.namedItem(n) as HTMLInputElement | null)?.value || ""); return { phone: v("phone"), name: v("full_name"), poste: v("poste") }; }, []);
+  // Sorties de la page pendant tout le formulaire (onglet, application, écran verrouillé).
+  useEffect(() => {
+    if (!poste) return; let last = 0;
+    const hit = () => { const t = Date.now(); if (t - last > 1500) { last = t; setHiddenTotal(n => n + 1); } };
+    const vis = () => { if (document.visibilityState === "hidden") hit(); };
+    document.addEventListener("visibilitychange", vis); window.addEventListener("blur", hit);
+    return () => { document.removeEventListener("visibilitychange", vis); window.removeEventListener("blur", hit); };
+  }, [poste]);
   useEffect(() => { if (poste && !startedAt) setStartedAt(Date.now()); }, [poste, startedAt]);
   const noPaste = (e: React.ClipboardEvent) => { e.preventDefault(); setPastes(n => n + 1); };
   useEffect(() => { try { const p = new URLSearchParams(window.location.search).get("poste"); if (isPoste(p)) setPoste(p); } catch { } }, []);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault(); setErr(""); setState("sending");
+    e.preventDefault(); setErr("");
+    if (!test?.complete) { setErr("Terminez d'abord le test (français, logique et énigmes) avant d'envoyer votre candidature."); return; }
+    setState("sending");
     const fd = new FormData(e.currentTarget);
     // Les serveurs refusent les envois de plus de 4,5 Mo : un CV trop lourd (photo de téléphone) bloquait tout le formulaire.
     // Dans ce cas on envoie le formulaire sans le fichier : nous avons déjà le CV reçu via Emploitic.
@@ -31,10 +44,6 @@ export default function CandidaturePage() {
     {q.type === "choice" ? <select name={q.id} required={q.required} defaultValue=""><option value="" disabled>Choisir…</option>{q.options!.map(o => <option key={o}>{o}</option>)}</select>
       : q.type === "long" ? <textarea name={q.id} rows={4} required={q.required} onPaste={noPaste} /> : <input name={q.id} required={q.required} />}</label>;
 
-  const mcq = (m: Mcq, i: number) => <fieldset key={m.id} className={s.full} style={{ border: "1px solid #e7e5e4", borderRadius: 12, padding: "10px 14px", background: "#fff" }}>
-    <legend style={{ fontWeight: 800, fontSize: 14 }}>{i + 1}. {m.q}</legend>
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px" }}>{m.options.map(o => <label key={o} style={{ flexDirection: "row", alignItems: "center", gap: 6, fontWeight: 500 }}><input type="radio" name={m.id} value={o} required style={{ width: "auto" }} /> {o}</label>)}</div>
-  </fieldset>;
   if (state === "done") return <main className={s.page}><section className={s.formSection} style={{ paddingTop: 50 }}><div className={s.done}><b>Merci, votre candidature est bien reçue ✅</b><p>Nous étudions chaque dossier avec attention. Les candidats retenus sont contactés sous 7 jours pour un entretien et une mise en situation.</p></div></section></main>;
   return <main className={s.page}>
     <section className={s.whyTop}>
@@ -64,7 +73,7 @@ export default function CandidaturePage() {
     {poste ? <section className={s.formSection} id="formulaire">
       <div className={s.heading}><span className={s.eyebrow}>2. VOTRE CANDIDATURE</span><h2>{POSTES[poste].short}</h2><p>Comptez 30 à 40 minutes, en une seule fois. Le copier-coller est désactivé et le temps est mesuré : répondez avec vos propres mots, sans aide extérieure ni outil d’IA.</p></div>
       <div style={{ background: "#b91c1c", color: "#fff", borderRadius: 16, padding: "18px 20px", margin: "0 0 18px", fontSize: 22, fontWeight: 950, lineHeight: 1.3, textAlign: "center" }}>⚠️ À FAIRE SEUL(E), SANS AUCUNE AIDE : NI PERSONNE, NI CHATGPT, NI AUCUN OUTIL D’INTELLIGENCE ARTIFICIELLE.<div style={{ fontSize: 15, fontWeight: 600, marginTop: 6 }}>Le copier-coller est bloqué, le temps est chronométré et les réponses sont vérifiées. Toute réponse rédigée par une IA entraîne l’élimination.</div></div>
-      <form className={s.form} onSubmit={submit}>
+      <form ref={formRef} className={s.form} onSubmit={submit}>
         <input type="hidden" name="poste" value={poste} />
         <label>Nom et prénom *<input name="full_name" required /></label>
         <label>Téléphone / WhatsApp *<input name="phone" type="tel" required placeholder="+213 …" /></label>
@@ -92,21 +101,12 @@ export default function CandidaturePage() {
         <label>Personne de référence chez cet employeur (nom et fonction)<input name="ref_name" placeholder="Mme X, responsable commerciale" /></label>
         <label>Téléphone de la référence<input name="ref_phone" type="tel" /></label>
         <label className={s.check}><input type="checkbox" name="ref_consent" value="oui" /> J'accepte que NeoDrive contacte cette référence.</label>
-        <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Test de français (10 questions)</p>
-        {FRENCH_TEST.map(mcq)}
-        <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Test de logique (8 questions, sans calculatrice ni aide extérieure)</p>
-        {LOGIC_TEST.map(mcq)}
-        <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Énigmes chronométrées</p>
-        <div className={s.full} style={{ border: "2px solid #f97316", borderRadius: 14, padding: 14, background: "#fff7ed" }}>
-          {!riddleStart ? <button type="button" className={s.primary} onClick={() => setRiddleStart(Date.now())}>Démarrer les énigmes (chronomètre)</button> : <>
-            <p style={{ margin: "0 0 8px", fontWeight: 900 }}>⏱ {Math.floor(riddleSec / 60)} min {String(riddleSec % 60).padStart(2, "0")} s{riddleDone ? " — terminé" : ""}</p>
-            {RIDDLES.map(r => <label key={r.id} style={{ marginBottom: 10 }}>{r.q} *<input name={r.id} required inputMode="numeric" onPaste={noPaste} readOnly={riddleDone} /></label>)}
-            {!riddleDone ? <button type="button" className={s.secondary} onClick={() => setRiddleDone(true)}>J'ai terminé les énigmes</button> : null}
-          </>}
-          <input type="hidden" name="riddle_sec" value={riddleSec} />
-        </div>
+        <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Test chronométré : français, logique et énigmes (sans calculatrice ni aide extérieure)</p>
+        <RecruitTest identity={identity} onInfo={setTest} onPaste={() => setPastes(n => n + 1)} />
+        <input type="hidden" name="test_sid" value={test?.sid || ""} /><input type="hidden" name="hidden_total" value={hiddenTotal} />
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Rédaction</p>
-        <label className={s.full}>{WRITING_PROMPT} *<textarea name="writing" rows={12} required minLength={500} onPaste={noPaste} /></label>
+        {test?.scenario ? <label className={s.full}>{test.scenario} *<textarea name="writing" rows={12} required minLength={500} onPaste={noPaste} /></label>
+          : <p className={s.full} style={{ margin: 0, fontSize: 14 }}>Le sujet de la rédaction s&apos;affiche dès que vous démarrez le test ci-dessus.</p>}
         <input type="hidden" name="started_at" value={startedAt} /><input type="hidden" name="paste_count" value={pastes} />
         <p className={s.full} style={{ margin: "10px 0 0", fontWeight: 900 }}>Questions et mises en situation</p>
         {POSTES[poste].questions.map(field)}
