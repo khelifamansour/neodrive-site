@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { applyStoredSecrets } from "../../../lib/integrations";
 import { crmDatabase, generateCommercialReply, normalizePhone, sendWhatsApp } from "../../../lib/crm-agent";
+import { CONFIRM_QUESTIONS } from "../../../lib/team-pay";
 import { brevoReady, sendEmail, OWNER_EMAIL } from "../../../lib/brevo";
 import { CALL_RESULTS, TEAM_COOKIE, endSessions, firstName, logActivity, maskEmail, maskPhone, newToken, sha, teamSession } from "../../../lib/team";
 
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 const clean = (v: unknown, n = 2000) => String(v ?? "").replace(/[<>]/g, "").trim().slice(0, n);
 const deny = (error = "Session expirée : reconnectez-vous.") => { const r = NextResponse.json({ ok: false, error, logout: true }, { status: 401 }); r.cookies.set(TEAM_COOKIE, "", { path: "/", maxAge: 0 }); return r; };
+const OPEN_RES = ["Nouvelle", "Confirmée", "Planifiée"];
 const STATUT: Record<string, string> = { "Intéressé": "Chaud", "Devis envoyé": "Chaud", "Réservation": "Client", "Pas intéressé": "Perdu", "Mauvais numéro": "Perdu" };
 
 /** Liste publique minimale de la fiche (pas de numéro ni d'e-mail en clair). */
@@ -55,7 +57,7 @@ export async function POST(req: Request) {
     const today = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Paris" })); today.setHours(0, 0, 0, 0);
     const { count } = await db.from("leads").select("id", { count: "exact", head: true }).eq("assigned_to", String(member.id));
     const { data: acts } = await db.from("team_activity").select("action").eq("member_id", member.id).gte("at", new Date(Date.now() - 16 * 3600e3).toISOString());
-    return NextResponse.json({ ok: true, member: { name: member.name, role: member.role, expires_at: member.expires_at }, total: count || 0, results: CALL_RESULTS, today: { calls: (acts || []).filter(a => a.action === "call_result").length, messages: (acts || []).filter(a => a.action === "whatsapp").length } });
+    return NextResponse.json({ ok: true, member: { name: member.name, role: member.role, expires_at: member.expires_at }, total: count || 0, results: CALL_RESULTS, has_pay: !!(member as { pay_terms?: unknown }).pay_terms, academy: ((member as { sections?: string[] }).sections || []).includes("academy"), today: { calls: (acts || []).filter(a => a.action === "call_result").length, messages: (acts || []).filter(a => a.action === "whatsapp").length } });
   }
 
   if (b.action === "list") {
@@ -84,7 +86,8 @@ export async function POST(req: Request) {
     await logActivity(member.id, "view_lead", id);
     const { data: messages } = await db.from("crm_messages").select("direction,body,created_at,channel").eq("lead_id", id).order("created_at", { ascending: true }).limit(40);
     const within = lead.last_inbound_at && Date.now() - new Date(lead.last_inbound_at).getTime() < 24 * 3600e3;
-    return NextResponse.json({ ok: true, lead: { ...card(lead), historique: String(lead.historique || "").slice(-3000), commentaire: String(lead.commentaire || "").slice(0, 1500) }, messages: messages || [], canWhatsapp: Boolean(within) && !lead.opted_out_at, tel: member.can_see_numbers ? lead.telephone : null });
+    const { data: resas } = await db.from("reservations").select("id,modele,couleur,total,statut,created_at,date_promise").eq("lead_id", id).in("statut", OPEN_RES).order("created_at", { ascending: false }).limit(5);
+    return NextResponse.json({ ok: true, lead: { ...card(lead), historique: String(lead.historique || "").slice(-3000), commentaire: String(lead.commentaire || "").slice(0, 1500) }, messages: messages || [], canWhatsapp: Boolean(within) && !lead.opted_out_at, tel: member.can_see_numbers ? lead.telephone : null, reservations: resas || [] });
   }
 
   if (b.action === "call") {
@@ -107,6 +110,31 @@ export async function POST(req: Request) {
     await db.from("leads").update({ historique: `${lead.historique ? lead.historique + "\n" : ""}${line}`, statut: STATUT[result] || (lead.statut === "Nouveau" ? "Contacté" : lead.statut), phase: result, operateur: member.name, last_contact_at: now.toISOString(), next_followup_at: next, updated_at: now.toISOString() }).eq("id", id);
     await logActivity(member.id, "call_result", id, { result, note, next });
     return NextResponse.json({ ok: true });
+  }
+
+  // Confirmation ferme d'une réservation existante (art. 7.3) : 3 questions, toutes à « oui » pour confirmer.
+  if (b.action === "confirm_reservation") {
+    const rid = Number(b.reservation_id);
+    const { data: r } = await db.from("reservations").select("id,statut,modele,total,notes,lead_id").eq("id", rid).maybeSingle();
+    if (!r || Number(r.lead_id) !== id) return NextResponse.json({ ok: false, error: "Réservation introuvable pour ce client." }, { status: 404 });
+    if (!(OPEN_RES as string[]).includes(r.statut)) return NextResponse.json({ ok: false, error: `Cette réservation est « ${r.statut} » : plus rien à confirmer.` }, { status: 409 });
+    const a = (b.answers || {}) as Record<string, unknown>;
+    const answers = Object.fromEntries(CONFIRM_QUESTIONS.map(q => [q.key, a[q.key] === true ? true : a[q.key] === false ? false : null]));
+    if (Object.values(answers).some(v => v === null)) return NextResponse.json({ ok: false, error: "Répondez aux 3 questions." }, { status: 400 });
+    const ok = Object.values(answers).every(Boolean);
+    const note = clean(b.note, 500);
+    const stamp = now.toLocaleString("fr-FR", { timeZone: "Europe/Paris", dateStyle: "short", timeStyle: "short" });
+    const no = CONFIRM_QUESTIONS.filter(q => !answers[q.key]).map(q => q.short);
+    const txt = ok ? `✅ Confirmation ferme par ${member.name} : modèle et prix total confirmés${r.total ? ` (${Math.round(Number(r.total)).toLocaleString("fr-FR")} €)` : ""}, client présent et payeur, paiement prêt (banque prévenue)` : `⚠️ Confirmation refusée par ${member.name} : hésitation, ne pas planifier (non : ${no.join(", ")})`;
+    const line = `[${stamp}] ${txt}${note ? ` – ${note}` : ""}`;
+    const at = now.toISOString();
+    const patch: Record<string, unknown> = { notes: [r.notes, `💬 ${stamp} : ${txt}${note ? ` – ${note}` : ""}`].filter(Boolean).join("\n"), updated_at: at };
+    if (ok && r.statut === "Nouvelle") patch.statut = "Confirmée";
+    const { error } = await db.from("reservations").update(patch).eq("id", rid);
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    await db.from("leads").update({ historique: `${lead.historique ? lead.historique + "\n" : ""}${line}`, last_contact_at: at, operateur: member.name, updated_at: at }).eq("id", id);
+    await logActivity(member.id, ok ? "reservation_confirmed" : "confirmation_refused", id, { reservation_id: rid, answers, note: note || undefined });
+    return NextResponse.json({ ok: true, confirmed: ok });
   }
 
   if (b.action === "draft") {

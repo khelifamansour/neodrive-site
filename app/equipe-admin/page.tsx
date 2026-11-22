@@ -40,7 +40,7 @@ export default function EquipeAdmin() {
 
   return <main style={{ background: "#f6f4f0", minHeight: "100vh", fontFamily: "system-ui, -apple-system, Segoe UI, Arial, sans-serif", color: "#141414" }}><div style={{ maxWidth: 1050, margin: "0 auto", padding: "16px 16px 80px" }}>
     <h1 style={{ fontSize: 24, margin: "4px 0" }}>Pilotage de l'équipe</h1>
-    <p style={{ margin: "0 0 6px" }}><a href="/organisation" style={{ color: "#f05a28", fontWeight: 700 }}>← Organisation NeoDrive</a></p>
+    <p style={{ margin: "0 0 6px" }}><a href="/organisation" style={{ color: "#f05a28", fontWeight: 700 }}>← Organisation NeoDrive</a> · <a href="/equipe-paie" style={{ color: "#f05a28", fontWeight: 700 }}>🧾 Paie, dossiers et factures</a></p>
     <p style={{ color: "#666", margin: 0 }}>Lien de connexion à donner : <b>{access}</b> (prospects) ou <b>{access.replace(/\/equipe$/, "/organisation")}</b> (toutes les sections cochées) · {free} prospects non attribués · rapport automatique par e-mail chaque soir à 19 h 40.</p>
     {msg ? <p style={{ fontWeight: 600 }}>{msg}</p> : null}
     {newCode ? <div style={{ ...box, borderColor: "#f05a28", background: "#fff7f3" }}>
