@@ -393,9 +393,9 @@ France
 
 Marque commerciale : Neodrive
 
-Email : sales@easyNeodrive.com
+Email : contact.neodrivefrance@gmail.com
 
-Site internet : easyNeodrive.com
+Site internet : www.easydrive-auto.fr
 
 2. OBJET
 
@@ -463,20 +463,13 @@ Le véhicule peut être :
 - livré à domicile ;
 - remis à un transporteur mandaté par le client.
 
-Les délais de livraison sont communiqués à titre indicatif.
+La date ou le délai de livraison est indiqué au client lors de la commande. À défaut d'indication, le véhicule est livré au plus tard 30 jours après la conclusion du contrat, conformément à l'article L. 216-1 du Code de la consommation.
 
-Le vendeur ne pourra être tenu responsable d'un retard résultant notamment :
-
-- du transport ;
-- des formalités administratives ;
-- d'événements indépendants de sa volonté ;
-- d'un cas de force majeure.
+Le jour et l'heure exacts de livraison sont fixés avec le client avant le passage du livreur ; ils peuvent être ajustés en fonction de l'organisation de la tournée. En cas de retard, le client dispose des droits prévus aux articles L. 216-6 et suivants du Code de la consommation.
 
 Lors de la réception du véhicule, le client s'engage à vérifier son état apparent.
 
-Toute anomalie visible devra être signalée immédiatement.
-
-À défaut de réserve formulée lors de la réception, le véhicule sera réputé livré conforme.
+Toute anomalie visible doit être signalée de préférence lors de la remise, sur le document de livraison, afin de faciliter son traitement. L'absence de réserve à la livraison ne prive pas le client des garanties légales dont il bénéficie.
 
 8. TRANSFERT DES RISQUES
 
@@ -507,7 +500,7 @@ Le client reconnaît :
 - avoir pris connaissance des présentes Conditions Générales de Vente ;
 - avoir reçu les informations nécessaires à son achat ;
 - avoir obtenu les réponses à ses questions ;
-- accepter les présentes conditions sans réserve.
+- accepter les présentes conditions.
 
 La validation de la commande vaut acceptation des présentes Conditions Générales de Vente.
 
@@ -722,9 +715,9 @@ Concernant les batteries, sont notamment exclus :
 - l'utilisation d'un chargeur non recommandé ;
 - les dommages résultant du non-respect des consignes figurant dans les présentes CGV ou dans le manuel utilisateur.
 
-23. PROGRAMME ASSISTANCE Neodrive
+23. DROIT DE RÉTRACTATION
 
-Pendant la période de garantie légale de conformité, Neodrive accompagne le client dans le diagnostic et le traitement des défauts susceptibles d'être couverts. Après cette période, le service après-vente, le diagnostic et les pièces détachées restent accessibles selon les tarifs et disponibilités en vigueur.
+Lorsque la vente est conclue à distance (réservation en ligne, par téléphone ou par messagerie), le client consommateur dispose d'un délai de 14 jours à compter de la réception du véhicule pour exercer son droit de rétractation, sans avoir à justifier de motif, dans les conditions prévues aux articles L. 221-18 et suivants du Code de la consommation. Les modalités et le formulaire de rétractation figurent dans les conditions générales de vente publiées sur www.easydrive-auto.fr/cgv.
 
 24. SERVICE APRÈS-VENTE Neodrive
 
@@ -780,7 +773,7 @@ Le recours à un professionnel tiers ne crée aucune obligation de prise en char
 
 28. TRANSPORT DU VÉHICULE
 
-Sauf accord écrit exceptionnel préalable, Neodrive ne prend pas en charge :
+En dehors des cas relevant de la garantie légale de conformité, et sauf accord écrit préalable, Neodrive ne prend pas en charge :
 
 - le transport du véhicule ;
 - le remorquage ;
@@ -793,7 +786,7 @@ Sauf accord écrit exceptionnel préalable, Neodrive ne prend pas en charge :
 - les pertes de revenus ;
 - les frais indirects liés à l'immobilisation du véhicule.
 
-Ces frais demeurent intégralement à la charge du client.
+Ces frais demeurent à la charge du client lorsque la garantie légale n'est pas applicable. Lorsqu'elle est applicable, la mise en conformité du véhicule est réalisée sans frais pour le client, conformément à l'article L. 217-11 du Code de la consommation.
 
 29. MAIN-D'ŒUVRE ET INTERVENTIONS
 
@@ -804,7 +797,7 @@ Neodrive privilégie la fourniture :
 - de support technique à distance ;
 - de pièces détachées.
 
-Les réparations réalisées par un garage, un réparateur ou tout autre prestataire extérieur demeurent à la charge du client sauf accord écrit préalable de Neodrive.
+En dehors de la garantie légale de conformité, les réparations réalisées par un garage, un réparateur ou tout autre prestataire extérieur demeurent à la charge du client sauf accord écrit préalable de Neodrive.
 
 Aucune facture de réparation, de diagnostic, de recherche de panne, de déplacement, de transport ou de main-d'œuvre ne pourra faire l'objet d'un remboursement sans accord écrit préalable de Neodrive.
 
@@ -838,17 +831,13 @@ Neodrive se réserve le droit de demander le retour de toute pièce avant valida
 
 Les frais de retour de la pièce vers le client demeurent à la charge du client lorsque la garantie n'est pas applicable.
 
-Le client reconnaît que l'expertise technique réalisée par Neodrive constitue la base permettant de déterminer l'éligibilité ou non à une prise en charge au titre de la garantie.
-
 31. PROGRAMME ASSISTANCE Neodrive
 
 Pendant la période de garantie légale de conformité, Neodrive accompagne le client dans le diagnostic et le traitement des défauts susceptibles d'être couverts. Après cette période, le service après-vente, le diagnostic et les pièces détachées restent accessibles selon les tarifs et disponibilités en vigueur. Cet accompagnement ne constitue pas une extension de garantie.
 
 32. RESPONSABILITÉ
 
-La responsabilité de Neodrive est strictement limitée aux obligations prévues dans les présentes Conditions Générales de Vente.
-
-Neodrive ne pourra être tenu responsable :
+Neodrive est responsable de la bonne exécution du contrat dans les conditions prévues par la loi. Sa responsabilité ne peut toutefois pas être engagée pour les dommages résultant :
 
 - d'une mauvaise utilisation du véhicule ;
 - d'un défaut d'entretien ;
@@ -883,7 +872,7 @@ Toute modification technique réalisée sans accord écrit préalable de Neodriv
 
 Les présentes Conditions Générales de Vente sont soumises au droit français.
 
-En cas de litige, les parties s'efforceront de rechercher une solution amiable avant toute procédure judiciaire.
+En cas de litige, les parties s'efforceront de rechercher une solution amiable avant toute procédure judiciaire. Le client consommateur peut recourir gratuitement à un médiateur de la consommation, dans les conditions indiquées sur www.easydrive-auto.fr/cgv.
 
 À défaut d'accord amiable, les juridictions compétentes seront celles déterminées par la réglementation française applicable.
 
@@ -895,7 +884,7 @@ Le client reconnaît :
 - avoir reçu les informations nécessaires à son achat ;
 - avoir reçu les consignes d'utilisation et d'entretien ;
 - avoir obtenu les réponses à ses questions ;
-- accepter les présentes Conditions Générales de Vente sans réserve.
+- accepter les présentes Conditions Générales de Vente.
 
 Fait à : ________
 
