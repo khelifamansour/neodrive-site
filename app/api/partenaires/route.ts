@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { crmDatabase } from "../../../lib/crm-agent";
-import { brevoReady, sendEmail, sendSms, OWNER_EMAIL } from "../../../lib/brevo";
+import { brevoReady, sendSms } from "../../../lib/brevo";
+import { applyStoredSecrets } from "../../../lib/integrations";
+import { sendPartnerWelcome } from "../../../lib/partner-followup";
 
 export const dynamic = "force-dynamic";
 const clean = (v: unknown, max = 200) => String(v ?? "").replace(/[<>]/g, "").trim().slice(0, max);
 
-/** Candidature « Devenir partenaire » : enregistrée, puis le fondateur est prévenu par e-mail et SMS. */
+/** Candidature « Devenir partenaire » : enregistrée, e-mail de bienvenue au candidat (relances J+4 / J+10 par /api/partenaires/relances), fondateur prévenu par e-mail et SMS. */
 export async function POST(req: Request) {
   const b = await req.json().catch(() => null) as Record<string, unknown> | null;
   if (!b) return NextResponse.json({ ok: false, error: "Formulaire invalide." }, { status: 400 });
@@ -18,12 +20,13 @@ export async function POST(req: Request) {
   };
   if (!row.company || !row.contact_name || row.phone.replace(/\D/g, "").length < 9) return NextResponse.json({ ok: false, error: "Indiquez au moins la société, votre nom et votre téléphone." }, { status: 400 });
   if (!b.consent) return NextResponse.json({ ok: false, error: "Merci d'accepter d'être recontacté." }, { status: 400 });
+  await applyStoredSecrets().catch(() => undefined);
   const { data, error } = await crmDatabase().from("partner_applications").insert(row).select("id").single();
   if (error) return NextResponse.json({ ok: false, error: "Enregistrement impossible, réessayez." }, { status: 502 });
   if (brevoReady()) {
     const resume = `${row.company} (${row.activity || "activité ?"}) à ${row.city || "?"} ${row.postal_code} — ${row.contact_name}, ${row.phone}${row.email ? ", " + row.email : ""}. Formule : ${row.formula}. Showroom : ${row.has_showroom ? "oui" : "non"}.`;
     try { await sendSms(process.env.OWNER_SMS_PHONE || "0689781710", `Nouvelle candidature partenaire NeoDrive : ${resume}`.slice(0, 300)); } catch (e) { console.error("[PARTENAIRE] sms", e); }
-    try { await sendEmail(OWNER_EMAIL, "Mansour", `Candidature partenaire : ${row.company} (${row.city || "?"})`, `<p>${resume}</p><p>Message : ${row.message || "—"}</p><p>Candidature n°${data?.id}</p>`); } catch (e) { console.error("[PARTENAIRE] email", e); }
+    try { await sendPartnerWelcome({ ...row, id: Number(data?.id), created_at: new Date().toISOString(), status: "Nouveau", followup: null }, { notifyOwner: true }); } catch (e) { console.error("[PARTENAIRE] suivi", e); }
   }
   return NextResponse.json({ ok: true, id: data?.id });
 }
