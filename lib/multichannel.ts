@@ -94,7 +94,7 @@ export function smsText(nom: string | null, source?: string | null) {
   void nom;
   if (/leboncoin/i.test(source || "")) {
     const W = "www.easydrive-auto.fr";
-    return `Bonjour, merci d'avoir contacté NeoDrive sur Leboncoin. Marque toulousaine de voitures sans permis électriques neuves, dès 3990 €, livrées chez vous. Catalogue : ${W}/catalogue Nos clients livrés en vidéo : ${W}/videos Réservez la Confort sans acompte : ${W}/reservation`;
+    return `Bonjour, merci d'avoir contacté NeoDrive sur Leboncoin. Marque toulousaine de voitures sans permis électriques neuves, dès 3990 €, livrées chez vous. Vos questions, 7j/7 sur WhatsApp : wa.me/33676192234 Catalogue : ${W}/catalogue Vidéos : ${W}/videos Réservez sans acompte : ${W}/reservation`;
   } // pas de prénom ; 3 SMS avec le lien catalogue (accents é/è/à autorisés : alphabet SMS standard, pas de surcoût ; éviter ê, â, î, ô, ç)
   const W = "www.easydrive-auto.fr"; // sans https:// pour tenir en 2 SMS
   return `Bonjour, merci d'avoir contacté NeoDrive, leader des prix en France de la voiture sans permis neuve, dès 3990 €. Garantie 2 ans et service après-vente national. Feuilletez notre catalogue : ${W}/catalogue Nos clients livrés en vidéo : ${W}/videos Réservez ici : ${W}/reservation`;
