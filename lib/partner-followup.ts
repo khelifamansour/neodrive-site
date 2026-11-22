@@ -11,7 +11,7 @@ import { OWNER_EMAIL, SITE, sendEmail } from "./brevo";
 export type PartnerFollowup = { welcome_at?: string; relance1_at?: string; relance2_at?: string; unsubscribed_at?: string; legacy?: boolean; manual_at?: string; no_relances?: boolean };
 export type PartnerApplication = { id: number; created_at: string; company: string | null; contact_name: string | null; phone: string | null; email: string | null; city: string | null; postal_code: string | null; activity: string | null; formula: string | null; has_showroom: boolean | null; message: string | null; status: string | null; followup: PartnerFollowup | null };
 
-export const CATALOGUE_URL = `${SITE}/catalogue-partenaires-neodrive.pdf`;
+export const CATALOGUE_URL = `${SITE}/catalogue-pro`;
 const DAY = 86_400_000;
 const validEmail = (e: string | null | undefined) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e || "").trim());
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
