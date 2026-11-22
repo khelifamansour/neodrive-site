@@ -45,4 +45,4 @@ export async function endSessions(memberId: number) {
   await crmDatabase().from("team_sessions").update({ ended_at: new Date().toISOString() }).eq("member_id", memberId).is("ended_at", null);
 }
 
-export const ACTION_FR: Record<string, string> = { login: "Connexion", logout: "Déconnexion", view_lead: "Fiche ouverte", call: "Appel", call_result: "Compte-rendu d'appel", whatsapp: "Message WhatsApp", report: "Rapport du jour", blocked: "Blocage (trop de fiches)", login_failed: "Code refusé", idea_add: "Idée proposée", content_download: "Contenu téléchargé" };
+export const ACTION_FR: Record<string, string> = { login: "Connexion", logout: "Déconnexion", view_lead: "Fiche ouverte", call: "Appel", call_result: "Compte-rendu d'appel", whatsapp: "Message WhatsApp", report: "Rapport du jour", blocked: "Blocage (trop de fiches)", login_failed: "Code refusé", idea_add: "Idée proposée", content_download: "Contenu téléchargé", academy_quiz: "QCM Academy (essai)", academy_module_passed: "Module Academy validé" };

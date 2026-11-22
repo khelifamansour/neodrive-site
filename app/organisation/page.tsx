@@ -19,7 +19,7 @@ const TILES: Tile[] = [
   { href: "/clients", icon: "⭐", title: "Clients et avis", text: "Prendre des nouvelles des clients livrés et leur demander un avis Google.", section: "clients" },
   { href: "/stock", icon: "🔧", title: "Ancien stock", text: "Les voitures d’occasion à remettre en état et à vendre.", section: "stock" },
   { href: "/idees", icon: "💡", title: "Idées et développement", text: "Proposez une idée pour améliorer NeoDrive, suivez son avancement.", section: "any" },
-  { href: "/academy", icon: "🎓", title: "NeoDrive Academy", text: "La formation de l’équipe (bientôt disponible).", section: "academy" },
+  { href: "/academy", icon: "🎓", title: "NeoDrive Academy", text: "La formation closer : 10 modules, QCM et argumentaire.", section: "academy" },
   { href: "/equipe-admin", icon: "👥", title: "Équipe et accès", text: "Créer les accès, choisir les sections, couper un accès.", section: "owner" },
   { href: "/livreur-admin", icon: "🪪", title: "Prestataires", text: "Inviter un prestataire (livraison, préparation), vérifier ses documents et son contrat.", section: "owner" },
   { href: "/pilotage", icon: "📊", title: "Pilotage financier", text: "Chiffre d’affaires, marges et trésorerie.", section: "owner" },
