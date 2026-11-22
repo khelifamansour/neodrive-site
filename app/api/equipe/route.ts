@@ -104,7 +104,9 @@ export async function POST(req: Request) {
 
   if (b.action === "call_result") {
     const result = String(b.result || ""); if (!(CALL_RESULTS as readonly string[]).includes(result)) return NextResponse.json({ ok: false, error: "Choisissez un résultat." }, { status: 400 });
-    const note = clean(b.note, 1500); const next = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(b.next || "")) ? new Date(String(b.next)).toISOString() : null;
+    const note = clean(b.note, 1500);
+    if (!["Injoignable", "Messagerie", "Mauvais numéro"].includes(result) && note.trim().length < 30) return NextResponse.json({ ok: false, error: "Écrivez un compte rendu de l'appel (au moins 30 caractères) : ce que le client a dit, son besoin, la suite prévue." }, { status: 400 });
+    const next = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(b.next || "")) ? new Date(String(b.next)).toISOString() : null;
     const stamp = now.toLocaleString("fr-FR", { timeZone: "Europe/Paris", dateStyle: "short", timeStyle: "short" });
     const line = `[${stamp}] ${member.name} – ${result}${note ? ` : ${note}` : ""}${next ? ` (rappel ${new Date(next).toLocaleString("fr-FR", { timeZone: "Europe/Paris", dateStyle: "short", timeStyle: "short" })})` : ""}`;
     await db.from("leads").update({ historique: `${lead.historique ? lead.historique + "\n" : ""}${line}`, statut: STATUT[result] || (lead.statut === "Nouveau" ? "Contacté" : lead.statut), phase: result, operateur: member.name, last_contact_at: now.toISOString(), next_followup_at: next, updated_at: now.toISOString() }).eq("id", id);

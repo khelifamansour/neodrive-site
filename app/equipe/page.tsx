@@ -130,7 +130,7 @@ export default function Equipe() {
         <div style={box}>
           <b>Compte-rendu de l'appel</b>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "8px 0" }}>{me?.results.map(r => <button key={r} onClick={() => setRes(r)} style={{ ...btn(res === r ? C.brand : "#eee"), color: res === r ? "#fff" : C.ink, fontWeight: 600 }}>{r}</button>)}</div>
-          <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Ce que le client a dit, ses questions, son budget, sa ville de livraison…" style={input} />
+          <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Compte rendu obligatoire (30 caractères minimum) : ce que le client a dit, ses questions, son budget, sa ville, la suite prévue…" style={input} />
           <label style={{ display: "block", margin: "8px 0 4px", color: C.mute, fontSize: 13 }}>Prochain rappel (facultatif)</label>
           <input type="datetime-local" value={next} onChange={e => setNext(e.target.value)} style={{ ...input, maxWidth: 260 }} />
           <div><button onClick={saveCall} disabled={busy === "res"} style={{ ...btn(C.brand), marginTop: 10 }}>Enregistrer le compte-rendu</button></div>

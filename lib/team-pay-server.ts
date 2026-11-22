@@ -11,6 +11,8 @@ import { INVOICE_DESCRIPTION, VAT_MENTION, assignItems, cleanTerms, computeMonth
 export const TEAM_BUCKET = "team-docs";
 /** Résultats d'appel qui ne sont pas un vrai échange avec le client. */
 const NOT_EXCHANGE = new Set(["Injoignable", "Messagerie", "Mauvais numéro"]);
+/** Un appel ne compte comme vrai échange (vente) que s'il est accompagné d'un compte rendu écrit d'au moins 30 caractères. */
+export const MIN_NOTE = 30;
 
 export type InvoiceRow = { id: number; member_id: number; month: string; status: InvoiceStatus; number: string | null; statement: Statement | null; total: number | null; adjustments: Adjustment[]; pdf_path: string | null; signature_path: string | null; sent_at: string | null; paid_at: string | null; resend: boolean };
 export type Excluded = { reservation_id: number; client: string; city: string; date: string; reason: string };
@@ -31,7 +33,7 @@ export async function payItems(db: SupabaseClient, memberId: number, t: PayTerms
   for (const a of acts || []) {
     const lead = a.lead_id == null ? null : Number(a.lead_id);
     if (a.action === "callback_assigned" && lead) leadSet.add(lead); // appel entrant confié au membre
-    if ((a.action === "whatsapp" || (a.action === "call_result" && !NOT_EXCHANGE.has(String(a.detail?.result || "")))) && lead) exchanges.set(lead, [...(exchanges.get(lead) || []), a.at]);
+    if ((a.action === "whatsapp" || (a.action === "call_result" && !NOT_EXCHANGE.has(String(a.detail?.result || "")) && String(a.detail?.note || "").trim().length >= MIN_NOTE)) && lead) exchanges.set(lead, [...(exchanges.get(lead) || []), a.at]);
     if (a.action === "reservation_confirmed") { const rid = Number(a.detail?.reservation_id); if (rid && (!confirmed.has(rid) || Date.parse(a.at) < Date.parse(confirmed.get(rid)!))) confirmed.set(rid, a.at); }
   }
   const cols = "id,created_at,updated_at,prenom,ville,quantite,statut,lead_id,livre_at,paiement_confirme_at,paiement_en_attente";

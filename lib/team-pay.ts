@@ -12,7 +12,7 @@ export const CONFIRM_QUESTIONS = [
   { key: "paiement_pret", q: "Le paiement est prêt (banque prévenue pour le virement) ?", short: "paiement" },
 ] as const;
 
-export type PayTerms = { start_date: string; guarantee_eur: number; guarantee_until: string | null; fixed_eur: number; prime_vente_eur: number; prime_confirmation_eur: number };
+export type PayTerms = { start_date: string; guarantee_eur: number; guarantee_until: string | null; fixed_eur: number; prime_vente_eur: number; prime_confirmation_eur: number; vente_palier: number; prime_vente_palier_eur: number };
 export type PayItem = { reservation_id: number; kind: "vente" | "confirmation"; client: string; city: string; date: string; qty: number; carried?: boolean };
 export type Adjustment = { label: string; amount: number; at?: string };
 export type Line = { label: string; amount: number | null; kind: "base" | "prime" | "info" | "adjust" };
@@ -42,7 +42,7 @@ export function cleanTerms(t: unknown): PayTerms | null {
   const x = (t && typeof t === "object" ? t : null) as Record<string, unknown> | null;
   if (!x || !/^\d{4}-\d{2}-\d{2}$/.test(String(x.start_date || ""))) return null;
   const n = (v: unknown) => Math.max(0, Number(v) || 0);
-  return { start_date: String(x.start_date), guarantee_eur: n(x.guarantee_eur), guarantee_until: /^\d{4}-\d{2}-\d{2}$/.test(String(x.guarantee_until || "")) ? String(x.guarantee_until) : null, fixed_eur: n(x.fixed_eur), prime_vente_eur: n(x.prime_vente_eur), prime_confirmation_eur: n(x.prime_confirmation_eur) };
+  return { start_date: String(x.start_date), guarantee_eur: n(x.guarantee_eur), guarantee_until: /^\d{4}-\d{2}-\d{2}$/.test(String(x.guarantee_until || "")) ? String(x.guarantee_until) : null, fixed_eur: n(x.fixed_eur), prime_vente_eur: n(x.prime_vente_eur), prime_confirmation_eur: n(x.prime_confirmation_eur), vente_palier: n(x.vente_palier), prime_vente_palier_eur: n(x.prime_vente_palier_eur) };
 }
 
 /** Mois civils depuis le début du contrat jusqu'au mois `upTo` inclus (« YYYY-MM »). */
@@ -52,7 +52,19 @@ export function monthsSince(t: PayTerms, upTo: string) {
   return out;
 }
 
-const primeOf = (t: PayTerms, it: PayItem) => (it.kind === "vente" ? t.prime_vente_eur : t.prime_confirmation_eur) * Math.max(1, it.qty || 1);
+/** Primes du mois, dans l'ordre chronologique : ventes 1 à `vente_palier` à `prime_vente_eur`, au-delà à `prime_vente_palier_eur` (si défini). */
+function primesOf(t: PayTerms, items: PayItem[]) {
+  const m = new Map<PayItem, number>(); let n = 0;
+  for (const it of items) {
+    const q = Math.max(1, it.qty || 1);
+    if (it.kind !== "vente") { m.set(it, t.prime_confirmation_eur * q); continue; }
+    let amt = 0;
+    for (let i = 0; i < q; i++) { n++; amt += t.vente_palier > 0 && t.prime_vente_palier_eur > 0 && n > t.vente_palier ? t.prime_vente_palier_eur : t.prime_vente_eur; }
+    m.set(it, amt);
+  }
+  return m;
+}
+const venteTxt = (t: PayTerms) => t.vente_palier > 0 && t.prime_vente_palier_eur > 0 ? `${eur(t.prime_vente_eur)} par vente de la 1re à la ${t.vente_palier}e du mois, puis ${eur(t.prime_vente_palier_eur)} à partir de la ${t.vente_palier + 1}e` : `${eur(t.prime_vente_eur)} par vente`;
 const itemLabel = (it: PayItem) => `${it.kind === "vente" ? "Vente" : "Confirmation"} – ${it.client || "Client"}${it.city ? `, ${it.city}` : ""}, livrée le ${frDate(it.date)}${it.qty > 1 ? ` (${it.qty} véhicules)` : ""}${it.carried ? " (rattrapage : livrée et payée après la facture du mois)" : ""}`;
 
 /** Relevé d'un mois civil. `items` = ventes et confirmations déjà attribuées à ce mois. */
@@ -68,6 +80,7 @@ export function computeMonth(t: PayTerms, month: string, items: PayItem[], adjus
   const rDays = rFrom <= last ? daysBetween(rFrom, last) : 0;
   const eff = (it: PayItem) => (it.date >= first && it.date <= last ? it.date : first);
   const sorted = [...items].sort((a, b) => a.date.localeCompare(b.date) || a.reservation_id - b.reservation_id);
+  const P = primesOf(t, sorted); const primeOf = (_t: PayTerms, it: PayItem) => P.get(it) || 0;
   const gItems = gDays ? sorted.filter(it => gu && eff(it) <= gu) : [];
   const rItems = sorted.filter(it => !gItems.includes(it));
   const lines: Line[] = []; const explain: string[] = [];
@@ -93,7 +106,7 @@ export function computeMonth(t: PayTerms, month: string, items: PayItem[], adjus
   }
   if (rDays) {
     const fixe = r2(t.fixed_eur * rDays / N);
-    explain.push(`Du ${frDate(rFrom)} au ${frDate(last)} (${rDays} jour${rDays > 1 ? "s" : ""} sur ${N}) : fixe ${eur(t.fixed_eur)} × ${rDays}/${N} = ${eur(fixe)}, + ${eur(t.prime_vente_eur)} par vente et ${eur(t.prime_confirmation_eur)} par confirmation.`);
+    explain.push(`Du ${frDate(rFrom)} au ${frDate(last)} (${rDays} jour${rDays > 1 ? "s" : ""} sur ${N}) : fixe ${eur(t.fixed_eur)} × ${rDays}/${N} = ${eur(fixe)}, + ${venteTxt(t)}, et ${eur(t.prime_confirmation_eur)} par confirmation.`);
     lines.push({ label: rDays === N ? `Fixe mensuel` : fixeTxt(rFrom, last, rDays), amount: fixe, kind: "base" });
     for (const it of rItems) lines.push({ label: itemLabel(it), amount: r2(primeOf(t, it)), kind: "prime" });
   }
