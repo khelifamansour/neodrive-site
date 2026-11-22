@@ -22,7 +22,7 @@ const photos: Photo[] = [
 const specs = [
   ["Moteur", "3 kW électrique"],
   ["Vitesse", "45 km/h"],
-  ["Autonomie indicative", "50 à 70 km"],
+  ["Autonomie", "Jusqu’à 70 km"],
   ["Recharge", "220 V · env. 6 h"],
   ["Places", "2"],
   ["Dimensions", "2,50 × 1,30 × 1,65 m"],

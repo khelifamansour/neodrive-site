@@ -6,7 +6,7 @@ import { VEHICLES, REGISTRATION_PRICE } from "../../lib/neodrive-pricing";
 export const metadata: Metadata = {
   title: "Conditions générales de vente (CGV) | NeoDrive",
   description:
-    "Conditions générales de vente NeoDrive (MK HOLDING) : commande, prix, paiement à la livraison, livraison en France, droit de rétractation, garanties, SAV et carte grise.",
+    "Conditions générales de vente NeoDrive (MK HOLDING) : commande, prix, paiement, livraison en France, droit de rétractation, garanties, SAV et carte grise.",
   alternates: { canonical: `${COMPANY.websiteUrl}/cgv` },
 };
 
@@ -157,7 +157,8 @@ export default function CgvPage() {
       </ol>
       <p>
         <strong>Aucun paiement n’est demandé lors de la réservation</strong> et aucun acompte n’est encaissé. Votre
-        réservation est une demande ferme de votre part, transmise à NeoDrive.
+        réservation est une demande ferme de votre part, transmise à NeoDrive. Pour les modèles fabriqués sur commande,
+        le paiement intervient à la confirmation de la commande (article 6).
       </p>
       <h3>5.2 Confirmation de la commande</h3>
       <p>
@@ -179,8 +180,10 @@ export default function CgvPage() {
 
       <h2 id="paiement">6. Paiement</h2>
       <p>
-        <strong>Vous payez le prix total le jour de la remise du véhicule</strong>, après l’avoir vu et inspecté avec
-        notre intervenant. Le paiement se fait par virement bancaire (y compris virement instantané), aux coordonnées
+        <strong>Modèles en stock (NeoDrive Confort) : vous payez le prix total le jour de la remise du véhicule</strong>,
+        après l’avoir vu et inspecté avec notre intervenant. <strong>Modèles fabriqués sur commande (NeoDrive Essentielle
+        et Confort Plus) : le prix est payable à la commande</strong>, la fabrication étant lancée à réception du paiement ;
+        le délai de fabrication indicatif (6 à 8 mois) vous est confirmé avant tout paiement. Le paiement se fait par virement bancaire (y compris virement instantané), aux coordonnées
         bancaires de MK HOLDING figurant sur votre bon de commande, ou par tout autre moyen accepté par NeoDrive et
         indiqué dans la confirmation de commande. Indiquez votre nom et prénom dans le motif du virement.
       </p>
