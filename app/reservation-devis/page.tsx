@@ -296,13 +296,13 @@ export default function ReservationDevis(){
        {promo?<div><span>Remise code {promo.code}</span><strong>- {euro(promo.discount)}</strong></div>:null}
       </div>
       <div className={s.quoteTotal}><span>Total TTC{total===null?" à confirmer":""}<small>Aucun acompte · payable à la livraison</small></span><strong>{total===null?"Sur devis":euro(total)}</strong></div>
-      <details className={s.terms}><summary>Conditions essentielles</summary><p>Aucun acompte demandé. Paiement à la livraison selon les modalités convenues. Délai et disponibilité à confirmer par NeoDrive. Le tarif de livraison est calculé pour le code postal renseigné selon notre barème ; tout changement du montant nécessitera votre accord. Les conditions générales de vente et les informations légales applicables doivent être remises au client avant conclusion du contrat.</p></details>
+      <details className={s.terms}><summary>Conditions essentielles</summary><p>Aucun acompte demandé. Paiement à la livraison selon les modalités convenues. Délai et disponibilité à confirmer par NeoDrive. Le tarif de livraison est calculé pour le code postal renseigné selon notre barème ; tout changement du montant nécessitera votre accord. Droit de rétractation de 14 jours après réception du véhicule. Consultez nos <a href="/cgv" target="_blank" rel="noreferrer">conditions générales de vente</a> complètes.</p></details>
       <div className={s.quoteSign}><small>Accord du client</small><strong className={signed?s.signature:""}>{signed||"Votre signature apparaîtra ici"}</strong></div>
      </article>
 
      <label className={s.field}><span>Code promo<em> · facultatif</em></span><span className={s.inputWrap}><input value={promoInput} onChange={e=>{setPromoInput(e.target.value.toUpperCase());setPromoMsg("");}} onBlur={e=>checkPromo(e.target.value)} placeholder="Ex. NEOJULIE27" autoComplete="off"/>{promo?<i className={s.ok}>{Icon.check}</i>:null}</span>{promoMsg?<small style={{color:promo?"#15803d":"#b91c1c",fontWeight:700}}>{promoMsg}</small>:null}</label>
      <label className={`${s.field} ${s.signField}`}><span>{Icon.pen} Signez en tapant votre nom et prénom</span><span className={s.inputWrap}><input value={signed} onChange={e=>setSigned(e.target.value)} placeholder="Ex. Marie Dupont" autoComplete="name" required/></span></label>
-     <label className={s.check}><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/><span>J’ai vérifié les informations du devis et je souhaite réserver ce véhicule. Je ne paie rien aujourd’hui.</span></label>
+     <label className={s.check}><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/><span>J’ai vérifié les informations du devis, j’ai lu et j’accepte les <a href="/cgv" target="_blank" rel="noreferrer">conditions générales de vente</a>, et je souhaite réserver ce véhicule. Je ne paie rien aujourd’hui.</span></label>
 
      <div className={s.actions}>
       <button type="submit" disabled={!valid||sending} className={s.btnPrimary}>{sending?"Envoi en cours…":<>{Icon.lock} Réserver ma NeoDrive</>}</button>

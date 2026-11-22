@@ -92,7 +92,8 @@ export function confirmationTexts(r: Pick<Reservation, "prenom" | "nom" | "model
 <p>${bonjour},</p>${lines.map(l => `<p>${l}</p>`).join("")}
 ${recap.length ? `<p style="background:#f4f4f5;border-radius:10px;padding:12px 14px">${recap.join("<br>")}<br>Paiement uniquement à la livraison, aucun acompte.</p>` : `<p>Paiement uniquement à la livraison, aucun acompte.</p>`}
 <p>En attendant, préparez sereinement votre livraison : <a href="${SITE}/preparer-ma-livraison">${SITE.replace("https://", "")}/preparer-ma-livraison</a></p>
-<p>Merci pour votre confiance,<br>Mansour<br>NeoDrive</p></div>`;
+<p>Merci pour votre confiance,<br>Mansour<br>NeoDrive</p>
+<p style="font-size:12px;color:#666">Nos conditions générales de vente : <a href="${SITE}/cgv">${SITE.replace("https://", "")}/cgv</a></p></div>`;
   const subject = ess ? `Votre réservation NeoDrive Essentielle : livrée en 2 à 3 semaines avec la Confort ?` : onOrder ? `Votre réservation NeoDrive ${m} : la Confort disponible en 2 à 3 semaines` : `Commande NeoDrive ${m} bien reçue ✅`;
   const note = onOrder ? (ess ? "Essentielle : 6 à 8 mois annoncés, arguments Confort envoyés (+1 000 €, équipements, revente) ; " : "Confort Plus sur commande, arguments Confort envoyés (-1 000 €, délai) ; ") + "un conseiller rappelle sous 48 h (proposition Confort)" : "commande bien reçue, mise en production, délai 2 à 3 semaines ; on revient vers le client quand le véhicule est prêt";
   return { sms, whatsapp, html, subject, note, onOrder };
