@@ -54,7 +54,7 @@ export const CONFORT_EXTRAS = [
   "les pare-soleil",
   "les enjoliveurs de roues",
 ];
-export const PLUS_ARGS = "La Confort est déjà très bien équipée : chauffage, caméra et radar de recul, assistance en côte, alerte au siège, radio, Bluetooth et prise USB, toit ouvrant avec ventilateurs, pare-soleil et enjoliveurs. Vous avez le confort au quotidien, vous économisez 1 000 € et vous roulez dans quelques semaines au lieu d'attendre plusieurs mois.";
+export const PLUS_ARGS = "La Confort est déjà très bien équipée : chauffage, caméra et radar de recul, assistance en côte, alerte au siège, radio, Bluetooth et prise USB, toit ouvrant avec ventilateurs, pare-soleil et enjoliveurs. Vous avez le confort au quotidien, vous économisez 1 000 € et vous roulez dans quelques semaines au lieu d'attendre 6 à 8 mois.";
 export const UPGRADE_ARGS = "Elle est beaucoup plus confortable au quotidien, elle sera aussi plus facile à revendre le jour où vous voudrez changer, et son prix reste déjà très bas pour une voiture aussi équipée.";
 
 /** Textes envoyés au client (SMS sans émoji ni caractère hors GSM, pour tenir en 2 SMS). */
@@ -63,7 +63,7 @@ export function confirmationTexts(r: Pick<Reservation, "prenom" | "nom" | "model
   const onOrder = isOnOrder(r.modele);
   const ess = /essentiel/i.test(r.modele || "");
   const smsEss = `${bonjour}, merci pour votre réservation NeoDrive Essentielle. Ce modèle est fabriqué sur commande : 6 à 8 mois. La Confort est livrée en 2 à 3 semaines, pour 1 000 € de plus : chauffage, caméra et radar de recul, assistance en montée, alerte au siège, radio Bluetooth USB, toit ouvrant avec ventilateurs, pare-soleil, enjoliveurs. Plus confortable, plus facile à revendre, et un prix déjà très bas. Un conseiller vous appelle sous 48 h. Paiement à la livraison. NeoDrive`;
-  const smsPlus = `${bonjour}, merci pour votre réservation NeoDrive Confort Plus. Ce modèle est fabriqué sur commande, avec un délai de plusieurs mois. La Confort, elle, est livrée en 2 à 3 semaines et coute 1 000 € de moins : chauffage, caméra et radar de recul, assistance en montée, radio Bluetooth USB, toit ouvrant avec ventilateurs. Un conseiller vous appelle sous 48 h. Paiement à la livraison. NeoDrive`;
+  const smsPlus = `${bonjour}, merci pour votre réservation NeoDrive Confort Plus. Ce modèle est fabriqué sur commande : 6 à 8 mois. La Confort, elle, est livrée en 2 à 3 semaines et coute 1 000 € de moins : chauffage, caméra et radar de recul, assistance en montée, radio Bluetooth USB, toit ouvrant avec ventilateurs. Un conseiller vous appelle sous 48 h. Paiement à la livraison. NeoDrive`;
   const smsConfort = `${bonjour}, votre commande NeoDrive ${m} est bien reçue. Nous la mettons en production : délai approximatif de 2 à 3 semaines. Nous revenons vers vous dès que votre véhicule est prêt pour fixer la livraison. Paiement à la livraison. NeoDrive`;
   const sms0 = ess ? smsEss : onOrder ? smsPlus : smsConfort;
   // 2 SMS maximum (306 caractères GSM) : sans le prénom si besoin.
@@ -71,7 +71,7 @@ export function confirmationTexts(r: Pick<Reservation, "prenom" | "nom" | "model
   const whatsapp = ess
     ? `${bonjour}, merci pour votre réservation NeoDrive Essentielle ✅ Elle est bien enregistrée.\n\nL'Essentielle est fabriquée sur commande, avec un délai de 6 à 8 mois. La NeoDrive Confort, elle, peut vous être livrée en 2 à 3 semaines, pour seulement 1 000 € de plus (4 990 € au lieu de 3 990 €).\n\nVoici tout ce qu'elle a en plus :\n${CONFORT_EXTRAS.map(x => "- " + x).join("\n")}\n\n${UPGRADE_ARGS}\n\nUn conseiller vous appelle sous 48 h pour en parler.\nPaiement uniquement à la livraison.\nMansour - NeoDrive`
     : onOrder
-    ? `${bonjour}, merci pour votre réservation NeoDrive Confort Plus ✅ Elle est bien enregistrée.\n\nLa Confort Plus est fabriquée sur commande, avec un délai de plusieurs mois. La NeoDrive Confort, elle, peut vous être livrée en 2 à 3 semaines, et elle coûte 1 000 € de moins (4 990 € au lieu de 5 990 €).\n\n${PLUS_ARGS}\n\nUn conseiller vous appelle sous 48 h pour en parler.\nPaiement uniquement à la livraison.\nMansour - NeoDrive`
+    ? `${bonjour}, merci pour votre réservation NeoDrive Confort Plus ✅ Elle est bien enregistrée.\n\nLa Confort Plus est fabriquée sur commande, avec un délai de 6 à 8 mois. Actuellement, seule la Confort est disponible. La NeoDrive Confort, elle, peut vous être livrée en 2 à 3 semaines, et elle coûte 1 000 € de moins (4 990 € au lieu de 5 990 €).\n\n${PLUS_ARGS}\n\nUn conseiller vous appelle sous 48 h pour en parler.\nPaiement uniquement à la livraison.\nMansour - NeoDrive`
     : `${bonjour}, votre commande NeoDrive ${m} est bien reçue ✅\n\nNous la mettons en production : le délai est d'environ 2 à 3 semaines. Nous revenons vers vous dès que votre véhicule est prêt pour fixer ensemble la livraison.\n\nPaiement uniquement à la livraison.\nMansour - NeoDrive`;
   const lines = ess
     ? [`Merci pour votre réservation NeoDrive <b>Essentielle</b> ✅ Elle est bien enregistrée.`,
@@ -81,7 +81,7 @@ export function confirmationTexts(r: Pick<Reservation, "prenom" | "nom" | "model
        `Un conseiller vous appelle <b>sous 48 h</b> pour en parler.`]
     : onOrder
     ? [`Merci pour votre réservation NeoDrive <b>Confort Plus</b> ✅ Elle est bien enregistrée.`,
-       `La Confort Plus est <b>fabriquée sur commande</b>, avec un délai de <b>plusieurs mois</b>. La <b>NeoDrive Confort</b>, elle, peut vous être <b>livrée en 2 à 3 semaines</b>, et elle coûte <b>1 000 € de moins</b> (4 990 € au lieu de 5 990 €).`,
+       `La Confort Plus est <b>fabriquée sur commande</b>, avec un délai de <b>6 à 8 mois</b>. Actuellement, <b>seule la Confort est disponible</b>. La <b>NeoDrive Confort</b>, elle, peut vous être <b>livrée en 2 à 3 semaines</b>, et elle coûte <b>1 000 € de moins</b> (4 990 € au lieu de 5 990 €).`,
        PLUS_ARGS,
        `Un conseiller vous appelle <b>sous 48 h</b> pour en parler.`]
     : [`Votre commande NeoDrive <b>${m}</b> est bien reçue ✅`,
