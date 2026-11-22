@@ -179,6 +179,8 @@ export function partsPdf(s: Ship, d: DocSet) {
 
 /** Un jeu de documents par conteneur : la facture usine est découpée conteneur par conteneur (part i/n). */
 export function splitByContainer(s: Ship, d: DocSet): DocSet[] {
+  // Facture unique pour tout le dossier (un seul dédouanement pour plusieurs conteneurs) : pas de découpage.
+  if (s.single_invoice) return [{ ...d, container: undefined }];
   const conts = containersOf(s, d);
   if (conts.length <= 1) return [{ ...d, container: conts[0]?.no }];
   return conts.map((c, i) => {
