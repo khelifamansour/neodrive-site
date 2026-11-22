@@ -185,6 +185,8 @@ export function splitByContainer(s: Ship, d: DocSet): DocSet[] {
     const veh = d.veh.filter(v => v.container === c.no), lines = d.lines.filter(l => l.container === c.no);
     const amt = veh.length * d.unit_price + lines.reduce((t, l) => t + l.qty * l.price, 0);
     const part = `part ${i + 1}/${conts.length} – container ${c.no}: ${veh.length} vehicles${lines.length ? ` + ${lines.reduce((t, l) => t + l.qty, 0)} spare parts` : ""} = USD ${usd(amt)}`;
+    // Facture usine propre au conteneur : elle remplace celle du dossier pour ce conteneur.
+    if (c.invoice_no) return { ...d, veh, lines, container: c.no, invoice_no: c.invoice_no, invoice_date: c.invoice_date || d.invoice_date, invoice_part: c.invoice_part || null };
     return { ...d, veh, lines, container: c.no, invoice_part: d.invoice_part ? `${d.invoice_part} ; ${part}` : part };
   }).filter(x => x.veh.length || x.lines.length);
 }

@@ -48,7 +48,8 @@ export function vinValid(vin: string): boolean {
 /** Transitaire selon le port : Fos-sur-Mer ou Le Havre. */
 export const portKey = (port: unknown) => /fos/i.test(String(port || "")) ? "Fos-sur-Mer" : "Le Havre";
 
-export type ContainerInfo = { no: string; seal?: string; net?: number; gross?: number; cbm?: number };
+/** `invoice_*` : facture usine propre à ce conteneur (quand les conteneurs d'un même B/L relèvent de factures différentes). */
+export type ContainerInfo = { no: string; seal?: string; net?: number; gross?: number; cbm?: number; invoice_no?: string; invoice_date?: string; invoice_part?: string };
 /** Ligne hors véhicule (pièce détachée, accessoire). `invoice*` : si la ligne vient d'une autre facture usine que les véhicules du dossier. */
 export type ExtraLine = { desc: string; zh?: string; qty: number; price: number; container?: string; net?: number; gross?: number; cbm?: number; hs?: string; invoice?: string; invoice_date?: string; invoice_part?: string };
 
