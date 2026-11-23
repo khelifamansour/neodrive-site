@@ -72,15 +72,7 @@ export default function Financement(){
    const simulation={modele:VEHICLES[model].label,prix_vehicule:VEHICLES[model].price,carte_grise:REGISTRATION_PRICE,livraison:pickup?"retrait sur place":deliveryKnown?deliveryPrice:"sur devis",code_postal:postal,total_projet:total,apport,montant_finance:financed,duree_mois:months,mensualite_estimee:Number(monthly.toFixed(2)),taeg_indicatif:FINANCE.taeg};
    const done=await fetch("/api/financement/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({folder:init.folder,applicant:{...p,code_postal:postal},simulation,consent})}).then(x=>x.json());
    if(!done.ok)throw new Error(done.error||"Envoi impossible");
-   // Notification e-mail NeoDrive (liens privés valables 7 jours)
-   const mail=new FormData();
-   mail.append("_subject",`Dossier financement ${done.ref} — ${p.prenom} ${p.nom}`);
-   mail.append("reference",done.ref);
-   Object.entries(p).forEach(([k,v])=>mail.append(k,v));
-   mail.append("code_postal",postal);
-   Object.entries(simulation).forEach(([k,v])=>mail.append(k,String(v)));
-   (done.links as {label:string;url:string}[]).forEach(l=>mail.append(`document · ${l.label}`,l.url));
-   await fetch("https://formspree.io/f/xjgjrqqg",{method:"POST",body:mail,headers:{Accept:"application/json"}}).catch(()=>null);
+   // Le serveur envoie le dossier par e-mail à NeoDrive (et au conseiller financement).
    setDoneRef(done.ref);
   }catch(e){setError(e instanceof Error?e.message:"Erreur d’envoi");}
   finally{setSending(false);setProgress("");}
@@ -90,7 +82,7 @@ export default function Financement(){
   return <main className={r.page}><section className={r.successCard}>
    <div className={r.successIcon}><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></div>
    <h1>Dossier reçu, merci {p.prenom}&nbsp;!</h1>
-   <p>Votre demande de financement <b>{doneRef}</b> pour une <b>{VEHICLES[model].label}</b> a bien été transmise avec vos justificatifs. Un conseiller NeoDrive vérifie votre dossier puis le présente à notre partenaire financier. Vous serez recontacté rapidement.</p>
+   <p>Votre demande de financement <b>{doneRef}</b> pour une <b>{VEHICLES[model].label}</b> a bien été transmise avec vos justificatifs. Un conseiller NeoDrive vérifie votre dossier puis le transmet à un conseiller financement. Vous serez recontacté rapidement.</p>
    <div className={r.successTotal}><span>Votre simulation</span><strong>{eur2(monthly)} / mois</strong><small>{months} mois · montant financé {eur0(financed)}</small></div>
    <div className={r.successActions}><a className={r.btnWhatsapp} href={WHATSAPP} target="_blank" rel="noreferrer">Une question ? WhatsApp</a><a className={r.btnGhost} href="/reservation-devis">Voir la réservation</a></div>
   </section></main>;
@@ -102,7 +94,7 @@ export default function Financement(){
    <div className={r.heroCopy}>
     <span className={r.kicker}><i/> Financement · réponse personnalisée</span>
     <h1>Votre NeoDrive<br/><span>dès {lowest} €/mois<sup>*</sup></span></h1>
-    <p>Simulez vos mensualités en 30 secondes, puis déposez votre dossier en ligne&nbsp;: pièce d’identité, justificatifs, c’est tout. <b>Nous nous occupons du reste</b> avec notre partenaire financier.</p>
+    <p>Simulez vos mensualités en 30 secondes, puis déposez votre dossier en ligne&nbsp;: pièce d’identité, justificatifs, c’est tout. <b>Nous nous occupons du reste</b> : votre dossier est transmis à un conseiller financement.</p>
     <div className={r.heroCtas}>
      <a href="#simulateur" className={r.btnPrimary}>Simuler mes mensualités</a>
      <a href="#dossier" className={r.btnLink}>Déposer mon dossier →</a>
@@ -213,7 +205,7 @@ export default function Financement(){
 
    <label className={`${r.field} ${s.msg}`}><span>Un message pour nous ? <em>· facultatif</em></span><textarea value={p.message} onChange={set("message")} rows={3}/></label>
 
-   <label className={r.check}><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>J’accepte que NeoDrive (MK HOLDING SAS) traite ces informations et transmette mon dossier à son partenaire financier pour l’étude de ma demande de crédit. Mes documents sont conservés de façon sécurisée et supprimés s’ils ne sont plus nécessaires.</span></label>
+   <label className={r.check}><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>J’accepte que NeoDrive (MK HOLDING SAS) traite ces informations et transmette mon dossier à un établissement de crédit (conseiller bancaire) pour l’étude de ma demande de crédit. Mes documents sont conservés de façon sécurisée et supprimés s’ils ne sont plus nécessaires.</span></label>
 
    <div className={s.submitRow}>
     <button type="submit" className={r.btnPrimary} disabled={!canSend}>{sending?progress||"Envoi…":"Envoyer mon dossier de financement"}</button>

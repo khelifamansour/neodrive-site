@@ -32,3 +32,6 @@ export const FINANCE_DOCS = [
 export type FinanceDocKey = typeof FINANCE_DOCS[number]["key"];
 export const FINANCE_MAX_FILE = 10 * 1024 * 1024;
 export const FINANCE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/heic", "image/heif", "image/webp"];
+
+/** Conseiller(s) bancaire(s) qui reçoivent (pas un partenariat officiel : on transmet simplement le dossier du client) — automatiquement chaque nouveau dossier complet (ex. conseiller Groupama). Vide = dossier envoyé seulement à NeoDrive. */
+export const FINANCE_PARTNER_EMAILS: string[] = ["xavier.etchemendigaray@groupama-oc.fr"];
