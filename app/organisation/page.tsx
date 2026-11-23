@@ -11,6 +11,7 @@ const TILES: Tile[] = [
   { href: "/carte-grise-admin", icon: "📑", title: "Dossiers carte grise", text: "Les dossiers reçus du site et leur envoi à NK Services.", section: "owner" },
   { href: "/litiges", icon: "⚖️", title: "Litiges", text: "Les dossiers de litige, leurs pièces et la prochaine action.", section: "owner" },
   { href: "/performance", icon: "🎯", title: "Performance", text: "Suivi quotidien et objectifs personnels.", section: "owner" },
+  { href: "/algerie", icon: "🇩🇿", title: "NeoDrive Algérie", text: "Stratégie et test de marché", section: "owner" },
   { href: "/livreur", icon: "🧑‍✈️", title: "Espace prestataire", text: "Livraison, préparation : vos tournées, vos heures, vos documents et votre contrat.", section: "livreur" },
   { href: "/planificateur", icon: "🚚", title: "Tournées et livraisons", text: "Préparer les tournées, les clients à livrer et les dépôts.", section: "tournees" },
   { href: "/vehicules", icon: "🚗", title: "Suivi des voitures", text: "Chaque voiture, du conteneur jusqu’au client.", section: "vehicules" },
