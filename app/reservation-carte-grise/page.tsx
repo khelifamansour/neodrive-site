@@ -5,15 +5,17 @@ import Script from "next/script";
 import { VEHICLES, REGISTRATION_PRICE, calculateQuote, AVAILABILITY, type VehicleKey } from "../../lib/neodrive-pricing";
 import s from "../reservation-devis/reservation.module.css";
 import c from "./carte-grise.module.css";
+import SignOnScreen, { type Signature } from "./SignOnScreen";
 
 // Bibliothèques chargées par CDN (balises Script ci-dessous) : html2canvas pour le devis, jsPDF pour le devis et le mandat.
 type JsPdfCtor = new (...args: unknown[]) => {
   setFontSize: (n: number) => void;
   text: (t: string, x: number, y: number, o?: { maxWidth?: number }) => void;
   line: (x1: number, y1: number, x2: number, y2: number) => void;
-  addImage: (data: string, format: string, x: number, y: number, w: number, h: number) => void;
+  addImage: (data: string, format: string, x: number, y: number, w: number, h: number, alias?: string, compression?: "NONE" | "FAST" | "MEDIUM" | "SLOW") => void;
   addPage: () => void;
   save: (name: string) => void;
+  output: (type: "blob") => Blob;
 };
 type PdfGlobals = {
   jspdf?: { jsPDF: JsPdfCtor };
@@ -125,15 +127,22 @@ export default function ReservationCarteGrise() {
     const { name, files: list } = e.target;
     setFiles(p => ({ ...p, [name]: list?.[0]?.name || "" }));
   };
+  const setFileName = (name: string, fileName: string) => setFiles(p => p[name] === fileName ? p : ({ ...p, [name]: fileName }));
+  const safeFileName = (v: string) => v.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9_-]/g, "-") || "client";
+  const signerName = `${client.prenom} ${client.nom}`.trim();
 
-  const downloadMandat = () => {
+  // Signature au doigt placée dans un cadre (mm) en gardant ses proportions.
+  const fitSignature = (sig: Signature, maxW: number, maxH: number) => { const k = Math.min(maxW / sig.w, maxH / sig.h); return { w: sig.w * k, h: sig.h * k }; };
+
+  /** Mandat pré-rempli ; avec `sig`, la signature au doigt, « Lu et approuvé », le lieu et la date sont placés dans la zone de signature. */
+  const buildMandat = (sig?: Signature) => {
     const jsPDF = (window as unknown as PdfGlobals).jspdf?.jsPDF;
 
     if (!jsPDF) {
       alert(
         "Le générateur PDF est encore en cours de chargement. Merci de réessayer dans quelques secondes."
       );
-      return;
+      return null;
     }
 
     const formData = formRef.current
@@ -160,9 +169,9 @@ export default function ReservationCarteGrise() {
 
     if (champsManquants.length > 0) {
       alert(
-        `Merci de compléter les champs suivants avant de télécharger le mandat : ${champsManquants.join(", ")}.`
+        `Merci de compléter les champs suivants avant ${sig ? "de signer" : "de télécharger"} le mandat : ${champsManquants.join(", ")}.`
       );
-      return;
+      return null;
     }
 
     const pdf = new jsPDF();
@@ -193,27 +202,45 @@ export default function ReservationCarteGrise() {
       { maxWidth: 170 }
     );
 
-    pdf.text("Mention manuscrite : Lu et approuvé", 20, 195);
-    pdf.text("Signature :", 20, 215);
-    pdf.line(20, 240, 120, 240);
+    if (sig) {
+      pdf.text("Mention : Lu et approuvé", 20, 195);
+      pdf.text(`Fait à ${mandatClient.ville}, le ${today}`, 20, 203);
+      pdf.text("Signature :", 20, 215);
+      const size = fitSignature(sig, 90, 20);
+      pdf.addImage(sig.png, "PNG", 22, 238.5 - size.h, size.w, size.h, undefined, "FAST");
+      pdf.line(20, 240, 120, 240);
+      pdf.setFontSize(9);
+      pdf.text(`Signé à l’écran par ${mandatClient.prenom} ${mandatClient.nom} le ${today}, précédé de la mention « Lu et approuvé ».`, 20, 246, { maxWidth: 170 });
+    } else {
+      pdf.text("Mention manuscrite : Lu et approuvé", 20, 195);
+      pdf.text("Signature :", 20, 215);
+      pdf.line(20, 240, 120, 240);
+    }
 
     const safeName = mandatClient.nom
       .normalize("NFD")
       .replace(/[̀-ͯ]/g, "")
       .replace(/[^a-zA-Z0-9_-]/g, "-");
 
-    pdf.save(`mandat-carte-grise-${safeName || "client"}.pdf`);
+    return { pdf, safeName };
   };
 
-  const downloadPDF = async () => {
-    if (!printRef.current) return;
+  const downloadMandat = () => {
+    const built = buildMandat();
+    if (built) built.pdf.save(`mandat-carte-grise-${built.safeName || "client"}.pdf`);
+  };
+  const signMandat = async (sig: Signature) => buildMandat(sig)?.pdf.output("blob") ?? null;
+
+  /** Capture du devis / contrat ; avec `sig`, la signature au doigt est placée dans les zones de signature. */
+  const captureDevis = async (sig?: Signature) => {
+    if (!printRef.current) return null;
 
     const w = window as unknown as PdfGlobals;
     const html2canvas = w.html2canvas;
     const jsPDF = w.jspdf?.jsPDF;
     if (!html2canvas || !jsPDF) {
       alert("Le générateur PDF est encore en cours de chargement. Merci de réessayer dans quelques secondes.");
-      return;
+      return null;
     }
 
     // Capture toujours au format A4 (794 px de large), même depuis un téléphone.
@@ -221,12 +248,44 @@ export default function ReservationCarteGrise() {
     const previousWidth = el.style.width;
     el.style.width = "794px";
     const canvas = await html2canvas(el, {
-      scale: 2,
+      scale: sig ? 1.5 : 2,
       useCORS: true,
       windowWidth: 1024,
-      // À l'écran les CGV défilent dans un cadre ; dans le PDF elles sont reproduites en entier.
-      onclone: (doc) => doc.querySelectorAll<HTMLElement>("[data-cgv]").forEach(node => { node.style.maxHeight = "none"; node.style.overflow = "visible"; node.style.border = "0"; node.style.padding = "0"; })
+      onclone: (doc) => {
+        // À l'écran les CGV défilent dans un cadre ; dans le PDF elles sont reproduites en entier.
+        doc.querySelectorAll<HTMLElement>("[data-cgv]").forEach(node => { node.style.maxHeight = "none"; node.style.overflow = "visible"; node.style.border = "0"; node.style.padding = "0"; });
+        if (sig) stampDevis(doc, sig);
+      }
     }).finally(() => { el.style.width = previousWidth; });
+    return { canvas, jsPDF };
+  };
+
+  // Version signée : « Lu et approuvé », lieu, date, nom et signature au doigt dans chaque zone de signature.
+  const stampDevis = (doc: Document, sig: Signature) => {
+    const lieu = client.ville || "________";
+    doc.querySelectorAll<HTMLElement>("[data-cgv]").forEach(node => {
+      node.textContent = CGV.replace("Fait à : ________", `Fait à : ${lieu}`).replace("Le : ________", `Le : ${today}`).replace("Nom et prénom du client :", `Nom et prénom du client : ${signerName}`);
+    });
+    const size = fitSignature(sig, 240, 80);
+    doc.querySelectorAll<HTMLElement>("[data-sig]").forEach(zone => {
+      const line = zone.lastElementChild as HTMLElement | null;
+      const block = doc.createElement("div");
+      block.style.cssText = "display:flex;align-items:flex-end;gap:18px;margin-top:10px";
+      const img = doc.createElement("img");
+      img.src = sig.png; img.alt = ""; img.style.cssText = `width:${size.w}px;height:${size.h}px;display:block`;
+      const text = doc.createElement("div");
+      text.style.cssText = "font-size:13px;line-height:1.5";
+      [["Lu et approuvé", "font-style:italic;font-weight:bold"], [`Fait à ${lieu}, le ${today}`, ""], [signerName, ""], ["Signé à l’écran", "color:#666;font-size:11px"]].forEach(([t, css]) => { const d = doc.createElement("div"); d.textContent = t; d.style.cssText = css; text.appendChild(d); });
+      block.append(img, text);
+      zone.insertBefore(block, line);
+      if (line) line.style.marginTop = "4px";
+    });
+  };
+
+  const downloadPDF = async () => {
+    const captured = await captureDevis();
+    if (!captured) return;
+    const { canvas, jsPDF } = captured;
 
     const imgData = canvas.toDataURL("image/png");
 
@@ -252,6 +311,39 @@ export default function ReservationCarteGrise() {
     }
 
     pdf.save("devis-neodrive.pdf");
+  };
+
+  /** PDF signé : page par page en JPEG pour rester léger (envoi Formspree). */
+  const signDevis = async (sig: Signature) => {
+    const missing = [!client.nom && "nom", !client.prenom && "prénom", !client.adresse && "adresse", !postalComplete && "code postal", !client.ville && "ville"].filter(Boolean);
+    if (missing.length) { alert(`Merci de compléter les champs suivants avant de signer : ${missing.join(", ")}.`); return null; }
+    const captured = await captureDevis(sig);
+    if (!captured) return null;
+    const { canvas, jsPDF } = captured;
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pagePx = Math.floor(canvas.width * 297 / 210);
+    for (let y = 0, page = 0; y < canvas.height; y += pagePx, page++) {
+      const h = Math.min(pagePx, canvas.height - y);
+      const slice = document.createElement("canvas"); slice.width = canvas.width; slice.height = h;
+      const ctx = slice.getContext("2d"); if (!ctx) return null;
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, slice.width, h); ctx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+      if (page > 0) pdf.addPage();
+      pdf.addImage(slice.toDataURL("image/jpeg", 0.75), "JPEG", 0, 0, 210, h * 210 / canvas.width);
+    }
+    return pdf.output("blob");
+  };
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const form = e.currentTarget;
+    const docs: [string, string, string][] = [
+      ...(wantsCarteGrise ? [["mandat_carte_grise_signe", "sign-mandat", "le mandat carte grise"] as [string, string, string]] : []),
+      ["devis_signe", "sign-devis", dejaClient ? "le contrat de vente" : "le devis"],
+    ];
+    const missing = docs.find(([name]) => !(form.querySelector<HTMLInputElement>(`input[type=file][name="${name}"]`)?.files?.length));
+    if (!missing) return;
+    e.preventDefault();
+    alert(`Merci de signer ${missing[2]} (avec le doigt dans le cadre, ou en important le document signé).`);
+    document.getElementById(missing[1])?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   type ClientField = keyof typeof client;
@@ -330,6 +422,7 @@ export default function ReservationCarteGrise() {
           method="POST"
           encType="multipart/form-data"
           className={s.form}
+          onSubmit={onSubmit}
         >
 
           <input type="hidden" name="_subject" value={dejaClient ? "Dossier carte grise – CLIENT EXISTANT (pas une nouvelle commande)" : "Nouvelle réservation véhicule + carte grise"} />
@@ -421,14 +514,23 @@ export default function ReservationCarteGrise() {
             {wantsCarteGrise && (
               <div className={c.mandat}>
                 <h3>Mandat carte grise</h3>
-                <ol>
-                  <li>Téléchargez le mandat pré-rempli</li>
-                  <li>Signez-le avec la mention « Lu et approuvé »</li>
-                  <li>Importez le mandat signé ci-dessous</li>
-                </ol>
-                <button type="button" onClick={downloadMandat} className={s.btnGhost}>{Icon.download} Télécharger le mandat pré-rempli</button>
+                <p style={{ margin: "6px 0 12px", fontSize: 14.5, lineHeight: 1.5 }}>Le mandat est pré-rempli avec vos coordonnées : il permet à Neodrive de faire la carte grise à votre place.</p>
+                <SignOnScreen
+                  id="sign-mandat" name="mandat_carte_grise_signe" label="Mandat" docWord="le mandat"
+                  ville={client.ville} date={today} fileName={`mandat-signe-${safeFileName(client.nom)}.pdf`}
+                  invalidateKey={JSON.stringify(client)} build={signMandat} onFile={setFileName}
+                  primaryClass={s.btnPrimary} ghostClass={s.btnGhost}
+                  manual={<>
+                    <ol>
+                      <li>Téléchargez le mandat pré-rempli</li>
+                      <li>Signez-le avec la mention « Lu et approuvé »</li>
+                      <li>Importez le mandat signé ci-dessous</li>
+                    </ol>
+                    <button type="button" onClick={downloadMandat} className={s.btnGhost}>{Icon.download} Télécharger le mandat pré-rempli</button>
+                  </>}
+                  renderFileInput={required => fileInput("mandat_carte_grise_signe", "Mandat signé", "Avec la mention « Lu et approuvé »", required)}
+                />
                 <div className={c.docGrid}>
-                  {fileInput("mandat_carte_grise_signe", "Mandat signé", "Avec la mention « Lu et approuvé »", wantsCarteGrise)}
                   {fileInput("coc", "Certificat de conformité européen (COC)", dejaClient ? "Remis avec votre véhicule — obligatoire" : "Peut être ajouté plus tard", dejaClient)}
                   {fileInput("cnit", "CNIT / document d’homologation", "Peut être ajouté plus tard", false)}
                 </div>
@@ -439,7 +541,7 @@ export default function ReservationCarteGrise() {
 
           {/* ÉTAPE 5 — DEVIS */}
           <section className={s.card} id="devis">
-            <header className={s.cardHead}><span className={s.stepNum}>5</span><div><h2>{dejaClient ? "Votre contrat de vente" : "Votre devis"}</h2><p>{dejaClient ? "Il reprend votre commande (ce n’est pas une nouvelle commande) : téléchargez-le, signez-le, puis importez-le." : "Téléchargez-le, signez-le, puis importez-le."}</p></div></header>
+            <header className={s.cardHead}><span className={s.stepNum}>5</span><div><h2>{dejaClient ? "Votre contrat de vente" : "Votre devis"}</h2><p>{dejaClient ? "Il reprend votre commande (ce n’est pas une nouvelle commande) : relisez-le, puis signez-le avec le doigt ci-dessous." : "Relisez-le, puis signez-le avec le doigt ci-dessous."}</p></div></header>
 
             <div className={c.devisWrap}>
               <div ref={printRef} style={pdf}>
@@ -524,7 +626,7 @@ export default function ReservationCarteGrise() {
 
                 <div style={bank}>{BANK}</div>
 
-                <div style={{ marginTop: 60 }}>
+                <div style={{ marginTop: 60 }} data-sig>
                   <p>Signature précédée de « Lu et approuvé »</p>
                   <div style={signature}></div>
                 </div>
@@ -533,7 +635,7 @@ export default function ReservationCarteGrise() {
 
                 <div data-cgv style={cgvStyle} tabIndex={0} aria-label="Conditions générales de vente">{CGV}</div>
 
-                <div style={{ marginTop: 40 }}>
+                <div style={{ marginTop: 40 }} data-sig>
                   <p>Signature CGV précédée de « Lu et approuvé »</p>
                   <div style={{ borderTop: "1px solid black", width: 250 }}></div>
                 </div>
@@ -541,15 +643,23 @@ export default function ReservationCarteGrise() {
               </div>
             </div>
 
-            <ol className={c.howto}>
-              <li>{dejaClient ? "Télécharger le contrat" : "Télécharger le devis"}</li>
-              <li>Signer</li>
-              <li>Réimporter ici</li>
-              <li>Envoyer</li>
-            </ol>
-
             <div className={c.upload}>
-              {fileInput("devis_signe", dejaClient ? "Contrat de vente signé" : "Devis signé", dejaClient ? "Le contrat ci-dessus, signé « Lu et approuvé »" : "Le devis ci-dessus, signé", true)}
+              <SignOnScreen
+                id="sign-devis" name="devis_signe" label={dejaClient ? "Contrat" : "Devis"} docWord={dejaClient ? "le contrat" : "le devis"}
+                ville={client.ville} date={today} fileName={`${dejaClient ? "contrat" : "devis"}-signe-${safeFileName(client.nom)}.pdf`}
+                invalidateKey={JSON.stringify([client, model, quantity, transport, discount, wantsCarteGrise, noDelivery, dejaClient])}
+                build={signDevis} onFile={setFileName} primaryClass={s.btnPrimary} ghostClass={s.btnGhost}
+                manual={<>
+                  <ol className={c.howto} style={{ marginTop: 0 }}>
+                    <li>{dejaClient ? "Télécharger le contrat" : "Télécharger le devis"}</li>
+                    <li>Signer</li>
+                    <li>Réimporter ici</li>
+                    <li>Envoyer</li>
+                  </ol>
+                  <button type="button" onClick={downloadPDF} className={s.btnGhost}>{Icon.download} {dejaClient ? "Télécharger le contrat PDF" : "Télécharger le devis PDF"}</button>
+                </>}
+                renderFileInput={required => fileInput("devis_signe", dejaClient ? "Contrat de vente signé" : "Devis signé", dejaClient ? "Le contrat ci-dessus, signé « Lu et approuvé »" : "Le devis ci-dessus, signé", required)}
+              />
             </div>
 
             <details className={c.advisor}>
