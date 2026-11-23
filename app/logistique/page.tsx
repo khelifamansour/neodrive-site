@@ -79,7 +79,7 @@ export default function LogistiquePage() {
 
   const count = (z: string) => list.filter(p => z === "Tous" || p.zone === z).length;
   return <main className={s.page}>
-    <div className={s.top}><div><h1>🚚 Logistique</h1><p>Dépotage, stockage et chargement des voitures : prestataires et demandes de devis.</p></div><a className={s.ghost} href="/pilotage">Pilotage</a></div>
+    <div className={s.top}><div><h1>🚚 Logistique</h1><p>Dépotage, stockage et chargement des voitures : prestataires et demandes de devis.</p></div><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><a className={s.ghost} href="/logistique/dechargement">⚠️ Déchargement conteneurs</a><a className={s.ghost} href="/pilotage">Pilotage</a></div></div>
 
     <section className={s.card}>
       <div className={s.seg}>{zones.map(z => <button key={z} className={zone === z ? s.on : ""} onClick={() => setZone(z)}>{z} ({count(z)})</button>)}</div>

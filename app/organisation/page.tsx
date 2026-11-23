@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import LiveCard from "../planificateur/LiveCard";
 
-/** Une tuile = un outil. `section` : section requise pour un membre ; "owner" : fondateur seulement ; "any" : tout membre avec au moins une section. */
+/** Une tuile = un outil. `section` : section requise pour un membre (« a|b » : l’une ou l’autre) ; "owner" : fondateur seulement ; "any" : tout membre avec au moins une section. */
 type Tile = { href: string; icon: string; title: string; text: string; section: string };
 const TILES: Tile[] = [
   { href: "/sav/admin", icon: "🛠️", title: "Service après-vente", text: "Les demandes des clients, les diagnostics et les réparations.", section: "sav" },
@@ -16,6 +16,7 @@ const TILES: Tile[] = [
   { href: "/vehicules", icon: "🚗", title: "Suivi des voitures", text: "Chaque voiture, du conteneur jusqu’au client.", section: "vehicules" },
   { href: "/conteneurs", icon: "🚢", title: "Conteneurs", text: "Les arrivages, les documents d’import et les numéros de série.", section: "conteneurs" },
   { href: "/logistique", icon: "🏗️", title: "Logistique", text: "Les prestataires de dépotage, de stockage et de transport.", section: "logistique" },
+  { href: "/logistique/dechargement", icon: "⚠️", title: "Déchargement conteneurs", text: "Consignes de sécurité pour le dépotage", section: "logistique|conteneurs" },
   { href: "/contenu", icon: "🎬", title: "Contenu", text: "Photos, vidéos, catalogue et documents à télécharger.", section: "contenu" },
   { href: "/recrutement-admin", icon: "🤝", title: "Recrutement", text: "Les candidatures, les tests et les offres d’emploi.", section: "recrutement" },
   { href: "/equipe", icon: "📞", title: "Prospects", text: "Vos clients à rappeler, les appels et les messages WhatsApp.", section: "crm" },
@@ -99,7 +100,7 @@ export default function Organisation() {
     if (t.section === "owner") return false;
     if (t.section === "any") return me.sections.some(x => x !== "livreur");
     if (t.section === "crm") return me.sections.includes("crm") || me.role === "closer";
-    return me.sections.includes(t.section);
+    return t.section.split("|").some(x => me.sections.includes(x));
   };
   const tiles = TILES.filter(visible);
 
