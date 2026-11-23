@@ -6,6 +6,7 @@ import { VEHICLES, REGISTRATION_PRICE, calculateQuote, AVAILABILITY, type Vehicl
 import s from "../reservation-devis/reservation.module.css";
 import c from "./carte-grise.module.css";
 import SignOnScreen, { type Signature } from "./SignOnScreen";
+import { storeDossierCopy } from "./storeCopy";
 
 // Bibliothèques chargées par CDN (balises Script ci-dessous) : html2canvas pour le devis, jsPDF pour le devis et le mandat.
 type JsPdfCtor = new (...args: unknown[]) => {
@@ -71,6 +72,8 @@ export default function ReservationCarteGrise() {
 
   const printRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const sendingRef = useRef(false);
+  const [sending, setSending] = useState(false);
 
   const postal = client.code_postal;
 
@@ -340,7 +343,17 @@ export default function ReservationCarteGrise() {
       ["devis_signe", "sign-devis", dejaClient ? "le contrat de vente" : "le devis"],
     ];
     const missing = docs.find(([name]) => !(form.querySelector<HTMLInputElement>(`input[type=file][name="${name}"]`)?.files?.length));
-    if (!missing) return;
+    if (!missing) {
+      // Copie du dossier dans l'espace privé NeoDrive (best effort, 30 s max), puis envoi Formspree habituel quoi qu'il arrive.
+      e.preventDefault();
+      if (sendingRef.current) return;
+      sendingRef.current = true; setSending(true);
+      storeDossierCopy(form).finally(() => {
+        HTMLFormElement.prototype.submit.call(form);
+        setTimeout(() => { sendingRef.current = false; setSending(false); }, 15000);
+      });
+      return;
+    }
     e.preventDefault();
     alert(`Merci de signer ${missing[2]} (avec le doigt dans le cadre, ou en important le document signé).`);
     document.getElementById(missing[1])?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -680,7 +693,7 @@ export default function ReservationCarteGrise() {
 
             <div className={c.devisActions}>
               <button type="button" onClick={downloadPDF} className={s.btnGhost}>{Icon.download} {dejaClient ? "Télécharger le contrat PDF" : "Télécharger le devis PDF"}</button>
-              <button type="submit" className={s.btnPrimary}>{Icon.lock} Envoyer mon dossier</button>
+              <button type="submit" className={s.btnPrimary} disabled={sending} aria-busy={sending}>{Icon.lock} {sending ? "Envoi en cours…" : "Envoyer mon dossier"}</button>
             </div>
           </section>
 
