@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import {GOOGLE_WRITE_REVIEW_URL,reviewMessage} from "../../lib/reviews";
 import {waNumber} from "../../lib/sav";
 
-type Row={vehicle_id:string;name:string;phone:string;delivered_at:string;city:string;requested:boolean;wa:string};
+type Row={vehicle_id:string;name:string;phone:string;email?:string;delivered_at:string;city:string;requested:boolean;wa:string;news_at?:string|null;blocked?:boolean};
 
 export default function Avis(){
  const [qr,setQr]=useState("");
@@ -19,6 +19,9 @@ export default function Avis(){
  },[]);
  const load=async(pc=code)=>{setErr("");try{const r=await fetch("/api/avis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:pc})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||"Erreur");setRows(j.rows);try{sessionStorage.setItem("nd_pc",pc)}catch{}}catch(e){setErr((e as Error).message)}};
  const mark=async(id:string)=>{await fetch("/api/avis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:code,action:"mark",vehicleId:id})}).catch(()=>null);setRows(r=>r?r.map(x=>x.vehicle_id===id?{...x,requested:true}:x):r);};
+ const [busy,setBusy]=useState<Record<string,string>>({});
+ // Un appui : « Prendre des nouvelles » (SMS + e-mail envoyés par le serveur), la ligne passe à ✓ sans quitter la page.
+ const news=async(id:string)=>{setBusy(b=>({...b,[id]:"…"}));try{const r=await fetch("/api/avis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({passcode:code,action:"nouvelles",vehicleId:id})});const j=await r.json().catch(()=>({ok:false,error:"Erreur réseau"}));if(!j.ok)throw new Error(j.error||"Erreur");setRows(rs=>rs?rs.map(x=>x.vehicle_id===id?{...x,news_at:j.at}:x):rs);setBusy(b=>{const n={...b};delete n[id];return n;});}catch(e){setBusy(b=>({...b,[id]:(e as Error).message}));}};
  const manual=phone.replace(/\D/g,"").length>=9?`https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(reviewMessage(first))}`:"";
 
  return <main className="a">
@@ -39,7 +42,7 @@ export default function Avis(){
     <a className={manual?"wa":"wa off"} href={manual||undefined} target="_blank" rel="noreferrer">Ouvrir WhatsApp</a></div>
    {rows===null?<form className="box" onSubmit={e=>{e.preventDefault();load();}}><b>Mes livraisons récentes</b><p>Code ERP pour voir vos clients livrés.</p><div className="row"><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code"/><button>Voir</button></div>{err?<p className="e">{err}</p>:null}</form>
    :<div className="box"><b>Clients livrés</b>{!rows.length?<p>Aucun client livré pour l’instant. Utilisez l’envoi manuel ci-dessus.</p>:null}
-    <ul>{rows.map(r=><li key={r.vehicle_id}><div><b>{r.name}</b><small>{new Date(r.delivered_at).toLocaleDateString("fr-FR")}{r.city?` · ${r.city}`:""}</small></div>{r.requested?<span className="done">✓ Demandé</span>:r.wa?<a className="wa sm" href={r.wa} target="_blank" rel="noreferrer" onClick={()=>mark(r.vehicle_id)}>Demander l’avis</a>:<span className="muted">Pas de téléphone</span>}</li>)}</ul></div>}
+    <ul>{rows.map(r=><li key={r.vehicle_id}><div><b>{r.name}</b><small>{new Date(r.delivered_at).toLocaleDateString("fr-FR")}{r.city?` · ${r.city}`:""}</small>{busy[r.vehicle_id]&&busy[r.vehicle_id]!=="…"?<small className="e">{busy[r.vehicle_id]}</small>:null}</div><div className="acts">{r.blocked?<span className="muted">Ne pas contacter</span>:r.news_at?<span className="done" title={new Date(r.news_at).toLocaleString("fr-FR")}>✓ Nouvelles</span>:(r.phone.replace(/\D/g,"").length>=9||r.email)?<button className="nw" disabled={busy[r.vehicle_id]==="…"} onClick={()=>news(r.vehicle_id)}>{busy[r.vehicle_id]==="…"?"Envoi…":"📨 Nouvelles"}</button>:null}{r.requested?<span className="done">✓ Demandé</span>:r.wa?<a className="wa sm" href={r.wa} target="_blank" rel="noreferrer" onClick={()=>mark(r.vehicle_id)}>Demander l’avis</a>:<span className="muted">Pas de téléphone</span>}</div></li>)}</ul><p className="note">📨 Nouvelles : un appui envoie « comment ça se passe ? » par SMS + e-mail, sans quitter la page. Le client répond sur WhatsApp. Historique dans <a href="/clients">Clients et avis</a>.</p></div>}
    <p className="note">Demandez l’avis uniquement aux clients dont vous savez qu’ils sont satisfaits.</p>
   </section>
   <style jsx>{`
@@ -64,6 +67,8 @@ export default function Avis(){
    ul{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:8px}
    li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:#f6f7f8}
    li small{display:block;color:#777;font-size:12.5px}
+   .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+   .nw{padding:9px 12px;font-size:14px;background:#f05a28}.nw:disabled{opacity:.6}
    .done{color:#16a34a;font-weight:800;font-size:14px}.muted{color:#999;font-size:13px}
    .e{color:#b42318;font-weight:700}.note{font-size:13px;color:#777;line-height:1.5}
   `}</style>

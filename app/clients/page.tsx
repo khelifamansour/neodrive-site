@@ -5,7 +5,7 @@ import {
   type Customer, type ImportRow, type Satisfaction, type Status, type TemplateKey,
 } from "../../lib/clients";
 
-/* Clients et avis : on prépare le message, le fondateur l'envoie lui-même depuis WhatsApp ou ses SMS. Rien n'est envoyé automatiquement. */
+/* Clients et avis : bouton « Envoyer » = SMS + e-mail envoyés par le serveur (Brevo) sans quitter la page ; liens WhatsApp / SMS en secours. Suivi automatique ~10 jours après livraison (/api/clients/suivi). */
 
 const C = { bg: "#f6f4f0", ink: "#141414", mute: "#666", line: "#e5e0d8", brand: "#f05a28", green: "#15803d", red: "#b91c1c", wa: "#1fa855" };
 const btn = (bg = C.ink, small = false): React.CSSProperties => ({ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: small ? "8px 12px" : "12px 16px", borderRadius: 12, border: 0, background: bg, color: "#fff", fontWeight: 700, cursor: "pointer", font: "inherit", fontSize: small ? 14 : 16, textDecoration: "none", lineHeight: 1.2 });
@@ -30,6 +30,12 @@ const fullName = (c: Pick<Customer, "first_name" | "last_name">) => `${c.first_n
 const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 type Call = (body: Record<string, unknown>, opts?: { keepalive?: boolean }) => Promise<any>;
+const DAY = 86_400_000;
+const CHANNEL: Record<string, string> = { whatsapp: "WhatsApp", sms: "SMS", email: "e-mail", "sms+email": "SMS + e-mail" };
+const canReach = (c: Customer) => normalizePhone(c.phone).valid || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(c.email || ""));
+const sentRecently = (c: Customer) => !!c.last_sent_at && Date.now() - new Date(c.last_sent_at).getTime() < DAY;
+/** Clients qui peuvent recevoir « Prendre des nouvelles » en un clic. */
+const quickOk = (c: Customer) => !["ne pas contacter", "avis laissé", "problème en cours"].includes(c.status) && canReach(c);
 
 function Badge({ s }: { s: Status }) {
   const st = STATUS_STYLE[s] || STATUS_STYLE["à contacter"];
@@ -109,6 +115,7 @@ export default function ClientsPage() {
       <button onClick={() => setPanel(panel === "import" ? "" : "import")} style={btn(panel === "import" ? "#555" : C.ink)}>{panel === "import" ? "Fermer" : "Importer une liste"}</button>
     </div>
     {err ? <p style={{ color: C.red, fontWeight: 600 }}>{err}</p> : null}
+    <BulkSend shown={shown} call={call} onChange={replace} />
 
     {panel === "add" ? <div style={{ ...card, marginTop: 12 }}><CustomerForm call={call} onSaved={c => { replace(c); setPanel(""); setOpenId(c.id); setFilter("tous"); }} onCancel={() => setPanel("")} /></div> : null}
     {panel === "import" ? <div style={{ ...card, marginTop: 12 }}><ImportPanel call={call} onDone={async () => { await load(pc); }} /></div> : null}
@@ -139,7 +146,9 @@ function HelpBox() {
   return <details style={{ ...card, marginTop: 14, background: "#fffbeb", borderColor: "#fde68a" }}>
     <summary style={{ cursor: "pointer", fontWeight: 700 }}>ℹ️ Comment ça marche (et la règle Google)</summary>
     <div style={{ fontSize: 15, lineHeight: 1.55, marginTop: 8 }}>
-      <p style={{ margin: "0 0 8px" }}><b>Rien n’est envoyé automatiquement.</b> La page prépare le message, puis ouvre WhatsApp ou vos SMS : c’est vous qui appuyez sur « Envoyer ».</p>
+      <p style={{ margin: "0 0 8px" }}><b>📨 Bouton « Nouvelles » à côté de chaque client :</b> un appui suffit, le SMS et l’e-mail partent tout de suite, sans quitter la page (la ligne passe à ✓). Le client répond sur WhatsApp. Le même message n’est jamais renvoyé dans les 24 h, et jamais aux clients « Ne pas contacter » ou désinscrits.</p>
+      <p style={{ margin: "0 0 8px" }}><b>Automatique :</b> environ 10 jours après la livraison, chaque nouveau client reçoit une seule fois « comment ça se passe ? » (SMS + e-mail, avec le guide batterie). Vous recevez un récapitulatif par e-mail. Les clients livrés avant la mise en place ne sont pas relancés automatiquement : c’est vous qui choisissez, ici.</p>
+      <p style={{ margin: "0 0 8px" }}>WhatsApp et SMS depuis votre téléphone restent possibles dans la fiche du client.</p>
       <ol style={{ margin: "0 0 8px", paddingLeft: 20 }}>
         <li><b>Prendre des nouvelles</b> de chaque client.</li>
         <li><b>S’il y a un problème</b>, le régler d’abord (ticket SAV). La demande d’avis attend que le problème soit résolu.</li>
@@ -153,13 +162,16 @@ function HelpBox() {
 function CustomerRow({ c, open, onToggle, call, onChange }: { c: Customer; open: boolean; onToggle: () => void; call: Call; onChange: (c: Customer) => void }) {
   const ph = normalizePhone(c.phone);
   return <div style={{ ...card, padding: 0, overflow: "hidden", borderColor: open ? "#bdb5a8" : C.line }}>
-    <button onClick={onToggle} style={{ display: "flex", width: "100%", gap: 10, alignItems: "center", justifyContent: "space-between", padding: 14, background: "none", border: 0, textAlign: "left", cursor: "pointer", font: "inherit", color: C.ink }}>
+    <div style={{ display: "flex", alignItems: "center" }}>
+    <button onClick={onToggle} style={{ display: "flex", flex: 1, minWidth: 0, gap: 10, alignItems: "center", justifyContent: "space-between", padding: 14, background: "none", border: 0, textAlign: "left", cursor: "pointer", font: "inherit", color: C.ink }}>
       <span style={{ minWidth: 0 }}>
         <b style={{ fontSize: 17 }}>{fullName(c)}</b>{c.source === "test" ? <span style={{ fontSize: 11, color: C.brand, fontWeight: 700, marginLeft: 6 }}>TEST</span> : null}
         <span style={{ display: "block", color: C.mute, fontSize: 14, marginTop: 2 }}>{[c.city, c.model ? `NeoDrive ${c.model.replace(/^neodrive\s*/i, "")}` : "", c.last_contact_at ? `contacté le ${fmt(c.last_contact_at)}` : ""].filter(Boolean).join(" · ")}{!ph.valid ? <span style={{ color: C.red }}> · ⚠️ numéro</span> : null}</span>
       </span>
       <Badge s={c.status} />
     </button>
+    {quickOk(c) ? <div style={{ padding: "0 12px 0 0" }}><QuickSend c={c} call={call} onChange={onChange} /></div> : null}
+    </div>
     {open ? <Detail c={c} call={call} onChange={onChange} /> : null}
   </div>;
 }
@@ -199,7 +211,7 @@ function Detail({ c, call, onChange }: { c: Customer; call: Call; onChange: (c: 
         </div>
         {tpl === "avis" && problem
           ? <div style={{ background: "#fee2e2", color: "#7f1d1d", borderRadius: 12, padding: 12, fontSize: 15, lineHeight: 1.5 }}>⚠️ <b>Un problème est en cours.</b> On demande l’avis une fois le problème réglé (plus bas : « Problème résolu »). Ce n’est pas un filtre : tous les clients reçoivent la demande, elle est seulement repoussée le temps de régler le souci.</div>
-          : <MessageBox key={`${c.id}-${tpl}`} c={c} tpl={tpl} phoneOk={ph.valid} onSent={(channel, text) => act(tpl === "avis" ? "message_avis" : "message_nouvelles", { channel, text }, true)} />}
+          : <MessageBox key={`${c.id}-${tpl}`} c={c} tpl={tpl} phoneOk={ph.valid} call={call} onChange={onChange} onSent={(channel, text) => act(tpl === "avis" ? "message_avis" : "message_nouvelles", { channel, text }, true)} />}
       </>}
     </section>
 
@@ -252,7 +264,7 @@ function Detail({ c, call, onChange }: { c: Customer; call: Call; onChange: (c: 
       <h3 style={{ margin: "0 0 8px", fontSize: 16 }}>Historique</h3>
       {c.history?.length ? <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
         {[...c.history].reverse().map((h, i) => <li key={i} style={{ fontSize: 14, borderLeft: `3px solid ${C.line}`, paddingLeft: 10 }}>
-          <span style={{ color: C.mute }}>{fmt(h.at)}</span> · <b>{h.action}</b>{h.channel ? ` (${h.channel === "whatsapp" ? "WhatsApp" : "SMS"})` : ""}{h.by ? <span style={{ color: C.mute }}> · {h.by}</span> : null}
+          <span style={{ color: C.mute }}>{fmt(h.at)}</span> · <b>{h.action}</b>{h.channel ? ` (${CHANNEL[h.channel] || h.channel})` : ""}{h.by ? <span style={{ color: C.mute }}> · {h.by}</span> : null}
           {h.text ? <div style={{ color: "#444", whiteSpace: "pre-wrap", marginTop: 2 }}>{h.text}</div> : null}
         </li>)}
       </ul> : <p style={{ color: C.mute, margin: 0 }}>Rien pour l’instant.</p>}
@@ -260,23 +272,71 @@ function Detail({ c, call, onChange }: { c: Customer; call: Call; onChange: (c: 
   </div>;
 }
 
-function MessageBox({ c, tpl, phoneOk, onSent }: { c: Customer; tpl: TemplateKey; phoneOk: boolean; onSent: (channel: "whatsapp" | "sms", text: string) => void }) {
+function MessageBox({ c, tpl, phoneOk, call, onChange, onSent }: { c: Customer; tpl: TemplateKey; phoneOk: boolean; call: Call; onChange: (c: Customer) => void; onSent: (channel: "whatsapp" | "sms", text: string) => void }) {
   const [text, setText] = useState(() => messageFor(tpl, c));
+  const [state, setState] = useState<"" | "busy" | "ok">(""); const [note, setNote] = useState("");
   const ph = normalizePhone(c.phone);
   const ready = phoneOk && text.trim().length > 0;
+  const direct = async () => {
+    setState("busy"); setNote("");
+    try {
+      const j = await call({ action: "send", id: c.id, kind: tpl, text: text === messageFor(tpl, c) ? undefined : text });
+      onChange(j.customer); setState("ok");
+      setNote(`✓ Envoyé par ${[j.sms && "SMS", j.email && "e-mail"].filter(Boolean).join(" + ")}${j.warning ? ` (${j.warning})` : ""}.`);
+    } catch (e) { setState(""); setNote((e as Error).message); }
+  };
+  const secondary: React.CSSProperties = { ...ghost(), flex: "1 1 140px" };
   return <div>
-    <textarea value={text} onChange={e => setText(e.target.value)} rows={6} style={{ ...input, resize: "vertical", lineHeight: 1.45 }} aria-label="Message à envoyer (modifiable)" />
+    <textarea value={text} onChange={e => { setText(e.target.value); if (state === "ok") setState(""); }} rows={6} style={{ ...input, resize: "vertical", lineHeight: 1.45 }} aria-label="Message à envoyer (modifiable)" />
+    <button disabled={state !== "" || !text.trim() || !canReach(c)} onClick={direct} style={{ ...btn(state === "ok" ? C.green : C.brand), width: "100%", marginTop: 8, opacity: !canReach(c) ? 0.5 : 1 }}>
+      {state === "busy" ? "Envoi…" : state === "ok" ? "✓ Envoyé" : "📨 Envoyer (SMS + e-mail)"}
+    </button>
+    {note ? <p style={{ margin: "6px 0 0", fontWeight: 600, color: state === "ok" ? C.green : C.red }}>{note}</p> : null}
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
       {ready ? <>
-        <a href={whatsappLink(ph.intl, text)} target="_blank" rel="noopener" onClick={() => onSent("whatsapp", text)} style={{ ...btn(C.wa), flex: "1 1 160px" }}>Ouvrir WhatsApp</a>
-        <a href={smsLink(ph.intl, text)} onClick={() => onSent("sms", text)} style={{ ...btn("#2563eb"), flex: "1 1 120px" }}>SMS</a>
-      </> : <>
-        <button disabled style={{ ...btn("#9ca3af"), flex: "1 1 160px", cursor: "not-allowed" }}>Ouvrir WhatsApp</button>
-        <button disabled style={{ ...btn("#9ca3af"), flex: "1 1 120px", cursor: "not-allowed" }}>SMS</button>
-      </>}
+        <a href={whatsappLink(ph.intl, text)} target="_blank" rel="noopener" onClick={() => onSent("whatsapp", text)} style={secondary}>WhatsApp (mon téléphone)</a>
+        <a href={smsLink(ph.intl, text)} onClick={() => onSent("sms", text)} style={secondary}>SMS (mon téléphone)</a>
+      </> : null}
       <button onClick={() => setText(messageFor(tpl, c))} style={ghost()}>↺ Texte d’origine</button>
     </div>
-    <p style={{ color: C.mute, fontSize: 13, margin: "6px 0 0" }}>{phoneOk ? "Le message s’ouvre pré-rempli : vérifiez-le et appuyez vous-même sur Envoyer." : "Corrigez le numéro (« Modifier la fiche ») pour pouvoir envoyer."}</p>
+    <p style={{ color: C.mute, fontSize: 13, margin: "6px 0 0" }}>{canReach(c) ? "« Envoyer » part tout de suite, sans quitter la page (SMS si le numéro est bon, e-mail si l’adresse est connue). Le client répond sur WhatsApp." : "Ajoutez un numéro de portable ou un e-mail (« Modifier la fiche ») pour pouvoir envoyer."}</p>
+  </div>;
+}
+
+/** Bouton « un appui » à côté de chaque client : « Prendre des nouvelles » par SMS + e-mail, la ligne passe à ✓. */
+function QuickSend({ c, call, onChange }: { c: Customer; call: Call; onChange: (c: Customer) => void }) {
+  const [state, setState] = useState<"" | "busy" | "err">(""); const [msg, setMsg] = useState("");
+  if (sentRecently(c)) return <span title={`Envoyé le ${fmt(c.last_sent_at ?? null)}`} style={{ ...btn(C.green, true), cursor: "default", padding: "8px 10px" }}>✓ envoyé</span>;
+  const go = async () => {
+    setState("busy"); setMsg("");
+    try { const j = await call({ action: "send", id: c.id, kind: "nouvelles" }); onChange(j.customer); setState(""); }
+    catch (e) { setState("err"); setMsg((e as Error).message); }
+  };
+  return <div style={{ display: "grid", justifyItems: "end", gap: 4, maxWidth: 190 }}>
+    <button onClick={go} disabled={state === "busy"} title="Envoyer « Prendre des nouvelles » par SMS + e-mail" style={{ ...btn(state === "err" ? C.red : C.brand, true), padding: "8px 10px", whiteSpace: "nowrap" }}>
+      {state === "busy" ? "Envoi…" : state === "err" ? "⚠️ Réessayer" : "📨 Nouvelles"}
+    </button>
+    {state === "err" ? <small style={{ color: C.red, fontWeight: 600, fontSize: 12, textAlign: "right" }}>{msg}</small> : null}
+  </div>;
+}
+
+/** Envoi groupé : « Prendre des nouvelles » à tous les clients « à contacter » affichés (filtre et recherche en cours). */
+function BulkSend({ shown, call, onChange }: { shown: Customer[]; call: Call; onChange: (c: Customer) => void }) {
+  const [busy, setBusy] = useState(false); const [msg, setMsg] = useState("");
+  const todo = shown.filter(c => c.status === "à contacter" && quickOk(c) && !sentRecently(c)).slice(0, 40);
+  if (!todo.length && !msg) return null;
+  const run = async () => {
+    if (!window.confirm(`Envoyer « Prendre des nouvelles » (SMS + e-mail) à ${todo.length} client${todo.length > 1 ? "s" : ""} « à contacter » ?`)) return;
+    setBusy(true); setMsg("");
+    try {
+      const j = await call({ action: "send_bulk", ids: todo.map(c => c.id) });
+      (j.customers || []).forEach(onChange);
+      setMsg(`✓ ${j.sent} message${j.sent > 1 ? "s" : ""} envoyé${j.sent > 1 ? "s" : ""}.${j.errors?.length ? ` Pas envoyé : ${j.errors.join(" · ")}` : ""}`);
+    } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  };
+  return <div style={{ marginTop: 10 }}>
+    {todo.length ? <button disabled={busy} onClick={run} style={btn(C.ink)}>{busy ? "Envoi en cours…" : `📨 Envoyer le suivi aux ${todo.length} client${todo.length > 1 ? "s" : ""} « à contacter »`}</button> : null}
+    {msg ? <p style={{ margin: "6px 0 0", fontWeight: 600, color: msg.startsWith("✓") ? C.green : C.red }}>{msg}</p> : null}
   </div>;
 }
 

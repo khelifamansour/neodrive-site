@@ -1,4 +1,4 @@
-/** Suivi des clients et demandes d'avis Google — partagé navigateur / serveur. Aucun envoi automatique : on prépare des liens WhatsApp / SMS, le fondateur envoie lui-même. */
+/** Suivi des clients et demandes d'avis Google — partagé navigateur / serveur. Envoi direct (SMS + e-mail, serveur : lib/client-followup.ts) ou liens WhatsApp / SMS pré-remplis. */
 
 export const STATUSES = ["à contacter", "nouvelles demandées", "problème en cours", "avis demandé", "avis laissé", "ne pas contacter"] as const;
 export type Status = typeof STATUSES[number];
@@ -8,12 +8,13 @@ export const SATISFACTIONS = ["content", "neutre", "pas content"] as const;
 export type Satisfaction = typeof SATISFACTIONS[number];
 export const isSatisfaction = (s: unknown): s is Satisfaction => typeof s === "string" && (SATISFACTIONS as readonly string[]).includes(s);
 
-export type HistoryItem = { at: string; action: string; channel?: string | null; text?: string | null; by?: string | null };
+export type HistoryItem = { at: string; action: string; channel?: string | null; kind?: string | null; text?: string | null; by?: string | null };
 export type Customer = {
   id: number; created_at: string; updated_at: string;
   first_name: string; last_name: string; phone: string | null; email: string | null; city: string | null; model: string | null; vin: string | null;
   delivered_at: string | null; source: string | null; status: Status; satisfaction: Satisfaction | null; notes: string | null;
   do_not_contact_reason: string | null; sav_ticket_ref: string | null; history: HistoryItem[]; last_contact_at: string | null;
+  reservation_id?: number | null; followup_auto?: string | null; followup_auto_at?: string | null; last_sent_at?: string | null;
 };
 
 export const REVIEW_URL = "https://g.page/r/CY-pd6eO0lLtEBM/review";
@@ -31,9 +32,9 @@ export function modelLabel(model: string | null | undefined): string {
 export function messageFor(key: TemplateKey, c: Pick<Customer, "first_name" | "model">): string {
   const first = String(c.first_name || "").trim();
   if (key === "nouvelles") {
-    return `Bonjour${first ? " " + first : ""}, c'est Mansour de NeoDrive. J'espère que vous allez bien ! Je voulais prendre de vos nouvelles : comment se passe votre ${modelLabel(c.model)} au quotidien ? N'hésitez pas si vous avez la moindre question.`;
+    return `Bonjour${first ? " " + first : ""}, c'est NeoDrive. Nous vous contactons pour savoir comment ça se passe avec votre véhicule. Tout va bien ? Répondez-nous simplement sur WhatsApp (wa.me/33676192234) : notre équipe vous répond rapidement.\nL'équipe NeoDrive`;
   }
-  return `Merci beaucoup${first ? " " + first : ""} ! Ça nous ferait très plaisir si vous pouviez partager votre expérience en laissant un avis sur Google, cela aide beaucoup d'autres familles qui hésitent à franchir le pas : ${REVIEW_URL} Merci encore et bonne route !`;
+  return `Merci beaucoup${first ? " " + first : ""} ! Ça nous ferait très plaisir si vous pouviez partager votre expérience en laissant un avis sur Google, cela aide beaucoup d'autres familles qui hésitent à franchir le pas : ${REVIEW_URL} Merci encore et bonne route !\nL'équipe NeoDrive`;
 }
 
 /**

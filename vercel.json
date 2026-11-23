@@ -82,6 +82,10 @@
       "schedule": "40 7,8 * * 1-6"
     },
     {
+      "path": "/api/clients/suivi",
+      "schedule": "30 8,9 * * 1-6"
+    },
+    {
       "path": "/api/conteneurs/followups",
       "schedule": "30 9 * * *"
     }

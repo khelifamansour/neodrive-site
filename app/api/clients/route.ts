@@ -2,14 +2,17 @@ import { NextResponse } from "next/server";
 import { authorizeSection, logSection } from "../../../lib/access";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { isSatisfaction, isStatus, normalizePhone, toIsoDate, type Customer, type HistoryItem, type Status } from "../../../lib/clients";
+import { optedOutPhones, sendToCustomer } from "../../../lib/client-followup";
 
 /**
- * Clients et avis — suivi des clients livrés. AUCUN envoi automatique :
- * le navigateur ouvre WhatsApp / l'appli SMS avec le message pré-rempli, et cette route enregistre seulement l'action.
- * POST { passcode, action, ... } — actions : list, save, import, act.
+ * Clients et avis — suivi des clients livrés.
+ * Envoi direct « send » / « send_bulk » : SMS + e-mail par Brevo depuis le serveur, sans quitter la page (lib/client-followup.ts).
+ * Liens WhatsApp / SMS (secondaires) : le navigateur ouvre l'appli avec le message pré-rempli, « act » enregistre l'action.
+ * Le suivi automatique ~10 jours après livraison est dans /api/clients/suivi (tâche planifiée).
+ * POST { passcode, action, ... } — actions : list, save, import, act, send, send_bulk.
  */
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const TABLE = "customers_followup";
 const clean = (v: unknown, n = 200) => String(v ?? "").replace(/[<>]/g, "").trim().slice(0, n);
@@ -75,6 +78,32 @@ export async function POST(req: Request) {
     if (toInsert.length) { const { error } = await db.from(TABLE).insert(toInsert); if (error) return fail(error.message, 500); }
     await logSection(who, "clients:import", { added: toInsert.length, skipped });
     return NextResponse.json({ ok: true, added: toInsert.length, skipped });
+  }
+
+  if (b.action === "send") {
+    const id = Number(b.id);
+    const kind = b.kind === "avis" ? "avis" : "nouvelles";
+    const { data: c } = await db.from(TABLE).select("*").eq("id", id).single<Customer>();
+    if (!c) return fail("Client introuvable", 404);
+    const r = await sendToCustomer(db, c, kind, { by, text: typeof b.text === "string" ? clean(b.text, 1200) : undefined });
+    if (!r.ok) return fail(r.error || "Envoi impossible", 409);
+    await logSection(who, `clients:envoi_${kind}`, { id, sms: r.sms, email: r.email });
+    return NextResponse.json({ ok: true, customer: r.customer, sms: r.sms, email: r.email, warning: r.error || null });
+  }
+
+  if (b.action === "send_bulk") {
+    const ids = (Array.isArray(b.ids) ? b.ids : []).map(Number).filter(Boolean).slice(0, 40);
+    if (!ids.length) return fail("Aucun client sélectionné.");
+    const { data: rows } = await db.from(TABLE).select("*").in("id", ids);
+    const optedOut = await optedOutPhones(db);
+    const customers: Customer[] = []; const errors: string[] = []; let sent = 0;
+    for (const c of (rows || []) as Customer[]) {
+      const r = await sendToCustomer(db, c, "nouvelles", { by, optedOut });
+      if (r.ok) { sent++; if (r.customer) customers.push(r.customer); }
+      else errors.push(`${`${c.first_name} ${c.last_name}`.trim()} : ${r.error}`);
+    }
+    await logSection(who, "clients:envoi_groupe", { sent, failed: errors.length });
+    return NextResponse.json({ ok: true, sent, errors, customers });
   }
 
   if (b.action === "act") {

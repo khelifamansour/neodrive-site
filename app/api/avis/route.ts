@@ -4,12 +4,15 @@ import { ALERT_ENDPOINT, waNumber } from "../../../lib/sav";
 import { reviewMessage } from "../../../lib/reviews";
 import { readJson, writeJson } from "../../../lib/datastore";
 import { crmDatabase } from "../../../lib/crm-agent";
+import { ensureCustomer, sendToCustomer } from "../../../lib/client-followup";
+import type { Customer } from "../../../lib/clients";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 const SITE = "https://www.easydrive-auto.fr";
 const PATH = "avis/demandes.json";
 
-type Row = { vehicle_id: string; name: string; phone: string; email: string; delivered_at: string; city: string; requested: boolean; wa: string };
+type Row = { vehicle_id: string; name: string; phone: string; email: string; delivered_at: string; city: string; requested: boolean; wa: string; news_at?: string | null; blocked?: boolean };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function load(sb: any, days: number) {
@@ -36,6 +39,17 @@ async function load(sb: any, days: number) {
       rows.push({ vehicle_id: id, name: String(l.nom || "Client"), phone: tel, email: l.email || "", delivered_at: l.converted_at || l.updated_at, city: l.ville || "", requested: !!sent[id], wa: tel ? `https://wa.me/${waNumber(tel)}?text=${encodeURIComponent(reviewMessage(pretty))}` : "" });
     }
   } catch (e) { console.error("[avis] CRM", e); }
+  // « Prendre des nouvelles » déjà envoyé (fiches /clients, même téléphone ou e-mail).
+  try {
+    const { data: fu } = await crmDatabase().from("customers_followup").select("phone,email,status,history").limit(5000);
+    for (const r of rows) {
+      const k = String(r.phone).replace(/\D/g, "").slice(-9); const m = String(r.email || "").toLowerCase();
+      const c = ((fu || []) as Pick<Customer, "phone" | "email" | "status" | "history">[]).find(x => (k.length === 9 && String(x.phone || "").replace(/\D/g, "").slice(-9) === k) || (m && String(x.email || "").toLowerCase() === m));
+      if (!c) continue;
+      r.blocked = c.status === "ne pas contacter";
+      r.news_at = [...(c.history || [])].reverse().find(h => h.kind === "nouvelles" || h.kind === "suivi")?.at || null;
+    }
+  } catch (e) { console.error("[avis] suivi", e); }
   return { rows, sent };
 }
 
@@ -52,6 +66,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
   const { rows } = await load(sb, 30);
+  // Un appui : « Prendre des nouvelles » par SMS + e-mail depuis le serveur, enregistré dans la fiche /clients du client.
+  if (b.action === "nouvelles" && b.vehicleId) {
+    const r = rows.find(x => x.vehicle_id === String(b.vehicleId));
+    if (!r) return NextResponse.json({ ok: false, error: "Client introuvable" }, { status: 404 });
+    const db = crmDatabase();
+    const c = await ensureCustomer(db, { name: r.name, phone: r.phone, email: r.email, city: r.city, delivered_at: r.delivered_at, source: "avis", by: "Mansour" });
+    if (!c) return NextResponse.json({ ok: false, error: "Fiche client impossible à créer" }, { status: 500 });
+    const s = await sendToCustomer(db, c, "nouvelles", { by: "Mansour" });
+    if (!s.ok) return NextResponse.json({ ok: false, error: s.error }, { status: 409 });
+    return NextResponse.json({ ok: true, sms: s.sms, email: s.email, at: new Date().toISOString() });
+  }
   return NextResponse.json({ ok: true, rows, message: reviewMessage("Prénom") });
 }
 

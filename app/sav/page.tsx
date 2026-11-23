@@ -102,6 +102,8 @@ export default function SAV(){
 
   <section className="trust"><article><b>Un interlocuteur direct</b><p>Un technicien NeoDrive échange avec vous par téléphone ou WhatsApp.</p></article><article><b>Pièces sous 48 h</b><p>Pièces détachées disponibles et expédiées rapidement partout en France.</p></article><article><b>Suivi en ligne</b><p>Votre référence vous permet de voir où en est votre demande, à tout moment.</p></article></section>
 
+  <section aria-label="Avant de nous écrire" style={{maxWidth:1100,margin:"0 auto 24px",padding:"0 16px"}}><div style={{background:"#fff",border:"1px solid #ece7df",borderRadius:18,padding:"16px 18px",display:"flex",flexWrap:"wrap",gap:12,alignItems:"center",justifyContent:"space-between"}}><div style={{flex:"1 1 260px"}}><b style={{fontSize:17}}>Avant de nous écrire</b><p style={{margin:"4px 0 0",color:"#555"}}>La réponse est peut-être déjà là : problèmes et questions déjà rencontrés par nos clients, et notre guide batterie.</p></div><div style={{display:"flex",flexWrap:"wrap",gap:8}}><a href="/sav/problemes" style={{background:"#141414",color:"#fff",padding:"11px 16px",borderRadius:12,fontWeight:800,textDecoration:"none"}}>Problèmes et solutions</a><a href="/guide-batterie" style={{background:"#fff1ea",color:"#141414",border:"1px solid #f8c9b4",padding:"11px 16px",borderRadius:12,fontWeight:800,textDecoration:"none"}}>🔋 Guide batterie</a></div></div></section>
+
   <section id="demande" className="ticket"><div className="heading"><span>VOTRE DEMANDE</span><h2>Décrivez-nous la situation.</h2><p>Plus votre description est précise, plus notre réponse est rapide.</p></div>
    {done?<div className="success">
     <div className="okIcon">✓</div>
