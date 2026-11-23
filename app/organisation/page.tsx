@@ -9,6 +9,7 @@ const TILES: Tile[] = [
   { href: "/pieces/admin", icon: "📦", title: "Commandes de pièces", text: "Les pièces commandées par les clients et leur expédition.", section: "pieces" },
   { href: "/reservations-admin", icon: "📋", title: "Réservations clients", text: "Toutes les réservations, les dates promises et l’envoi au planificateur.", section: "tournees" },
   { href: "/carte-grise-admin", icon: "📑", title: "Dossiers carte grise", text: "Les dossiers reçus du site et leur envoi à NK Services.", section: "owner" },
+  { href: "/litiges", icon: "⚖️", title: "Litiges", text: "Les dossiers de litige, leurs pièces et la prochaine action.", section: "owner" },
   { href: "/livreur", icon: "🧑‍✈️", title: "Espace prestataire", text: "Livraison, préparation : vos tournées, vos heures, vos documents et votre contrat.", section: "livreur" },
   { href: "/planificateur", icon: "🚚", title: "Tournées et livraisons", text: "Préparer les tournées, les clients à livrer et les dépôts.", section: "tournees" },
   { href: "/vehicules", icon: "🚗", title: "Suivi des voitures", text: "Chaque voiture, du conteneur jusqu’au client.", section: "vehicules" },
