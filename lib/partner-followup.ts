@@ -37,7 +37,7 @@ export function partnerEmail(step: 0 | 1 | 2, a: PartnerApplication) {
     subject: "Votre candidature partenaire NeoDrive",
     html: layout(a, [
       `Merci beaucoup pour la candidature de <b>${company}</b> au réseau de partenaires NeoDrive. Elle est bien reçue ✅`,
-      `Le réseau NeoDrive <b>ouvre officiellement en avril 2027</b>. D'ici là, <b>un conseiller NeoDrive va vous contacter</b> pour faire connaissance et répondre à vos questions.`,
+      `Le réseau NeoDrive <b>ouvre officiellement en avril 2027</b>. Nous reviendrons vers vous avant l'ouverture pour vous présenter nos conditions ; en attendant, vous pouvez découvrir notre catalogue partenaires ci-dessous, et répondre à cet e-mail si vous avez une question.`,
       `Devenir partenaire NeoDrive, c'est :`,
       `• <b>plus de visibilité</b> pour votre commerce, mis en avant auprès des clients de votre secteur ;<br>• <b>une marge en plus</b> sur un produit qui se vend bien ;<br>• <b>des clients de votre région</b> que nous vous envoyons ;<br>• <b>la NeoDrive Confort</b>, une voiture sans permis électrique robuste et bien équipée ;<br>• <b>un pack de pièces de démarrage</b> pour la garantie et le service après-vente ;<br>• <b>une formation</b> et <b>un kit marketing</b> pour bien démarrer.`,
       `Pour tout découvrir tranquillement : ${catalogue}`,
@@ -49,7 +49,7 @@ export function partnerEmail(step: 0 | 1 | 2, a: PartnerApplication) {
     html: layout(a, [
       `Je reviens vers vous suite à la candidature de <b>${company}</b> au réseau NeoDrive.`,
       `<b>Avez-vous pu consulter notre catalogue partenaires ?</b> Vous le retrouvez ici : ${catalogue}`,
-      `<b>Souhaitez-vous un échange de 15 minutes ?</b> Répondez simplement à cet e-mail avec le moment qui vous arrange, et nous vous appelons.`,
+      `Pour rappel, le réseau <b>ouvre en avril 2027</b> : nous reviendrons vers vous avant l'ouverture. Si vous avez une question d'ici là, répondez simplement à cet e-mail.`,
     ]),
   };
   return {
