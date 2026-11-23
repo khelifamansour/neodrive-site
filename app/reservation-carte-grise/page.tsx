@@ -55,6 +55,9 @@ export default function ReservationCarteGrise() {
   const [client, setClient] = useState({ nom: "", prenom: "", telephone: "", email: "", adresse: "", code_postal: "", ville: "" });
   const [noDelivery, setNoDelivery] = useState(false);
   const [wantsCarteGrise, setWantsCarteGrise] = useState(true);
+  // Client qui a déjà réservé ou reçu son véhicule : il dépose ses documents carte grise, le « devis » devient son contrat de vente (pas de nouvelle commande).
+  const [dejaClient, setDejaClient] = useState(false);
+  useEffect(() => { try { if (new URLSearchParams(location.search).get("client") === "1") setDejaClient(true); } catch { /* rien */ } }, []);
   // Options conseiller (non envoyées dans le formulaire, elles ne servent qu'au devis).
   const [quantity, setQuantity] = useState(1);
   const [manualTransport, setManualTransport] = useState("");
@@ -329,13 +332,18 @@ export default function ReservationCarteGrise() {
           className={s.form}
         >
 
-          <input type="hidden" name="_subject" value="Nouvelle réservation véhicule + carte grise" />
+          <input type="hidden" name="_subject" value={dejaClient ? "Dossier carte grise – CLIENT EXISTANT (pas une nouvelle commande)" : "Nouvelle réservation véhicule + carte grise"} />
+          <input type="hidden" name="type_demande" value={dejaClient ? "client existant : dossier carte grise (contrat, mandat, COC, pièces)" : "nouvelle réservation"} />
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#fff1ea", border: "1px solid #f8c9b4", borderRadius: 14, padding: "12px 14px", margin: "0 0 14px", cursor: "pointer", lineHeight: 1.45 }}>
+            <input type="checkbox" checked={dejaClient} onChange={e => setDejaClient(e.target.checked)} style={{ marginTop: 4, width: 20, height: 20, flex: "none" }} />
+            <span><b>J’ai déjà réservé ou reçu ma NeoDrive</b> : je complète seulement mon dossier carte grise. Ce n’est pas une nouvelle commande : le document de l’étape 5 est votre contrat de vente, à signer et à joindre avec le mandat, le COC et vos pièces.</span>
+          </label>
           <input type="hidden" name="version" value={VERSION_FORM[model].value} />
           <input type="hidden" name="departement_livraison" value={departementLivraison} />
           <input type="hidden" name="livraison" value={livraisonValue} />
 
           <ol className={`${s.progress} ${c.progress5}`} aria-label="Étapes du dossier">
-            {["Véhicule", "Livraison", "Carte grise", "Documents", "Devis"].map((t, i) => <li key={t} className={stepState[i] ? s.done : ""}><b>{stepState[i] ? Icon.check : i + 1}</b><span>{t}</span></li>)}
+            {["Véhicule", "Livraison", "Carte grise", "Documents", dejaClient ? "Contrat" : "Devis"].map((t, i) => <li key={t} className={stepState[i] ? s.done : ""}><b>{stepState[i] ? Icon.check : i + 1}</b><span>{t}</span></li>)}
           </ol>
 
           {/* ÉTAPE 1 — VÉHICULE */}
@@ -421,7 +429,7 @@ export default function ReservationCarteGrise() {
                 <button type="button" onClick={downloadMandat} className={s.btnGhost}>{Icon.download} Télécharger le mandat pré-rempli</button>
                 <div className={c.docGrid}>
                   {fileInput("mandat_carte_grise_signe", "Mandat signé", "Avec la mention « Lu et approuvé »", wantsCarteGrise)}
-                  {fileInput("coc", "Certificat de conformité européen (COC)", "Peut être ajouté plus tard", false)}
+                  {fileInput("coc", "Certificat de conformité européen (COC)", dejaClient ? "Remis avec votre véhicule — obligatoire" : "Peut être ajouté plus tard", dejaClient)}
                   {fileInput("cnit", "CNIT / document d’homologation", "Peut être ajouté plus tard", false)}
                 </div>
                 <p className={s.note}>Le COC et le CNIT peuvent être ajoutés ici au dossier. Ils restent facultatifs lors de l’envoi initial.</p>
@@ -431,7 +439,7 @@ export default function ReservationCarteGrise() {
 
           {/* ÉTAPE 5 — DEVIS */}
           <section className={s.card} id="devis">
-            <header className={s.cardHead}><span className={s.stepNum}>5</span><div><h2>Votre devis</h2><p>Téléchargez-le, signez-le, puis importez-le.</p></div></header>
+            <header className={s.cardHead}><span className={s.stepNum}>5</span><div><h2>{dejaClient ? "Votre contrat de vente" : "Votre devis"}</h2><p>{dejaClient ? "Il reprend votre commande (ce n’est pas une nouvelle commande) : téléchargez-le, signez-le, puis importez-le." : "Téléchargez-le, signez-le, puis importez-le."}</p></div></header>
 
             <div className={c.devisWrap}>
               <div ref={printRef} style={pdf}>
@@ -534,14 +542,14 @@ export default function ReservationCarteGrise() {
             </div>
 
             <ol className={c.howto}>
-              <li>Télécharger le devis</li>
+              <li>{dejaClient ? "Télécharger le contrat" : "Télécharger le devis"}</li>
               <li>Signer</li>
               <li>Réimporter ici</li>
               <li>Envoyer</li>
             </ol>
 
             <div className={c.upload}>
-              {fileInput("devis_signe", "Devis signé", "Le devis ci-dessus, signé", true)}
+              {fileInput("devis_signe", dejaClient ? "Contrat de vente signé" : "Devis signé", dejaClient ? "Le contrat ci-dessus, signé « Lu et approuvé »" : "Le devis ci-dessus, signé", true)}
             </div>
 
             <details className={c.advisor}>
@@ -561,7 +569,7 @@ export default function ReservationCarteGrise() {
             </details>
 
             <div className={c.devisActions}>
-              <button type="button" onClick={downloadPDF} className={s.btnGhost}>{Icon.download} Télécharger le devis PDF</button>
+              <button type="button" onClick={downloadPDF} className={s.btnGhost}>{Icon.download} {dejaClient ? "Télécharger le contrat PDF" : "Télécharger le devis PDF"}</button>
               <button type="submit" className={s.btnPrimary}>{Icon.lock} Envoyer mon dossier</button>
             </div>
           </section>

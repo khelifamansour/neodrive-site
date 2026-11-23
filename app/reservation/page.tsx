@@ -135,6 +135,9 @@ const totalTTC =
       <Script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" />
 
       <h2 style={{ textAlign: "center" }}>Réservation véhicule</h2>
+      <a href="/reservation-carte-grise?client=1" style={{ display: "block", background: "#fff1ea", border: "1px solid #f8c9b4", borderRadius: 12, padding: "12px 14px", margin: "0 0 18px", color: "#141414", textDecoration: "none", lineHeight: 1.45 }}>
+        <b>Vous avez déjà réservé ou reçu votre NeoDrive ?</b> Complétez votre dossier carte grise ici (contrat, mandat, COC, pièce d’identité, justificatif de domicile) : <span style={{ color: "#f05a28", fontWeight: 700 }}>ouvrir le dossier carte grise →</span>
+      </a>
 
       <form
         action="https://formspree.io/f/xjgjrqqg"
