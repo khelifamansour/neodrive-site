@@ -13,6 +13,15 @@ type DB = ReturnType<typeof crmDatabase>;
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const OWNER_SMS = () => process.env.OWNER_SMS_PHONE || "0689781710";
 export const intlPhone = (p: string) => { const d = String(p || "").replace(/\D/g, ""); return d.startsWith("0") ? "33" + d.slice(1) : d; };
+export const GUIDE_URL = `${SITE}/guide-batterie`;
+const GUIDE_HTML = `<p style="background:#fff1ea;border:1px solid #f8c9b4;border-radius:10px;padding:10px 12px"><b>🔋 Très important : le guide batterie.</b> Pour préserver vos batteries et votre garantie (recharge, temps de charge, stockage), lisez nos consignes avant votre première recharge : <a href="${GUIDE_URL}">${GUIDE_URL}</a></p>`;
+/** SMS client (caractères GSM uniquement) : lien vers le guide batterie, envoyé à chaque remise du véhicule. */
+export async function sendGuideSms(phone: string) {
+  if (!phone) return false;
+  const d = intlPhone(phone);
+  await sendSms("+" + d, `NeoDrive : bienvenue ! TRES IMPORTANT pour vos batteries et votre garantie : lisez nos consignes de recharge et de stockage avant la 1re recharge : easydrive-auto.fr/guide-batterie`, "transactional");
+  return true;
+}
 const eur = (n: number | null | undefined) => n == null ? "" : `${Math.round(Number(n)).toLocaleString("fr-FR")} €`;
 
 /** Statut affiché : « Livrée – paiement en attente » tant que le paiement n'est pas confirmé. */
@@ -55,15 +64,16 @@ export async function finalizeDelivery(db: DB, r: any, data: ReceiptData, signat
   if (brevoReady()) {
     const first = String(r.prenom || "").split(/\s+/)[0];
     const pendingTxt = !paid ? `<p><b>Paiement en attente${data.pending?.montant_du ? ` (${esc(eur(data.pending.montant_du))})` : ""}</b> : les clés et les documents du véhicule vous seront remis ou envoyés par courrier suivi dès réception de votre virement.</p>` : "";
-    const html = `<p>Bonjour ${esc(first)},</p><p>Bienvenue dans la famille NeoDrive ! Vous trouverez ci-joint l'accusé de réception de votre véhicule (n° de série ${esc(r.vin)}).</p>${pendingTxt}<p>Vous pouvez aussi le consulter ici : <a href="${url}">${url}</a></p><p>Une question, un souci ? Répondez simplement à cet e-mail ou appelez-nous au 06 89 78 17 10.</p><p>Bonne route !<br>Mansour - NeoDrive</p>`;
+    const html = `<p>Bonjour ${esc(first)},</p><p>Bienvenue dans la famille NeoDrive ! Vous trouverez ci-joint l'accusé de réception de votre véhicule (n° de série ${esc(r.vin)}).</p>${pendingTxt}<p>Vous pouvez aussi le consulter ici : <a href="${url}">${url}</a></p>${GUIDE_HTML}<p>Une question, un souci ? Répondez simplement à cet e-mail ou appelez-nous au 06 89 78 17 10.</p><p>Bonne route !<br>Mansour - NeoDrive</p>`;
     const att = [{ name: `Accuse-reception-${data.numero}.pdf`, content: pdf.toString("base64") }];
     try {
       if (r.email) emailed = !!(await sendEmail(r.email, data.client, "Votre accusé de réception NeoDrive", html, att, { cc: [OWNER_EMAIL], replyTo: OWNER_EMAIL }));
       else await sendEmail(OWNER_EMAIL, "Mansour", `Accusé de réception – ${data.client} (VIN ${r.vin})`, `<p>Accusé ${esc(how)} pour ${esc(data.client)} (pas d'e-mail client connu).</p><p><a href="${url}">${url}</a></p>`, att);
     } catch (e) { console.error("[LIVRAISON] email accusé", e); }
+    try { if (r.telephone) await sendGuideSms(r.telephone); } catch (e) { console.error("[LIVRAISON] SMS guide", e); }
     try { await sendSms(OWNER_SMS(), `NeoDrive : livraison de ${data.client} ${paid ? "terminee" : "faite, PAIEMENT EN ATTENTE"}, accuse ${data.mode === "distance" ? "confirme a distance" : "signe"} (VIN ${r.vin}).`, "transactional"); } catch (e) { console.error("[LIVRAISON] SMS fondateur", e); }
   }
-  const wa = r.telephone ? `https://wa.me/${intlPhone(r.telephone)}?text=${encodeURIComponent(`Bonjour, voici votre accusé de réception NeoDrive : ${url} Bonne route ! NeoDrive`)}` : null;
+  const wa = r.telephone ? `https://wa.me/${intlPhone(r.telephone)}?text=${encodeURIComponent(`Bonjour, voici votre accusé de réception NeoDrive : ${url}\n\n🔋 TRÈS IMPORTANT : avant votre première recharge, lisez notre guide batterie (recharge, temps de charge, stockage) pour préserver vos batteries et votre garantie : ${GUIDE_URL}\n\nBonne route ! NeoDrive`)}` : null;
   return { url, emailed, whatsapp: wa, paid };
 }
 
