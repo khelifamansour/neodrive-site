@@ -13,6 +13,8 @@ const RULES: { title: string; text: React.ReactNode }[] = [
   { title: "Une CALE sous la roue avant", text: <>Mettre une cale (petit cube) sous la roue avant <b>avant</b> de bouger le châssis.</> },
   { title: "Fourches À FOND dans les trous", text: <>Les fourches vont à fond dans les trous du châssis. Si le châssis est incliné : fourches <b>À L’INTÉRIEUR DU TRIANGLE</b>.</> },
   { title: "Très étroit : rien ne doit taper", text: <>Le toit, les côtés (ailes, rétroviseurs) et <b>SURTOUT LE PARE-CHOCS AVANT EN BAS</b> ne doivent jamais taper le conteneur.</> },
+  { title: "Lever JUSTE ASSEZ", text: <>Ne lever la voiture que juste assez pour la déplacer : <b>plusieurs toits ont déjà été abîmés</b> contre le haut du conteneur.</> },
+  { title: "Ne jamais toucher la carrosserie", text: <>Même en retirant le châssis : nos voitures sont en tôle d’acier, <b>la moindre touche laisse une marque</b>. Manipuler avec attention.</> },
   { title: "La voiture peut pivoter et se renverser", text: <>Sortir lentement, bien droit, avec une personne qui guide. <b>Personne dessous ni à côté.</b></> },
   { title: "Un doute : on arrête", text: <>On arrête tout et on appelle Mansour au <a href="tel:+33689781710" style={{ color: C.brand, fontWeight: 800 }}>{PHONE}</a>.</> },
 ];
