@@ -21,12 +21,12 @@ export function monthlyPayment(amount: number, months: number, annualRate = FINA
 
 export const FINANCE_DOCS = [
   { key: "identite", label: "Pièce d’identité (recto-verso)", required: true },
-  { key: "domicile", label: "Justificatif de domicile (- de 3 mois)", required: true },
-  { key: "salaire1", label: "Bulletin de salaire n°1 (dernier mois)", required: true },
-  { key: "salaire2", label: "Bulletin de salaire n°2", required: true },
+  { key: "domicile", label: "Justificatif de domicile (- de 3 mois)", required: false },
+  { key: "salaire1", label: "Bulletin de salaire n°1 (dernier mois)", required: false },
+  { key: "salaire2", label: "Bulletin de salaire n°2", required: false },
   { key: "salaire3", label: "Bulletin de salaire n°3", required: false },
   { key: "impots", label: "Dernier avis d’imposition", required: false },
-  { key: "rib", label: "RIB", required: true },
+  { key: "rib", label: "RIB", required: false },
   { key: "contrat", label: "Contrat de travail / attestation employeur", required: false },
 ] as const;
 export type FinanceDocKey = typeof FINANCE_DOCS[number]["key"];

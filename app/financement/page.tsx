@@ -199,7 +199,7 @@ export default function Financement(){
     {FINANCE_DOCS.map(d=>{const f=files[d.key];return <label key={d.key} className={`${s.doc} ${f?s.docOk:""}`}>
      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*" onChange={pickFile(d.key)}/>
      <i>{f?"✓":"+"}</i>
-     <div><strong>{d.label}{!d.required?<em> · facultatif</em>:null}</strong><small>{f?f.name:"Toucher pour ajouter (photo ou fichier)"}</small></div>
+     <div><strong>{d.label}{!d.required?<em> · conseillé (vous pourrez l’envoyer plus tard)</em>:null}</strong><small>{f?f.name:"Toucher pour ajouter (photo ou fichier)"}</small></div>
     </label>})}
    </div>
 
