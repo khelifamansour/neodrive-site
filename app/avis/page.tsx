@@ -37,8 +37,8 @@ export default function Avis(){
    <div className="box"><b>Envoyer la demande d’avis par WhatsApp</b><p>Message déjà écrit, il suffit d’envoyer.</p>
     <div className="row"><input value={first} onChange={e=>setFirst(e.target.value)} placeholder="Prénom du client"/><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Téléphone" inputMode="tel"/></div>
     <a className={manual?"wa":"wa off"} href={manual||undefined} target="_blank" rel="noreferrer">Ouvrir WhatsApp</a></div>
-   {rows===null?<form className="box" onSubmit={e=>{e.preventDefault();load();}}><b>Mes livraisons récentes</b><p>Code ERP pour voir les clients livrés ces 30 derniers jours.</p><div className="row"><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code"/><button>Voir</button></div>{err?<p className="e">{err}</p>:null}</form>
-   :<div className="box"><b>Livraisons des 30 derniers jours</b>{!rows.length?<p>Aucune livraison marquée « livrée » dans le stock ce mois-ci. Utilisez l’envoi manuel ci-dessus.</p>:null}
+   {rows===null?<form className="box" onSubmit={e=>{e.preventDefault();load();}}><b>Mes livraisons récentes</b><p>Code ERP pour voir vos clients livrés.</p><div className="row"><input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Code"/><button>Voir</button></div>{err?<p className="e">{err}</p>:null}</form>
+   :<div className="box"><b>Clients livrés</b>{!rows.length?<p>Aucun client livré pour l’instant. Utilisez l’envoi manuel ci-dessus.</p>:null}
     <ul>{rows.map(r=><li key={r.vehicle_id}><div><b>{r.name}</b><small>{new Date(r.delivered_at).toLocaleDateString("fr-FR")}{r.city?` · ${r.city}`:""}</small></div>{r.requested?<span className="done">✓ Demandé</span>:r.wa?<a className="wa sm" href={r.wa} target="_blank" rel="noreferrer" onClick={()=>mark(r.vehicle_id)}>Demander l’avis</a>:<span className="muted">Pas de téléphone</span>}</li>)}</ul></div>}
    <p className="note">Demandez l’avis uniquement aux clients dont vous savez qu’ils sont satisfaits.</p>
   </section>

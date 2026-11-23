@@ -3,6 +3,7 @@ import { isAuthorized, serviceClient } from "../../../lib/integrations";
 import { ALERT_ENDPOINT, waNumber } from "../../../lib/sav";
 import { reviewMessage } from "../../../lib/reviews";
 import { readJson, writeJson } from "../../../lib/datastore";
+import { crmDatabase } from "../../../lib/crm-agent";
 
 export const dynamic = "force-dynamic";
 const SITE = "https://www.easydrive-auto.fr";
@@ -22,6 +23,19 @@ async function load(sb: any, days: number) {
     const first = String(c.first_name || "").trim();
     return { vehicle_id: v.id, name: `${first} ${c.last_name || ""}`.trim() || "Client", phone: c.phone || "", email: c.email || "", delivered_at: v.delivered_at, city: c.city || v.location_label || "", requested: !!sent[v.id], wa: c.phone ? `https://wa.me/${waNumber(c.phone)}?text=${encodeURIComponent(reviewMessage(first))}` : "" };
   });
+  // Clients livrés du CRM (statut « Client »), pas encore présents via le stock.
+  try {
+    const { data: leads } = await crmDatabase().from("leads").select("id,nom,telephone,email,ville,updated_at,converted_at,opted_out_at").eq("statut", "Client").is("opted_out_at", null).order("updated_at", { ascending: false }).limit(60);
+    const known = new Set(rows.map(r => String(r.phone).replace(/\D/g, "").slice(-9)).filter(Boolean));
+    for (const l of leads || []) {
+      const tel = String(l.telephone || ""); const k = tel.replace(/\D/g, "").slice(-9);
+      if (k && known.has(k)) continue; known.add(k);
+      const first = String(l.nom || "").trim().split(/\s+/)[0] || "";
+      const pretty = first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : "";
+      const id = `lead-${l.id}`;
+      rows.push({ vehicle_id: id, name: String(l.nom || "Client"), phone: tel, email: l.email || "", delivered_at: l.converted_at || l.updated_at, city: l.ville || "", requested: !!sent[id], wa: tel ? `https://wa.me/${waNumber(tel)}?text=${encodeURIComponent(reviewMessage(pretty))}` : "" });
+    }
+  } catch (e) { console.error("[avis] CRM", e); }
   return { rows, sent };
 }
 
@@ -47,7 +61,7 @@ export async function GET(req: Request) {
   const sb = serviceClient();
   if (!sb) return NextResponse.json({ ok: false, error: "Configuration manquante" }, { status: 503 });
   const { rows } = await load(sb, 3);
-  const todo = rows.filter(r => !r.requested);
+  const todo = rows.filter(r => !r.requested && !r.vehicle_id.startsWith("lead-"));
   if (!todo.length) return NextResponse.json({ ok: true, todo: 0, sent: false });
   const lines = todo.map(r => `• ${r.name}${r.city ? ` (${r.city})` : ""} — livré le ${new Date(r.delivered_at).toLocaleDateString("fr-FR")}\n  ${r.wa ? "Demander l’avis sur WhatsApp : " + r.wa : "Pas de téléphone enregistré"}`);
   const res = await fetch(ALERT_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", Referer: SITE + "/avis", Origin: SITE }, body: JSON.stringify({ _subject: `⭐ ${todo.length} client${todo.length > 1 ? "s" : ""} à qui demander un avis Google`, clients: lines.join("\n\n"), astuce: "Touchez le lien WhatsApp : le message est déjà écrit, il suffit d’envoyer.", suivi: `${SITE}/avis` }) }).catch(() => null);
