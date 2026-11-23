@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { packageTemplateStatus, sendOwnerTestPackage, waAdmin } from "../../../../lib/package-sender";
+import { batteryQueue, batteryTemplateStatus } from "../../../../lib/battery-wa";
 import { copyToOwner, smsText } from "../../../../lib/multichannel";
 import { sendNewsletterPreview } from "../../../../lib/newsletter";
 import { brevoAccount, brevoDomains, brevoEvents, sendSms, setSenderOverride } from "../../../../lib/brevo";
@@ -50,6 +51,11 @@ export async function GET(req: Request) {
     catch (e) { return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 502 }); }
   }
   const create = sp.get("create") === "1";
+  // ?template=conseils-batterie (&create=1) : état (ou soumission à Meta) du seul modèle des conseils batterie, et taille de la file. N'envoie rien.
+  if (sp.get("template") === "conseils-batterie") {
+    try { const q = await batteryQueue(); return NextResponse.json({ ok: true, template: await batteryTemplateStatus(create), queued: q.queue.length, sentToday: q.sentToday, whatsappSending: process.env.WHATSAPP_SENDING === "on" }); }
+    catch (e) { return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 502 }); }
+  }
   try { return NextResponse.json({ ok: true, templates: await packageTemplateStatus(create) }); }
   catch (e) { return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 502 }); }
 }

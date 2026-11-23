@@ -1,0 +1,19 @@
+name: WhatsApp - modèle conseils batterie
+# Lit l'état du modèle Meta « neodrive_conseils_batterie » (et la file d'attente), ou le soumet à Meta (create = 1). N'envoie aucun message.
+on:
+  workflow_dispatch:
+    inputs:
+      create:
+        description: "1 = soumettre le modèle à Meta s'il n'existe pas encore ; 0 = lire l'état"
+        required: true
+        default: "0"
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Appeler le site
+        env:
+          CREATE: ${{ inputs.create }}
+        run: |
+          [ "$CREATE" = "1" ] && Q="&create=1" || Q=""
+          curl -sS --max-time 60 "https://www.easydrive-auto.fr/api/crm/relay-check?template=conseils-batterie$Q" | head -c 2000
