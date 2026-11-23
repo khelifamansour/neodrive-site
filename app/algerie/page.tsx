@@ -119,7 +119,7 @@ export default function Algerie() {
     <p className={c.muted} style={{ marginTop: 0 }}>Stratégie et test de marché.</p>
 
     <div className={c.card} style={{ marginTop: 12, borderColor: "#f05a28", background: "#fff4ec", fontSize: 16, lineHeight: 1.5 }}>
-      <b>Principe :</b> France d’abord (≈ 90 % de l’énergie), Algérie en test à faible coût (≈ 10 %), pas de capital engagé tant que la France n’est pas rentable et autonome.
+      <b>Principe :</b> France d’abord (≈ 90 % de l’énergie). En Algérie, seul le test TikTok est gratuit : une vraie entrée (conteneur, dossiers, équipe, terrain) coûte des centaines de milliers d’euros et des mois. Aucun capital engagé tant que la France n’est pas rentable et autonome, et tant que l’étude de marché ne le justifie pas.
     </div>
 
     <div className={c.stats} style={{ marginTop: 12 }}>
