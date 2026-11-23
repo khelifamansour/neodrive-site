@@ -41,6 +41,8 @@ const prixVehicule = versions[version].prix;
 const [quantity, setQuantity] = useState(1);
 const [manualTransport, setManualTransport] = useState("");
 const [discount, setDiscount] = useState(0);
+// Client qui a déjà réservé : il dépose seulement ses documents pour la carte grise (pas de nouveau devis).
+const [dejaClient, setDejaClient] = useState(false);
   
 
   // Barème commun avec la page /reservation-devis (lib/neodrive-pricing.ts)
@@ -134,7 +136,11 @@ const totalTTC =
       <Script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" />
       <Script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" />
 
-      <h2 style={{ textAlign: "center" }}>Réservation véhicule</h2>
+      <h2 style={{ textAlign: "center" }}>{dejaClient ? "Documents pour la carte grise" : "Réservation véhicule"}</h2>
+      <label style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#fff1ea", border: "1px solid #f8c9b4", borderRadius: 12, padding: "12px 14px", margin: "0 0 18px", cursor: "pointer", lineHeight: 1.45 }}>
+        <input type="checkbox" checked={dejaClient} onChange={(e) => setDejaClient(e.target.checked)} style={{ marginTop: 4, width: 20, height: 20 }} />
+        <span><b>J’ai déjà réservé ou reçu ma NeoDrive</b> : je dépose seulement mes documents pour la carte grise (aucun nouveau devis, aucune nouvelle commande).</span>
+      </label>
 
       <form
         action="https://formspree.io/f/xjgjrqqg"
@@ -148,12 +154,13 @@ const totalTTC =
             fd.forEach((v, k) => { if (typeof v === "string") o[k] = v; });
             o.total = totalTTC; o.delivery_price = noDelivery ? 0 : transport; o.quantite = quantity;
             o.options = noDelivery ? "Retrait sur place" : "";
-            fetch("/api/reservations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(o), keepalive: true }).catch(() => null);
+            if (!dejaClient) fetch("/api/reservations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(o), keepalive: true }).catch(() => null);
           } catch { /* l'e-mail part quand même */ }
         }}
       >
 
-        <input type="hidden" name="_subject" value="Nouvelle réservation véhicule" />
+        <input type="hidden" name="_subject" value={dejaClient ? "Documents carte grise – client existant (pas de nouvelle commande)" : "Nouvelle réservation véhicule"} />
+        <input type="hidden" name="type_demande" value={dejaClient ? "client existant : documents carte grise uniquement" : "nouvelle réservation"} />
         <input type="hidden" name="modele" value={versions[version].label.trim()} />
         <input type="hidden" name="quantite" value={quantity} />
         <input type="hidden" name="livraison" value={noDelivery ? "retrait sur place" : delivery.status === "estimated" || manualTransport ? `${transport} €` : "sur devis"} />
@@ -163,6 +170,7 @@ const totalTTC =
 
         <div style={section}>
           <h3>Informations client</h3>
+          {!dejaClient ? <>
           <p style={label}>Version souhaitée</p>
 
 <select
@@ -176,6 +184,7 @@ const totalTTC =
   <option value="confort">Version Confort — 4 990 € TTC</option>
   <option value="confortPlus">Version Confort Plus+ — 5 990 € TTC</option>
 </select>
+          </> : null}
 
           <input name="nom" placeholder="Nom" style={input} onChange={handleChange} required />
           <input name="prenom" placeholder="Prénom" style={input} onChange={handleChange} required />
@@ -187,6 +196,7 @@ const totalTTC =
   Livraison : {noDelivery ? "0 €" : manualTransport ? `${Number(manualTransport)} €` : delivery.status === "estimated" ? `${delivery.price} €` : "sur devis"} <span style={{ fontWeight: 500 }}>— {transportLabel}</span>
 </div>
 
+{!dejaClient ? <>
 <p style={label}>Nombre de véhicules</p>
 <input
   type="number"
@@ -232,6 +242,7 @@ const totalTTC =
             
   Retrait sur place (pas de livraison)
 </label>
+</> : null}
           <input name="ville" placeholder="Ville" style={input} onChange={handleChange} required />
         </div>
 
@@ -244,7 +255,8 @@ const totalTTC =
           <p style={small}>Justificatif de domicile :</p>
           <input type="file" name="justificatif" accept=".pdf,image/*" required />
 
-          <p style={small}>Devis signé :</p>
+          {!dejaClient ? <p style={small}>Devis signé :</p> : null}
+          {!dejaClient ? <>
           <input type="file" name="devis_signe" accept=".pdf,image/*" required />
 
           <p style={small}>
@@ -253,9 +265,10 @@ const totalTTC =
             3. Réimporter ici<br/>
             4. Envoyer
           </p>
+          </> : <p style={small}>Pas de devis à fournir : vous avez déjà réservé.</p>}
         </div>
 
-        <div ref={printRef} style={pdf}>
+        <div ref={printRef} style={dejaClient ? { ...pdf, display: "none" } : pdf}>
 
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div>
@@ -908,9 +921,9 @@ Signature précédée de la mention :
 
         </div>
 
-        <button type="button" onClick={downloadPDF} style={btn}>
+        {!dejaClient ? <button type="button" onClick={downloadPDF} style={btn}>
           Télécharger le devis PDF
-        </button>
+        </button> : null}
 
         <button type="submit" style={btn}>
           Envoyer mon dossier
