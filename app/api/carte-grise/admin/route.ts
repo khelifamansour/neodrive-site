@@ -3,9 +3,13 @@ import { isAuthorized } from "../../../../lib/integrations";
 import { dataClient } from "../../../../lib/datastore";
 import { dossierLinks, findDossier, sendDossierToProvider } from "../../../../lib/carte-grise-server";
 import { CARTE_GRISE_PROVIDER_EMAIL, CARTE_GRISE_PROVIDER_NAME } from "../../../../lib/carte-grise";
+import { analyseDossier, linkReservationVin } from "../../../../lib/stock";
+import { payState } from "../../../../lib/stock-shared";
+
+const RES = "id,prenom,nom,telephone,statut,livre_at,vin,total,paiement_confirme_at,paiement_en_attente,montant_du,reserve_path,reserve_token,modele,couleur";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 const STATUSES = ["envoi en cours", "reçu", "envoyé", "traité", "annulé"];
 
 /** Dossiers carte grise : liste et envoi au prestataire, réservés au fondateur (code principal). */
@@ -16,14 +20,40 @@ export async function POST(req: Request) {
   if (!sb) return NextResponse.json({ ok: false, error: "Configuration manquante" }, { status: 503 });
   try {
     if (b.action === "list") {
-      const { data, error } = await sb.from("carte_grise_dossiers").select("id,ref,created_at,type_demande,nom,prenom,telephone,email,adresse,code_postal,ville,version,service_carte_grise,files,status,sent_to_provider_at,sent_to,notes").order("created_at", { ascending: false }).limit(300);
+      const { data, error } = await sb.from("carte_grise_dossiers").select("id,ref,created_at,type_demande,nom,prenom,telephone,email,adresse,code_postal,ville,version,service_carte_grise,files,status,sent_to_provider_at,sent_to,notes,vin,vin_check_ok,vin_source,reservation_id,vehicle_id,match_note,analysed_at").order("created_at", { ascending: false }).limit(300);
       if (error) throw new Error(error.message);
-      return NextResponse.json({ ok: true, dossiers: data || [], provider: { name: CARTE_GRISE_PROVIDER_NAME, email: CARTE_GRISE_PROVIDER_EMAIL } });
+      const ids = [...new Set((data || []).map(d => d.reservation_id).filter(Boolean))];
+      const { data: res } = ids.length ? await sb.from("reservations").select(RES).in("id", ids) : { data: [] };
+      const byId = new Map((res || []).map(r => [r.id, r]));
+      const dossiers = (data || []).map(d => { const r = d.reservation_id ? byId.get(d.reservation_id) : null;
+        return { ...d, reservation: r ? { id: r.id, name: `${r.prenom || ""} ${r.nom || ""}`.trim(), statut: r.statut, livre_at: r.livre_at, vin: r.vin, total: r.total, montant_du: r.montant_du } : null, pay: payState(r) }; });
+      return NextResponse.json({ ok: true, dossiers, provider: { name: CARTE_GRISE_PROVIDER_NAME, email: CARTE_GRISE_PROVIDER_EMAIL } });
     }
     const d = await findDossier(sb, { id: b.id });
     if (!d) return NextResponse.json({ ok: false, error: "Dossier introuvable" }, { status: 404 });
     if (b.action === "links") return NextResponse.json({ ok: true, links: await dossierLinks(sb, d, 3600) });
-    if (b.action === "send") return NextResponse.json({ ok: true, ...(await sendDossierToProvider(sb, d, { force: Boolean(b.force) })) });
+    if (b.action === "send") {
+      // Envoi manuel uniquement : un dossier dont le paiement n'est pas confirmé demande une confirmation explicite.
+      const rid = (d as { reservation_id?: number | null }).reservation_id;
+      const { data: r } = rid ? await sb.from("reservations").select(RES).eq("id", rid).maybeSingle() : { data: null };
+      const ps = payState(r);
+      if (ps !== "payé" && !b.unpaid_ok) return NextResponse.json({ ok: false, unpaid: ps, error: `Paiement : ${ps}. Confirmez l'envoi malgré tout.` }, { status: 409 });
+      return NextResponse.json({ ok: true, ...(await sendDossierToProvider(sb, d, { force: Boolean(b.force) })) });
+    }
+    if (b.action === "analyse") {
+      if (b.reset) await sb.from("carte_grise_dossiers").update({ vin: null, reservation_id: null, vehicle_id: null }).eq("id", d.id);
+      return NextResponse.json({ ok: true, ...(await analyseDossier(sb, d.id)) });
+    }
+    // Correction à la main : VIN et/ou réservation du dossier, puis nouveau rapprochement.
+    if (b.action === "link") {
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (typeof b.vin === "string") { const v = b.vin.toUpperCase().replace(/[\s-]/g, ""); if (v && !/^[A-HJ-NPR-Z0-9]{17}$/.test(v)) return NextResponse.json({ ok: false, error: "VIN invalide (17 caractères, sans I, O, Q)" }, { status: 400 }); patch.vin = v || null; patch.vin_source = v ? "saisie manuelle" : null; }
+      if ("reservation_id" in b) patch.reservation_id = Number(b.reservation_id) || null;
+      await sb.from("carte_grise_dossiers").update(patch).eq("id", d.id);
+      const out = await analyseDossier(sb, d.id);
+      if (out.reservation_id && out.vin) { const { data: r } = await sb.from("reservations").select(RES).eq("id", out.reservation_id).maybeSingle(); if (r && r.vin === out.vin) await linkReservationVin(sb, r, { by: "Mansour", delivered: !!r.livre_at || r.statut === "Livrée" }); }
+      return NextResponse.json({ ok: true, ...out });
+    }
     if (b.action === "update") {
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (typeof b.status === "string" && STATUSES.includes(b.status)) patch.status = b.status;
