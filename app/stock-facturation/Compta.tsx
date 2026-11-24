@@ -1,23 +1,20 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import c from "../giga/giga.module.css";
-import { CATEGORIES, RECEIPT_CATEGORIES } from "../../lib/accounting";
-import { supabase } from "../../lib/supabase";
+import { CATEGORIES, RECEIPT_CATEGORIES, RECEIPT_CATEGORY_LABEL, VAT_REGIMES, VAT_REGIME_LABEL, receiptState } from "../../lib/accounting";
+import { capi, uploadReceipt } from "../../lib/receipt-upload";
 import { eurFr } from "../../lib/stock-shared";
 
 type Tx = { id: number; date: string; label: string | null; amount: number; counterparty: string | null; reference: string | null; category: string | null; supplier: string | null; match_kind: string | null; invoice_id: number | null; reservation_id: number | null; parts_order: string | null; vat_deductible: number | null; ignored: boolean; note: string | null };
 type InvL = { id: number; number: string | null; status: string; client_name: string | null; total_ttc: number | null; reservation_id: number | null };
 type Stats = { credits: { matched: number; unmatched: number; total: number; matchedTotal: number }; debits: { matched: number; unmatched: number; total: number; matchedTotal: number }; caTtc: number; caHt: number; tvaCollectee: number; debours: number; validated: number; drafts: number; achatsTtc: number; tvaDeductible: number; marge: number };
-type Rc = { id: number; kind: string; file_name: string | null; status: string; date: string | null; merchant: string | null; total_ttc: number | null; tva_amount: number | null; tva_rate: number | null; payment_hint: string | null; category: string | null; is_invoice: boolean | null; buyer: string | null; vat_deductible: boolean; transaction_id: number | null; match_kind: string | null; note: string | null };
-type M = { receipts: Rc[]; withReceipt: number[]; receiptStats: { debitsWith: number; debitsWithout: number; receiptsNoDebit: number; attestations: number }; month: string; months: string[]; transactions: Tx[]; invoices: InvL[]; stats: Stats; invoicesNoPayment: { id: number; number: string | null; client_name: string | null; total_ttc: number | null; status: string }[]; paymentsNoInvoice: { id: number; date: string; label: string | null; amount: number }[]; checklist: { releve: boolean; rapproche: boolean; factures: boolean; pennylane: boolean; justificatifs: boolean }; exportedAt: string | null; imports: { id: number; created_at: string; file_name: string; months: string[]; rows: number; inserted: number }[] };
+type VatLine = { rate: number | null; base: number | null; tva: number | null };
+type Rc = { id: number; kind: string; file_name: string | null; status: string; date: string | null; merchant: string | null; total_ttc: number | null; tva_amount: number | null; tva_rate: number | null; payment_hint: string | null; category: string | null; is_invoice: boolean | null; buyer: string | null; vat_deductible: boolean; transaction_id: number | null; match_kind: string | null; note: string | null;
+  source?: string | null; invoice_number?: string | null; total_ht?: number | null; vat_lines?: VatLine[] | null; currency?: string | null; vat_regime?: string | null; iban?: string | null; email_from?: string | null; email_subject?: string | null; review?: string | null; checked_at?: string | null };
+type Vat = { collectee: number; deductibleFactures: number; deductibleManuelle: number; deductible: number; net: number; autoliqTva: number; autoliq: { id: number; date: string | null; merchant: string | null; number: string | null; regime: string; currency: string; base: number; tva: number }[] };
+type Inbound = { id: number; created_at: string; from_email: string | null; from_name: string | null; subject: string | null; attachments: number; receipts: number; duplicates: number; ignored: number; status: string; error: string | null };
+type M = { receipts: Rc[]; withReceipt: number[]; receiptStats: { debitsWith: number; debitsWithout: number; receiptsNoDebit: number; attestations: number; toCheck?: number }; vat?: Vat; supplierUnpaid?: { id: number; date: string | null; merchant: string | null; number: string | null; total_ttc: number | null; currency: string }[]; inbound?: Inbound[]; inboundAddress?: string; month: string; months: string[]; transactions: Tx[]; invoices: InvL[]; stats: Stats; invoicesNoPayment: { id: number; number: string | null; client_name: string | null; total_ttc: number | null; status: string }[]; paymentsNoInvoice: { id: number; date: string; label: string | null; amount: number }[]; checklist: { releve: boolean; rapproche: boolean; factures: boolean; pennylane: boolean; justificatifs: boolean }; exportedAt: string | null; imports: { id: number; created_at: string; file_name: string; months: string[]; rows: number; inserted: number }[] };
 
-const code = () => { try { return sessionStorage.getItem("nd_pc") || ""; } catch { return ""; } };
-async function capi<T = Record<string, unknown>>(body: object): Promise<T> {
-  const r = await fetch("/api/comptabilite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: code(), ...body }) });
-  const j = await r.json().catch(() => ({ ok: false, error: "Erreur réseau" }));
-  if (!j.ok) throw new Error(j.error || "Erreur");
-  return j as T;
-}
 const download = (name: string, data: BlobPart, type: string) => { const url = URL.createObjectURL(new Blob([data], { type })); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000); };
 const b64 = (s: string) => Uint8Array.from(atob(s), ch => ch.charCodeAt(0));
 const dfr = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
@@ -26,7 +23,8 @@ const small: React.CSSProperties = { fontSize: 14, padding: "8px 12px" };
 
 /** Onglet « Comptabilité » : relevé Revolut du mois, rapprochement, exports Pennylane, clôture. */
 export default function Compta() {
-  const [month, setMonth] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - (d.getDate() < 10 ? 1 : 0)); return d.toISOString().slice(0, 7); });
+  const [month, setMonth] = useState(() => { try { const q = new URLSearchParams(window.location.search).get("mois"); if (q && /^\d{4}-\d{2}$/.test(q)) return q; } catch { /* rendu serveur */ }
+    const d = new Date(); d.setMonth(d.getMonth() - (d.getDate() < 10 ? 1 : 0)); return d.toISOString().slice(0, 7); });
   const [d, setD] = useState<M | null>(null); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(""); const [f, setF] = useState<"todo" | "credits" | "debits" | "all">("todo"); const [open, setOpen] = useState<number | null>(null);
   const load = useCallback(async (m = month) => { try { setD(await capi<M>({ action: "month", month: m })); } catch (e) { setMsg("❌ " + (e as Error).message); } }, [month]);
   useEffect(() => { load().catch(() => null); }, [load]);
@@ -77,6 +75,8 @@ export default function Compta() {
       <div className={c.stat}><p className={c.statLabel}>Décaissements</p><p className={c.statValue}>{eurFr(s.debits.total)}</p><p className={c.statNote}>{s.debits.matched} rapproché(s) · <b style={{ color: s.debits.unmatched ? "#b91c1c" : undefined }}>{s.debits.unmatched} à rapprocher</b></p></div>
     </div>
 
+    {d.vat ? <VatCard v={d.vat} month={month} busy={!!busy} send={() => act("sum", { action: "send_summary" }, r => `✅ Résumé du mois envoyé à ${r.to}.`)} /> : null}
+
     <div className={c.card} style={{ display: "grid", gap: 8 }}>
       <b>1. Importer le relevé Revolut Business (CSV)</b>
       <p className={c.small} style={{ margin: 0 }}>Revolut Business → Comptes → Relevé → période du mois → format <b>CSV</b>. Réimporter le même fichier ne crée pas de doublon.</p>
@@ -110,6 +110,12 @@ export default function Compta() {
     <div className={c.card}><b>💶 Paiements sans facture ({d.paymentsNoInvoice.length})</b>
       {d.paymentsNoInvoice.length ? <ul style={{ margin: "6px 0 0", paddingLeft: 18, lineHeight: 1.6 }}>{d.paymentsNoInvoice.map(t => <li key={t.id}>{dfr(t.date)} · {t.label} · {eurFr(t.amount)}</li>)}</ul> : <p className={c.muted} style={{ margin: "6px 0 0" }}>Aucun.</p>}
     </div>
+
+    {d.supplierUnpaid?.length ? <div className={c.card}><b>📄 Factures fournisseurs sans paiement relié ({d.supplierUnpaid.length})</b>
+      <ul style={{ margin: "6px 0 0", paddingLeft: 18, lineHeight: 1.6 }}>{d.supplierUnpaid.map(r => <li key={r.id}>{r.date ? dfr(r.date) : "date ?"} · {r.merchant || "?"}{r.number ? ` · n° ${r.number}` : ""} · {r.currency === "EUR" ? eurFr(r.total_ttc) : `${r.total_ttc ?? "?"} ${r.currency}`}</li>)}</ul>
+      <p className={c.small} style={{ margin: "6px 0 0" }}>Payée en espèces ou avec une autre carte ? Ouvrez la pièce plus bas et notez-le ; sinon importez le relevé du mois du paiement puis « Rapprocher automatiquement ».</p></div> : null}
+
+    <InboundCard d={d} busy={!!busy} act={act} setMsg={setMsg} />
 
     <Receipts d={d} month={month} busy={!!busy} act={act} reload={() => load()} setMsg={setMsg} />
 
@@ -147,81 +153,129 @@ function TxEdit({ t, invoices, busy, save, hasReceipt, missing }: { t: Tx; invoi
   </div>;
 }
 
-/** Photo → JPEG réduit (≤ 2000 px) : envoi rapide et lisible par la lecture automatique. */
-async function toJpeg(f: File): Promise<Blob> {
-  if (!f.type.startsWith("image/")) return f;
-  try {
-    const bmp = await createImageBitmap(f);
-    const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
-    const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
-    cv.getContext("2d")!.drawImage(bmp, 0, 0, cv.width, cv.height);
-    const b = await new Promise<Blob | null>(res => cv.toBlob(res, "image/jpeg", 0.85));
-    if (b) return b;
-  } catch { /* format non lisible par le navigateur : on envoie l'original */ }
-  return f;
-}
-
 function Receipts({ d, month, busy, act, reload, setMsg }: { d: M; month: string; busy: boolean; act: (l: string, b: object, ok?: (r: Record<string, unknown>) => string) => Promise<unknown>; reload: () => Promise<void>; setMsg: (s: string) => void }) {
-  const [prog, setProg] = useState(""); const [open, setOpen] = useState<number | null>(null); const [f, setF] = useState<"todo" | "all">("all");
+  const [prog, setProg] = useState(""); const [f, setF] = useState<"todo" | "all">("all");
   const upload = async (list: FileList | null) => {
     const files = [...(list || [])]; if (!files.length) return;
     let ok = 0, err = 0;
     for (let i = 0; i < files.length; i++) {
       const file = files[i]; setProg(`Envoi et lecture ${i + 1}/${files.length} : ${file.name}`);
       try {
-        const blob = await toJpeg(file); const type = blob.type || file.type || "image/jpeg"; const name = blob === file ? file.name : file.name.replace(/\.[^.]+$/, "") + ".jpg";
-        const u = await capi<{ bucket: string; path: string; token: string }>({ action: "receipt_upload", month, name, type, size: blob.size });
-        const { error } = await supabase.storage.from(u.bucket).uploadToSignedUrl(u.path, u.token, blob, { contentType: type });
-        if (error) throw new Error(error.message);
-        const r = await capi<{ receipt: Rc }>({ action: "receipt_read", month, path: u.path, name, type, size: blob.size });
-        if (r.receipt.status === "erreur") err++; else ok++;
+        const r = await uploadReceipt<Rc>(file, month);
+        if (r.status === "erreur") err++; else ok++;
       } catch (e) { err++; setMsg(`❌ ${file.name} : ${(e as Error).message}`); }
     }
     setProg(""); setMsg(`✅ ${ok} justificatif(s) lu(s)${err ? `, ${err} à vérifier` : ""}.`); await reload();
   };
-  const view = async (id: number) => { try { const r = await capi<{ url: string }>({ action: "receipt_url", id }); window.open(r.url, "_blank"); } catch (e) { setMsg("❌ " + (e as Error).message); } };
   const st = d.receiptStats;
-  const debits = d.transactions.filter(t => t.amount < 0 && !t.ignored);
-  const rows = d.receipts.filter(r => f === "all" || !r.transaction_id || r.status === "erreur");
+  const rows = d.receipts.filter(r => f === "all" || receiptState(r) === "à vérifier" || !r.transaction_id);
   return <div className={c.card} style={{ display: "grid", gap: 8 }}>
     <b>3. Justificatifs (tickets, factures fournisseurs)</b>
-    <p className={c.small} style={{ margin: 0 }}>Débits avec justificatif : <b>{st.debitsWith}</b> · sans justificatif : <b style={{ color: st.debitsWithout ? "#b91c1c" : undefined }}>{st.debitsWithout}</b> · justificatifs sans débit (espèces, autre carte) : <b>{st.receiptsNoDebit}</b>{st.attestations ? ` · ${st.attestations} attestation(s)` : ""}</p>
+    <p className={c.small} style={{ margin: 0 }}>Débits avec justificatif : <b>{st.debitsWith}</b> · sans justificatif : <b style={{ color: st.debitsWithout ? "#b91c1c" : undefined }}>{st.debitsWithout}</b> · justificatifs sans débit (espèces, autre carte) : <b>{st.receiptsNoDebit}</b>{st.attestations ? ` · ${st.attestations} attestation(s)` : ""}{st.toCheck ? <> · <b style={{ color: "#b45309" }}>{st.toCheck} à vérifier</b></> : null}</p>
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       <label className={`${c.btn} ${c.btnBrand}`} style={{ ...small, cursor: "pointer" }}>📷 Prendre en photo<input type="file" accept="image/*" capture="environment" hidden disabled={busy || !!prog} onChange={e => { upload(e.target.files); e.target.value = ""; }} /></label>
       <label className={`${c.btn} ${c.btnGhost}`} style={{ ...small, cursor: "pointer" }}>🗂️ Plusieurs photos / PDF<input type="file" accept="image/*,application/pdf" multiple hidden disabled={busy || !!prog} onChange={e => { upload(e.target.files); e.target.value = ""; }} /></label>
+      <a className={`${c.btn} ${c.btnGhost}`} style={small} href="/stock-facturation/tickets">📱 Page tickets (téléphone)</a>
       <select className={c.input} style={small} value={f} onChange={e => setF(e.target.value as "todo" | "all")}><option value="all">Tous ({d.receipts.length})</option><option value="todo">Sans débit ou à vérifier</option></select>
     </div>
     {prog ? <p className={c.small} style={{ margin: 0 }}>⏳ {prog}</p> : null}
-    <p className={c.small} style={{ margin: 0, color: "#666" }}>La TVA n’est comptée comme déductible que pour une vraie facture au nom de MK HOLDING (avec TVA indiquée). Pour un ticket perdu, ouvrez le débit ci-dessus et touchez « Justificatif manquant ».</p>
-    {rows.map(r => <div key={r.id} style={{ borderTop: "1px solid #eee", paddingTop: 8 }}>
-      <div onClick={() => setOpen(open === r.id ? null : r.id)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ minWidth: 0 }}><div style={{ fontWeight: 700 }}>{r.kind === "attestation" ? "📝 " : r.is_invoice ? "🧾 " : "🎫 "}{r.merchant || r.file_name || "—"}</div>
-          <div className={c.small}>{r.date ? dfr(r.date) : "date ?"} · {r.category || "?"}{r.tva_amount != null ? ` · TVA ${eurFr(r.tva_amount)}` : ""}{r.vat_deductible ? " (déductible)" : ""} · {r.status === "erreur" ? <span style={{ color: "#b91c1c" }}>lecture impossible : {r.note}</span> : r.transaction_id ? `✅ débit relié (${r.match_kind})` : <span style={{ color: "#b45309" }}>aucun débit Revolut</span>}</div></div>
-        <b style={{ whiteSpace: "nowrap" }}>{eurFr(r.total_ttc)}</b>
+    <p className={c.small} style={{ margin: 0, color: "#666" }}>La TVA n’est comptée comme déductible que pour une vraie facture au nom de MK HOLDING (avec TVA française indiquée). Pour un ticket perdu, ouvrez le débit ci-dessus et touchez « Justificatif manquant ».</p>
+    {rows.map(r => <ReceiptRow key={r.id} r={r} d={d} busy={busy} act={act} setMsg={setMsg} />)}
+  </div>;
+}
+
+const STATE_STYLE: Record<string, { bg: string; color: string; icon: string }> = { "lue": { bg: "#eef2ff", color: "#3730a3", icon: "👁️" }, "à vérifier": { bg: "#fff4d6", color: "#92400e", icon: "⚠️" }, "rapprochée": { bg: "#e7f6ec", color: "#166534", icon: "✅" } };
+const catLabel = (x: string | null | undefined) => x ? RECEIPT_CATEGORY_LABEL[x] || x : "?";
+
+function ReceiptRow({ r, d, busy, act, setMsg }: { r: Rc; d: M; busy: boolean; act: (l: string, b: object, ok?: (r: Record<string, unknown>) => string) => Promise<unknown>; setMsg: (s: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const view = async () => { try { const x = await capi<{ url: string }>({ action: "receipt_url", id: r.id }); window.open(x.url, "_blank"); } catch (e) { setMsg("❌ " + (e as Error).message); } };
+  const state = receiptState(r); const ss = STATE_STYLE[state];
+  const cur = r.currency && r.currency !== "EUR" ? r.currency : "";
+  return <div style={{ borderTop: "1px solid #eee", paddingTop: 8 }}>
+    <div onClick={() => setOpen(!open)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", gap: 8 }}>
+      <div style={{ minWidth: 0 }}><div style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{r.kind === "attestation" ? "📝 " : r.source === "email" ? "📬 " : r.is_invoice ? "🧾 " : "🎫 "}{r.merchant || r.file_name || "—"}{r.invoice_number ? <span style={{ fontWeight: 400 }}> · n° {r.invoice_number}</span> : null}</div>
+        <div className={c.small}><span className={c.pill} style={{ background: ss.bg, color: ss.color }}>{ss.icon} {state}</span> {r.date ? dfr(r.date) : "date ?"} · {catLabel(r.category)}{r.tva_amount != null ? ` · TVA ${eurFr(r.tva_amount)}` : ""}{r.vat_deductible ? " (déductible)" : ""}{r.vat_regime && r.vat_regime !== "normale" ? ` · ${r.vat_regime}` : ""} · {r.status === "erreur" ? <span style={{ color: "#b91c1c" }}>lecture impossible : {r.note}</span> : r.transaction_id ? `débit relié (${r.match_kind})` : <span style={{ color: "#b45309" }}>aucun débit Revolut</span>}</div>
+        {r.review && !r.checked_at && r.status !== "erreur" ? <div className={c.small} style={{ color: "#b45309" }}>⚠️ {r.review}</div> : null}
+        {r.source === "email" && r.email_from ? <div className={c.small} style={{ color: "#666", overflowWrap: "anywhere" }}>Reçue de {r.email_from}{r.email_subject ? ` · « ${r.email_subject} »` : ""}</div> : null}
       </div>
-      {open === r.id ? <ReceiptEdit r={r} debits={debits} busy={busy} save={b => act("rc", { action: "receipt_update", id: r.id, ...b }, () => "✅ Justificatif enregistré.")} view={() => view(r.id)}
-        remove={() => { if (confirm("Supprimer ce justificatif (fichier compris) ?")) act("rc", { action: "receipt_delete", id: r.id }, () => "Justificatif supprimé."); }} /> : null}
-    </div>)}
+      <b style={{ whiteSpace: "nowrap" }}>{cur ? `${r.total_ttc ?? "?"} ${cur}` : eurFr(r.total_ttc)}</b>
+    </div>
+    {open ? <ReceiptEdit r={r} debits={d.transactions.filter(t => t.amount < 0 && !t.ignored)} busy={busy} save={b => act("rc", { action: "receipt_update", id: r.id, ...b }, () => "✅ Justificatif enregistré.")} view={view}
+      remove={() => { if (confirm("Supprimer ce justificatif (fichier compris) ?")) act("rc", { action: "receipt_delete", id: r.id }, () => "Justificatif supprimé."); }} /> : null}
+  </div>;
+}
+
+function VatCard({ v, month, busy, send }: { v: Vat; month: string; busy: boolean; send: () => void }) {
+  return <div className={c.card} style={{ display: "grid", gap: 6 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+      <b>🧮 TVA de {monthLabel(month)} (estimation)</b>
+      <button className={`${c.btn} ${c.btnGhost}`} style={small} disabled={busy} onClick={send}>📧 M’envoyer le résumé du mois</button>
+    </div>
+    <div className={c.small} style={{ lineHeight: 1.7 }}>
+      TVA collectée (factures FA-… validées) : <b>{eurFr(v.collectee)}</b><br />
+      TVA déductible (factures fournisseurs françaises) : <b>− {eurFr(v.deductibleFactures)}</b>{v.deductibleManuelle ? <> · saisie sur des débits : <b>− {eurFr(v.deductibleManuelle)}</b></> : null}<br />
+      <b style={{ fontSize: 16 }}>{v.net >= 0 ? "À payer" : "Crédit de TVA"} : {eurFr(Math.abs(v.net))}</b>
+    </div>
+    {v.autoliq.length ? <div className={c.small} style={{ lineHeight: 1.6 }}>
+      <b>Autoliquidation à déclarer</b> (TVA due et déductible du même montant, ≈ {eurFr(v.autoliqTva)}) :
+      <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>{v.autoliq.map(a => <li key={a.id}>{a.date ? dfr(a.date) : "?"} · {a.merchant || "?"}{a.number ? ` · n° ${a.number}` : ""} · {a.regime === "import" ? "import (douane)" : "UE / étranger"} · base {a.currency === "EUR" ? eurFr(a.base) : `${a.base} ${a.currency}`}</li>)}</ul>
+    </div> : null}
+    <p className={c.small} style={{ margin: 0, color: "#666" }}>Calcul fait à partir des pièces enregistrées ici : il aide à préparer la déclaration, il ne la remplace pas. Résumé envoyé aussi automatiquement le 3 de chaque mois.</p>
+  </div>;
+}
+
+function InboundCard({ d, busy, act, setMsg }: { d: M; busy: boolean; act: (l: string, b: object, ok?: (r: Record<string, unknown>) => string) => Promise<unknown>; setMsg: (s: string) => void }) {
+  const mails = d.receipts.filter(r => r.source === "email");
+  const [copied, setCopied] = useState(false);
+  const addr = d.inboundAddress || "";
+  return <div className={c.card} style={{ display: "grid", gap: 8 }}>
+    <b>📬 Factures fournisseurs reçues par e-mail ({mails.length})</b>
+    {addr ? <p className={c.small} style={{ margin: 0, lineHeight: 1.5 }}>Faites envoyer vos factures (ou transférez-les) à <b style={{ userSelect: "all" }}>{addr}</b> <button className={`${c.btn} ${c.btnGhost}`} style={{ fontSize: 12, padding: "4px 8px" }} onClick={() => { navigator.clipboard?.writeText(addr).then(() => setCopied(true)).catch(() => null); }}>{copied ? "Copiée" : "Copier"}</button><br />Chaque pièce jointe (PDF, photo) est rangée, lue, dédoublonnée et reliée au débit Revolut. Une facture écrite dans le corps de l’e-mail est aussi gardée en PDF.</p> : null}
+    {mails.length ? mails.map(r => <ReceiptRow key={r.id} r={r} d={d} busy={busy} act={act} setMsg={setMsg} />) : <p className={c.muted} style={{ margin: 0 }}>Aucune facture reçue par e-mail pour ce mois.</p>}
+    {d.inbound?.length ? <details><summary className={c.small} style={{ cursor: "pointer" }}>Derniers e-mails reçus ({d.inbound.length})</summary>
+      <ul style={{ margin: "6px 0 0", paddingLeft: 18, lineHeight: 1.6 }} className={c.small}>{d.inbound.map(m => <li key={m.id}>{new Date(m.created_at).toLocaleDateString("fr-FR")} · {m.from_name || m.from_email} · « {m.subject || "sans objet"} » · {m.status === "reçu" ? "⏳ en cours" : m.status === "erreur" ? <span style={{ color: "#b91c1c" }}>erreur : {m.error}</span> : `${m.receipts} pièce(s)${m.duplicates ? `, ${m.duplicates} doublon(s)` : ""}${m.ignored ? `, ${m.ignored} ignorée(s)` : ""}`}</li>)}</ul>
+    </details> : null}
   </div>;
 }
 
 function ReceiptEdit({ r, debits, busy, save, view, remove }: { r: Rc; debits: Tx[]; busy: boolean; save: (b: object) => Promise<unknown>; view: () => void; remove: () => void }) {
-  const [v, setV] = useState({ date: r.date || "", merchant: r.merchant || "", total_ttc: r.total_ttc == null ? "" : String(r.total_ttc), tva_amount: r.tva_amount == null ? "" : String(r.tva_amount), category: r.category || "autre", is_invoice: !!r.is_invoice, vat_deductible: r.vat_deductible, transaction_id: r.transaction_id ? String(r.transaction_id) : "" });
+  const ns = (x: number | null | undefined) => x == null ? "" : String(x);
+  const [v, setV] = useState({ date: r.date || "", merchant: r.merchant || "", invoice_number: r.invoice_number || "", total_ttc: ns(r.total_ttc), total_ht: ns(r.total_ht), tva_amount: ns(r.tva_amount), currency: r.currency || "EUR", vat_regime: r.vat_regime || "normale", iban: r.iban || "", category: r.category || "autre", is_invoice: !!r.is_invoice, vat_deductible: r.vat_deductible, transaction_id: r.transaction_id ? String(r.transaction_id) : "", note: r.note || "" });
+  const [lines, setLines] = useState((r.vat_lines || []).map(l => ({ rate: ns(l.rate), base: ns(l.base), tva: ns(l.tva) })));
   const near = [...debits].sort((a, b) => Math.abs(-a.amount - Number(v.total_ttc || 0)) - Math.abs(-b.amount - Number(v.total_ttc || 0))).slice(0, 30);
   const set = (k: keyof typeof v, x: string | boolean) => setV(o => ({ ...o, [k]: x }));
+  const setLine = (i: number, k: "rate" | "base" | "tva", x: string) => setLines(ls => ls.map((l, j) => j === i ? { ...l, [k]: x } : l));
+  const lab: React.CSSProperties = { display: "grid", gap: 2, fontSize: 12, color: "#555" };
   return <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-      <input className={c.input} style={small} type="date" value={v.date} onChange={e => set("date", e.target.value)} />
-      <input className={c.input} style={small} placeholder="Fournisseur" value={v.merchant} onChange={e => set("merchant", e.target.value)} />
-      <input className={c.input} style={small} inputMode="decimal" placeholder="Total TTC" value={v.total_ttc} onChange={e => set("total_ttc", e.target.value)} />
-      <input className={c.input} style={small} inputMode="decimal" placeholder="TVA" value={v.tva_amount} onChange={e => set("tva_amount", e.target.value)} />
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 6 }}>
+      <label style={lab}>Date<input className={c.input} style={small} type="date" value={v.date} onChange={e => set("date", e.target.value)} /></label>
+      <label style={lab}>Fournisseur<input className={c.input} style={small} value={v.merchant} onChange={e => set("merchant", e.target.value)} /></label>
+      <label style={lab}>N° de facture<input className={c.input} style={small} value={v.invoice_number} onChange={e => set("invoice_number", e.target.value)} /></label>
+      <label style={lab}>Total HT<input className={c.input} style={small} inputMode="decimal" value={v.total_ht} onChange={e => set("total_ht", e.target.value)} /></label>
+      <label style={lab}>TVA totale<input className={c.input} style={small} inputMode="decimal" value={v.tva_amount} onChange={e => set("tva_amount", e.target.value)} /></label>
+      <label style={lab}>Total TTC<input className={c.input} style={small} inputMode="decimal" value={v.total_ttc} onChange={e => set("total_ttc", e.target.value)} /></label>
+      <label style={lab}>Devise<input className={c.input} style={small} maxLength={3} value={v.currency} onChange={e => set("currency", e.target.value.toUpperCase())} /></label>
+      <label style={lab}>IBAN du fournisseur<input className={c.input} style={small} value={v.iban} onChange={e => set("iban", e.target.value)} /></label>
     </div>
-    <select className={c.input} style={small} value={v.category} onChange={e => set("category", e.target.value)}>{RECEIPT_CATEGORIES.map(x => <option key={x} value={x}>{x}</option>)}</select>
+    <div style={{ display: "grid", gap: 4 }}>
+      <span style={{ fontSize: 12, color: "#555" }}>TVA par taux</span>
+      {lines.map((l, i) => <div key={i} style={{ display: "grid", gridTemplateColumns: "70px 1fr 1fr 36px", gap: 4 }}>
+        <input className={c.input} style={small} inputMode="decimal" placeholder="taux %" value={l.rate} onChange={e => setLine(i, "rate", e.target.value)} />
+        <input className={c.input} style={small} inputMode="decimal" placeholder="base HT" value={l.base} onChange={e => setLine(i, "base", e.target.value)} />
+        <input className={c.input} style={small} inputMode="decimal" placeholder="TVA" value={l.tva} onChange={e => setLine(i, "tva", e.target.value)} />
+        <button className={`${c.btn} ${c.btnGhost}`} style={{ padding: 4 }} onClick={() => setLines(ls => ls.filter((_, j) => j !== i))}>✕</button>
+      </div>)}
+      <button className={`${c.btn} ${c.btnGhost}`} style={{ fontSize: 12, padding: "4px 8px", justifySelf: "start" }} onClick={() => setLines(ls => [...ls, { rate: "20", base: "", tva: "" }])}>+ taux de TVA</button>
+    </div>
+    <select className={c.input} style={small} value={v.category} onChange={e => set("category", e.target.value)}>{RECEIPT_CATEGORIES.map(x => <option key={x} value={x}>{catLabel(x)}</option>)}</select>
+    <select className={c.input} style={small} value={v.vat_regime} onChange={e => { set("vat_regime", e.target.value); if (e.target.value !== "normale") set("vat_deductible", false); }}>{VAT_REGIMES.map(x => <option key={x} value={x}>{VAT_REGIME_LABEL[x]}</option>)}</select>
     <label className={c.small}><input type="checkbox" checked={v.is_invoice} onChange={e => set("is_invoice", e.target.checked)} /> Vraie facture (au nom de MK HOLDING / SIREN)</label>
     <label className={c.small}><input type="checkbox" checked={v.vat_deductible} onChange={e => set("vat_deductible", e.target.checked)} /> TVA déductible</label>
     <select className={c.input} style={small} value={v.transaction_id} onChange={e => set("transaction_id", e.target.value)}><option value="">Aucun débit (espèces, autre carte)</option>{near.map(t => <option key={t.id} value={t.id}>{dfr(t.date)} · {t.label} · {eurFr(t.amount)}</option>)}</select>
+    <input className={c.input} style={small} placeholder="Note (ex. payé en espèces)" value={v.note} onChange={e => set("note", e.target.value)} />
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-      <button className={`${c.btn} ${c.btnBrand}`} style={small} disabled={busy} onClick={() => save({ ...v, transaction_id: v.transaction_id ? Number(v.transaction_id) : null })}>Enregistrer</button>
+      <button className={`${c.btn} ${c.btnBrand}`} style={small} disabled={busy} onClick={() => save({ ...v, vat_lines: lines, checked: true, transaction_id: v.transaction_id ? Number(v.transaction_id) : null })}>Enregistrer (vérifiée)</button>
       <button className={`${c.btn} ${c.btnGhost}`} style={small} onClick={view}>Voir</button>
       <button className={`${c.btn} ${c.btnGhost}`} style={{ ...small, color: "#b91c1c" }} disabled={busy} onClick={remove}>Supprimer</button>
     </div>

@@ -5,10 +5,17 @@
  */
 import { DEBOURS_KEY, lineHt, type InvoiceLine } from "./stock-shared";
 
-export const CATEGORIES = ["vente voiture", "pièces", "achat véhicules", "transport", "douane", "salaires/prestataires", "logiciel", "publicité", "carburant/péage", "hôtel/repas", "fournitures", "frais bancaires", "virement interne", "autre"] as const;
+export const CATEGORIES = ["vente voiture", "pièces", "achat véhicules", "transport", "douane", "dépotage/logistique", "garage/carrosserie", "salaires/prestataires", "logiciel", "téléphone", "publicité", "carburant/péage", "hôtel/repas", "fournitures", "frais bancaires", "virement interne", "autre"] as const;
 export type Category = typeof CATEGORIES[number];
 /** Catégories d'un justificatif (ticket, facture fournisseur). */
-export const RECEIPT_CATEGORIES = ["carburant", "péage", "hôtel/repas", "pièces", "transport", "douane", "logiciel", "fournitures", "autre"] as const;
+export const RECEIPT_CATEGORIES = ["achat véhicules", "transport", "douane", "dépotage/logistique", "carburant", "péage", "garage/carrosserie", "pièces", "logiciel", "téléphone", "frais bancaires", "hôtel/repas", "fournitures", "autre"] as const;
+/** Libellé affiché d'une catégorie de justificatif (valeurs stockées inchangées). */
+export const RECEIPT_CATEGORY_LABEL: Record<string, string> = { transport: "fret/transport", logiciel: "logiciels/abonnements" };
+export const VAT_REGIMES = ["normale", "autoliquidation", "import", "sans TVA"] as const;
+export const VAT_REGIME_LABEL: Record<string, string> = { normale: "TVA française normale", autoliquidation: "autoliquidation (fournisseur UE / étranger)", import: "TVA à l'import autoliquidée (douane)", "sans TVA": "sans TVA" };
+/** État affiché d'un justificatif : lu, à vérifier, rapproché d'un débit Revolut. */
+export const receiptState = (r: { status: string; transaction_id: number | null; review?: string | null; checked_at?: string | null }) =>
+  r.status === "erreur" || r.status === "à lire" ? "à vérifier" : r.transaction_id ? "rapprochée" : r.review && !r.checked_at ? "à vérifier" : "lue";
 export const receiptToBankCategory = (c: string | null | undefined): Category => c === "carburant" || c === "péage" ? "carburant/péage" : (CATEGORIES as readonly string[]).includes(String(c)) ? c as Category : "autre";
 /** Nom de fichier pour l'export : AAAA-MM-JJ_fournisseur_montant.ext */
 export const receiptFileName = (r: { date: string | null; merchant: string | null; total_ttc: number | null; file_name: string | null; kind?: string | null; id: number }) => {

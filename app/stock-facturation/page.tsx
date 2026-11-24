@@ -37,7 +37,7 @@ const Pay = ({ p }: { p: PayState }) => <span className={c.pill} style={{ backgr
 export default function StockFacturation() {
   const [state, setState] = useState<"loading" | "login" | "ready">("loading");
   const [pc, setPc] = useState(""); const [msg, setMsg] = useState(""); const [d, setD] = useState<Data | null>(null);
-  const [tab, setTab] = useState<Tab>(() => { try { return (sessionStorage.getItem("sf_tab") as Tab) || "bord"; } catch { return "bord"; } });
+  const [tab, setTab] = useState<Tab>(() => { try { const q = new URLSearchParams(window.location.search).get("onglet"); if (q && TABS.some(([k]) => k === q)) return q as Tab; return (sessionStorage.getItem("sf_tab") as Tab) || "bord"; } catch { return "bord"; } });
 
   const load = useCallback(async (p = code()) => {
     try { const j = await api<Data>({ action: "load" }, p); setD(j); setState("ready"); }
