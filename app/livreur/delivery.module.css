@@ -1,0 +1,17 @@
+/* Livraisons : rien ne dépasse à droite sur téléphone (360–412 px). */
+.root { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.root, .root * { box-sizing: border-box; }
+.root div, .root label, .root a, .root button, .root span, .root b, .root small, .root p, .root details, .root summary { min-width: 0; max-width: 100%; }
+.root button, .root a { white-space: normal; }
+.root input, .root textarea, .root select { width: 100%; max-width: 100%; min-width: 0; }
+.root input[type="checkbox"], .root input[type="radio"] { width: 22px; height: 22px; flex: 0 0 22px; margin: 0; }
+.root canvas { max-width: 100%; }
+.step { display: grid; gap: 10px; padding: 14px; }
+.stepHead { display: flex; gap: 10px; align-items: center; }
+.num { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 999px; background: #141414; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 15px; }
+.numDone { background: #067647; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.four { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.choice { width: 100%; text-align: left; justify-content: flex-start; padding: 14px; font-size: 16px; line-height: 1.3; }
+.warn { background: #fff4d6; border-radius: 10px; padding: 10px; font-size: 14px; }
+.ok { background: #e7f6ec; border-radius: 10px; padding: 10px; }

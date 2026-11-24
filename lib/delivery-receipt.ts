@@ -4,6 +4,7 @@
 import PDFDocument from "pdfkit";
 
 import { safeText } from "./pdf-text";
+import { PENAL_TEXT, PROCESS_TEXT, declText, keptLabel, propertyText, type Declaration, type Kept } from "./reserve-text";
 export const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
 export const RECEIPT_FOLDER = "livraisons";
 
@@ -19,7 +20,8 @@ export const CHECKS = [
 export type CheckId = typeof CHECKS[number]["id"];
 /** Livraison avec paiement en attente : le livreur garde les clés et les documents jusqu'au paiement. */
 export const PENDING_KEPT = ["cles", "documents"] as const;
-export const checksFor = (pending: boolean) => CHECKS.filter(c => !pending || !(PENDING_KEPT as readonly string[]).includes(c.id));
+/** Contrôles à cocher : sans paiement, on retire ce que NeoDrive garde (par défaut les clés et les documents). */
+export const checksFor = (pending: boolean, kept?: Kept | null) => CHECKS.filter(c => !pending || !(kept ? (["cles", "documents"] as const).filter(k => kept[k]) as readonly string[] : PENDING_KEPT as readonly string[]).includes(c.id));
 
 /** Modes de règlement déclarés par le client au moment de signer (preuve, notamment des espèces remises au chauffeur). */
 export const PAY_MODES = [
@@ -69,6 +71,10 @@ export type ReceiptData = {
   driver_name?: string | null;
   /** Remise avec paiement en attente (réserve de propriété) : échéance du paiement et lieu de remise. */
   reserve?: { due: string | null; montant_du: number | null; lieu: string } | null;
+  /** Remise sans paiement : ce que NeoDrive garde jusqu'au paiement (rien = client de confiance). */
+  kept?: Kept | null;
+  /** Remise sans paiement : déclaration choisie par le client (virement ordonné ou engagement de payer). */
+  declaration?: Declaration | null;
 };
 
 const dateFr = (iso: string | null | undefined) => iso ? new Date(iso.length === 10 ? iso + "T12:00:00" : iso).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
@@ -79,21 +85,34 @@ export function defaultDue(from = new Date()) {
   while (n < 3) { d.setDate(d.getDate() + 1); const w = d.getDay(); if (w !== 0 && w !== 6) n++; }
   return d.toISOString().slice(0, 10);
 }
-/** Clauses de la remise avec réserve de propriété (affichées au client avant de signer, puis dans le PDF). */
-export function reserveClauses(x: { modele: string; couleur: string; vin: string; date: string; lieu: string; montant_du: number | null; due: string | null }) {
+/** Clauses de la remise sans paiement (affichées au client avant de signer, puis dans le PDF). La réserve de propriété et la déclaration du client suivent à part. */
+export function reserveClauses(x: { modele: string; couleur: string; vin: string; date: string; lieu: string; montant_du: number | null; due: string | null; kept?: Kept | null }) {
   const veh = `${x.modele}${x.couleur ? `, ${x.couleur}` : ""}, n° de série ${x.vin}`;
+  const k = x.kept || { cles: true, documents: true };
+  const keep = keptLabel(k);
+  const given = keptLabel({ cles: !k.cles, documents: !k.documents });
   return [
-    `Le client reconnaît que le véhicule ${veh} lui a été remis le ${new Date(x.date).toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}${x.lieu ? ` à l'adresse suivante : ${x.lieu}` : ""}, alors que le paiement de ${eurFr(x.montant_du)} n'a pas encore été reçu par MK HOLDING (NeoDrive).`,
-    `Il déclare avoir effectué, ou s'engage à effectuer, le virement de cette somme, et s'engage à ce qu'elle soit reçue par MK HOLDING au plus tard le ${dateFr(x.due)}.`,
-    `Réserve de propriété (articles 2367 et suivants du Code civil) : le véhicule reste la propriété de MK HOLDING jusqu'au paiement intégral du prix.`,
-    `Les clés et les documents du véhicule (certificat de conformité, carte grise ou documents d'immatriculation) sont conservés par NeoDrive et seront remis ou envoyés au client dès réception du paiement. Le véhicule est laissé fermé à clé.`,
-    `Jusqu'au paiement, le client s'engage à ne pas utiliser, déplacer, prêter, vendre ou modifier le véhicule, à en assurer la garde, et à le restituer à NeoDrive sur simple demande. Il autorise NeoDrive à venir le récupérer à son adresse en cas de non-paiement à l'échéance.`,
-    `À défaut de paiement à l'échéance, NeoDrive pourra reprendre le véhicule et engager toute action en justice pour obtenir le paiement ou la restitution. Le fait de disposer du véhicule (vente, cession, dissimulation) avant paiement peut constituer une infraction pénale.`,
+    `Le client reconnaît que le véhicule ${veh} lui a été remis le ${new Date(x.date).toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}${x.lieu ? ` à l'adresse suivante : ${x.lieu}` : ""}, alors que le paiement de ${eurFr(x.montant_du)} n'a pas encore été reçu par MK HOLDING (NeoDrive). Le paiement doit être reçu au plus tard le ${dateFr(x.due)}.`,
+    keep ? `NeoDrive conserve ${keep} du véhicule jusqu'au paiement ; ${k.cles && k.documents ? "ils" : k.cles ? "elles" : "ils"} seront remis ou envoyés au client dès réception du paiement.${given ? ` Le client a reçu ${given}.` : ""}${k.cles ? " Le véhicule est laissé fermé à clé." : ""}` : "Le client a reçu les clés et les documents du véhicule.",
+    `Jusqu'au paiement, le client s'engage à ne pas vendre, prêter, céder ou modifier le véhicule, à en assurer la garde, et à le restituer à MK HOLDING sur simple demande en cas de non-paiement à l'échéance.`,
   ];
 }
 
 const SELLER = ["MK HOLDING - NeoDrive", "31600 Muret, France", "SIREN 908 645 393", "Tél. 06 89 78 17 10 · contact.neodrivefrance@gmail.com"];
 const fr = (iso: string | null) => iso ? new Date(iso).toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+/** Encadré « Réserve de propriété » + déclaration choisie par le client + mention pénale. Renvoie le nouveau y. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function reserveBlock(doc: any, d: ReceiptData, y: number) {
+  const montant = d.declaration?.montant ?? d.reserve?.montant_du ?? d.pending?.montant_du ?? null;
+  const lines = [propertyText(d.vin, montant), d.declaration ? `Déclaration du client : ${declText(d.declaration, montant)}` : "", PROCESS_TEXT, PENAL_TEXT].filter(Boolean);
+  const f = (i: number) => doc.font(i < 2 ? "Helvetica-Bold" : "Helvetica").fontSize(9);
+  const h = lines.reduce((a, t, i) => a + f(i).heightOfString(t, { width: 495 }) + 5, 0) + 12;
+  doc.roundedRect(40, y, 515, h, 6).lineWidth(1).stroke("#b42318");
+  let yy = y + 8;
+  lines.forEach((t, i) => { f(i).fillColor(i ? "#111" : "#b42318").text(t, 50, yy, { width: 495 }); yy += doc.heightOfString(t, { width: 495 }) + 5; });
+  return y + h + 10;
+}
 
 /** PDF « Accusé de réception du véhicule » avec la signature manuscrite du client (PNG). */
 export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise<Buffer> {
@@ -119,7 +138,7 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
     y += 112;
 
     doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Contrôles à la remise du véhicule", 40, y); y += 16;
-    for (const c of checksFor(!!d.pending)) {
+    for (const c of checksFor(!!d.pending, d.kept)) {
       const ok = !!d.checks[c.id];
       doc.rect(44, y + 1, 9, 9).lineWidth(0.8).stroke(ok ? "#067647" : "#999");
       if (ok) doc.font("Helvetica-Bold").fontSize(9).fillColor("#067647").text("X", 46, y + 1.5);
@@ -135,7 +154,7 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
     doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Paiement", 40, y); y += 14;
     const eur = (n: number | null | undefined) => n == null ? "" : `${Math.round(n).toLocaleString("fr-FR")} €`;
     const payText = d.paiement_confirme_at ? `Paiement reçu : confirmé par NeoDrive le ${fr(d.paiement_confirme_at)}.`
-      : d.pending ? `Paiement en attente${d.pending.montant_du ? ` : ${eur(d.pending.montant_du)} restant dus` : ""}. Les clés et les documents du véhicule sont conservés par NeoDrive et seront remis ou envoyés au client dès réception du paiement.`
+      : d.pending ? `Paiement en attente${d.pending.montant_du ? ` : ${eur(d.pending.montant_du)} restant dus` : ""}.${keptLabel(d.kept || { cles: true, documents: true }) ? ` NeoDrive conserve ${keptLabel(d.kept || { cles: true, documents: true })} du véhicule jusqu'au paiement.` : ""}`
       : "Paiement : non confirmé.";
     doc.font("Helvetica").fontSize(9.5).fillColor(d.pending && !d.paiement_confirme_at ? "#b42318" : ink).text(payText, 40, y, { width: 515 });
     y += d.pending ? 36 : 24;
@@ -144,9 +163,10 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
       doc.font("Helvetica-Bold").fontSize(9.5).fillColor(ink).text(t, 40, y, { width: 515 });
       y += doc.heightOfString(t, { width: 515 }) + 8;
     }
+    if (d.declaration && !d.paiement_confirme_at) y = reserveBlock(doc, d, y);
 
     doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(
-      `Je soussigné(e) ${d.signer} reconnais avoir reçu ce jour le véhicule décrit ci-dessus, avec les éléments cochés, sous réserve des remarques indiquées.${d.pending && !d.paiement_confirme_at ? " Je m'engage à régler le montant restant dû ; les clés et les documents me seront remis dès réception du paiement." : ""} La garantie légale de conformité de 2 ans s'applique à compter de cette date.`,
+      `Je soussigné(e) ${d.signer} reconnais avoir reçu ce jour le véhicule décrit ci-dessus, avec les éléments cochés, sous réserve des remarques indiquées.${d.pending && !d.paiement_confirme_at ? " Je m'engage à régler le montant restant dû." : ""} La garantie légale de conformité de 2 ans s'applique à compter de cette date.`,
       40, y, { width: 515 });
     y += 46;
 
@@ -193,11 +213,12 @@ export function reservePdf(d: ReceiptData, signaturePng: Buffer | null): Promise
     box("CLIENT", [d.client, d.adresse, d.telephone ? `Tél. ${d.telephone}` : "", d.email], 40, 250, 86);
     box("VÉHICULE", [d.modele, d.couleur ? `Couleur : ${d.couleur}` : "", `N° de série (VIN) : ${d.vin}`, `Montant restant dû : ${eurFr(rv.montant_du)}`, `Échéance du paiement : ${dateFr(rv.due)}`], 305, 250, 86);
     y += 100;
-    const clauses = reserveClauses({ modele: d.modele, couleur: d.couleur, vin: d.vin, date: d.signed_at, lieu: rv.lieu, montant_du: rv.montant_du, due: rv.due });
+    const clauses = reserveClauses({ modele: d.modele, couleur: d.couleur, vin: d.vin, date: d.signed_at, lieu: rv.lieu, montant_du: rv.montant_du, due: rv.due, kept: d.kept });
     clauses.forEach((t, i) => {
       doc.font("Helvetica").fontSize(9.2).fillColor(ink).text(`${i + 1}. ${t}`, 40, y, { width: 515 });
       y += doc.heightOfString(`${i + 1}. ${t}`, { width: 515 }) + 6;
     });
+    y = reserveBlock(doc, d, y + 2);
     if (d.reglement?.length) {
       const t = `Règlement déclaré par le client : ${paymentText(d.reglement, driverDisplay(d.driver_name))}.`;
       doc.font("Helvetica-Bold").fontSize(9.2).fillColor(ink).text(t, 40, y, { width: 515 }); y += doc.heightOfString(t, { width: 515 }) + 6;
@@ -205,6 +226,7 @@ export function reservePdf(d: ReceiptData, signaturePng: Buffer | null): Promise
     if (d.reserves) { const t = `Remarques du client : ${d.reserves}`; doc.font("Helvetica").fontSize(9).fillColor(ink).text(t, 40, y, { width: 515 }); y += doc.heightOfString(t, { width: 515 }) + 6; }
     doc.font("Helvetica-Bold").fontSize(9.2).fillColor(ink).text(`Je soussigné(e) ${d.signer} déclare avoir lu et accepté les conditions ci-dessus.`, 40, y, { width: 515 });
     y += 22;
+    if (y > 650) { doc.addPage(); y = 40; }
     const remote = d.mode === "distance";
     doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text("Signature du client", 40, y).text("Remis par", 330, y);
     doc.roundedRect(40, y + 14, 270, 112, 6).lineWidth(0.6).stroke("#bbb");
@@ -216,7 +238,8 @@ export function reservePdf(d: ReceiptData, signaturePng: Buffer | null): Promise
     doc.font("Helvetica").fontSize(8.5).fillColor(grey).text(`${d.signer} · ${fr(remote ? d.remote?.at || d.signed_at : d.signed_at)}`, 48, y + 112, { width: 254 });
     const remis = driverDisplay(d.driver_name) || (d.livreur && d.livreur !== "NeoDrive" ? driverDisplay(d.livreur) : "");
     doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(remis ? `${remis}${/mansour/i.test(remis) ? "" : " (chauffeur)"}\npour MK HOLDING – NeoDrive` : "MK HOLDING – NeoDrive", 330, y + 18, { width: 225 });
-    doc.font("Helvetica").fontSize(8.5).fillColor(accent).text("Clés et documents conservés par NeoDrive jusqu'au paiement.", 330, y + 60, { width: 225 });
+    const keptTxt = keptLabel(d.kept || { cles: true, documents: true });
+    doc.font("Helvetica").fontSize(8.5).fillColor(accent).text(keptTxt ? `${keptTxt[0].toUpperCase()}${keptTxt.slice(1)} conservé(e)s par NeoDrive jusqu'au paiement.` : "Clés et documents remis au client.", 330, y + 60, { width: 225 });
     y += 140;
     doc.font("Helvetica").fontSize(7.5).fillColor(grey).text("Signature électronique simple recueillie sur l'appareil du client ou du livreur. Document généré automatiquement par NeoDrive ; un exemplaire est remis au client par e-mail.", 40, Math.min(y, 790), { width: 515 });
     doc.end();

@@ -16,6 +16,8 @@ import { randomBytes } from "crypto";
 import { RECEIPT_FOLDER, VIN_RE, checksFor, cleanPayment, defaultDue, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
 import { finalizeDelivery, finalizeReserve, intlPhone } from "../../../lib/delivery-finalize";
 import { AccuseError, sendAccuseLink } from "../../../lib/accuse-link";
+import { cleanDecl, keptOf, type Kept } from "../../../lib/reserve-text";
+import { nearestVin, readVinFromImage } from "../../../lib/vin-read";
 import { createDemoTour, deleteTestData } from "../../../lib/demo-tour";
 import { OWNER_EMAIL } from "../../../lib/brevo";
 import { PHOTO_BUCKET } from "../../../lib/fleet";
@@ -322,7 +324,7 @@ export async function POST(req: Request) {
       if (error) throw new Error(error.message);
       const rows = (data || []).map(r => ({ ...r, ...(r.plan_client_id ? where.get(r.plan_client_id) || {} : {}) })) as (Record<string, unknown> & { tour_date?: string; tour_id?: string; ordre?: number })[];
       if (mine) rows.sort((a, z) => String(a.tour_date || "").localeCompare(String(z.tour_date || "")) || String(a.tour_id || "").localeCompare(String(z.tour_id || "")) || (a.ordre || 0) - (z.ordre || 0));
-      return NextResponse.json({ ok: true, mine, deliveries: rows.map(r => ({ ...r, plan_client_id: undefined, email: undefined, has_email: !!r.email, has_vin_photo: !!r.vin_photo_path, vin_photo_path: undefined, accuse_url: r.accuse_token ? `${SITE}/api/accuse/${r.accuse_token}` : null, accuse_token: undefined, reserve_url: r.reserve_token ? `${SITE}/api/accuse/${r.reserve_token}` : null, reserve_token: undefined, remote_confirmed: !!r.remote_confirm, remote_confirm: undefined })), checks: checksFor(false), checks_pending: checksFor(true) });
+      return NextResponse.json({ ok: true, mine, who: acc.who, deliveries: rows.map(r => ({ ...r, kept: r.paiement_en_attente && !r.paiement_confirme_at ? keptOf(r.remise_data) : null, remise_data: undefined, plan_client_id: undefined, email: undefined, has_email: !!r.email, has_vin_photo: !!r.vin_photo_path, vin_photo_path: undefined, accuse_url: r.accuse_token ? `${SITE}/api/accuse/${r.accuse_token}` : null, accuse_token: undefined, reserve_url: r.reserve_token ? `${SITE}/api/accuse/${r.reserve_token}` : null, reserve_token: undefined, remote_confirmed: !!r.remote_confirm, remote_confirm: undefined })), checks: checksFor(false), checks_pending: checksFor(true) });
     }
     if (b.action === "free_vins") {
       const [{ data: sv }, { data: used }] = await Promise.all([db.from("shipment_vehicles").select("vin,container,status,client_name").neq("status", "livrée").order("vin").limit(500), db.from("reservations").select("vin").not("vin", "is", null)]);
@@ -337,6 +339,78 @@ export async function POST(req: Request) {
       const { data, error } = await db.storage.from(DRIVER_BUCKET).createSignedUploadUrl(path);
       if (error || !data) return NextResponse.json({ ok: false, error: "Stockage indisponible" }, { status: 502 });
       return NextResponse.json({ ok: true, bucket: DRIVER_BUCKET, path: data.path, token: data.token });
+    }
+    // Lecture automatique du VIN sur la photo de la plaque (photo qui vient d'être envoyée, ou celle déjà enregistrée).
+    if (b.action === "vin_read") {
+      const id = Number(b.id); if (!id) return NextResponse.json({ ok: false, error: "Livraison inconnue" }, { status: 400 });
+      let path = clean(b.photo_path, 300);
+      if (path && (!path.startsWith(`${RECEIPT_FOLDER}/${id}/`) || path.includes(".."))) return NextResponse.json({ ok: false, error: "Photo invalide" }, { status: 400 });
+      if (!path) { const { data: r } = await db.from("reservations").select("vin_photo_path").eq("id", id).maybeSingle(); path = r?.vin_photo_path || ""; }
+      if (!path) return NextResponse.json({ ok: false, error: "Pas encore de photo de la plaque." }, { status: 400 });
+      const ext = (path.split(".").pop() || "").toLowerCase();
+      if (ext === "heic") return NextResponse.json({ ok: false, error: "Photo au format HEIC illisible : reprenez la photo." }, { status: 400 });
+      const { data: file, error: dlErr } = await db.storage.from(DRIVER_BUCKET).download(path);
+      if (dlErr || !file) return NextResponse.json({ ok: false, error: "Photo introuvable : reprenez la photo." }, { status: 404 });
+      const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+      const out = await readVinFromImage(new Uint8Array(await file.arrayBuffer()), mime);
+      let match: string | null = null;
+      if (out.vin) {
+        const [{ data: sv }, { data: used }] = await Promise.all([db.from("shipment_vehicles").select("vin,client_name").neq("status", "livrée").limit(500), db.from("reservations").select("vin").not("vin", "is", null).neq("id", id)]);
+        const taken = new Set((used || []).map(x => x.vin));
+        const near = nearestVin(out.vin, (sv || []).filter(v => !taken.has(v.vin)).map(v => String(v.vin)));
+        if (near && near.d > 0) match = near.vin;
+      }
+      await logSection(acc, "livraison_vin_lu", { id, vin: out.vin, check_ok: out.check_ok });
+      return NextResponse.json({ ok: true, ...out, match, photo_path: path });
+    }
+    // Fondateur uniquement : « Paiement reçu » confirmé directement depuis la livraison.
+    if (b.action === "confirm_payment") {
+      if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Seul Mansour peut confirmer un paiement." }, { status: 403 });
+      const id = Number(b.id);
+      const { data: r } = await db.from("reservations").select("id,prenom,nom,telephone,livre_at,paiement_en_attente,paiement_confirme_at,notes").eq("id", id).maybeSingle();
+      if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
+      if (r.paiement_confirme_at) return NextResponse.json({ ok: true, already: true });
+      const at = new Date().toISOString();
+      const day = new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" });
+      const patch: Record<string, unknown> = { paiement_confirme_at: at, updated_at: at };
+      if (r.livre_at) {
+        patch.statut = "Livrée"; patch.paiement_en_attente = false;
+        patch.notes = [r.notes, `[${day}] Paiement reçu après remise (confirmé par Mansour depuis la livraison) : clés et papiers à remettre si gardés, accusé final à faire signer.`].filter(Boolean).join("\n");
+      } else {
+        // Payé avant la remise : livraison normale, on annule un éventuel « paiement en attente ».
+        Object.assign(patch, { paiement_en_attente: false, montant_du: null, remise_data: null, reserve_due: null });
+        patch.notes = [r.notes, `[${day}] Paiement reçu (confirmé par Mansour depuis la livraison).`].filter(Boolean).join("\n");
+      }
+      const { error } = await db.from("reservations").update(patch).eq("id", id);
+      if (error) throw new Error(error.message);
+      await logSection(acc, "livraison_paiement_recu", { id });
+      return NextResponse.json({ ok: true });
+    }
+    // « J'arrive » : SMS (et e-mail) au client avec son lien pour signer le bon de livraison sur son téléphone.
+    if (b.action === "notify_arrival") {
+      const id = Number(b.id); const min = Number(b.minutes);
+      if (![0, 15, 30, 60].includes(min)) return NextResponse.json({ ok: false, error: "Choisissez 15, 30, 60 min ou « je suis là »." }, { status: 400 });
+      const { data: r } = await db.from("reservations").select("id,prenom,nom,telephone,email,accuse_token,confirm_token,notes").eq("id", id).maybeSingle();
+      if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
+      if (r.accuse_token) return NextResponse.json({ ok: false, error: "Cette livraison est déjà signée." }, { status: 409 });
+      if (!r.telephone && !r.email) return NextResponse.json({ ok: false, error: "Ni téléphone ni e-mail pour ce client." }, { status: 400 });
+      const token = r.confirm_token || randomBytes(24).toString("hex");
+      const link = `${SITE}/accuse/confirmer/${token}`;
+      const first = String(r.prenom || "").split(/\s+/)[0];
+      const gsm = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const lead = min ? `votre livreur arrive dans environ ${min} min. A l'arrivee, vous pourrez signer` : `votre livreur est arrive. Vous pouvez signer`;
+      const text = gsm(`Bonjour${first ? " " + first : ""}, c'est NeoDrive : ${lead} le bon de livraison directement sur votre telephone avec ce lien : ${link}`);
+      await applyStoredSecrets();
+      if (!brevoReady()) return NextResponse.json({ ok: false, error: "Envoi indisponible (Brevo non configuré)." }, { status: 503 });
+      const sent = { sms: false, email: false };
+      if (r.telephone) { try { sent.sms = !!(await sendSms(r.telephone, text, "transactional")); } catch (e) { console.error("[LIVRAISON] SMS j'arrive", e); } }
+      if (r.email) { try { sent.email = !!(await sendEmail(r.email, `${r.prenom || ""} ${r.nom || ""}`.trim(), min ? `Votre livreur NeoDrive arrive dans environ ${min} min` : "Votre livreur NeoDrive est arrivé", `<p>Bonjour ${esc(first)},</p><p>${min ? `Votre livreur NeoDrive arrive dans environ ${min} minutes.` : "Votre livreur NeoDrive est arrivé."} À l'arrivée, vous pourrez signer le bon de livraison directement sur votre téléphone :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Ouvrir le bon de livraison</a></p><p>À tout de suite,<br>NeoDrive</p>`)); } catch (e) { console.error("[LIVRAISON] e-mail j'arrive", e); } }
+      if (!sent.sms && !sent.email) return NextResponse.json({ ok: false, error: "Envoi impossible. Appelez le client." }, { status: 502 });
+      const at = new Date().toISOString();
+      const line = `[${new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] « J'arrive » envoyé au client (${min ? `${min} min` : "livreur sur place"}, ${[sent.sms ? "SMS" : "", sent.email ? "e-mail" : ""].filter(Boolean).join(" + ")}) par ${name || acc.name}`;
+      await db.from("reservations").update({ confirm_token: token, prevenu_at: at, notes: [r.notes, line].filter(Boolean).join("\n"), updated_at: at }).eq("id", id);
+      await logSection(acc, "livraison_j_arrive", { id, min });
+      return NextResponse.json({ ok: true, sent, text });
     }
     if (b.action === "save_vin") {
       const id = Number(b.id); const vin = String(b.vin || "").toUpperCase().replace(/[\s-]/g, "");
@@ -367,12 +441,17 @@ export async function POST(req: Request) {
       const m = sigUrl.match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/);
       if (!m || m[1].length < 800) return NextResponse.json({ ok: false, error: "Le client doit signer dans le cadre." }, { status: 400 });
       if (m[1].length > 900_000) return NextResponse.json({ ok: false, error: "Signature trop lourde, recommencez." }, { status: 400 });
-      const reglement = cleanPayment(b.payment);
-      if (!reglement) return NextResponse.json({ ok: false, error: "Le client doit indiquer comment il a réglé (au moins un mode avec un montant)." }, { status: 400 });
-      const driverName = acc.who === "member" ? driverDisplay(name) : (driverDisplay(clean(b.driver_name, 80)) || "Mansour Khelifa");
       const pending = !r.paiement_confirme_at && !!r.paiement_en_attente;
+      const kept: Kept | null = pending ? keptOf(r.remise_data) : null;
+      const montantDu = r.montant_du == null ? null : Number(r.montant_du);
+      const declaration = pending ? cleanDecl(b.declaration, montantDu) : null;
+      if (pending && !declaration) return NextResponse.json({ ok: false, error: "Le client choisit : « virement déjà ordonné » ou « je m'engage à payer », avec la date." }, { status: 400 });
+      // Remise sans paiement : la déclaration remplace le mode de règlement (facultatif).
+      const reglement = cleanPayment(b.payment);
+      if (!reglement && !pending) return NextResponse.json({ ok: false, error: "Le client doit indiquer comment il a réglé (au moins un mode avec un montant)." }, { status: 400 });
+      const driverName = acc.who === "member" ? driverDisplay(name) : (driverDisplay(clean(b.driver_name, 80)) || "Mansour Khelifa");
       const checksIn = (b.checks || {}) as Record<string, unknown>;
-      const checks = Object.fromEntries(checksFor(pending).map(c => [c.id, !!checksIn[c.id]]));
+      const checks = Object.fromEntries(checksFor(pending, kept).map(c => [c.id, !!checksIn[c.id]]));
       const at = new Date().toISOString();
       const num = (x: unknown) => { const n = Number(x); return Number.isFinite(n) ? n : null; };
       const data: ReceiptData = {
@@ -381,8 +460,8 @@ export async function POST(req: Request) {
         telephone: r.telephone || "", email: r.email || "", modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin,
         checks, reserves: clean(b.reserves, 600), signer, signed_at: at, livreur: name || acc.name || "NeoDrive",
         paiement_confirme_at: r.paiement_confirme_at, lat: num(b.lat), lng: num(b.lng), mode: "signature",
-        pending: pending ? { montant_du: r.montant_du == null ? null : Number(r.montant_du) } : null,
-        reglement, driver_name: driverName,
+        pending: pending ? { montant_du: montantDu } : null,
+        reglement, driver_name: driverName, kept, declaration,
       };
       if (pending) {
         if (r.reserve_token) return NextResponse.json({ ok: false, error: "La remise avec réserve est déjà signée : l'accusé final se signe après le paiement." }, { status: 409 });
@@ -401,15 +480,18 @@ export async function POST(req: Request) {
       const id = Number(b.id);
       const { data: r } = await db.from("reservations").select("id,prenom,nom,total,paiement_confirme_at,accuse_token,reserve_token,notes").eq("id", id).maybeSingle();
       if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
+      const owner = acc.who === "owner";
       if (r.accuse_token || r.reserve_token) return NextResponse.json({ ok: false, error: "Cette livraison est déjà confirmée." }, { status: 409 });
       if (r.paiement_confirme_at) return NextResponse.json({ ok: false, error: "Le paiement est déjà confirmé : livraison normale." }, { status: 409 });
       const on = !!b.on;
       const montant = Number(String(b.montant_du ?? "").replace(",", ".").replace(/[^\d.]/g, ""));
       const kept = { cles: !!(b.kept as Record<string, unknown>)?.cles, documents: !!(b.kept as Record<string, unknown>)?.documents };
-      if (on && (!kept.cles || !kept.documents)) return NextResponse.json({ ok: false, error: "Cochez que vous gardez les clés et les documents du véhicule." }, { status: 400 });
+      // Livreur : garde toujours les clés et les documents. Fondateur : décide (tout laisser à un client de confiance, ou garder l'un ou l'autre).
+      if (on && !owner && (!kept.cles || !kept.documents)) return NextResponse.json({ ok: false, error: "Cochez que vous gardez les clés et les documents du véhicule." }, { status: 400 });
       const at = new Date().toISOString();
-      const line = `[${new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] ${on ? `Livraison avec paiement en attente (${name || acc.name}) : clés et documents gardés par le livreur` : "Paiement en attente annulé"}`;
-      const { error } = await db.from("reservations").update({ paiement_en_attente: on, montant_du: on ? (Number.isFinite(montant) && montant > 0 ? montant : r.total ?? null) : null, remise_data: on ? { kept, by: name || acc.name, at } : null, reserve_due: on && /^\d{4}-\d{2}-\d{2}$/.test(String(b.due || "")) ? String(b.due) : null, notes: [r.notes, line].filter(Boolean).join("\n"), updated_at: at }).eq("id", id);
+      const keptTxt = kept.cles && kept.documents ? "clés et documents gardés" : kept.cles ? "clés gardées, documents remis" : kept.documents ? "documents gardés, clés remises" : "tout remis (client de confiance)";
+      const line = `[${new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] ${on ? `Remise sans paiement décidée par ${name || acc.name} : ${keptTxt}` : "Paiement en attente annulé"}`;
+      const { error } = await db.from("reservations").update({ paiement_en_attente: on, montant_du: on ? (Number.isFinite(montant) && montant > 0 ? montant : r.total ?? null) : null, remise_data: on ? { kept, by: name || acc.name, at, trust: !kept.cles && !kept.documents } : null, reserve_due: on && /^\d{4}-\d{2}-\d{2}$/.test(String(b.due || "")) ? String(b.due) : null, notes: [r.notes, line].filter(Boolean).join("\n"), updated_at: at }).eq("id", id);
       if (error) throw new Error(error.message);
       await logSection(acc, "livraison_paiement_attente", { id, on });
       return NextResponse.json({ ok: true });

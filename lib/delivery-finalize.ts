@@ -8,6 +8,7 @@ import { brevoReady, OWNER_EMAIL, sendEmail, sendSms, SITE } from "./brevo";
 import { DRIVER_BUCKET } from "./driver-docs";
 import { RECEIPT_FOLDER, receiptPdf, reservePdf, type ReceiptData } from "./delivery-receipt";
 import type { PlanTour } from "./planif";
+import { declText, keptLabel } from "./reserve-text";
 
 type DB = ReturnType<typeof crmDatabase>;
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -92,7 +93,8 @@ export async function finalizeReserve(db: DB, r: any, data: ReceiptData, signatu
   const token = randomBytes(24).toString("hex");
   const at = data.signed_at;
   const du = data.reserve?.montant_du ?? data.pending?.montant_du ?? null;
-  const line = `[${new Date(at).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] Remis avec réserve de propriété${du ? ` (${eur(du)} en attente` : " (paiement en attente"}${data.reserve?.due ? `, échéance ${new Date(data.reserve.due + "T12:00:00").toLocaleDateString("fr-FR")}` : ""}), signé par ${data.signer} (VIN ${r.vin}) : clés et papiers conservés par NeoDrive`;
+  const keep = keptLabel(data.kept || { cles: true, documents: true });
+  const line = `[${new Date(at).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] Remis avec réserve de propriété${du ? ` (${eur(du)} en attente` : " (paiement en attente"}${data.reserve?.due ? `, échéance ${new Date(data.reserve.due + "T12:00:00").toLocaleDateString("fr-FR")}` : ""}), signé par ${data.signer} (VIN ${r.vin}) : ${keep ? `${keep} conservé(e)s par NeoDrive` : "clés et documents remis au client (client de confiance)"}${data.declaration ? ` · déclaration du client : « ${declText(data.declaration, du)} »` : ""}`;
   // Le lien personnel est remis à zéro : l'accusé final aura son propre lien après le paiement.
   const patch: Record<string, unknown> = { livre_at: at, reserve_path: `${base}.pdf`, reserve_token: token, reserve_data: data, confirm_token: null, confirm_sent_at: null, notes: [r.notes, line].filter(Boolean).join("\n"), updated_at: at };
   const { data: upd, error } = await db.from("reservations").update(patch).eq("id", id).is("reserve_token", null).is("accuse_token", null).select("id");
@@ -111,13 +113,13 @@ export async function finalizeReserve(db: DB, r: any, data: ReceiptData, signatu
   await applyStoredSecrets();
   if (brevoReady()) {
     const first = String(r.prenom || "").split(/\s+/)[0];
-    const html = `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive (n° de série ${esc(r.vin)}) vous a été remise avec <b>paiement en attente${du ? ` (${esc(eur(du))})` : ""}</b>. Vous trouverez ci-joint le document de remise que vous avez signé (réserve de propriété).</p><p>Dès réception de votre virement, nous vous remettons ou envoyons les clés et les documents du véhicule.</p><p>Consultez-le aussi ici : <a href="${url}">${url}</a></p><p>Une question ? Répondez à cet e-mail ou appelez-nous au 06 89 78 17 10.</p><p>Mansour - NeoDrive</p>`;
+    const html = `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive (n° de série ${esc(r.vin)}) vous a été remise avec <b>paiement en attente${du ? ` (${esc(eur(du))})` : ""}</b>. Vous trouverez ci-joint le document de remise que vous avez signé (réserve de propriété).</p>${keep ? `<p>Dès réception de votre virement, nous vous remettons ou envoyons ${esc(keep)} du véhicule.</p>` : ""}${data.declaration ? `<p>Votre déclaration : « ${esc(declText(data.declaration, du))} »</p>` : ""}<p>Consultez-le aussi ici : <a href="${url}">${url}</a></p><p>Une question ? Répondez à cet e-mail ou appelez-nous au 06 89 78 17 10.</p><p>Mansour - NeoDrive</p>`;
     const att = [{ name: `Remise-reserve-propriete-${data.numero}.pdf`, content: pdf.toString("base64") }];
     try {
       if (r.email) emailed = !!(await sendEmail(r.email, data.client, "Remise de votre NeoDrive – paiement en attente", html, att, { cc: [OWNER_EMAIL], replyTo: OWNER_EMAIL }));
       else await sendEmail(OWNER_EMAIL, "Mansour", `Remise avec réserve de propriété – ${data.client} (VIN ${r.vin})`, `<p>Remise signée par ${esc(data.signer)} (pas d'e-mail client connu).</p><p><a href="${url}">${url}</a></p>`, att);
     } catch (e) { console.error("[RESERVE] email", e); }
-    try { await sendSms(OWNER_SMS(), `NeoDrive : ${data.client} a signe la remise AVEC RESERVE DE PROPRIETE (VIN ${r.vin}), ${du ? eur(du).replace(/\s/g, " ") + " " : ""}en attente. Cles et papiers gardes.`, "transactional"); } catch (e) { console.error("[RESERVE] SMS fondateur", e); }
+    try { await sendSms(OWNER_SMS(), `NeoDrive : ${data.client} a signe la remise AVEC RESERVE DE PROPRIETE (VIN ${r.vin}), ${du ? eur(du).replace(/\s/g, " ") + " " : ""}en attente. ${keep ? (data.kept?.cles === false ? "Papiers gardes." : data.kept?.documents === false ? "Cles gardees." : "Cles et papiers gardes.") : "Tout remis (client de confiance)."}${data.declaration ? (data.declaration.kind === "virement" ? " Client: virement ordonne." : " Client: engagement de payer.") : ""}`, "transactional"); } catch (e) { console.error("[RESERVE] SMS fondateur", e); }
   }
   return { url, emailed, whatsapp: null as string | null, paid: false, reserve: true };
 }

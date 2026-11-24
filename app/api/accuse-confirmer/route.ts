@@ -5,6 +5,7 @@ import { listJson } from "../../../lib/datastore";
 import { PLAN_TOURS } from "../../../lib/fleet";
 import type { PlanTour } from "../../../lib/planif";
 import { finalizeDelivery, finalizeReserve } from "../../../lib/delivery-finalize";
+import { cleanDecl, keptOf } from "../../../lib/reserve-text";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -39,11 +40,14 @@ export async function GET(req: Request) {
   const due = r.reserve_due || defaultDue();
   const montant = r.montant_du == null ? null : Number(r.montant_du);
   const reserveDone = pending && !!r.reserve_token;
+  const kept = pending ? keptOf(r.remise_data) : null;
+  // Lien reçu avec le SMS « j'arrive » : le bon n'est prêt qu'une fois le numéro de série et le paiement (ou la remise sans paiement) réglés par le livreur.
+  const ready = !!r.vin && (!!r.paiement_confirme_at || !!r.paiement_en_attente);
   return NextResponse.json({
-    ok: true, done: !!r.accuse_token || reserveDone, accuse_url: r.accuse_token ? `/api/accuse/${r.accuse_token}` : reserveDone ? `/api/accuse/${r.reserve_token}` : null,
-    reserve, reserve_done: reserveDone, due, clauses: reserve ? reserveClauses({ modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin || "", date: new Date().toISOString(), lieu, montant_du: montant, due }) : null,
+    ok: true, ready, kept, done: !!r.accuse_token || reserveDone, accuse_url: r.accuse_token ? `/api/accuse/${r.accuse_token}` : reserveDone ? `/api/accuse/${r.reserve_token}` : null,
+    reserve, reserve_done: reserveDone, due, clauses: reserve ? reserveClauses({ modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin || "", date: new Date().toISOString(), lieu, montant_du: montant, due, kept }) : null,
     client: `${r.prenom || ""} ${r.nom || ""}`.replace(/\(.*?\)/g, "").trim(), modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin || "",
-    date: new Date().toISOString(), pending, montant_du: pending && r.montant_du != null ? Number(r.montant_du) : null, checks: checksFor(pending), driver: await tourDriver(r), total: r.total == null ? null : Number(r.total),
+    date: new Date().toISOString(), pending, montant_du: pending && r.montant_du != null ? Number(r.montant_du) : null, checks: checksFor(pending, kept), driver: await tourDriver(r), total: r.total == null ? null : Number(r.total),
   });
 }
 
@@ -64,12 +68,19 @@ export async function POST(req: Request) {
     const signature = sigM ? Buffer.from(sigM[1], "base64") : null;
     if (!signature || signature.length < 1500) return NextResponse.json({ ok: false, error: "Signez avec le doigt dans le cadre." }, { status: 400 });
     if (signature.length > 1_500_000) return NextResponse.json({ ok: false, error: "Signature trop lourde, effacez et recommencez." }, { status: 400 });
-    const reglement = cleanPayment(b.payment);
-    if (!reglement) return NextResponse.json({ ok: false, error: "Indiquez comment vous avez réglé (moyen et montant)." }, { status: 400 });
-    const driverName = (await tourDriver(r)) || driverDisplay(clean(b.driver_name, 80));
     const pending = !r.paiement_confirme_at && !!r.paiement_en_attente;
+    const kept = pending ? keptOf(r.remise_data) : null;
+    const montantDu = r.montant_du == null ? null : Number(r.montant_du);
+    const declaration = pending ? cleanDecl(b.declaration, montantDu) : null;
+    // La page a été ouverte avant que le livreur ne choisisse « paiement pas encore reçu » : elle doit être rechargée.
+    if (pending && !b.reserve) return NextResponse.json({ ok: false, reload: true, error: "Le bon de livraison a changé : rechargez la page." }, { status: 409 });
+    if (!pending && b.reserve) return NextResponse.json({ ok: false, reload: true, error: "Votre paiement est maintenant confirmé : rechargez la page." }, { status: 409 });
+    if (pending && !declaration) return NextResponse.json({ ok: false, error: "Choisissez votre déclaration de paiement et la date." }, { status: 400 });
+    const reglement = cleanPayment(b.payment);
+    if (!reglement && !pending) return NextResponse.json({ ok: false, error: "Indiquez comment vous avez réglé (moyen et montant)." }, { status: 400 });
+    const driverName = (await tourDriver(r)) || driverDisplay(clean(b.driver_name, 80));
     const checksIn = (b.checks || {}) as Record<string, unknown>;
-    const checks = Object.fromEntries(checksFor(pending).map(c => [c.id, !!checksIn[c.id]]));
+    const checks = Object.fromEntries(checksFor(pending, kept).map(c => [c.id, !!checksIn[c.id]]));
     const at = new Date().toISOString();
     const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || null;
     const ua = clean(req.headers.get("user-agent"), 200);
@@ -79,8 +90,8 @@ export async function POST(req: Request) {
       telephone: r.telephone || "", email: r.email || "", modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin,
       checks, reserves: clean(b.remarks, 600), signer, signed_at: at, livreur: driverName || "NeoDrive", paiement_confirme_at: r.paiement_confirme_at,
       mode: "distance", remote: { at, ip, phone: r.telephone || "", ua },
-      pending: pending ? { montant_du: r.montant_du == null ? null : Number(r.montant_du) } : null,
-      reglement, driver_name: driverName || null,
+      pending: pending ? { montant_du: montantDu } : null,
+      reglement, driver_name: driverName || null, kept, declaration,
     };
     if (pending) {
       data.numero = `RES-${at.slice(0, 4)}-${String(r.id).padStart(6, "0")}`;
