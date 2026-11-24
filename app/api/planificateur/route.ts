@@ -3,7 +3,7 @@ import { authorizeSection } from "../../../lib/access";
 import { dataClient, listJson, readJson, removeJson, writeJson } from "../../../lib/datastore";
 import { DEFAULT_HUBS, type Hub, type PlanClient, type PlanTour } from "../../../lib/planif";
 import { buildClient, geocode, PLAN_CLIENTS as C } from "../../../lib/planif-server";
-import { saveReservation } from "../../../lib/reservations";
+import { saveReservation, takeSignedOrder } from "../../../lib/reservations";
 import { deliveryPriceForDepartment } from "../../../lib/neodrive-pricing";
 import { ALERT_ENDPOINT } from "../../../lib/sav";
 import { driverKey } from "../../../lib/driver-link";
@@ -38,15 +38,17 @@ export async function POST(req: Request) {
   try {
     // ── Public : réservation du site → planificateur
     if (b.action === "reservation") {
+      // Bon de commande signé au doigt (PDF en base64) : retiré du corps, rangé avec la réservation.
+      const signed = takeSignedOrder(b);
       const c = await buildClient(b, "reservation");
       if ("error" in c) {
         // Adresse introuvable : la réservation est quand même enregistrée pour le suivi.
-        try { await saveReservation(sb, b, "site_devis"); } catch (e) { console.error("[PLANIF] reservation db", e); }
+        try { await saveReservation(sb, b, "site_devis", { signed }); } catch (e) { console.error("[PLANIF] reservation db", e); }
         return NextResponse.json({ ok: false, error: c.error }, { status: 400 });
       }
       await writeJson(sb, `${C}/${c.id}.json`, c);
       // Copie dans la table des réservations (suivi des commandes)
-      try { await saveReservation(sb, b, "site_devis", { plan_client_id: c.id }); } catch (e) { console.error("[PLANIF] reservation db", e); }
+      try { await saveReservation(sb, b, "site_devis", { plan_client_id: c.id, signed }); } catch (e) { console.error("[PLANIF] reservation db", e); }
       return NextResponse.json({ ok: true });
     }
     // ── Public : accusé de réception du client (lien personnel)

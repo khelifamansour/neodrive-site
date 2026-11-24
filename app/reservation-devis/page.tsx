@@ -3,6 +3,8 @@ import {useMemo,useState,useEffect} from "react";
 import {VEHICLES,REGISTRATION_PRICE,calculateQuote,AVAILABILITY,type VehicleKey} from "../../lib/neodrive-pricing";
 import s from "./reservation.module.css";
 import GoogleReviews from "../_components/GoogleReviews";
+import SignaturePad from "../livreur/SignaturePad";
+import {trimSignature,type Signature} from "../reservation-carte-grise/SignOnScreen";
 
 const euro=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n);
 const WHATSAPP="https://wa.me/33676192234?text="+encodeURIComponent("Bonjour, j'ai une question sur la réservation de ma NeoDrive.");
@@ -34,6 +36,8 @@ export default function ReservationDevis(){
  const [customer,setCustomer]=useState({nom:"",prenom:"",email:"",telephone:"",adresse:"",ville:"",societe:""});
  const [accepted,setAccepted]=useState(false);
  const [signed,setSigned]=useState("");
+ const [sigPng,setSigPng]=useState<string|null>(null);
+ const [signedSig,setSignedSig]=useState<{sig:Signature;at:Date}|null>(null);
  const [sending,setSending]=useState(false);
  const [sent,setSent]=useState(false);
  const [sendError,setSendError]=useState("");
@@ -73,19 +77,20 @@ export default function ReservationDevis(){
  const cityMatches=postalCities.some(city=>normalizeCity(city)===normalizeCity(customer.ville));
  const contactDone=!!(customer.nom&&customer.prenom&&customer.email&&customer.adresse&&customer.ville);
  const postalOk=postalVerified||postalUnchecked;
- const valid=postalOk&&total!==null&&accepted&&signed.trim().length>=3&&customer.nom&&customer.prenom&&customer.email&&customer.adresse&&customer.ville;
+ const valid=postalOk&&total!==null&&accepted&&signed.trim().length>=3&&!!sigPng&&customer.nom&&customer.prenom&&customer.email&&customer.adresse&&customer.ville;
 
  const missing:string[]=[];
  if(!postalOk)missing.push("un code postal de livraison valide");
  else if(total===null)missing.push("un tarif de livraison (zone sur devis : contactez-nous)");
  if(!contactDone)missing.push("vos coordonnées complètes");
  if(signed.trim().length<3)missing.push("votre nom de signataire");
+ if(!sigPng)missing.push("votre signature au doigt dans le cadre");
  if(!accepted)missing.push("la case de confirmation");
 
  const deliveryLabel=quote.delivery.status==="estimated"?euro(quote.delivery.price):postal.length===5?"Sur devis":"—";
  const stepState=[true,postalOk&&contactDone,!!valid];
 
- const makePdf=async()=>{
+ const makePdf=async(signature?:{sig:Signature;at:Date}|null)=>{
   const {jsPDF}=await import("jspdf");
   const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
   const W=210, margin=17, right=193;
@@ -122,15 +127,32 @@ export default function ReservationDevis(){
   pdf.text(pdf.splitTextToSize("Paiement à la livraison, sans acompte. Livraison à domicile par transport sécurisé. Date de livraison selon les tournées et la disponibilité du véhicule. Toute modification du prix exige l'accord du client.",170),margin,226);
   pdf.setDrawColor(226,229,234);pdf.line(margin,247,right,247);
   pdf.setFont("helvetica","bold");pdf.setTextColor(35,45,60);pdf.setFontSize(10);text("ACCORD DU CLIENT",margin,256);
-  pdf.setFont("helvetica","normal");pdf.setFontSize(11);text(signed||"Signature non renseignée",margin,264);
-  pdf.setFontSize(8);pdf.setTextColor(112,119,128);text("Acceptation électronique simple - "+new Date().toLocaleString("fr-FR"),margin,271);
+  if(signature){
+   const when=signature.at.toLocaleDateString("fr-FR")+" à "+signature.at.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+   const who=(signed.trim()||customer.prenom+" "+customer.nom).trim();
+   pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.setTextColor(35,45,60);text("Bon pour accord - lu et approuvé",margin,263,95);
+   pdf.setFont("helvetica","normal");pdf.setFontSize(9.5);pdf.setTextColor(58,68,82);
+   pdf.text(pdf.splitTextToSize("Signé électroniquement par "+who+" le "+when,95),margin,269);
+   pdf.setFontSize(7.5);pdf.setTextColor(112,119,128);text("CGV acceptées · signature électronique simple (tracé au doigt)",margin,281,95);
+   // Signature tracée : cadre à droite, image ajustée sans déformation.
+   const bx=118,by=249,bw=69,bh=32;
+   pdf.setDrawColor(226,229,234);pdf.roundedRect(bx,by,bw,bh,2,2,"S");
+   const k=Math.min((bw-4)/signature.sig.w,(bh-4)/signature.sig.h);const iw=signature.sig.w*k,ih=signature.sig.h*k;
+   try{pdf.addImage(signature.sig.png,"PNG",bx+(bw-iw)/2,by+(bh-ih)/2,iw,ih,undefined,"FAST");}catch{}
+  }else{
+   pdf.setFont("helvetica","normal");pdf.setFontSize(11);text(signed||"Signature non renseignée",margin,264);
+   pdf.setFontSize(8);pdf.setTextColor(112,119,128);text("Non signé - "+new Date().toLocaleString("fr-FR"),margin,271);
+  }
   return pdf;
  };
- const downloadPdf=async()=>{(await makePdf()).save("devis-neodrive.pdf")};
+ const downloadPdf=async()=>{(await makePdf(signedSig)).save(signedSig?"bon-de-commande-neodrive-signe.pdf":"devis-neodrive.pdf")};
  const sendReservation=async(event:React.FormEvent<HTMLFormElement>)=>{
   event.preventDefault();if(!valid||sending)return;setSending(true);setSendError("");
   try{
-   const pdf=await makePdf();const data=new FormData();
+   if(!sigPng)throw new Error("Signez dans le cadre avant d’envoyer.");
+   const signature={sig:await trimSignature(sigPng),at:new Date()};
+   const pdf=await makePdf(signature);const data=new FormData();
+   const pdfBlob=pdf.output("blob");
    Object.entries(customer).forEach(([k,v])=>data.append(k,v));
    data.append("_subject","Reservation NeoDrive "+customer.nom+" "+postal);
    data.append("modele",VEHICLES[model].label);
@@ -142,14 +164,15 @@ export default function ReservationDevis(){
    data.append("code_promo",promo?promo.code:"");
    data.append("remise",String(discount));
    data.append("signature",signed);
-   data.append("signature_date",new Date().toISOString());
+   data.append("signature_date",signature.at.toISOString());
+   data.append("signature_type","tracé au doigt sur écran + case « lu et approuvé »");
    data.append("acceptation","oui");
-   data.append("devis_pdf",new File([pdf.output("blob")],"devis-neodrive.pdf",{type:"application/pdf"}));
+   data.append("devis_pdf",new File([pdfBlob],"bon-de-commande-neodrive-signe.pdf",{type:"application/pdf"}));
    const response=await fetch("https://formspree.io/f/xjgjrqqg",{method:"POST",body:data,headers:{Accept:"application/json"}});
    if(!response.ok)throw new Error("La transmission a échoué. Réessayez ou contactez NeoDrive.");
    // Ajout automatique au planificateur de livraisons (sans bloquer le client en cas d'échec)
-   fetch("/api/planificateur",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"reservation",...customer,code_postal:postal,modele:VEHICLES[model].label,total,delivery_price:quote.delivery.status==="estimated"?quote.delivery.price:null,code_promo:promo?.code||"",remise:discount})}).catch(()=>null);
-   setSent(true);
+   fetch("/api/planificateur",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"reservation",...customer,code_postal:postal,modele:VEHICLES[model].label,total,delivery_price:quote.delivery.status==="estimated"?quote.delivery.price:null,code_promo:promo?.code||"",remise:discount,signature:signed,signature_at:signature.at.toISOString(),devis_pdf_b64:pdf.output("datauristring").split(",")[1]||""})}).catch(()=>null);
+   setSignedSig(signature);setSent(true);
    if(typeof window!=="undefined")window.scrollTo({top:0,behavior:"smooth"});
   }catch(e){setSendError(e instanceof Error?e.message:"Erreur d'envoi");}
   finally{setSending(false)}
@@ -191,7 +214,7 @@ export default function ReservationDevis(){
    <p>Nous avons reçu votre devis signé pour une <b>{VEHICLES[model].label}</b> livrée à <b>{customer.ville} ({postal})</b>. Un conseiller NeoDrive vous recontacte pour confirmer la disponibilité et la date de livraison.</p>
    <div className={s.successTotal}><span>Total TTC de votre devis</span><strong>{total===null?"Sur devis":euro(total)}</strong><small>Aucun acompte · paiement à la livraison</small></div>
    <div className={s.successActions}>
-    <button type="button" className={s.btnGhost} onClick={downloadPdf}>{Icon.download} Télécharger mon devis PDF</button>
+    <button type="button" className={s.btnGhost} onClick={downloadPdf}>{Icon.download} Télécharger mon bon de commande signé</button>
     <a className={s.btnWhatsapp} href={WHATSAPP} target="_blank" rel="noreferrer">{Icon.chat} Une question ? WhatsApp</a>
    </div>
   </section></main>;
@@ -297,12 +320,16 @@ export default function ReservationDevis(){
       </div>
       <div className={s.quoteTotal}><span>Total TTC{total===null?" à confirmer":""}<small>Aucun acompte · payable à la livraison</small></span><strong>{total===null?"Sur devis":euro(total)}</strong></div>
       <details className={s.terms}><summary>Conditions essentielles</summary><p>Aucun acompte demandé. Paiement à la livraison selon les modalités convenues. Délai et disponibilité à confirmer par NeoDrive. Le tarif de livraison est calculé pour le code postal renseigné selon notre barème ; tout changement du montant nécessitera votre accord. Droit de rétractation de 14 jours après réception du véhicule. Consultez nos <a href="/cgv" target="_blank" rel="noreferrer">conditions générales de vente</a> complètes.</p></details>
-      <div className={s.quoteSign}><small>Accord du client</small><strong className={signed?s.signature:""}>{signed||"Votre signature apparaîtra ici"}</strong></div>
+      <div className={s.quoteSign}><small>Accord du client</small><strong className={signed?s.signature:""}>{signed||"Votre signature apparaîtra ici"}</strong>{sigPng?<img src={sigPng} alt="Votre signature" style={{maxWidth:220,maxHeight:80,objectFit:"contain",alignSelf:"flex-start"}}/>:null}</div>
      </article>
 
      <label className={s.field}><span>Code promo<em> · facultatif</em></span><span className={s.inputWrap}><input value={promoInput} onChange={e=>{setPromoInput(e.target.value.toUpperCase());setPromoMsg("");}} onBlur={e=>checkPromo(e.target.value)} placeholder="Ex. NEOJULIE27" autoComplete="off"/>{promo?<i className={s.ok}>{Icon.check}</i>:null}</span>{promoMsg?<small style={{color:promo?"#15803d":"#b91c1c",fontWeight:700}}>{promoMsg}</small>:null}</label>
      <label className={`${s.field} ${s.signField}`}><span>{Icon.pen} Signez en tapant votre nom et prénom</span><span className={s.inputWrap}><input value={signed} onChange={e=>setSigned(e.target.value)} placeholder="Ex. Marie Dupont" autoComplete="name" required/></span></label>
-     <label className={s.check}><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/><span>J’ai vérifié les informations du devis, j’ai lu et j’accepte les <a href="/cgv" target="_blank" rel="noreferrer">conditions générales de vente</a>, et je souhaite réserver ce véhicule. Je ne paie rien aujourd’hui.</span></label>
+     <div className={s.signField} style={{display:"grid",gap:8}}>
+      <span style={{fontWeight:700}}>{Icon.pen} Signez avec le doigt (ou la souris) dans le cadre blanc</span>
+      <SignaturePad onChange={setSigPng} btnClass={s.btnGhost} height={170}/>
+     </div>
+     <label className={s.check}><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/><span>Lu et approuvé : j’ai vérifié les informations du devis, j’ai lu et j’accepte les <a href="/cgv" target="_blank" rel="noreferrer">conditions générales de vente</a>, et je souhaite réserver ce véhicule. Je ne paie rien aujourd’hui.</span></label>
 
      <div className={s.actions}>
       <button type="submit" disabled={!valid||sending} className={s.btnPrimary}>{sending?"Envoi en cours…":<>{Icon.lock} Réserver ma NeoDrive</>}</button>
@@ -310,7 +337,7 @@ export default function ReservationDevis(){
      </div>
      {!valid&&missing.length?<p className={s.missing}>Pour réserver, il manque&nbsp;: {missing.join(", ")}.</p>:null}
      {sendError?<p role="alert" className={s.error}>{sendError}</p>:null}
-     <p className={s.legal}>Signature électronique simple par saisie du nom et acceptation. NeoDrive vous recontacte ensuite pour confirmer la disponibilité et la date de livraison.</p>
+     <p className={s.legal}>Signature électronique simple : votre nom, votre signature tracée et la case cochée. Vous recevez le bon de commande signé par e-mail. NeoDrive vous recontacte ensuite pour confirmer la disponibilité et la date de livraison.</p>
     </section>
    </form>
 

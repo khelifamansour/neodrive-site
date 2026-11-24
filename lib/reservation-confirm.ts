@@ -11,7 +11,7 @@ import { normalizePhone } from "./crm-agent";
 import { brevoReady, sendEmail, sendSms, OWNER_EMAIL, SITE } from "./brevo";
 import { applyStoredSecrets } from "./integrations";
 import { relay, templateStatus } from "./package-sender";
-import type { Reservation } from "./reservations";
+import type { Reservation, SignedOrder } from "./reservations";
 
 export const RESERVATION_TEMPLATE = "neodrive_reservation_confirmee";
 const HANA = "676192234";
@@ -103,7 +103,7 @@ ${recap.length ? `<p style="background:#f4f4f5;border-radius:10px;padding:12px 1
 type Ch = { sms?: string; email?: string; whatsapp?: string; owner?: string };
 
 /** Envoie la confirmation (une seule fois par numéro sur 24 h) et met à jour la réservation et la fiche prospect. */
-export async function confirmReservation(sb: SupabaseClient, r: Reservation, opts: { dry?: boolean } = {}) {
+export async function confirmReservation(sb: SupabaseClient, r: Reservation, opts: { dry?: boolean; signed?: SignedOrder | null } = {}) {
   await applyStoredSecrets().catch(() => {});
   const phone = normalizePhone(r.telephone);
   const t = confirmationTexts(r);
@@ -132,11 +132,21 @@ export async function confirmReservation(sb: SupabaseClient, r: Reservation, opt
   if (opts.dry) return { texts: t, blocked, already, lead: lead?.id ?? null };
 
   const ready = brevoReady();
+  // Bon de commande signé sur le site : joint à l'e-mail du client et à la copie du fondateur.
+  const signed = opts.signed || null;
+  const pdfName = `bon-de-commande-neodrive-${(r.nom || "client").normalize("NFD").replace(/[^A-Za-z0-9]+/g, "-").toLowerCase().replace(/^-|-$/g, "") || "client"}.pdf`;
+  const att = signed ? [{ name: pdfName, content: signed.pdf.toString("base64") }] : undefined;
+  const signedLine = signed ? `<p style="background:#eefaf1;border-radius:10px;padding:12px 14px">📎 Votre <b>bon de commande signé</b> est joint à cet e-mail (PDF). Gardez-le précieusement.</p>` : "";
   if (!already && !blocked && ready) {
     try { await sendSms(r.telephone, t.sms); ch.sms = "envoyé"; } catch (e) { ch.sms = `erreur : ${e instanceof Error ? e.message : e}`; console.error("[RES-CONFIRM] sms", e); }
   } else ch.sms = already ? "déjà confirmé (24 h)" : blocked ? "bloqué (STOP / liste noire)" : "Brevo non connecté";
   if (!already && /@/.test(r.email || "") && ready) {
-    try { await sendEmail(r.email, `${r.prenom} ${r.nom}`.trim(), t.subject, t.html); ch.email = "envoyé"; } catch (e) { ch.email = `erreur : ${e instanceof Error ? e.message : e}`; console.error("[RES-CONFIRM] email", e); }
+    try { await sendEmail(r.email, `${r.prenom} ${r.nom}`.trim(), t.subject, signed ? t.html.replace("<p>Merci pour votre confiance", signedLine + "<p>Merci pour votre confiance") : t.html, att); ch.email = signed ? "envoyé (bon de commande joint)" : "envoyé"; } catch (e) { ch.email = `erreur : ${e instanceof Error ? e.message : e}`; console.error("[RES-CONFIRM] email", e); }
+  } else if (already && signed && /@/.test(r.email || "") && ready) {
+    // Déjà confirmé dans les 24 h : on envoie seulement le bon de commande signé.
+    const p = prenomOf(r);
+    const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#111;max-width:560px"><p>Bonjour${p ? " " + p : ""},</p><p>Voici votre <b>bon de commande NeoDrive signé</b> (PDF joint). Gardez-le précieusement.</p><p>Paiement uniquement à la livraison.</p><p>Merci pour votre confiance,<br>Mansour<br>NeoDrive</p></div>`;
+    try { await sendEmail(r.email, `${r.prenom} ${r.nom}`.trim(), "Votre bon de commande NeoDrive signé", html, att); ch.email = "bon de commande signé envoyé (déjà confirmé 24 h)"; } catch (e) { ch.email = `erreur : ${e instanceof Error ? e.message : e}`; console.error("[RES-CONFIRM] email pdf", e); }
   } else ch.email = already ? "déjà confirmé (24 h)" : !/@/.test(r.email || "") ? "pas d'e-mail" : "Brevo non connecté";
 
   // WhatsApp : texte libre si le client nous a écrit il y a moins de 24 h, sinon modèle Meta (envoyé plus tard par la tâche planifiée).
@@ -151,7 +161,7 @@ export async function confirmReservation(sb: SupabaseClient, r: Reservation, opt
     const who = `${r.prenom} ${r.nom}`.trim() || "Client";
     const msg = `NeoDrive : nouvelle réservation ${modeleOf(r.modele)} - ${who} (${r.telephone}) ${r.ville || ""} ${r.code_postal || ""}${r.total != null ? " - " + euro(r.total) : ""}. Confirmation client : SMS ${ch.sms}, e-mail ${ch.email}.`;
     try { await sendSms(OWNER_SMS(), msg.slice(0, 300)); ch.owner = "SMS"; } catch (e) { console.error("[RES-CONFIRM] owner sms", e); }
-    try { await sendEmail(OWNER_EMAIL, "Mansour", `🆕 Réservation ${modeleOf(r.modele)} — ${who} (${r.ville || r.code_postal || "?"})`, `<p>${msg}</p><p><a href="${SITE}/reservations-admin">Ouvrir les réservations</a></p>`); ch.owner = (ch.owner ? ch.owner + " + " : "") + "e-mail"; } catch (e) { console.error("[RES-CONFIRM] owner email", e); }
+    try { await sendEmail(OWNER_EMAIL, "Mansour", `🆕 Réservation ${modeleOf(r.modele)} — ${who} (${r.ville || r.code_postal || "?"})`, `<p>${msg}</p>${signed ? `<p>Bon de commande signé au doigt le ${new Date(signed.at).toLocaleString("fr-FR", { timeZone: "Europe/Paris" })} (PDF joint).</p>` : ""}<p><a href="${SITE}/reservations-admin">Ouvrir les réservations</a></p>`, att); ch.owner = (ch.owner ? ch.owner + " + " : "") + "e-mail"; } catch (e) { console.error("[RES-CONFIRM] owner email", e); }
   }
 
   const date = new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" });

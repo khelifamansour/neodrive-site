@@ -15,6 +15,7 @@ export type Reservation = {
   delivery_price: number | null; total: number | null; message: string;
   statut: string; date_promise: string | null; acompte: number | null; priorite: string; notes: string;
   lead_id: number | null; plan_client_id: string | null; confirm?: Record<string, unknown> | null;
+  signature_at?: string | null; signature_path?: string | null;
 };
 
 /** Réservations faites par le client lui-même sur le site : elles déclenchent la confirmation automatique. */
@@ -59,16 +60,48 @@ async function linkLead(sb: SupabaseClient, r: ReturnType<typeof cleanReservatio
   return ins?.id ?? null;
 }
 
+/** Bon de commande signé par le client sur le site (PDF généré dans son navigateur). */
+export type SignedOrder = { pdf: Buffer; at: string; by: string };
+export const SIGNED_ORDER_BUCKET = "erp-documents";
+const MAX_PDF = 3 * 1024 * 1024;
+
+/** Lit le PDF signé envoyé en base64 (champ devis_pdf_b64) et le retire du corps de la requête. */
+export function takeSignedOrder(b: Record<string, unknown>): SignedOrder | null {
+  const b64 = typeof b.devis_pdf_b64 === "string" ? b.devis_pdf_b64.replace(/^data:[^,]*,/, "") : "";
+  const at0 = s(b.signature_at, 40), by = s(b.signature, 120);
+  delete b.devis_pdf_b64; delete b.signature_at;
+  if (!b64 || b64.length > MAX_PDF * 1.4) return null;
+  const pdf = Buffer.from(b64, "base64");
+  if (pdf.length < 500 || pdf.subarray(0, 5).toString("latin1") !== "%PDF-") return null;
+  const t = Date.parse(at0);
+  return { pdf, at: Number.isFinite(t) && Math.abs(Date.now() - t) < 86400000 ? new Date(t).toISOString() : new Date().toISOString(), by };
+}
+
+/** Range le bon de commande signé et note la signature sur la réservation. Ne bloque jamais. */
+async function storeSignedOrder(sb: SupabaseClient, r: Reservation, so: SignedOrder) {
+  const path = `reservations/bons-de-commande/${r.id}-${Date.now()}.pdf`;
+  const { error } = await sb.storage.from(SIGNED_ORDER_BUCKET).upload(path, so.pdf, { contentType: "application/pdf", upsert: false });
+  if (error) { console.error("[RESERVATIONS] pdf signé", error.message); return null; }
+  const when = new Date(so.at).toLocaleString("fr-FR", { timeZone: "Europe/Paris" });
+  const notes = [r.notes, `Bon de commande signé au doigt par ${so.by || `${r.prenom} ${r.nom}`.trim()} le ${when} (${SIGNED_ORDER_BUCKET}/${path})`].filter(Boolean).join(" · ").slice(0, 2000);
+  const { error: e2 } = await sb.from("reservations").update({ signature_at: so.at, signature_path: path, notes }).eq("id", r.id);
+  // Colonnes pas encore créées (migration non passée) : la trace reste dans les notes.
+  if (e2) { console.error("[RESERVATIONS] signature cols", e2.message); await sb.from("reservations").update({ notes }).eq("id", r.id); }
+  r.notes = notes;
+  return path;
+}
+
 /** Enregistre une réservation et la relie au prospect. */
-export async function saveReservation(sb: SupabaseClient, b: Record<string, unknown>, source: string, extra: { plan_client_id?: string | null } = {}) {
+export async function saveReservation(sb: SupabaseClient, b: Record<string, unknown>, source: string, extra: { plan_client_id?: string | null; signed?: SignedOrder | null } = {}) {
   const r = cleanReservation(b);
   let lead_id: number | null = null;
   try { lead_id = await linkLead(sb, r, source); } catch (e) { console.error("[RESERVATIONS] lead", e); }
   const { data, error } = await sb.from("reservations").insert({ ...r, source, lead_id, plan_client_id: extra.plan_client_id ?? null }).select().single();
   if (error) throw new Error(error.message);
+  if (extra.signed) { try { await storeSignedOrder(sb, data as Reservation, extra.signed); } catch (e) { console.error("[RESERVATIONS] pdf signé", e); } }
   // Confirmation immédiate au client (SMS, e-mail, WhatsApp) + alerte fondateur, après la réponse : ne bloque jamais la réservation.
   if (PUBLIC_SOURCES.has(source)) {
-    const run = () => confirmReservation(sb, data as Reservation).catch(e => console.error("[RESERVATIONS] confirmation", e));
+    const run = () => confirmReservation(sb, data as Reservation, { signed: extra.signed }).catch(e => console.error("[RESERVATIONS] confirmation", e));
     try { after(run); } catch { await run(); }
   }
   return data as Reservation;
