@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabase";
 import { DOC_STATUS_LABEL, type Employment } from "../../lib/driver-docs";
 import Contract from "./Contract";
 import Delivery from "./Delivery";
+import ds from "./delivery.module.css";
 import Billing, { type BillingInfo } from "./Billing";
 import Invoice from "./Invoice";
 import Hours from "./Hours";
@@ -131,7 +132,7 @@ export default function Livreur() {
     </div>;
   };
 
-  return <main className={c.page}><div className={c.wrap}>
+  return <main className={c.page} style={{ overflowX: "hidden" }}><div className={`${c.wrap} ${ds.shell}`}>
     <div className={c.top}><a href="/organisation" className={c.back}>← Organisation</a></div>
     <h1 style={{ margin: "14px 0 4px" }}>{salarie ? "🧰 Mon espace – Livraison, préparation" : "🧰 Espace prestataire"}</h1>
     <p className={c.muted}>{salarie ? "" : "Livraison, préparation. "}Bonjour {me?.name?.split(" ")[0] || ""} : vos tournées, vos heures, vos documents et votre contrat.</p>
@@ -148,7 +149,7 @@ export default function Livreur() {
         salarie
           ? { n: "⑤", t: "Heures", d: "Saisissez vos heures et vos pauses après chaque mission (tournée, préparation, contrôle, réparation, transport), déposez vos tickets chaque soir, puis générez le relevé d’heures du mois : il arrive chez Mansour pour votre paie.", st: "Relevé mensuel", done: false, b: "Saisir mes heures", to: "factures" as const }
           : { n: "⑤", t: "Heures et factures", d: "Saisissez vos heures (tournée ou autre mission : préparation, contrôle, réparation, transport), déposez vos tickets chaque soir, puis générez votre facture (heures × 25 € HT) : elle arrive chez Mansour automatiquement.", st: invoices.length ? `${invoices.length} facture${invoices.length > 1 ? "s" : ""}` : "Aucune facture", done: false, b: "Saisir mes heures", to: "factures" as const },
-      ]).map(x => <div key={x.n} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center", padding: 10, borderRadius: 12, background: x.done ? "#e7f6ec" : "#fff", border: "1px solid #eee" }}>
+      ]).map(x => <div key={x.n} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 8, alignItems: "center", padding: 10, borderRadius: 12, background: x.done ? "#e7f6ec" : "#fff", border: "1px solid #eee" }}>
         <div style={{ display: "grid", gap: 2 }}><b style={{ fontSize: 16 }}>{x.done ? "✅" : x.n} {x.t} <span className={c.badge} style={{ background: x.done ? "#d1fadf" : "#f1f1f1", color: "#111", marginLeft: 4 }}>{x.st}</span></b><small className={c.muted}>{x.d}</small></div>
         <button className={`${c.btn} ${x.done ? c.btnGhost : c.btnBrand}`} style={{ padding: "12px 14px", fontSize: 15 }} onClick={() => go(x.to)}>{x.b}</button>
       </div>)}
