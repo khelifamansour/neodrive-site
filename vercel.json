@@ -18,6 +18,10 @@
       "schedule": "15 5 * * *"
     },
     {
+      "path": "/api/crm/welcome-sms",
+      "schedule": "*/15 6-19 * * *"
+    },
+    {
       "path": "/api/crm/auto-followup",
       "schedule": "0 7-18 * * *"
     },
