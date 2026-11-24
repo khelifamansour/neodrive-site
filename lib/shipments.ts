@@ -61,10 +61,13 @@ export type Stage = typeof STAGES[number];
 export const isStage = (v: unknown): v is Stage => STAGES.includes(v as Stage);
 export const STAGE_ICON: Record<Stage, string> = { "en mer": "🚢", "au port": "⚓", "au dépôt": "🏠", "chargée": "🚚", "livrée": "✅" };
 
-/** Dépôts NeoDrive (l'id correspond au hub du planificateur quand il existe). */
+/** Dépôts / hubs NeoDrive (l'id correspond au hub du planificateur quand il existe). */
 export const DEPOTS = [
-  { id: "lamasquere", name: "Toulouse / Lamasquère", lat: 43.4836, lng: 1.2483 },
-  { id: "gennevilliers", name: "Asnières / Gennevilliers", lat: 48.9258, lng: 2.2933 },
+  { id: "lamasquere", name: "Lamasquère / Muret", lat: 43.4836, lng: 1.2483 },
+  { id: "gennevilliers", name: "Gennevilliers (Martin)", lat: 48.9258, lng: 2.2933 },
+  { id: "dls", name: "DLS (Gennevilliers)", lat: 48.9333, lng: 2.3 },
+  { id: "fos", name: "Fos-sur-Mer (CMS)", lat: 43.4378, lng: 4.9447 },
+  { id: "boran", name: "Boran-sur-Oise", lat: 49.1686, lng: 2.3583 },
   { id: "le-havre", name: "Le Havre", lat: 49.4944, lng: 0.1079 },
 ] as const;
 export const isDepot = (v: unknown) => DEPOTS.some(d => d.id === v);

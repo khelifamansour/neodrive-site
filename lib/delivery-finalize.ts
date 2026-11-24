@@ -9,6 +9,7 @@ import { DRIVER_BUCKET } from "./driver-docs";
 import { RECEIPT_FOLDER, receiptPdf, reservePdf, type ReceiptData } from "./delivery-receipt";
 import type { PlanTour } from "./planif";
 import { declText, keptLabel } from "./reserve-text";
+import { onDelivered } from "./stock";
 
 type DB = ReturnType<typeof crmDatabase>;
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -52,6 +53,8 @@ export async function finalizeDelivery(db: DB, r: any, data: ReceiptData, signat
   if (error) throw new Error(error.message);
   if (!upd?.length) throw new Error("Cette livraison est déjà confirmée.");
   await db.from("shipment_vehicles").update({ status: "livrée", client_name: data.client, delivered_at: at, driver: data.livreur, updated_at: at }).eq("vin", r.vin);
+  // Stock et facturation : la voiture est reliée à la réservation (ajoutée au stock si besoin) et un brouillon de facture est préparé.
+  await onDelivered(db, r, data.livreur, at);
   if (r.plan_client_id) {
     try {
       const tours = await listJson<PlanTour>(db, PLAN_TOURS);
@@ -101,6 +104,8 @@ export async function finalizeReserve(db: DB, r: any, data: ReceiptData, signatu
   if (error) throw new Error(error.message);
   if (!upd?.length) throw new Error("Cette remise est déjà signée.");
   await db.from("shipment_vehicles").update({ status: "livrée", client_name: data.client, delivered_at: at, driver: data.livreur, updated_at: at }).eq("vin", r.vin);
+  // Stock et facturation : la voiture est reliée à la réservation (ajoutée au stock si besoin) et un brouillon de facture est préparé.
+  await onDelivered(db, r, data.livreur, at);
   if (r.plan_client_id) {
     try {
       const tours = await listJson<PlanTour>(db, PLAN_TOURS);

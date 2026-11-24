@@ -204,10 +204,11 @@ export async function POST(req: Request) {
         if (!c) return NextResponse.json({ ok: false, error: "Client introuvable" }, { status: 404 });
         const { data: other } = await db.from("shipment_vehicles").select("id,vin").eq("client_id", c.id).neq("id", id).neq("status", "livrée");
         if (other?.length && !b.force) return NextResponse.json({ ok: false, conflict: other[0].vin, error: `Ce client est déjà lié au VIN ${other[0].vin}. Confirmez pour le remplacer par ce véhicule.` }, { status: 409 });
-        for (const o of other || []) await patchVehicle(db, o.id, { client_id: null, client_name: null }, { by: driver, note: `client ${clientName(c)} réattribué au VIN ${v.vin}` });
+        for (const o of other || []) await patchVehicle(db, o.id, { client_id: null, client_name: null, reservation_id: null }, { by: driver, note: `client ${clientName(c)} réattribué au VIN ${v.vin}` });
         patch.client_id = c.id; patch.client_name = clientName(c); note = `pour ${clientName(c)}`;
         // Même VIN sur la réservation (espace livreur, accusé de réception)
         const r = await resOf(c.id);
+        if (r) patch.reservation_id = r.id; // stock et facturation : lien VIN ↔ réservation
         if (r && !r.accuse_token && r.vin !== v.vin) await db.from("reservations").update({ vin: v.vin, updated_at: new Date().toISOString() }).eq("id", r.id);
       }
       await patchVehicle(db, id, patch, { stage: "chargée", by: driver, note: [t ? `tournée ${t.name || t.id}` : "", note].filter(Boolean).join(" · ") });

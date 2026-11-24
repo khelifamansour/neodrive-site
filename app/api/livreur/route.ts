@@ -18,6 +18,7 @@ import { finalizeDelivery, finalizeReserve, intlPhone } from "../../../lib/deliv
 import { AccuseError, sendAccuseLink } from "../../../lib/accuse-link";
 import { cleanDecl, keptOf, needsVireCheck, type Kept } from "../../../lib/reserve-text";
 import { nearestVin, readVinFromImage } from "../../../lib/vin-read";
+import { linkReservationVin } from "../../../lib/stock";
 import { createDemoTour, deleteTestData } from "../../../lib/demo-tour";
 import { OWNER_EMAIL } from "../../../lib/brevo";
 import { PHOTO_BUCKET } from "../../../lib/fleet";
@@ -431,13 +432,14 @@ export async function POST(req: Request) {
       if (!VIN_RE.test(vin)) return NextResponse.json({ ok: false, error: "Numéro de série invalide : 17 caractères, lettres et chiffres, sans I, O ni Q." }, { status: 400 });
       const photo = clean(b.photo_path, 300);
       if (photo && (!photo.startsWith(`${RECEIPT_FOLDER}/${id}/`) || photo.includes(".."))) return NextResponse.json({ ok: false, error: "Photo invalide" }, { status: 400 });
-      const { data: r } = await db.from("reservations").select("id,prenom,nom,statut,vin_photo_path").eq("id", id).maybeSingle();
+      const { data: r } = await db.from("reservations").select("id,prenom,nom,statut,vin_photo_path,modele,couleur").eq("id", id).maybeSingle();
       if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
       const { data: dup } = await db.from("reservations").select("id,prenom,nom").eq("vin", vin).neq("id", id).limit(1);
       if (dup?.length) return NextResponse.json({ ok: false, error: `Ce numéro de série est déjà attribué à ${dup[0].prenom} ${dup[0].nom}. Vérifiez la plaque.` }, { status: 409 });
       const { error } = await db.from("reservations").update({ vin, ...(photo ? { vin_photo_path: photo } : {}), updated_at: new Date().toISOString() }).eq("id", id);
       if (error) throw new Error(error.message);
       await db.from("shipment_vehicles").update({ client_name: `${r.prenom} ${r.nom}`.trim(), ...(photo ? { plate_photo: photo } : {}), updated_at: new Date().toISOString() }).eq("vin", vin);
+      try { await linkReservationVin(db, { ...r, vin }, { by: acc.name }); } catch (e) { console.error("[LIVRAISON] lien stock", e); }
       await logSection(acc, "livraison_vin", { id, vin });
       return NextResponse.json({ ok: true, vin });
     }
