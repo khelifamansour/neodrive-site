@@ -4,7 +4,7 @@
 import PDFDocument from "pdfkit";
 
 import { safeText } from "./pdf-text";
-import { PENAL_TEXT, PROCESS_TEXT, declText, keptLabel, propertyText, type Declaration, type Kept } from "./reserve-text";
+import { PENAL_TEXT, PROCESS_TEXT, VIRE_CHECK, declText, keptLabel, propertyText, type Declaration, type Kept } from "./reserve-text";
 export const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
 export const RECEIPT_FOLDER = "livraisons";
 
@@ -21,7 +21,7 @@ export type CheckId = typeof CHECKS[number]["id"];
 /** Livraison avec paiement en attente : le livreur garde les clés et les documents jusqu'au paiement. */
 export const PENDING_KEPT = ["cles", "documents"] as const;
 /** Contrôles à cocher : sans paiement, on retire ce que NeoDrive garde (par défaut les clés et les documents). */
-export const checksFor = (pending: boolean, kept?: Kept | null) => CHECKS.filter(c => !pending || !(kept ? (["cles", "documents"] as const).filter(k => kept[k]) as readonly string[] : PENDING_KEPT as readonly string[]).includes(c.id));
+export const checksFor = (pending: boolean, kept?: Kept | null, virement = false): { id: string; label: string }[] => [...CHECKS.filter(c => !pending || !(kept ? (["cles", "documents"] as const).filter(k => kept[k]) as readonly string[] : PENDING_KEPT as readonly string[]).includes(c.id)), ...(virement ? [VIRE_CHECK] : [])];
 
 /** Modes de règlement déclarés par le client au moment de signer (preuve, notamment des espèces remises au chauffeur). */
 export const PAY_MODES = [
@@ -138,12 +138,12 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
     y += 112;
 
     doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Contrôles à la remise du véhicule", 40, y); y += 16;
-    for (const c of checksFor(!!d.pending, d.kept)) {
+    for (const c of checksFor(!!d.pending, d.kept, "virement" in (d.checks || {}))) {
       const ok = !!d.checks[c.id];
       doc.rect(44, y + 1, 9, 9).lineWidth(0.8).stroke(ok ? "#067647" : "#999");
       if (ok) doc.font("Helvetica-Bold").fontSize(9).fillColor("#067647").text("X", 46, y + 1.5);
-      doc.font("Helvetica").fontSize(9.5).fillColor(ok ? ink : grey).text(c.label, 60, y, { width: 490 });
-      y += 16;
+      doc.font(c.id === "virement" ? "Helvetica-Bold" : "Helvetica").fontSize(9.5).fillColor(ok ? ink : grey).text(c.label, 60, y, { width: 490 });
+      y += Math.max(16, doc.heightOfString(c.label, { width: 490 }) + 5);
     }
     y += 6;
     doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Réserves ou remarques du client", 40, y); y += 14;
@@ -224,6 +224,13 @@ export function reservePdf(d: ReceiptData, signaturePng: Buffer | null): Promise
       doc.font("Helvetica-Bold").fontSize(9.2).fillColor(ink).text(t, 40, y, { width: 515 }); y += doc.heightOfString(t, { width: 515 }) + 6;
     }
     if (d.reserves) { const t = `Remarques du client : ${d.reserves}`; doc.font("Helvetica").fontSize(9).fillColor(ink).text(t, 40, y, { width: 515 }); y += doc.heightOfString(t, { width: 515 }) + 6; }
+    if (d.checks && "virement" in d.checks) {
+      const ok = !!d.checks.virement;
+      doc.rect(44, y + 1, 9, 9).lineWidth(0.8).stroke(ok ? "#067647" : "#999");
+      if (ok) doc.font("Helvetica-Bold").fontSize(9).fillColor("#067647").text("X", 46, y + 1.5);
+      doc.font("Helvetica-Bold").fontSize(9).fillColor(ok ? ink : grey).text(VIRE_CHECK.label, 60, y, { width: 490 });
+      y += doc.heightOfString(VIRE_CHECK.label, { width: 490 }) + 8;
+    }
     doc.font("Helvetica-Bold").fontSize(9.2).fillColor(ink).text(`Je soussigné(e) ${d.signer} déclare avoir lu et accepté les conditions ci-dessus.`, 40, y, { width: 515 });
     y += 22;
     if (y > 650) { doc.addPage(); y = 40; }

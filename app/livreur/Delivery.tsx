@@ -7,7 +7,7 @@ import c from "../giga/giga.module.css";
 import s from "./delivery.module.css";
 import { supabase } from "../../lib/supabase";
 import { VIN_FORMAT, vinCheckOk } from "../../lib/vin";
-import { keptLabel, type Declaration, type Kept } from "../../lib/reserve-text";
+import { VIRE_CHECK, keptLabel, needsVireCheck, type Declaration, type Kept } from "../../lib/reserve-text";
 
 /** Livraisons en 4 étapes : 1 prévenir le client (« j'arrive »), 2 numéro de série (photo → lecture auto), 3 paiement, 4 signature (téléphone du client ou du livreur). */
 /** Échéance par défaut : 3 jours ouvrés. */
@@ -129,6 +129,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   });
 
   // ── 3. Paiement
+  const unconfirmPaid = () => r && run("paid", async () => { await api({ action: "unconfirm_payment", id: r.id }); onMsg("Paiement remis à « non reçu ». Choisissez à nouveau."); await load(); });
   const confirmPaid = () => r && run("paid", async () => { await api({ action: "confirm_payment", id: r.id }); onMsg("✅ Paiement reçu enregistré."); await load(); });
   const setPending = (on: boolean, kept?: Kept) => r && run("pend", async () => {
     await api({ action: "pending_mode", id: r.id, on, montant_du: pend.montant, due: pend.due || dueDefault(), kept: kept || { cles: pend.cles, documents: pend.documents } });
@@ -159,8 +160,9 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
     const paid = !!r.paiement_confirme_at; const pending = !paid && r.paiement_en_attente;
     const kept: Kept = r.kept || { cles: true, documents: true }; const keep = keptLabel(kept);
     const ready = !!r.vin && (paid || (pending && !r.reserve_url));
-    const checks = pending ? checksAll.filter(x => !(x.id === "cles" && kept.cles) && !(x.id === "documents" && kept.documents)) : checksAll;
-    const canSign = ready && signer.trim().length >= 3 && !!sig && !r.accuse_url && (pending ? !!decl && accept : payValid(pay));
+    const vire = needsVireCheck(!!pending, pay.lines);
+    const checks = [...(pending ? checksAll.filter(x => !(x.id === "cles" && kept.cles) && !(x.id === "documents" && kept.documents)) : checksAll), ...(vire ? [VIRE_CHECK] : [])];
+    const canSign = ready && signer.trim().length >= 3 && !!sig && !r.accuse_url && (pending ? !!decl && accept : payValid(pay)) && (!vire || !!ck.virement);
     const vinNow = vin.toUpperCase().replace(/[\s-]/g, "");
     const vinOk = VIN_FORMAT.test(vinNow); const checkOk = vinOk && vinCheckOk(vinNow);
     const showVinForm = !r.vin || editVin;
@@ -249,7 +251,10 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
         </Step>
 
         <Step n={3} title="Paiement" done={paid || (pending && !!r.reserve_url)} tone={paid ? "#e7f6ec" : pending ? "#fff4d6" : undefined}>
-          {paid ? <span>✅ <b>Paiement reçu.</b>{r.reserve_url ? " Remettez ce qui avait été gardé et faites signer l’accusé final." : ""}</span>
+          {paid ? <>
+              <span>✅ <b>Paiement reçu.</b>{r.reserve_url ? " Remettez ce qui avait été gardé et faites signer l’accusé final." : ""}</span>
+              {owner && !r.livre_at && !r.reserve_url ? <button className={`${c.btn} ${c.btnGhost}`} disabled={!!busy} onClick={() => { if (confirm("Annuler « Paiement reçu » et choisir à nouveau ?")) unconfirmPaid(); }}>Modifier</button> : null}
+            </>
             : pending && r.reserve_url ? <>
               <span>🔒 <b>Remise sans paiement signée</b>{r.montant_du ? ` · ${eur(r.montant_du)} à payer` : ""}{r.reserve_due ? ` avant le ${dFr(r.reserve_due)}` : ""}. {keep ? `NeoDrive garde ${keep}.` : "Tout a été remis."}</span>
               <a href={r.reserve_url} target="_blank" rel="noreferrer">📄 Document signé (PDF)</a>
@@ -257,7 +262,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
             : pending ? <>
               <span>⏳ <b>Paiement pas encore reçu</b>{r.montant_du ? ` · ${eur(r.montant_du)}` : ""}{r.reserve_due ? ` avant le ${dFr(r.reserve_due)}` : ""}.</span>
               <span>{keep ? <>Laissez la voiture mais <b>gardez {keep}</b>.</> : <>Vous laissez la voiture, les clés et les documents.</>}</span>
-              <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { if (confirm("Changer le choix du paiement ?")) setPending(false); }}>Changer</button>
+              <button className={`${c.btn} ${c.btnGhost}`} disabled={!!busy} onClick={() => { if (confirm("Modifier le choix du paiement ?")) setPending(false); }}>Modifier</button>
             </>
             : owner ? <>
               <button className={`${c.btn} ${c.btnBrand} ${s.choice}`} style={{ background: "#067647" }} disabled={!!busy} onClick={() => { if (confirm(`Confirmer : paiement de ${r.prenom} ${r.nom} reçu ?`)) confirmPaid(); }}>{busy === "paid" ? "…" : "✅ Paiement reçu"}</button>
@@ -296,7 +301,8 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
         {sigMode && ready ? <div className={c.card} style={{ display: "grid", gap: 10, padding: 14 }}>
           <b>Le client lit et signe</b>
           {pending ? <span className={s.warn}>Paiement pas encore reçu{r.montant_du ? ` (${eur(r.montant_du)})` : ""}. {keep ? `NeoDrive garde ${keep} jusqu’au paiement.` : "Le client reçoit la voiture, les clés et les documents."}</span> : null}
-          {checks.map(x => <label key={x.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 16 }}><input type="checkbox" checked={!!ck[x.id]} onChange={e => setCk({ ...ck, [x.id]: e.target.checked })} /><span>{x.label}</span></label>)}
+          <button type="button" className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} onClick={() => setCk(Object.fromEntries(checks.map(x => [x.id, true])))}>✅ Tout cocher</button>
+          {checks.map(x => <label key={x.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 16 }}><input type="checkbox" checked={!!ck[x.id]} onChange={e => setCk({ ...ck, [x.id]: e.target.checked })} /><span style={x.id === "virement" ? { fontWeight: 700, fontSize: 15 } : undefined}>{x.label}</span></label>)}
           <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Remarques du client (facultatif)
             <textarea className={c.input} rows={2} value={reserves} onChange={e => setReserves(e.target.value)} placeholder="Ex. petite rayure porte gauche" /></label>
           <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Nom et prénom du client
@@ -307,7 +313,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
           </> : <PaymentDeclare key={r.id} driver={driverName} total={r.total} onChange={setPay} />}
           <SignaturePad onChange={setSig} btnClass={`${c.btn} ${c.btnGhost}`} />
           <button className={`${c.btn} ${c.btnBrand}`} style={{ ...big, opacity: canSign ? 1 : .5 }} disabled={!canSign || !!busy} onClick={signNow}>{busy === "sign" ? "Enregistrement…" : "✍️ Valider la signature"}</button>
-          {pending && !decl ? <small className={c.muted}>Le client choisit sa déclaration de paiement.</small> : pending && !accept ? <small className={c.muted}>Le client coche « J’ai lu et j’accepte ».</small> : !pending && !payValid(pay) ? <small className={c.muted}>Le client indique comment il a réglé (moyen + montant).</small> : !sig ? <small className={c.muted}>Le client signe dans le cadre.</small> : null}
+          {pending && !decl ? <small className={c.muted}>Le client choisit sa déclaration de paiement.</small> : pending && !accept ? <small className={c.muted}>Le client coche « J’ai lu et j’accepte ».</small> : !pending && !payValid(pay) ? <small className={c.muted}>Le client indique comment il a réglé (moyen + montant).</small> : vire && !ck.virement ? <small className={c.muted}>Le client coche l’engagement sur le virement.</small> : !sig ? <small className={c.muted}>Le client signe dans le cadre.</small> : null}
         </div> : null}
       </>}
     </section>;

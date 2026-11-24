@@ -16,7 +16,7 @@ import { randomBytes } from "crypto";
 import { RECEIPT_FOLDER, VIN_RE, checksFor, cleanPayment, defaultDue, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
 import { finalizeDelivery, finalizeReserve, intlPhone } from "../../../lib/delivery-finalize";
 import { AccuseError, sendAccuseLink } from "../../../lib/accuse-link";
-import { cleanDecl, keptOf, type Kept } from "../../../lib/reserve-text";
+import { cleanDecl, keptOf, needsVireCheck, type Kept } from "../../../lib/reserve-text";
 import { nearestVin, readVinFromImage } from "../../../lib/vin-read";
 import { createDemoTour, deleteTestData } from "../../../lib/demo-tour";
 import { OWNER_EMAIL } from "../../../lib/brevo";
@@ -363,6 +363,19 @@ export async function POST(req: Request) {
       await logSection(acc, "livraison_vin_lu", { id, vin: out.vin, check_ok: out.check_ok });
       return NextResponse.json({ ok: true, ...out, match, photo_path: path });
     }
+    // Fondateur uniquement : annuler un « Paiement reçu » mis par erreur (tant que rien n'est signé).
+    if (b.action === "unconfirm_payment") {
+      if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Seul Mansour peut modifier le paiement." }, { status: 403 });
+      const id = Number(b.id);
+      const { data: r } = await db.from("reservations").select("id,accuse_token,reserve_token,livre_at,notes").eq("id", id).maybeSingle();
+      if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
+      if (r.accuse_token || r.reserve_token || r.livre_at) return NextResponse.json({ ok: false, error: "Le client a déjà signé : modification impossible ici." }, { status: 409 });
+      const at = new Date().toISOString();
+      const { error } = await db.from("reservations").update({ paiement_confirme_at: null, notes: [r.notes, `[${new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] « Paiement reçu » annulé par Mansour (erreur).`].filter(Boolean).join("\n"), updated_at: at }).eq("id", id);
+      if (error) throw new Error(error.message);
+      await logSection(acc, "livraison_paiement_annule", { id });
+      return NextResponse.json({ ok: true });
+    }
     // Fondateur uniquement : « Paiement reçu » confirmé directement depuis la livraison.
     if (b.action === "confirm_payment") {
       if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Seul Mansour peut confirmer un paiement." }, { status: 403 });
@@ -451,7 +464,9 @@ export async function POST(req: Request) {
       if (!reglement && !pending) return NextResponse.json({ ok: false, error: "Le client doit indiquer comment il a réglé (au moins un mode avec un montant)." }, { status: 400 });
       const driverName = acc.who === "member" ? driverDisplay(name) : (driverDisplay(clean(b.driver_name, 80)) || "Mansour Khelifa");
       const checksIn = (b.checks || {}) as Record<string, unknown>;
-      const checks = Object.fromEntries(checksFor(pending, kept).map(c => [c.id, !!checksIn[c.id]]));
+      const vire = needsVireCheck(pending, reglement);
+      if (vire && !checksIn.virement) return NextResponse.json({ ok: false, error: "Le client doit cocher l'engagement sur le virement." }, { status: 400 });
+      const checks = Object.fromEntries(checksFor(pending, kept, vire).map(c => [c.id, !!checksIn[c.id]]));
       const at = new Date().toISOString();
       const num = (x: unknown) => { const n = Number(x); return Number.isFinite(n) ? n : null; };
       const data: ReceiptData = {

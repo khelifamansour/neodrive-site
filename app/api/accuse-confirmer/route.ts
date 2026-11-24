@@ -5,7 +5,7 @@ import { listJson } from "../../../lib/datastore";
 import { PLAN_TOURS } from "../../../lib/fleet";
 import type { PlanTour } from "../../../lib/planif";
 import { finalizeDelivery, finalizeReserve } from "../../../lib/delivery-finalize";
-import { cleanDecl, keptOf } from "../../../lib/reserve-text";
+import { cleanDecl, keptOf, needsVireCheck } from "../../../lib/reserve-text";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -80,7 +80,9 @@ export async function POST(req: Request) {
     if (!reglement && !pending) return NextResponse.json({ ok: false, error: "Indiquez comment vous avez réglé (moyen et montant)." }, { status: 400 });
     const driverName = (await tourDriver(r)) || driverDisplay(clean(b.driver_name, 80));
     const checksIn = (b.checks || {}) as Record<string, unknown>;
-    const checks = Object.fromEntries(checksFor(pending, kept).map(c => [c.id, !!checksIn[c.id]]));
+    const vire = needsVireCheck(pending, reglement);
+    if (vire && !checksIn.virement) return NextResponse.json({ ok: false, error: "Cochez l'engagement sur le virement." }, { status: 400 });
+    const checks = Object.fromEntries(checksFor(pending, kept, vire).map(c => [c.id, !!checksIn[c.id]]));
     const at = new Date().toISOString();
     const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || null;
     const ua = clean(req.headers.get("user-agent"), 200);

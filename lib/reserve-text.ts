@@ -1,4 +1,7 @@
 /** Remise sans paiement : textes de la réserve de propriété et de la déclaration du client (navigateur + serveur + PDF). */
+/** Engagement sur le virement : case du client, toujours présente s'il a payé ou déclare payer par virement, et dans la remise sans paiement. */
+export const VIRE_CHECK = { id: "virement", label: "Je certifie avoir effectué (ou ordonné) le virement du prix à la livraison et je m'engage à ne pas l'annuler ni le rappeler. Si j'annule ce virement ou si ma déclaration est fausse, je reconnais avoir trompé le vendeur : ces faits constituent une escroquerie (article 313-1 du Code pénal), pour laquelle MK HOLDING portera plainte, et le vendeur pourra reprendre le véhicule." } as const;
+export const needsVireCheck = (pending: boolean, lines?: { mode: string }[] | null) => pending || !!lines?.some(l => l.mode === "virement");
 export type Kept = { cles: boolean; documents: boolean };
 export type Declaration = { kind: "virement" | "engagement"; montant: number | null; date: string };
 const eur = (n: number | null | undefined) => n == null ? "… €" : `${Number(n).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €`;
