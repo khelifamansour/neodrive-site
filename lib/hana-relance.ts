@@ -7,6 +7,7 @@
  * Jamais : liste noire, STOP, clients ayant déjà réservé ou refusé, dimanche. Plafond quotidien.
  * Quand le client répond « oui / rappelez-moi », le fondateur est prévenu (WhatsApp) et le contact passe en « Chaud ».
  *
+ * Les contacts déjà relancés par lib/prospect-relance.ts (leads.relance_wa_step > 0) sont ignorés ici, pour ne jamais dépasser 2 relances.
  * Table (SQL additif) : hana_relances (id, phone, step, kind, template, message_id, sent_at)
  */
 import { crmDatabase, normalizePhone } from "./crm-agent";
@@ -91,7 +92,7 @@ export async function hanaRelances(opts: { limit?: number; dry?: boolean } = {})
     conversations(),
     db.from(T).select("phone,step,sent_at,kind").order("sent_at", { ascending: true }).limit(5000),
     db.from("whatsapp_blacklist").select("phone"),
-    db.from("leads").select("telephone,statut,nom,opted_out_at").or("opted_out_at.not.is.null,statut.in.(Client,Perdu,Livré,Vendu)").limit(5000),
+    db.from("leads").select("telephone,statut,nom,opted_out_at").or("opted_out_at.not.is.null,statut.in.(Client,Perdu,Livré,Vendu),relance_wa_step.gt.0").limit(5000),
   ]);
   const blocked = new Set([...(black || []).map((b: any) => normalizePhone(b.phone)), ...(optout || []).map((l: any) => normalizePhone(l.telephone)), OWNER, "33676192234", "33689781710"]);
   const byPhone = new Map<string, { step: number; at: string }[]>();

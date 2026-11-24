@@ -90,6 +90,10 @@
       "schedule": "30 8,9 * * 1-6"
     },
     {
+      "path": "/api/crm/relance-prospect",
+      "schedule": "50 8-17 * * 1-6"
+    },
+    {
       "path": "/api/conteneurs/followups",
       "schedule": "30 9 * * *"
     }

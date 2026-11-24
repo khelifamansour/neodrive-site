@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { packageTemplateStatus, sendOwnerTestPackage, waAdmin } from "../../../../lib/package-sender";
 import { batteryQueue, batteryTemplateStatus } from "../../../../lib/battery-wa";
+import { relanceTemplateStatus } from "../../../../lib/prospect-relance";
 import { copyToOwner, smsText } from "../../../../lib/multichannel";
 import { sendNewsletterPreview } from "../../../../lib/newsletter";
 import { brevoAccount, brevoDomains, brevoEvents, sendSms, setSenderOverride } from "../../../../lib/brevo";
@@ -54,6 +55,11 @@ export async function GET(req: Request) {
   // ?template=conseils-batterie (&create=1) : état (ou soumission à Meta) du seul modèle des conseils batterie, et taille de la file. N'envoie rien.
   if (sp.get("template") === "conseils-batterie") {
     try { const q = await batteryQueue(); return NextResponse.json({ ok: true, template: await batteryTemplateStatus(create), queued: q.queue.length, sentToday: q.sentToday, whatsappSending: process.env.WHATSAPP_SENDING === "on" }); }
+    catch (e) { return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 502 }); }
+  }
+  // ?template=relance-prospect (&create=1) : état (ou soumission à Meta) du modèle de relance des prospects de Hana. N'envoie rien.
+  if (sp.get("template") === "relance-prospect") {
+    try { return NextResponse.json({ ok: true, template: await relanceTemplateStatus(create), whatsappSending: process.env.WHATSAPP_SENDING === "on" }); }
     catch (e) { return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 502 }); }
   }
   try { return NextResponse.json({ ok: true, templates: await packageTemplateStatus(create) }); }
