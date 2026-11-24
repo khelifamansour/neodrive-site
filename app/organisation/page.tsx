@@ -5,6 +5,7 @@ import LiveCard from "../planificateur/LiveCard";
 /** Une tuile = un outil. `section` : section requise pour un membre (« a|b » : l’une ou l’autre) ; "owner" : fondateur seulement ; "any" : tout membre avec au moins une section. */
 type Tile = { href: string; icon: string; title: string; text: string; section: string };
 const TILES: Tile[] = [
+  { href: "/tableau-de-bord", icon: "☀️", title: "Ma journée", text: "Rappels, livraisons, paiements reçus et à vérifier, carte grise, factures, conteneurs et candidats.", section: "owner" },
   { href: "/sav/admin", icon: "🛠️", title: "Service après-vente", text: "Les demandes des clients, les diagnostics et les réparations.", section: "sav" },
   { href: "/pieces/admin", icon: "📦", title: "Commandes de pièces", text: "Les pièces commandées par les clients et leur expédition.", section: "pieces" },
   { href: "/reservations-admin", icon: "📋", title: "Réservations clients", text: "Toutes les réservations, les dates promises et l’envoi au planificateur.", section: "tournees" },

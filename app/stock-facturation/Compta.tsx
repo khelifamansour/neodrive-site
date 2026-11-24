@@ -4,6 +4,7 @@ import c from "../giga/giga.module.css";
 import { CATEGORIES, RECEIPT_CATEGORIES, RECEIPT_CATEGORY_LABEL, VAT_REGIMES, VAT_REGIME_LABEL, receiptState } from "../../lib/accounting";
 import { capi, uploadReceipt } from "../../lib/receipt-upload";
 import { eurFr } from "../../lib/stock-shared";
+import PaymentReview from "../tableau-de-bord/PaymentReview";
 
 type Tx = { id: number; date: string; label: string | null; amount: number; counterparty: string | null; reference: string | null; category: string | null; supplier: string | null; match_kind: string | null; invoice_id: number | null; reservation_id: number | null; parts_order: string | null; vat_deductible: number | null; ignored: boolean; note: string | null };
 type InvL = { id: number; number: string | null; status: string; client_name: string | null; total_ttc: number | null; reservation_id: number | null };
@@ -36,7 +37,7 @@ export default function Compta() {
     if (!file) return;
     if (/\.pdf$/i.test(file.name)) { setMsg("❌ Relevé PDF non lu : dans Revolut Business, exportez le relevé au format CSV (Relevé → Exporter → CSV)."); return; }
     const text = await file.text();
-    await act("import", { action: "import", text, file_name: file.name }, r => `✅ ${r.rows} opération(s) lue(s) : ${r.inserted} nouvelle(s), ${r.duplicates} déjà importée(s), ${r.matched} rapprochée(s) automatiquement (${(r.months as string[]).join(", ")}).`);
+    await act("import", { action: "import", text, file_name: file.name }, r => `✅ ${r.rows} opération(s) lue(s) : ${r.inserted} nouvelle(s), ${r.duplicates} déjà importée(s), ${r.matched} rapprochée(s) automatiquement (${(r.months as string[]).join(", ")}).${r.payments ? ` ✅ ${r.payments} paiement(s) client confirmé(s).` : ""}${r.toReview ? ` ${r.toReview} paiement(s) à vérifier plus bas.` : ""}`);
   };
   const exportInv = async () => { const r = await act("inv", { action: "export_invoices" }, r => `✅ ${r.count} facture(s) et ${r.receipts} justificatif(s) exportés.`); if (r) download(`pennylane-factures-${month}.zip`, b64(String(r.zip)), "application/zip"); };
   const exportBank = async () => { const r = await act("bank", { action: "export_bank" }); if (r) download(`pennylane-banque-${month}.csv`, String(r.csv), "text/csv;charset=utf-8"); };
@@ -103,6 +104,8 @@ export default function Compta() {
           missing={body => act("att", { action: "missing_receipt", tx_id: t.id, ...body }, () => "✅ Attestation créée (TVA non déductible).")} /> : null}
       </div>)}
     </div>
+
+    <PaymentReview onChange={() => load()} />
 
     <div className={c.card}><b>🧾 Factures sans paiement ({d.invoicesNoPayment.length})</b>
       {d.invoicesNoPayment.length ? <ul style={{ margin: "6px 0 0", paddingLeft: 18, lineHeight: 1.6 }}>{d.invoicesNoPayment.map(i => <li key={i.id}>{i.number || "brouillon"} · {i.client_name} · {eurFr(i.total_ttc)}</li>)}</ul> : <p className={c.muted} style={{ margin: "6px 0 0" }}>Aucune.</p>}

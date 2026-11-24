@@ -8,6 +8,7 @@ import { RECEIPT_BUCKET, RECEIPT_FOLDER, applyReceiptRead, attestationPdf, match
 import { MONTH, RC, RC_BASE, TX, monthData, monthEnd, safeName, summaryEmail } from "../../../lib/compta-server";
 import { applyStoredSecrets } from "../../../lib/integrations";
 import { OWNER_EMAIL, brevoReady, sendEmail } from "../../../lib/brevo";
+import { runPaymentMatch } from "../../../lib/payment-match";
 import { CATEGORIES, RECEIPT_CATEGORIES, VAT_REGIMES, receiptFileName, receiptsCsv, bankMatchCsv, matchCredit, parseRevolutCsv, pennylaneInvoiceRows, pennylaneInvoicesCsv, supplierOf, type InvLite, type ResLite } from "../../../lib/accounting";
 
 export const dynamic = "force-dynamic";
@@ -75,11 +76,14 @@ export async function POST(req: Request) {
         inserted += data?.length || 0;
       }
       if (imp?.id) await db.from("bank_imports").update({ inserted, skipped: rows.length - inserted }).eq("id", imp.id);
+      // Paiements clients d'abord (relie + confirme les paiements sûrs, met les autres « à vérifier »), puis rapprochement comptable.
+      const pay = await runPaymentMatch(db).catch(e => { console.error("[COMPTA] paiements", e); return null; });
       let matched = 0; for (const m of months) matched += await autoMatch(db, m);
-      return NextResponse.json({ ok: true, rows: rows.length, inserted, duplicates: rows.length - inserted, months, matched, errors: errors.slice(0, 20) });
+      return NextResponse.json({ ok: true, rows: rows.length, inserted, duplicates: rows.length - inserted, months, matched, payments: pay?.linked.length ?? 0, toReview: pay?.review ?? 0, errors: errors.slice(0, 20) });
     }
 
     if (b.action === "automatch") {
+      await runPaymentMatch(db).catch(e => console.error("[COMPTA] paiements", e));
       const matched = await autoMatch(db, month);
       const { data: rcs } = await db.from("receipts").select("id").eq("month", month).is("transaction_id", null);
       let receipts = 0; for (const r of rcs || []) if (await matchReceipt(db, r.id)) receipts++;
