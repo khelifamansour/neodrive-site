@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import c from "../giga/giga.module.css";
+import Compta from "./Compta";
 import { PAY_STYLE, STOCK_ICON, STOCK_LABEL, STOCK_STATES, eurFr, parseImport, totals, type InvoiceLine, type PayState, type StockState } from "../../lib/stock-shared";
 
 type ResV = { id: number; name: string; ville?: string | null; statut: string; livre_at: string | null; total: number | null; modele?: string | null; pay: PayState; date_promise?: string | null; telephone?: string | null; vin?: string };
@@ -28,7 +29,7 @@ const dfr = (d?: string | null) => d ? new Date(d.length === 10 ? `${d}T12:00:00
 const ST_BG: Record<StockState, string> = { "commandée": "#f3e8ff", "en mer": "#dbeafe", "au hub": "#ffedd5", "réservée": "#fff4d6", "livrée": "#e7f6ec" };
 const mono: React.CSSProperties = { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: .3 };
 const sel: React.CSSProperties = { padding: "8px 10px", fontSize: 14 };
-const TABS = [["bord", "📊 Tableau de bord"], ["voitures", "🚗 Voitures et liens"], ["import", "📥 Importer des VIN"], ["factures", "🧾 Factures"]] as const;
+const TABS = [["bord", "📊 Tableau de bord"], ["voitures", "🚗 Voitures et liens"], ["import", "📥 Importer des VIN"], ["factures", "🧾 Factures"], ["compta", "📒 Comptabilité"]] as const;
 type Tab = typeof TABS[number][0];
 const Pay = ({ p }: { p: PayState }) => <span className={c.pill} style={{ background: PAY_STYLE[p].bg, color: PAY_STYLE[p].color }}>{PAY_STYLE[p].icon} {p}</span>;
 
@@ -62,7 +63,7 @@ export default function StockFacturation() {
       {TABS.map(([k, l]) => <button key={k} className={`${c.btn} ${tab === k ? c.btnBrand : c.btnGhost}`} style={{ whiteSpace: "nowrap", padding: "10px 14px", fontSize: 14 }} onClick={() => go(k)}>{l}</button>)}
     </div>
     {msg ? <p className={c.msg}>{msg}</p> : null}
-    {!d ? null : tab === "bord" ? <Dashboard d={d} go={go} /> : tab === "voitures" ? <Cars d={d} run={run} /> : tab === "import" ? <Import d={d} run={run} /> : <Invoices d={d} run={run} setMsg={setMsg} />}
+    {!d ? null : tab === "bord" ? <Dashboard d={d} go={go} /> : tab === "voitures" ? <Cars d={d} run={run} /> : tab === "import" ? <Import d={d} run={run} /> : tab === "compta" ? <Compta /> : <Invoices d={d} run={run} setMsg={setMsg} />}
   </div></main>;
 }
 
