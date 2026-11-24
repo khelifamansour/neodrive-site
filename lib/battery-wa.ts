@@ -19,7 +19,7 @@ const parisDay = (d: Date | string) => new Date(d).toLocaleDateString("en-CA", {
 export const BATTERY_BODY = [
   "Bonjour {{1}}, c'est NeoDrive. Voici des conseils importants pour vos batteries et votre garantie :",
   "",
-  "🔌 Ne posez jamais le chargeur au sol : rangez-le dans une boîte, dans le coffre, avec un coussin en dessous.",
+  "🔌 Pendant la charge, le chargeur peut rester sur le plancher, à l'air libre (jamais couvert). Avant de rouler, rangez-le à l'arrière, dans une boîte avec un tissu doux en dessous, à cause des vibrations.",
   "🔋 Rechargez votre véhicule chaque soir.",
   "",
   "Le guide complet : https://www.easydrive-auto.fr/guide-batterie",

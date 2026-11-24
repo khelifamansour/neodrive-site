@@ -77,10 +77,10 @@ export const SAV_PROBLEMS: SavProblem[] = [
     id: "chargeur",
     icon: "🔋",
     title: "Le chargeur : comment le ranger et l'utiliser",
-    why: "Le chargeur est un appareil électronique sensible. Quand la voiture roule, chaque vibration de la route le secoue : à la longue, les fils et les soudures à l'intérieur bougent, se fragilisent et finissent par lâcher. Le coussin sert à amortir ces vibrations, comme une suspension. Une boîte fermée seule ne suffit pas : posée directement sur le plancher, elle transmet toutes les secousses au chargeur.",
+    why: "Le chargeur est un appareil électronique sensible. Quand la voiture roule, chaque vibration de la route le secoue : à la longue, les fils et les soudures à l'intérieur bougent, se fragilisent et finissent par lâcher. Le tissu sous la boîte sert à amortir ces vibrations, comme une suspension. Pendant la charge, en revanche, le chargeur doit rester à l'air libre pour ne pas chauffer.",
     steps: [
-      "Ne posez jamais le chargeur au sol, ni pendant la charge ni pour le ranger.",
-      "Rangez-le dans une boîte, dans le coffre, avec un coussin ou une mousse en dessous (et idéalement autour) pour amortir les vibrations de la route.",
+      "Pendant la charge, le chargeur peut rester posé sur le plancher de la voiture. Ne le couvrez pas et ne le posez pas sur un coussin : il a besoin d'air, sinon il chauffe.",
+      "Avant de rouler, enlevez-le du plancher : rangez-le à l'arrière, dans le coffre, dans une boîte avec un morceau de tissu ou quelque chose de doux en dessous pour amortir les vibrations.",
       "Si vous ne l'utilisez pas en déplacement, le mieux est de le laisser à la maison, au sec.",
       "Gardez-le au sec, à l'abri de la pluie et de l'humidité.",
       "Utilisez uniquement le chargeur fourni avec le véhicule.",
