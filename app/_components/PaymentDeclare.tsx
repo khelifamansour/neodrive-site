@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /** Mêmes modes que lib/delivery-receipt.ts (PAY_MODES) : le client déclare comment il a réglé, avant de signer. */
 const MODES = [
@@ -12,10 +12,13 @@ export type PayDecl = { lines: { mode: string; amount: number }[]; driver: strin
 export const payValid = (d: PayDecl) => d.lines.some(l => l.amount > 0) && (!d.lines.some(l => l.mode === "especes") || d.driver.trim().length >= 2);
 
 /** « Comment avez-vous réglé votre véhicule ? » : cases + montant par mode ; nom du chauffeur affiché pour les espèces. */
-export default function PaymentDeclare({ driver, total, onChange }: { driver: string; total?: number | null; onChange: (d: PayDecl) => void }) {
-  const [on, setOn] = useState<Record<string, boolean>>({});
-  const [amt, setAmt] = useState<Record<string, string>>({});
+export default function PaymentDeclare({ driver, total, onChange, defaultVirement = false }: { driver: string; total?: number | null; onChange: (d: PayDecl) => void; defaultVirement?: boolean }) {
+  // Par défaut (sécurité maximale) : virement du prix total déjà coché.
+  const [on, setOn] = useState<Record<string, boolean>>(defaultVirement ? { virement: true } : {});
+  const [amt, setAmt] = useState<Record<string, string>>(defaultVirement && total ? { virement: String(Math.round(total * 100) / 100) } : {});
   const [drv, setDrv] = useState(driver);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (defaultVirement) emit(on, amt, drv); }, []);
   const emit = (o: Record<string, boolean>, a: Record<string, string>, d: string) =>
     onChange({ lines: MODES.filter(m => o[m.id]).map(m => ({ mode: m.id, amount: Number(String(a[m.id] || "").replace(",", ".")) || 0 })), driver: d });
   const sum = MODES.filter(m => on[m.id]).reduce((t, m) => t + (Number(String(amt[m.id] || "").replace(",", ".")) || 0), 0);

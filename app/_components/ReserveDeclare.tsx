@@ -7,7 +7,7 @@ const inp: React.CSSProperties = { padding: "10px 12px", borderRadius: 10, borde
 
 /** Remise sans paiement : réserve de propriété + le client choisit sa déclaration (virement ordonné ou engagement de payer). */
 export default function ReserveDeclare({ vin, montant, due, onChange }: { vin: string; montant: number | null; due: string | null; onChange: (d: Declaration | null) => void }) {
-  const [kind, setKind] = useState<Declaration["kind"] | "">("");
+  const [kind, setKind] = useState<Declaration["kind"] | "">("virement");
   const [vDate, setVDate] = useState(today()); const [eDate, setEDate] = useState(due || today());
   useEffect(() => { onChange(kind ? { kind, montant, date: kind === "virement" ? vDate : eDate } : null); }, [kind, vDate, eDate, montant, onChange]);
   const opt = (k: Declaration["kind"], date: string, set: (v: string) => void, label: string) => <div style={{ display: "grid", gap: 6, padding: 10, borderRadius: 10, border: `2px solid ${kind === k ? "#b42318" : "#e5e0d8"}`, background: "#fff", minWidth: 0 }}>

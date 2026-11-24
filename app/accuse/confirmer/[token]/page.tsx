@@ -15,7 +15,7 @@ export default function Confirmer({ params }: { params: Promise<{ token: string 
   const [info, setInfo] = useState<Info | null>(null); const [err, setErr] = useState("");
   const [accept, setAccept] = useState(false); const [ck, setCk] = useState<Record<string, boolean>>({}); const [name, setName] = useState(""); const [remarks, setRemarks] = useState(""); const [busy, setBusy] = useState(false); const [pay, setPay] = useState<PayDecl>({ lines: [], driver: "" }); const [sig, setSig] = useState<string | null>(null); const [decl, setDecl] = useState<Declaration | null>(null); const [reload, setReload] = useState(false);
   const [tick, setTick] = useState(0);
-  useEffect(() => { fetch(`/api/accuse-confirmer?token=${encodeURIComponent(token)}`).then(r => r.json()).then((j: Info) => { if (!j.ok) setErr(j.error || "Lien invalide."); else { setErr(""); setReload(false); setInfo(j); setName(n => n || j.client); setCk(Object.fromEntries(j.checks.map(c => [c.id, true]))); } }).catch(() => setErr("Connexion impossible, réessayez.")); }, [token, tick]);
+  useEffect(() => { fetch(`/api/accuse-confirmer?token=${encodeURIComponent(token)}`).then(r => r.json()).then((j: Info) => { if (!j.ok) setErr(j.error || "Lien invalide."); else { setErr(""); setReload(false); setInfo(j); setName(n => n || j.client); setCk({ ...Object.fromEntries(j.checks.map(c => [c.id, true])), virement: true }); } }).catch(() => setErr("Connexion impossible, réessayez.")); }, [token, tick]);
   const keep = info?.kept ? keptLabel(info.kept) : "les clés et les documents";
   const vire = !!info && needsVireCheck(!!info.reserve || !!info.pending, info.reserve ? null : pay.lines);
   const checks = info ? [...info.checks, ...(vire ? [VIRE_CHECK] : [])] : [];
@@ -61,7 +61,7 @@ export default function Confirmer({ params }: { params: Promise<{ token: string 
           <b>Conditions de la remise</b>
           {info.clauses.map((t, i) => <p key={i} style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}><b>{i + 1}.</b> {t}</p>)}
         </div> : null}
-        {info.reserve ? <ReserveDeclare vin={info.vin} montant={info.montant_du} due={info.due || null} onChange={setDecl} /> : <PaymentDeclare driver={info.driver} total={info.total} onChange={setPay} />}
+        {info.reserve ? <ReserveDeclare vin={info.vin} montant={info.montant_du} due={info.due || null} onChange={setDecl} /> : <PaymentDeclare driver={info.driver} total={info.total} defaultVirement onChange={setPay} />}
         <div style={box}>
           <b>Vérifications</b>
           <button type="button" onClick={() => setCk(Object.fromEntries(checks.map(c => [c.id, true])))} style={{ padding: 12, borderRadius: 12, border: "1px solid #d8d2c8", background: "#fff", fontSize: 16, fontWeight: 700, cursor: "pointer" }}>✅ Tout cocher</button>
