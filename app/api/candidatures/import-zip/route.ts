@@ -12,9 +12,9 @@ const BATCH = 6;
 const clean = (v: unknown, max = 600) => String(v ?? "").replace(/[<>]/g, "").trim().slice(0, max);
 const t9 = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 const GRIDS: Record<PosteKey, string> = {
-  closer: "vente par téléphone à des clients français (35) · niveau de français visible dans le CV (20) · administratif / back-office / CRM (15) · stabilité (10) · habite Alger (10) · bonus pertinent : automobile, centre d'appels (10)",
-  coordinateur: "expérience import-export / transit / douane / logistique / supply chain (35) · rigueur administrative, documents, ERP, Excel (20) · français écrit (15) · anglais (10) · stabilité et ancienneté (10) · habite Alger (10)",
-  social: "résultats prouvés en vidéo courte / réseaux sociaux, avec chiffres ou liens (35) · montage vidéo et outils (20) · esprit marketing et acquisition (15) · français écrit (10) · stabilité (10) · habite Alger (10)",
+  closer: "vente par téléphone à des clients français (30) · niveau de français visible dans le CV (20) · administratif / back-office / CRM (10) · STABILITÉ (25 : durée moyenne par poste ≥ 18 mois = 25 ; 12-18 mois = 12 ; < 12 mois = 0) · habite Alger (10) · bonus pertinent : automobile, centre d'appels (5). RÈGLE ÉLIMINATOIRE : si la plupart des postes (hors stages) ont duré moins d'un an, la note de ce poste ne dépasse pas 40",
+  coordinateur: "expérience import-export / transit / douane / logistique / supply chain (30) · rigueur administrative, documents, ERP, Excel (15) · français écrit (15) · anglais (5) · STABILITÉ (25 : durée moyenne par poste ≥ 18 mois = 25 ; 12-18 mois = 12 ; < 12 mois = 0) · habite Alger (10). RÈGLE ÉLIMINATOIRE : si la plupart des postes (hors stages) ont duré moins d'un an, la note de ce poste ne dépasse pas 40",
+  social: "résultats prouvés en vidéo courte / réseaux sociaux, avec chiffres ou liens (30) · montage vidéo et outils (15) · esprit marketing et acquisition (10) · français écrit (10) · STABILITÉ (25 : durée moyenne par poste ≥ 18 mois = 25 ; 12-18 mois = 12 ; < 12 mois = 0) · habite Alger (10). RÈGLE ÉLIMINATOIRE : si la plupart des postes (hors stages) ont duré moins d'un an, la note de ce poste ne dépasse pas 40",
 };
 
 /** Note un CV avec l'IA pour les 3 postes, garde le meilleur, et extrait les coordonnées. */
