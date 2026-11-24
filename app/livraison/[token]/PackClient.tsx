@@ -71,6 +71,17 @@ export default function PackClient({ token }: { token: string }) {
       {pack.changeRequestedAt && !info && <p style={{ margin: "10px 0 0", fontSize: 14, color: C.grey }}>Votre demande de changement de date a bien été reçue : nous vous rappelons.</p>}
     </section>}
 
+    {!closed && (!pack.paid || pack.modeNotes.length > 0) && <section style={{ ...card, background: "#fff4ec", border: 0 }}>
+      {!pack.paid && <>
+        <h2 style={{ fontSize: 18, margin: "0 0 10px" }}>À faire avant le jour J</h2>
+        <ol style={{ margin: 0, paddingLeft: 20, lineHeight: 1.55 }}>
+          {pack.avantJourJ.map((t, i) => <li key={i} style={{ marginBottom: 8 }}>{t}</li>)}
+        </ol>
+        <a href={pack.whatsapp.url} target="_blank" rel="noopener" style={{ ...btn, background: "#fff", color: C.navy, marginTop: 6 }}>Envoyer la capture sur WhatsApp ({pack.whatsapp.number})</a>
+      </>}
+      {pack.modeNotes.map((t, i) => <p key={i} style={{ margin: !pack.paid || i ? "12px 0 0" : 0, lineHeight: 1.5 }}>{t}</p>)}
+    </section>}
+
     <section style={card}>
       <h2 style={{ fontSize: 18, margin: "0 0 10px" }}>Ce qui est compris</h2>
       {pack.lines.map((l, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "8px 0", borderBottom: `1px solid ${C.line}` }}>
@@ -87,7 +98,6 @@ export default function PackClient({ token }: { token: string }) {
       <p style={{ margin: "0 0 12px", color: C.grey, fontSize: 15 }}>Le jour de la livraison, au moment de la remise du véhicule. Aucun acompte.</p>
       {([["Titulaire", pack.rib.titulaire], ["Banque", pack.rib.banque], ["IBAN", pack.rib.iban], ["BIC", pack.rib.bic], ["Libellé", pack.reference]] as const).map(([k, v]) => <div key={k} style={{ display: "flex", gap: 10, padding: "4px 0" }}><span style={{ width: 80, color: C.grey, flexShrink: 0 }}>{k}</span><b style={{ fontFamily: k === "IBAN" || k === "BIC" ? "ui-monospace, Menlo, monospace" : "inherit", wordBreak: "break-all" }}>{v}</b></div>)}
       <button onClick={copy} style={{ ...btn, background: copied ? "#1d7a46" : C.acc, color: "#fff", marginTop: 12 }}>{copied ? "IBAN copié ✓" : "Copier l'IBAN"}</button>
-      <p style={{ margin: "12px 0 0", fontSize: 14 }}>⚠️ <b>Vérifiez dès maintenant avec votre banque votre plafond de virement instantané</b> : il doit être au moins égal au total. Ajoutez aussi MK HOLDING comme bénéficiaire (cela peut prendre 24 à 72 h).</p>
       <p style={{ margin: "8px 0 0", fontSize: 13, color: C.grey }}>🔒 Ce sont nos seules coordonnées bancaires. Nous ne vous enverrons jamais un autre RIB : en cas de doute, appelez-nous avant de payer.</p>
     </section>}
 
@@ -96,8 +106,12 @@ export default function PackClient({ token }: { token: string }) {
       <ol style={{ margin: 0, paddingLeft: 20, lineHeight: 1.55 }}>
         <li style={{ marginBottom: 8 }}><b>Avant le jour J</b> : ajoutez le bénéficiaire et vérifiez votre plafond de virement instantané.</li>
         <li style={{ marginBottom: 8 }}><b>La veille</b> : vous recevez un SMS de rappel. Gardez votre téléphone à portée de main, le transporteur peut vous appeler.</li>
-        <li style={{ marginBottom: 8 }}><b>Le jour J</b> : le véhicule est déchargé devant chez vous, on vous montre comment il marche, puis vous faites le virement.</li>
-        <li><b>La remise</b> : vous recevez les clés et le certificat de conformité (COC), indispensable pour la carte grise.</li>
+        <li style={{ marginBottom: 8 }}><b>Le jour J</b> : {pack.transporteur
+          ? "notre transporteur partenaire dépose la voiture devant chez vous, puis repart aussitôt pour ses autres livraisons. Vous faites le virement instantané et vous nous envoyez la capture."
+          : "le véhicule est déchargé devant chez vous, on vous montre comment il marche, puis vous faites le virement."}</li>
+        <li><b>La remise</b> : {pack.verrouillage
+          ? "votre voiture est activée dès réception de votre paiement, et vous recevez vos documents, dont le certificat de conformité (COC) indispensable pour la carte grise."
+          : "vous recevez les clés et le certificat de conformité (COC), indispensable pour la carte grise."}</li>
       </ol>
       <a href="/preparer-ma-livraison" style={{ ...btn, background: C.soft, color: C.navy, marginTop: 14 }}>Tous les conseils : préparer ma livraison</a>
     </section>

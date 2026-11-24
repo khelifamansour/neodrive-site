@@ -35,6 +35,8 @@ export type PackReservation = Reservation & {
   pack_confirmed_at?: string | null;
   paiement_confirme_at?: string | null;
   livre_at?: string | null;
+  livraison_mode?: string | null;
+  verrouillage?: boolean | null;
 };
 export type PackLine = { label: string; detail?: string; amount: number };
 type PackMeta = { date?: string; sent?: string[]; reminded_for?: string; change_requests?: { at: string; message: string }[] };
@@ -69,6 +71,29 @@ export const reference = (r: Pick<Reservation, "id">) => `RES-${r.id}`;
 const metaOf = (r: PackReservation): PackMeta => ((r.raw && typeof r.raw === "object" ? (r.raw as Record<string, unknown>).pack : null) || {}) as PackMeta;
 
 export const vehicleKey = (modele: string): VehicleKey => (/essentiel/i.test(modele || "") ? "essentielle" : /plus/i.test(modele || "") ? "confortPlus" : "confort");
+
+/* ---------- Mode de livraison ---------- */
+
+export const WHATSAPP_NUMBER = "06 76 19 22 34";
+export const WHATSAPP_URL = "https://wa.me/33676192234";
+/** livraison_mode = 'transporteur' : voiture livrée par le transporteur partenaire (le chauffeur ne peut pas attendre).
+ *  verrouillage = true : voiture livrée verrouillée, activée dès réception du paiement. */
+export const packMode = (r: Pick<PackReservation, "livraison_mode" | "verrouillage">) => ({ transporteur: r.livraison_mode === "transporteur", verrouillage: r.verrouillage === true });
+export const TRANSPORTEUR_TEXT = "La voiture est livrée par notre transporteur partenaire : le chauffeur dépose la voiture et repart aussitôt pour ses autres livraisons, il ne peut pas attendre.";
+export const VERROUILLAGE_TEXT = "Votre voiture est activée dès réception de votre paiement, et vous recevez vos documents.";
+/** Bloc « À faire avant le jour J » (page, e-mail) : bénéficiaire, plafond de virement instantané, capture le jour J. */
+export function avantJourJ(total: number | null) {
+  return [
+    "Ajoutez dès aujourd'hui notre RIB comme bénéficiaire dans votre application bancaire : certaines banques demandent jusqu'à 48 h pour l'activer.",
+    `Vérifiez que le virement instantané est possible pour le montant total${total != null ? ` (${euro(total)})` : ""} : si besoin, votre banque peut relever votre plafond.`,
+    "Le jour J, faites le virement instantané et envoyez-nous la capture d'écran de la confirmation.",
+  ];
+}
+/** Phrases propres au mode de livraison (vides pour une livraison faite par NeoDrive sans verrouillage). */
+export function modeNotes(r: Pick<PackReservation, "livraison_mode" | "verrouillage">) {
+  const m = packMode(r);
+  return [m.transporteur ? TRANSPORTEUR_TEXT : "", m.verrouillage ? VERROUILLAGE_TEXT : ""].filter(Boolean);
+}
 
 /* ---------- Montant et lignes du devis ---------- */
 
@@ -164,7 +189,8 @@ export function devisPdf(r: PackReservation): Promise<Buffer> {
     doc.font("Helvetica").fontSize(8.6).fillColor(GREY).text(
       "Paiement le jour de la livraison par virement instantané, aucun acompte. Pensez à vérifier avec votre banque votre plafond de virement instantané : il doit être au moins égal au total. "
       + "Ce sont nos seules coordonnées bancaires : nous ne vous enverrons jamais un autre RIB. En cas de doute, appelez-nous avant de payer. "
-      + "Le véhicule vous est remis avec ses clés et son certificat de conformité (COC). Conditions générales de vente : easydrive-auto.fr/cgv",
+      + (packMode(r).verrouillage ? "Le véhicule est activé dès réception du paiement intégral ; ses clés, son certificat de conformité (COC) et la facture vous sont remis. " : "Le véhicule vous est remis avec ses clés et son certificat de conformité (COC). ")
+      + "Conditions générales de vente : easydrive-auto.fr/cgv",
       M, y, { width: tw, lineGap: 2 });
     doc.page.margins.bottom = 0;
     doc.moveTo(M, 800).lineTo(W - M, 800).lineWidth(2).stroke(ACC);
@@ -177,16 +203,22 @@ export function devisPdf(r: PackReservation): Promise<Buffer> {
 
 const whenText = (r: PackReservation) => `${frDate(r.date_promise)}${r.creneau ? ` (${r.creneau})` : ""}`;
 
+const smsModeNotes = (r: PackReservation) => {
+  const m = packMode(r);
+  return `${m.transporteur ? " Notre transporteur partenaire depose la voiture et repart aussitot, il ne peut pas attendre." : ""}${m.verrouillage ? " Voiture activee et documents remis des reception du paiement." : ""}`;
+};
+
 export function packSms(r: PackReservation, url: string, total: number | null) {
   const p = prenomOf(r);
-  const pay = r.paiement_confirme_at ? "Paiement deja recu, merci." : total != null ? `Total a regler par virement instantane le jour J : ${euro(total)}.` : "";
-  const t = `Bonjour${p ? " " + p : ""}, votre NeoDrive sera livree le ${whenText(r)}. ${pay} Devis, RIB et etapes : ${url} Merci de confirmer votre presence. NeoDrive`;
+  const pay = r.paiement_confirme_at ? " Paiement deja recu, merci."
+    : ` A faire des aujourd'hui : ajoutez notre RIB en beneficiaire (jusqu'a 48 h selon les banques) et verifiez que le virement instantane${total != null ? ` de ${euro(total)}` : " du montant total"} est possible. Le jour J : virement instantane puis capture par WhatsApp au ${WHATSAPP_NUMBER}.`;
+  const t = `Bonjour${p ? " " + p : ""}, votre NeoDrive sera livree le ${whenText(r)}.${pay}${smsModeNotes(r)} Tout est ici, merci de confirmer : ${url} L'equipe NeoDrive`;
   return gsm(t.replace(/\s+/g, " "));
 }
 export function reminderSms(r: PackReservation, url: string, total: number | null) {
   const p = prenomOf(r);
-  const pay = r.paiement_confirme_at ? "" : total != null ? ` Pensez au virement instantane de ${euro(total)} (verifiez votre plafond).` : "";
-  return gsm(`Bonjour${p ? " " + p : ""}, rappel : livraison de votre NeoDrive demain${r.creneau ? ` (${r.creneau})` : ""}.${pay} Infos et RIB : ${url} NeoDrive`.replace(/\s+/g, " "));
+  const pay = r.paiement_confirme_at ? "" : ` Verifiez que notre RIB est bien actif en beneficiaire. Le jour J : virement instantane${total != null ? ` de ${euro(total)}` : ""} puis capture par WhatsApp au ${WHATSAPP_NUMBER}.`;
+  return gsm(`Bonjour${p ? " " + p : ""}, rappel : votre NeoDrive arrive demain${r.creneau ? ` (${r.creneau})` : ""}.${pay}${smsModeNotes(r)} Infos et RIB : ${url} L'equipe NeoDrive`.replace(/\s+/g, " "));
 }
 
 export function ribHtml(r: Pick<Reservation, "id">) {
@@ -196,23 +228,37 @@ export function ribHtml(r: Pick<Reservation, "id">) {
 <table style="border-collapse:collapse;font-size:14px">${row("Titulaire", RIB.titulaire)}${row("Banque", RIB.banque)}${row("IBAN", RIB.iban, true)}${row("BIC", RIB.bic, true)}${row("Libellé", reference(r))}</table>
 <p style="margin:10px 0 4px;font-size:13px;color:#5b6573">IBAN sur une seule ligne, à copier-coller :</p>
 <p style="margin:0;font-family:Consolas,Menlo,monospace;font-size:16px;font-weight:bold;background:#f4f6fa;border-radius:8px;padding:8px 10px;word-break:break-all">${RIB.ibanCompact}</p>
-<p style="margin:10px 0 0;font-size:13px">⚠️ Vérifiez dès maintenant avec votre banque votre <b>plafond de virement instantané</b> : il doit être au moins égal au total. Ajoutez aussi MK HOLDING comme bénéficiaire (cela peut prendre 24 à 72 h).</p>
 <p style="margin:6px 0 0;font-size:12px;color:#5b6573">🔒 Ce sont nos seules coordonnées bancaires : nous ne vous enverrons jamais un autre RIB. En cas de doute, appelez-nous avant de payer.</p></div>`;
 }
 
+/** Encadré « À faire avant le jour J » + phrases du mode de livraison, pour l'e-mail. */
+export function avantJourJHtml(r: PackReservation, total: number | null) {
+  const notes = modeNotes(r);
+  const todo = r.paiement_confirme_at ? "" : `<p style="margin:0 0 6px;font-weight:bold;color:#e8592a">À faire avant le jour J</p>
+<ol style="padding-left:20px;margin:0">${avantJourJ(total).map(t => `<li style="margin-bottom:6px">${esc(t)}</li>`).join("")}</ol>
+<p style="margin:6px 0 0;font-size:13px;color:#5b6573">Pour la capture : répondez simplement à cet e-mail ou écrivez-nous sur WhatsApp au ${WHATSAPP_NUMBER}.</p>`;
+  if (!todo && !notes.length) return "";
+  return `<div style="background:#f4f6fa;border-radius:12px;padding:14px 16px;margin:16px 0">${todo}${notes.map(t => `<p style="margin:${todo ? "10px" : "0"} 0 0">${esc(t)}</p>`).join("")}</div>`;
+}
+
 export function packEmail(r: PackReservation, url: string, lines: PackLine[], total: number | null) {
-  const p = prenomOf(r); const when = whenText(r);
+  const p = prenomOf(r); const when = whenText(r); const mode = packMode(r);
   const rows = lines.map(l => `<tr><td style="padding:6px 0;border-bottom:1px solid #eef0f4">${esc(l.label)}${l.detail ? `<br><span style="font-size:12px;color:#5b6573">${esc(l.detail)}</span>` : ""}</td><td style="padding:6px 0;border-bottom:1px solid #eef0f4;text-align:right;white-space:nowrap">${l.amount < 0 ? "- " + euro(-l.amount) : euro(l.amount)}</td></tr>`).join("");
   const steps = [
     ["Avant le jour J", "Ajoutez MK HOLDING comme bénéficiaire et vérifiez votre plafond de virement instantané avec votre banque."],
     ["La veille", "Nous vous envoyons un rappel. Le transporteur peut vous appeler pour préciser l'heure : gardez votre téléphone à portée de main."],
-    ["Le jour de la livraison", "Le véhicule est déchargé devant chez vous. Vous le regardez, on vous montre comment il marche, puis vous faites le virement instantané."],
-    ["La remise", "Vous recevez les clés et le certificat de conformité (COC), le document qui sert à faire la carte grise. Gardez-le précieusement."],
+    ["Le jour de la livraison", mode.transporteur
+      ? "Notre transporteur partenaire dépose la voiture devant chez vous, puis repart aussitôt pour ses autres livraisons. Vous faites le virement instantané et vous nous envoyez la capture."
+      : "Le véhicule est déchargé devant chez vous. Vous le regardez, on vous montre comment il marche, puis vous faites le virement instantané."],
+    ["La remise", mode.verrouillage
+      ? "Votre voiture est activée dès réception de votre paiement, et vous recevez vos documents, dont le certificat de conformité (COC) qui sert à faire la carte grise."
+      : "Vous recevez les clés et le certificat de conformité (COC), le document qui sert à faire la carte grise. Gardez-le précieusement."],
   ];
   const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#16202e;max-width:580px">
 <p>Bonjour${p ? " " + esc(p) : ""},</p>
 <p>Bonne nouvelle : votre <b>${esc(r.modele || "NeoDrive")}</b> sera livrée le <b>${esc(when)}</b>${r.adresse || r.ville ? ` à l'adresse : ${esc([r.adresse, r.code_postal, r.ville].filter(Boolean).join(" "))}` : ""}.</p>
 <p style="background:#fff4ec;border-radius:12px;padding:12px 14px;margin:16px 0"><b>👉 Merci de confirmer votre présence</b> (ou de demander une autre date) sur votre page de livraison :<br><a href="${url}" style="color:#e8592a;font-weight:bold">${url.replace("https://", "")}</a></p>
+${avantJourJHtml(r, total)}
 <h3 style="margin:22px 0 6px">Ce qui est compris</h3>
 <table style="width:100%;border-collapse:collapse;font-size:14px">${rows}<tr><td style="padding:10px 0;font-weight:bold;font-size:16px">Total TTC</td><td style="padding:10px 0;text-align:right;font-weight:bold;font-size:16px">${total == null ? "à confirmer" : euro(total)}</td></tr></table>
 ${r.paiement_confirme_at ? `<p>✅ Nous avons bien reçu votre paiement, merci.</p>` : `<p>Règlement <b>par virement instantané le jour de la livraison</b>, aucun acompte. Votre devis est joint en PDF (référence ${reference(r)}).</p>`}
@@ -221,7 +267,7 @@ ${r.paiement_confirme_at ? `<p>✅ Nous avons bien reçu votre paiement, merci.<
 ${r.paiement_confirme_at ? "" : ribHtml(r)}
 <p>Tous les conseils pour préparer ce jour (paiement, prise en main, carte grise) : <a href="${SITE}/preparer-ma-livraison">${SITE.replace("https://", "")}/preparer-ma-livraison</a></p>
 <p>Une question ? Répondez simplement à cet e-mail.</p>
-<p>À très bientôt,<br>Mansour<br>NeoDrive</p>
+<p>À très bientôt,<br>L'équipe NeoDrive</p>
 <p style="font-size:12px;color:#888">MK HOLDING SAS - SIREN 908 645 393 - 31 rue Jean Nougaro, 31600 Muret · <a href="${SITE}/cgv">CGV</a></p></div>`;
   return { subject: `Votre livraison NeoDrive le ${frDate(r.date_promise)} : tout ce qu'il faut savoir`, html };
 }
@@ -377,6 +423,7 @@ export function publicView(r: PackReservation) {
     lines, total, carteGrise, paid: !!r.paiement_confirme_at, delivered: !!r.livre_at || r.statut === "Livrée", cancelled: r.statut === "Annulée",
     confirmedAt: r.pack_confirmed_at || null, changeRequestedAt: meta.change_requests?.slice(-1)[0]?.at || null,
     rib: RIB,
+    ...packMode(r), avantJourJ: avantJourJ(total), modeNotes: modeNotes(r), whatsapp: { number: WHATSAPP_NUMBER, url: WHATSAPP_URL },
   };
 }
 export type PackPublicView = ReturnType<typeof publicView>;

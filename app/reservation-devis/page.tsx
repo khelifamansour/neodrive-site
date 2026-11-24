@@ -8,6 +8,7 @@ import {trimSignature,type Signature} from "../reservation-carte-grise/SignOnScr
 
 const euro=(n:number)=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n);
 const WHATSAPP="https://wa.me/33676192234?text="+encodeURIComponent("Bonjour, j'ai une question sur la réservation de ma NeoDrive.");
+const RESERVE_PROPRIETE="Réserve de propriété : le véhicule reste la propriété de MK HOLDING SAS (NeoDrive) jusqu'au paiement intégral du prix. Le véhicule peut être livré verrouillé ; il est alors activé dès réception du paiement intégral. Les documents du véhicule (certificat de conformité, facture) sont remis après paiement intégral.";
 
 const MODELS:Record<VehicleKey,{img:string;tagline:string;badge?:string}>={
  essentielle:{img:"/reservation/essentielle.svg",tagline:"L’essentiel au meilleur prix"},
@@ -122,9 +123,11 @@ export default function ReservationDevis(){
   pdf.setFillColor(22,32,46);pdf.roundedRect(margin,183,176,22,3,3,"F");
   pdf.setFont("helvetica","bold");pdf.setFontSize(13);pdf.setTextColor(255,255,255);text("TOTAL TTC",22,197);
   pdf.setFontSize(18);pdf.text(total===null?"Sur devis":amount(total),187,197,{align:"right"});
-  pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.setTextColor(45,55,72);text("MODALITÉS",margin,219);
-  pdf.setFont("helvetica","normal");pdf.setFontSize(9);pdf.setTextColor(88,97,109);
-  pdf.text(pdf.splitTextToSize("Paiement à la livraison, sans acompte. Livraison à domicile par transport sécurisé. Date de livraison selon les tournées et la disponibilité du véhicule. Toute modification du prix exige l'accord du client.",170),margin,226);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.setTextColor(45,55,72);text("MODALITÉS",margin,216);
+  pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);pdf.setTextColor(88,97,109);
+  pdf.text(pdf.splitTextToSize("Paiement à la livraison, sans acompte. Livraison à domicile par transport sécurisé. Date de livraison selon les tournées et la disponibilité du véhicule. Toute modification du prix exige l'accord du client.",170),margin,222);
+  // Réserve de propriété : 3 lignes à 8,5 pt, au-dessus du trait de l'accord du client (y = 247).
+  pdf.text(pdf.splitTextToSize(RESERVE_PROPRIETE,170),margin,230.5);
   pdf.setDrawColor(226,229,234);pdf.line(margin,247,right,247);
   pdf.setFont("helvetica","bold");pdf.setTextColor(35,45,60);pdf.setFontSize(10);text("ACCORD DU CLIENT",margin,256);
   if(signature){
@@ -319,7 +322,7 @@ export default function ReservationDevis(){
        {promo?<div><span>Remise code {promo.code}</span><strong>- {euro(promo.discount)}</strong></div>:null}
       </div>
       <div className={s.quoteTotal}><span>Total TTC{total===null?" à confirmer":""}<small>Aucun acompte · payable à la livraison</small></span><strong>{total===null?"Sur devis":euro(total)}</strong></div>
-      <details className={s.terms}><summary>Conditions essentielles</summary><p>Aucun acompte demandé. Paiement à la livraison selon les modalités convenues. Délai et disponibilité à confirmer par NeoDrive. Le tarif de livraison est calculé pour le code postal renseigné selon notre barème ; tout changement du montant nécessitera votre accord. Droit de rétractation de 14 jours après réception du véhicule. Consultez nos <a href="/cgv" target="_blank" rel="noreferrer">conditions générales de vente</a> complètes.</p></details>
+      <details className={s.terms}><summary>Conditions essentielles</summary><p>Aucun acompte demandé. Paiement à la livraison selon les modalités convenues. Délai et disponibilité à confirmer par NeoDrive. Le tarif de livraison est calculé pour le code postal renseigné selon notre barème ; tout changement du montant nécessitera votre accord. Droit de rétractation de 14 jours après réception du véhicule. {RESERVE_PROPRIETE} Consultez nos <a href="/cgv" target="_blank" rel="noreferrer">conditions générales de vente</a> complètes.</p></details>
       <div className={s.quoteSign}><small>Accord du client</small><strong className={signed?s.signature:""}>{signed||"Votre signature apparaîtra ici"}</strong>{sigPng?<img src={sigPng} alt="Votre signature" style={{maxWidth:220,maxHeight:80,objectFit:"contain",alignSelf:"flex-start"}}/>:null}</div>
      </article>
 
