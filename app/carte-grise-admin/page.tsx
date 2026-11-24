@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import c from "../giga/giga.module.css";
 import { PAY_STYLE, type PayState } from "../../lib/stock-shared";
+import { CARTE_GRISE_CLIENT_TEXT, CARTE_GRISE_FILES, CARTE_GRISE_FILE_LABEL, missingWaText, pendingKeys, type DocCheck, type MissingRequest } from "../../lib/carte-grise";
 
 type F = { key: string; label: string; name: string; size: number };
 type D = {
@@ -9,6 +10,7 @@ type D = {
   adresse: string | null; code_postal: string | null; ville: string | null; version: string | null; service_carte_grise: string | null;
   files: F[]; status: string; sent_to_provider_at: string | null; sent_to: string | null; notes: string | null;
   vin: string | null; vin_check_ok: boolean | null; vin_source: string | null; reservation_id: number | null; vehicle_id: number | null; match_note: string | null; analysed_at: string | null;
+  doc_check?: DocCheck | null; missing_token?: string | null; missing_request?: MissingRequest | null; auto_resend?: boolean | null;
   reservation: { id: number; name: string; statut: string; livre_at: string | null; vin: string | null; total: number | null; montant_du: number | null } | null; pay: PayState;
 };
 /** Prêt pour NK Services : pièces reçues, pas encore envoyé. */
@@ -16,6 +18,11 @@ const ready = (d: D) => d.status === "reçu" && !d.sent_to_provider_at;
 const ST_BG: Record<string, string> = { "envoi en cours": "#fde8e8", "reçu": "#fff4d6", "envoyé": "#e8f0fe", "traité": "#e7f6ec", "annulé": "#f1f1f1" };
 const STATUSES = ["reçu", "envoyé", "traité", "annulé"];
 const fmt = (d?: string | null) => d ? new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }) : "—";
+const DOC_ICON: Record<string, string> = { ok: "✅", manquant: "❌", "à refaire": "⚠️", "à vérifier": "🔎" };
+const OVERALL_BG: Record<string, string> = { complet: "#e7f6ec", incomplet: "#fde8e8", "à vérifier": "#fff4d6" };
+const piecesUrl = (t: string) => `${typeof window !== "undefined" ? window.location.origin : ""}/carte-grise/pieces/${t}`;
+const waUrl = (d: D) => { if (!d.telephone || !d.missing_token) return null; const n = d.telephone.replace(/\D/g, "").replace(/^00/, "").replace(/^0/, "33");
+  return `https://wa.me/${n}?text=${encodeURIComponent(missingWaText(d.prenom, piecesUrl(d.missing_token), pendingKeys(d.missing_request, d.doc_check).map(k => CARTE_GRISE_CLIENT_TEXT[k] || k)))}`; };
 const mo = (n: number) => `${(n / 1024 / 1024).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} Mo`;
 const code = () => { try { return sessionStorage.getItem("nd_pc") || ""; } catch { return ""; } };
 class Unauthorized extends Error {}
@@ -34,6 +41,9 @@ export default function CarteGriseAdmin() {
   const [rows, setRows] = useState<D[]>([]); const [provider, setProvider] = useState({ name: "NK SERVICES", email: "" });
   const [links, setLinks] = useState<Record<number, { label: string; url: string }[]>>({});
   const [tab, setTab] = useState<"queue" | "all">("queue");
+  const [focus, setFocus] = useState<number | null>(null);
+  const [ask, setAsk] = useState<{ id: number; keys: string[]; note: string; sms: boolean; email: boolean } | null>(null);
+  useEffect(() => { const id = Number(new URLSearchParams(window.location.search).get("id")); if (id) { setFocus(id); setTab("all"); } }, []);
 
   const load = useCallback(async (p = code()) => {
     try { const j = await api<{ dossiers: D[]; provider: { name: string; email: string } }>({ action: "list" }, p); setRows(j.dossiers); setProvider(j.provider); setState("ready"); }
@@ -44,7 +54,8 @@ export default function CarteGriseAdmin() {
   const send = async (d: D) => {
     const again = !!d.sent_to_provider_at;
     const unpaid = d.pay !== "payé";
-    if (!confirm(`${unpaid ? `⛔ ATTENTION : paiement ${d.pay.toUpperCase()}.\n\n` : ""}${again ? "RENVOYER" : "Envoyer"} le dossier de ${[d.prenom, d.nom].filter(Boolean).join(" ")} à ${provider.name} (${provider.email}) ?\nVous serez en copie.`)) return;
+    const docs = d.doc_check && d.doc_check.overall !== "complet" ? `⚠️ Pièces : dossier ${d.doc_check.overall.toUpperCase()}.\n\n` : "";
+    if (!confirm(`${unpaid ? `⛔ ATTENTION : paiement ${d.pay.toUpperCase()}.\n\n` : ""}${docs}${again ? "RENVOYER" : "Envoyer"} le dossier de ${[d.prenom, d.nom].filter(Boolean).join(" ")} à ${provider.name} (${provider.email}) ?\nVous serez en copie.`)) return;
     setBusy(d.id); setMsg("");
     try {
       const r = await api<{ to: string; attached: string[]; linked: string[]; missing: string[] }>({ action: "send", id: d.id, force: again, unpaid_ok: unpaid });
@@ -52,6 +63,18 @@ export default function CarteGriseAdmin() {
       await load();
     } catch (e) { setMsg("❌ " + (e as Error).message); } finally { setBusy(null); }
   };
+  const check = async (d: D) => { setBusy(d.id); setMsg(""); try { const r = await api<{ check: DocCheck }>({ action: "check", id: d.id }); setMsg(`🔎 Contrôle des pièces : ${r.check.overall}`); await load(); } catch (e) { setMsg("❌ " + (e as Error).message); } finally { setBusy(null); } };
+  const openAsk = (d: D) => setAsk({ id: d.id, keys: pendingKeys(null, d.doc_check), note: "", sms: true, email: true });
+  const sendAsk = async (d: D) => {
+    if (!ask?.keys.length) { setMsg("Cochez au moins une pièce."); return; }
+    setBusy(d.id); setMsg("");
+    try {
+      const r = await api<{ url: string; sms: string; email: string; wa: string | null; auto_resend: boolean }>({ action: "request_missing", id: d.id, keys: ask.keys, note: ask.note, sms: ask.sms, email: ask.email });
+      setMsg(`📨 Demande envoyée : SMS ${r.sms}, e-mail ${r.email}.${r.auto_resend ? " Renvoi automatique à NK Services activé." : ""} Lien client : ${r.url}`);
+      setAsk(null); await load();
+    } catch (e) { setMsg("❌ " + (e as Error).message); } finally { setBusy(null); }
+  };
+  const toggleAuto = async (d: D, value: boolean) => { try { await api({ action: "auto_resend", id: d.id, value }); await load(); } catch (e) { setMsg("❌ " + (e as Error).message); } };
   const showLinks = async (d: D) => { try { const j = await api<{ links: { label: string; url: string }[] }>({ action: "links", id: d.id }); setLinks(l => ({ ...l, [d.id]: j.links })); } catch (e) { setMsg("❌ " + (e as Error).message); } };
   const reread = async (d: D) => { setBusy(d.id); setMsg(""); try { const r = await api<{ vin: string | null; note: string }>({ action: "analyse", id: d.id, reset: true }); setMsg(`🔎 ${r.vin ? `VIN ${r.vin}` : "VIN non lu"} · ${r.note}`); await load(); } catch (e) { setMsg("❌ " + (e as Error).message); } finally { setBusy(null); } };
   const fix = async (d: D) => {
@@ -78,9 +101,10 @@ export default function CarteGriseAdmin() {
       <button className={`${c.btn} ${tab === "all" ? c.btnBrand : c.btnGhost}`} style={{ fontSize: 14, padding: "10px 14px" }} onClick={() => setTab("all")}>Tous les dossiers ({rows.length})</button>
     </div>
     {tab === "queue" ? <p className={c.small} style={{ marginTop: 0 }}>Dossiers complets, pas encore envoyés. Le VIN est lu automatiquement sur le COC et rapproché du stock et de la réservation. Rien ne part chez {provider.name} sans votre clic : vérifiez le paiement avant d’envoyer.</p> : null}
+    {focus ? <p className={c.small}>Dossier n° {focus} seulement. <button className={`${c.btn} ${c.btnGhost}`} onClick={() => setFocus(null)}>Voir tous les dossiers</button></p> : null}
     {!(tab === "queue" ? rows.filter(ready) : rows).length ? <p className={c.empty}>{tab === "queue" ? "Aucun dossier à valider." : "Aucun dossier pour l’instant."}</p> : null}
     <div style={{ display: "grid", gap: 12 }}>
-      {(tab === "queue" ? rows.filter(ready) : rows).map(d => {
+      {(tab === "queue" ? rows.filter(ready) : rows).filter(d => !focus || d.id === focus).map(d => {
         const total = (d.files || []).reduce((a, f) => a + (f.size || 0), 0);
         return <div key={d.id} className={c.card}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
@@ -97,6 +121,27 @@ export default function CarteGriseAdmin() {
             <span className={c.pill} style={{ background: PAY_STYLE[d.pay].bg, color: PAY_STYLE[d.pay].color }}>{PAY_STYLE[d.pay].icon} {d.pay}</span>
             {d.match_note ? <><br /><span style={{ color: "#666" }}>{d.match_note}</span></> : null}
           </div>
+          <div style={{ marginTop: 8, background: d.doc_check ? OVERALL_BG[d.doc_check.overall] : "#f5f5f5", borderRadius: 10, padding: "8px 10px" }} className={c.small}>
+            <b>📋 Contrôle des pièces : {d.doc_check ? d.doc_check.overall.toUpperCase() : "pas encore fait"}</b>{d.doc_check ? <span style={{ color: "#666" }}> · {fmt(d.doc_check.at)}</span> : null}
+            {d.doc_check ? <ul style={{ margin: "4px 0 0", paddingLeft: 18, lineHeight: 1.5 }}>{Object.entries(d.doc_check.pieces).map(([k, p]) => <li key={k}>{DOC_ICON[p.status]} <b>{CARTE_GRISE_FILE_LABEL[k] || k}</b> : {p.status}{p.reason ? ` – ${p.reason}` : ""}{p.detail ? <span style={{ color: "#777" }}> ({p.detail})</span> : null}</li>)}</ul> : null}
+            {d.missing_token ? <div style={{ marginTop: 6 }}>
+              📨 Pièces demandées{d.missing_request ? ` le ${fmt(d.missing_request.at)} : ${d.missing_request.keys.map(k => CARTE_GRISE_FILE_LABEL[k] || k).join(", ")}` : ""}{d.missing_request?.received?.length ? ` · reçues : ${d.missing_request.received.map(k => CARTE_GRISE_FILE_LABEL[k] || k).join(", ")}` : ""}{d.missing_request?.done_at ? " · ✅ terminé" : ""}<br />
+              <a href={piecesUrl(d.missing_token)} target="_blank" rel="noreferrer">Lien client</a>{waUrl(d) ? <> · <a href={waUrl(d)!} target="_blank" rel="noreferrer">Envoyer sur WhatsApp</a></> : null}{" · "}
+              <label><input type="checkbox" checked={!!d.auto_resend} onChange={e => toggleAuto(d, e.target.checked)} /> Renvoi automatique à {provider.name} quand le dossier est complet</label>
+            </div> : null}
+          </div>
+          {ask?.id === d.id ? <div style={{ marginTop: 8, border: "1px solid #ddd", borderRadius: 10, padding: 10 }} className={c.small}>
+            <b>Pièces à demander au client</b>
+            {CARTE_GRISE_FILES.map(f => <label key={f.key} style={{ display: "block", marginTop: 4 }}><input type="checkbox" checked={ask.keys.includes(f.key)} onChange={e => setAsk({ ...ask, keys: e.target.checked ? [...ask.keys, f.key] : ask.keys.filter(k => k !== f.key) })} /> {f.label}{d.doc_check?.pieces?.[f.key] && d.doc_check.pieces[f.key].status !== "ok" ? ` (${d.doc_check.pieces[f.key].status})` : ""}</label>)}
+            <textarea className={c.input} style={{ marginTop: 6, minHeight: 60 }} placeholder="Message pour le client (facultatif), ex. : NK Services demande une photo plus nette du verso" value={ask.note} onChange={e => setAsk({ ...ask, note: e.target.value })} />
+            <label style={{ marginRight: 12 }}><input type="checkbox" checked={ask.sms} onChange={e => setAsk({ ...ask, sms: e.target.checked })} /> SMS</label>
+            <label><input type="checkbox" checked={ask.email} onChange={e => setAsk({ ...ask, email: e.target.checked })} /> E-mail</label>
+            {d.sent_to_provider_at ? <p style={{ margin: "6px 0 0" }}>Dossier déjà envoyé à {provider.name} : il sera renvoyé automatiquement dès que les pièces reçues sont bonnes.</p> : <p style={{ margin: "6px 0 0" }}>Nouveau dossier : rien ne part chez {provider.name} sans votre clic.</p>}
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button className={`${c.btn} ${c.btnBrand}`} disabled={busy !== null} onClick={() => sendAsk(d)}>{busy === d.id ? "Envoi…" : "Envoyer la demande"}</button>
+              <button className={`${c.btn} ${c.btnGhost}`} onClick={() => setAsk(null)}>Annuler</button>
+            </div>
+          </div> : null}
           {ready(d) && d.pay !== "payé" ? <div style={{ marginTop: 8, background: "#fde8e8", border: "1px solid #f5b5b5", color: "#b91c1c", borderRadius: 10, padding: "8px 10px", fontWeight: 700, fontSize: 14 }}>⛔ {d.pay === "réserve de propriété" ? `Remis avec réserve de propriété : paiement en attente${d.reservation?.montant_du ? ` (${Number(d.reservation.montant_du).toLocaleString("fr-FR")} € dus)` : ""}.` : d.pay === "inconnu" ? "Client non relié à une réservation : paiement non vérifié." : "Paiement non reçu."} Vérifiez avant d’envoyer à {provider.name}.</div> : null}
           {d.sent_to_provider_at ? <div className={c.small} style={{ marginTop: 4 }}>📤 Envoyé le {fmt(d.sent_to_provider_at)} à {d.sent_to}</div> : null}
           {d.notes ? <pre className={c.small} style={{ whiteSpace: "pre-wrap", margin: "6px 0 0", fontFamily: "inherit" }}>{d.notes}</pre> : null}
@@ -104,6 +149,8 @@ export default function CarteGriseAdmin() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
             <button className={`${c.btn} ${c.btnBrand}`} disabled={busy !== null || !d.files?.length || d.status === "envoi en cours"} onClick={() => send(d)}>{busy === d.id ? "Envoi…" : d.sent_to_provider_at ? "Renvoyer à NK Services" : "Envoyer à NK Services"}</button>
             <button className={`${c.btn} ${c.btnGhost}`} onClick={() => showLinks(d)}>Voir les pièces</button>
+            <button className={`${c.btn} ${c.btnGhost}`} disabled={busy !== null} onClick={() => check(d)}>{busy === d.id ? "Analyse…" : "Analyser les pièces"}</button>
+            <button className={`${c.btn} ${c.btnGhost}`} disabled={busy !== null} onClick={() => openAsk(d)}>Demander les pièces manquantes</button>
             <button className={`${c.btn} ${c.btnGhost}`} disabled={busy !== null} onClick={() => reread(d)}>{busy === d.id ? "Lecture…" : "Relire le VIN"}</button>
             <button className={`${c.btn} ${c.btnGhost}`} onClick={() => fix(d)}>Corriger VIN / client</button>
             <select className={c.input} style={{ width: "auto" }} value={STATUSES.includes(d.status) ? d.status : ""} onChange={e => setStatus(d, e.target.value)}>

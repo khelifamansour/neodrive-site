@@ -12,13 +12,15 @@ Le VIN ne contient jamais les lettres I, O ni Q. Recopie exactement le VIN compl
 Réponds uniquement en JSON : {"vin": "<17 caractères ou chaîne vide si absent/illisible>", "doute": "<positions ou caractères incertains, sinon vide>"}`;
 
 type Part = Record<string, unknown>;
+/** Modèle de lecture des documents (photos et PDF). */
+export const visionModel = () => process.env.OPENAI_VIN_MODEL || "gpt-4.1-mini";
 async function askVin(instructions: string, prompt: string, part: Part): Promise<VinRead> {
   const key = process.env.OPENAI_API_KEY; if (!key) throw new Error("Lecture automatique indisponible (clé absente) : tapez le numéro.");
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 50_000);
   try {
     const r = await fetch("https://api.openai.com/v1/responses", {
       method: "POST", signal: ctl.signal, headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: process.env.OPENAI_VIN_MODEL || "gpt-4.1-mini", instructions, input: [{ role: "user", content: [{ type: "input_text", text: prompt }, part] }], text: { format: { type: "json_object" } }, max_output_tokens: 300 }),
+      body: JSON.stringify({ model: visionModel(), instructions, input: [{ role: "user", content: [{ type: "input_text", text: prompt }, part] }], text: { format: { type: "json_object" } }, max_output_tokens: 300 }),
     });
     const j = await r.json().catch(() => null);
     if (!r.ok) throw new Error(`Lecture impossible (${r.status}) : tapez le numéro.`);

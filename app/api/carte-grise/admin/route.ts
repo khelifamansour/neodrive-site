@@ -4,12 +4,13 @@ import { dataClient } from "../../../../lib/datastore";
 import { dossierLinks, findDossier, sendDossierToProvider } from "../../../../lib/carte-grise-server";
 import { CARTE_GRISE_PROVIDER_EMAIL, CARTE_GRISE_PROVIDER_NAME } from "../../../../lib/carte-grise";
 import { analyseDossier, linkReservationVin } from "../../../../lib/stock";
+import { checkDocuments, requestMissing } from "../../../../lib/carte-grise-check";
 import { payState } from "../../../../lib/stock-shared";
 
 const RES = "id,prenom,nom,telephone,statut,livre_at,vin,total,paiement_confirme_at,paiement_en_attente,montant_du,reserve_path,reserve_token,modele,couleur";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 const STATUSES = ["envoi en cours", "reçu", "envoyé", "traité", "annulé"];
 
 /** Dossiers carte grise : liste et envoi au prestataire, réservés au fondateur (code principal). */
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
   if (!sb) return NextResponse.json({ ok: false, error: "Configuration manquante" }, { status: 503 });
   try {
     if (b.action === "list") {
-      const { data, error } = await sb.from("carte_grise_dossiers").select("id,ref,created_at,type_demande,nom,prenom,telephone,email,adresse,code_postal,ville,version,service_carte_grise,files,status,sent_to_provider_at,sent_to,notes,vin,vin_check_ok,vin_source,reservation_id,vehicle_id,match_note,analysed_at").order("created_at", { ascending: false }).limit(300);
+      const { data, error } = await sb.from("carte_grise_dossiers").select("*").order("created_at", { ascending: false }).limit(300);
       if (error) throw new Error(error.message);
       const ids = [...new Set((data || []).map(d => d.reservation_id).filter(Boolean))];
       const { data: res } = ids.length ? await sb.from("reservations").select(RES).in("id", ids) : { data: [] };
@@ -39,6 +40,15 @@ export async function POST(req: Request) {
       const ps = payState(r);
       if (ps !== "payé" && !b.unpaid_ok) return NextResponse.json({ ok: false, unpaid: ps, error: `Paiement : ${ps}. Confirmez l'envoi malgré tout.` }, { status: 409 });
       return NextResponse.json({ ok: true, ...(await sendDossierToProvider(sb, d, { force: Boolean(b.force) })) });
+    }
+    // Contrôle des pièces (lecture de chaque document) : toutes les pièces, ou seulement keys.
+    if (b.action === "check") return NextResponse.json({ ok: true, check: await checkDocuments(sb, d.id, { keys: Array.isArray(b.keys) ? b.keys.map(String) : undefined }) });
+    // Demande des pièces manquantes au client (SMS + e-mail + lien WhatsApp à envoyer soi-même).
+    if (b.action === "request_missing") return NextResponse.json({ ok: true, ...(await requestMissing(sb, d, { keys: Array.isArray(b.keys) ? b.keys.map(String) : undefined, note: typeof b.note === "string" ? b.note : "", sms: b.sms !== false, email: b.email !== false })) });
+    if (b.action === "auto_resend") {
+      const { error } = await sb.from("carte_grise_dossiers").update({ auto_resend: Boolean(b.value), updated_at: new Date().toISOString() }).eq("id", d.id);
+      if (error) throw new Error(error.message);
+      return NextResponse.json({ ok: true });
     }
     if (b.action === "analyse") {
       if (b.reset) await sb.from("carte_grise_dossiers").update({ vin: null, reservation_id: null, vehicle_id: null }).eq("id", d.id);

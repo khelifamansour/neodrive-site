@@ -5,7 +5,7 @@ import { CARTE_GRISE_BUCKET } from "../../../../lib/carte-grise-server";
 import { analyseDossier } from "../../../../lib/stock";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 const safeName = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(-80);
 const TYPES = /^(application\/pdf|image\/[a-z0-9.+-]+)?$/i;
 const FOLDER = /^(CG-\d{4}-\d{8})-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       const files = ((d.files || []) as CarteGriseFile[]).filter(f => present.has(f.path)).map(f => ({ ...f, size: present.get(f.path) || f.size }));
       const lost = ((d.files || []) as CarteGriseFile[]).length - files.length;
       await sb.from("carte_grise_dossiers").update({ files, status: "reçu", ...(lost ? { notes: `⚠️ ${lost} pièce(s) non reçue(s) côté serveur (voir l'e-mail Formspree)` } : {}), updated_at: new Date().toISOString() }).eq("id", d.id);
-      // VIN lu sur le COC / les documents, rapprochement stock + réservation, e-mail au fondateur (jamais d'envoi automatique à NK Services).
+      // VIN lu sur le COC / les documents, rapprochement stock + réservation, contrôle des pièces, e-mail au fondateur (jamais d'envoi automatique à NK Services).
       after(() => analyseDossier(sb, d.id, { notify: true }).then(() => undefined).catch(e => console.error("[carte-grise] analyse", e)));
       return NextResponse.json({ ok: true, id: d.id, files: files.length, lost });
     }

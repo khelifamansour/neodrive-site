@@ -2,7 +2,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { applyStoredSecrets } from "./integrations";
 import { brevoReady, OWNER_EMAIL, sendEmail, type EmailAttachment } from "./brevo";
-import { CARTE_GRISE_FILE_LABEL, CARTE_GRISE_PROVIDER_EMAIL, CARTE_GRISE_PROVIDER_NAME, type CarteGriseFile } from "./carte-grise";
+import { CARTE_GRISE_FILE_LABEL, CARTE_GRISE_PROVIDER_EMAIL, CARTE_GRISE_PROVIDER_NAME, type CarteGriseFile, type DocCheck, type MissingRequest } from "./carte-grise";
 
 export const CARTE_GRISE_BUCKET = "erp-documents";
 /** Budget des pièces jointes (taille brute ; ~9,4 Mo une fois encodées en base64, sous la limite Brevo de ~10 Mo par e-mail). */
@@ -16,6 +16,7 @@ export type CarteGriseDossier = {
   id: number; ref: string; folder: string; created_at: string; type_demande: string | null; nom: string | null; prenom: string | null;
   telephone: string | null; email: string | null; adresse: string | null; code_postal: string | null; ville: string | null; version: string | null;
   service_carte_grise: string | null; fields: Record<string, string>; files: CarteGriseFile[]; status: string; sent_to_provider_at: string | null; sent_to: string | null; notes: string | null;
+  vin?: string | null; doc_check?: DocCheck | null; missing_token?: string | null; missing_request?: MissingRequest | null; auto_resend?: boolean | null;
 };
 
 const esc = (v: unknown) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -45,20 +46,22 @@ export async function dossierLinks(sb: SupabaseClient, d: CarteGriseDossier, ttl
 /**
  * Envoie le dossier au prestataire carte grise (to, sinon NK Services), copie au fondateur, réponse au fondateur.
  * Pièces jointes tant que le total reste sous ATTACH_BUDGET ; les autres en liens privés valables 14 jours.
- * Refuse un dossier déjà envoyé, sauf force.
+ * Refuse un dossier déjà envoyé, sauf force. complement : renvoi après une pièce complémentaire (objet « RE: … », nouvelles pièces en premier).
  */
-export async function sendDossierToProvider(sb: SupabaseClient, d: CarteGriseDossier, opts: { to?: string; force?: boolean } = {}) {
+export async function sendDossierToProvider(sb: SupabaseClient, d: CarteGriseDossier, opts: { to?: string; force?: boolean; complement?: string[] } = {}) {
   const to = String(opts.to || CARTE_GRISE_PROVIDER_EMAIL || "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) throw new Error("Adresse du prestataire carte grise manquante (CARTE_GRISE_PROVIDER_EMAIL).");
   if (d.sent_to_provider_at && !opts.force) throw Object.assign(new Error(`Dossier déjà envoyé le ${new Date(d.sent_to_provider_at).toLocaleString("fr-FR", { timeZone: "Europe/Paris" })} à ${d.sent_to || "?"} (ajoutez force pour renvoyer).`), { status: 409 });
-  if (!(d.files || []).length) throw new Error("Aucune pièce enregistrée pour ce dossier.");
+  const current = (d.files || []).filter(f => !f.superseded);
+  if (!current.length) throw new Error("Aucune pièce enregistrée pour ce dossier.");
   await applyStoredSecrets();
   if (!brevoReady()) throw new Error("Brevo non connecté");
 
   const who = fullName(d);
   const slug = ascii(who) || d.ref;
-  // Plus petits fichiers d'abord : on joint le maximum de pièces dans le budget.
-  const files = [...d.files].sort((a, b) => a.size - b.size);
+  // Nouvelles pièces d'abord, puis les plus petits fichiers : on joint le maximum de pièces dans le budget.
+  const isNew = (f: CarteGriseFile) => !!opts.complement?.includes(f.key) && !!f.added_at;
+  const files = [...current].sort((a, b) => Number(isNew(b)) - Number(isNew(a)) || a.size - b.size);
   const attachments: EmailAttachment[] = []; const attached: CarteGriseFile[] = []; const linked: (CarteGriseFile & { url: string })[] = []; const missing: CarteGriseFile[] = [];
   let used = 0;
   for (const f of files) {
@@ -78,12 +81,13 @@ export async function sendDossierToProvider(sb: SupabaseClient, d: CarteGriseDos
   if (!attached.length && !linked.length) throw new Error("Pièces introuvables dans le stockage.");
 
   const row = (k: string, v: unknown) => v ? `<tr><td style="padding:4px 14px 4px 0;color:#666;vertical-align:top">${esc(k)}</td><td style="padding:4px 0"><b>${esc(v)}</b></td></tr>` : "";
-  const order = d.files.map(f => f.key);
+  const order = current.map(f => f.key);
   const docs = [...attached.map(f => ({ f, how: "en pièce jointe" })), ...linked.map(f => ({ f, how: `<a href="${esc(f.url)}">télécharger</a> (lien valable 14 jours)` }))]
     .sort((a, b) => order.indexOf(a.f.key) - order.indexOf(b.f.key))
-    .map(({ f, how }) => `<li>${esc(f.label)} — ${how}</li>`).join("");
+    .map(({ f, how }) => `<li>${isNew(f) ? "<b>NOUVELLE PIÈCE</b> – " : ""}${esc(f.label)} — ${how}</li>`).join("");
   const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#141414">
 <p>Bonjour,</p>
+${opts.complement ? `<p>Suite à votre demande, voici la ou les pièce(s) complémentaire(s) : <b>${esc(opts.complement.map(k => CARTE_GRISE_FILE_LABEL[k] || k).join(", "))}</b>. Le dossier complet est de nouveau joint ci-dessous.</p>` : ""}
 <p>Veuillez trouver ci-dessous le dossier d’immatriculation de notre client <b>${esc(who)}</b> (référence ${esc(d.ref)}), pour un véhicule NeoDrive (voiturette électrique neuve, catégorie L6e).</p>
 <h3 style="margin:18px 0 6px">Titulaire</h3><table>${row("Nom", d.nom)}${row("Prénom", d.prenom)}${row("Téléphone", d.telephone)}${row("E-mail", d.email)}</table>
 <h3 style="margin:18px 0 6px">Adresse</h3><table>${row("Adresse", d.adresse)}${row("Code postal", d.code_postal)}${row("Ville", d.ville)}</table>
@@ -91,11 +95,11 @@ export async function sendDossierToProvider(sb: SupabaseClient, d: CarteGriseDos
 <h3 style="margin:18px 0 6px">Documents</h3><ul>${docs}</ul>
 ${missing.length ? `<p style="color:#a33">Pièce(s) indisponible(s) : ${missing.map(f => esc(f.label)).join(", ")}. Nous vous les transmettrons séparément.</p>` : ""}
 <p>Merci de nous confirmer la bonne réception et de nous tenir informés de l’avancement.<br>Bien cordialement,<br>Mansour Khelifa – NeoDrive (MK HOLDING SAS)</p></div>`;
-  const subject = `Dossier carte grise – ${who} – NeoDrive (MK HOLDING)`;
+  const subject = opts.complement ? `RE: Dossier carte grise – ${who} – pièce complémentaire` : `Dossier carte grise – ${who} – NeoDrive (MK HOLDING)`;
   const toName = to.toLowerCase() === CARTE_GRISE_PROVIDER_EMAIL.toLowerCase() ? CARTE_GRISE_PROVIDER_NAME : "";
   const messageId = await sendEmail(to, toName, subject, html, attachments, { cc: [OWNER_EMAIL], replyTo: OWNER_EMAIL });
   const at = new Date().toISOString();
-  const note = `📤 ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })} : envoyé à ${to} (${attached.length} pièce(s) jointe(s) ${mo(used)}, ${linked.length} lien(s))`;
+  const note = `📤 ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })} : ${opts.complement ? `pièce(s) complémentaire(s) (${opts.complement.map(k => CARTE_GRISE_FILE_LABEL[k] || k).join(", ")}) renvoyée(s) avec le dossier complet` : "envoyé"} à ${to} (${attached.length} pièce(s) jointe(s) ${mo(used)}, ${linked.length} lien(s))`;
   await sb.from("carte_grise_dossiers").update({ sent_to_provider_at: at, sent_to: to, status: "envoyé", notes: [d.notes, note].filter(Boolean).join("\n"), updated_at: at }).eq("id", d.id);
   return { to, cc: [OWNER_EMAIL], subject, messageId, attached: attached.map(f => f.name), linked: linked.map(f => f.name), missing: missing.map(f => f.name), attachedSize: used };
 }

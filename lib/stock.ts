@@ -11,9 +11,11 @@ import { BANK } from "./parts-server";
 import { DEBOURS_MENTION, SELLER_INVOICE, eurFr, lineHt, suggestLines, totals, payState, type InvoiceLine } from "./stock-shared";
 import { normalizePhone } from "./crm-agent";
 import { applyStoredSecrets } from "./integrations";
-import { brevoReady, OWNER_EMAIL, sendEmail, SITE } from "./brevo";
+import { brevoReady, OWNER_EMAIL, sendEmail } from "./brevo";
 import { CARTE_GRISE_BUCKET, fullName, type CarteGriseDossier } from "./carte-grise-server";
 import { nearestVin, readVinFromDocument } from "./vin-read";
+import { adminUrl, checkDocuments, docCheckHtml } from "./carte-grise-check";
+import type { DocCheck } from "./carte-grise";
 import { vinCheckOk } from "./vin";
 
 type DB = SupabaseClient;
@@ -258,20 +260,24 @@ export async function analyseDossier(db: DB, id: number, opts: { notify?: boolea
   const note = [res ? `Réservation n° ${res.id} trouvée par ${how}` : "", source ? `VIN lu sur : ${source}` : "", ...notes].filter(Boolean).join(" · ");
   const at = new Date().toISOString();
   await db.from("carte_grise_dossiers").update({ vin, vin_check_ok: checkOk, vin_source: source || dossier.vin_source || null, reservation_id: res ? Number(res.id) : null, vehicle_id: vehicle?.id ?? null, match_note: note.slice(0, 2000), analysed_at: at, updated_at: at }).eq("id", id);
-  if (opts.notify && !dossier.founder_notified_at) await notifyFounder(db, { ...dossier, vin }, res, note);
+  if (opts.notify && !dossier.founder_notified_at) {
+    // Contrôle des pièces (identité, domicile, mandat, COC…) avant l'e-mail au fondateur.
+    const check = await checkDocuments(db, id).catch(e => { console.error("[carte-grise] contrôle des pièces", e); return null; });
+    await notifyFounder(db, { ...dossier, vin }, res, note, check);
+  }
   return { vin, check_ok: checkOk, reservation_id: res?.id ?? null, vehicle_id: vehicle?.id ?? null, note };
 }
 
 /** E-mail au fondateur : nouveau dossier prêt à valider avant envoi à NK Services (jamais envoyé automatiquement). */
-async function notifyFounder(db: DB, d: CarteGriseDossier & { vin?: string | null }, res: Record<string, unknown> | null, note: string) {
+async function notifyFounder(db: DB, d: CarteGriseDossier & { vin?: string | null }, res: Record<string, unknown> | null, note: string, check: DocCheck | null) {
   try {
     await applyStoredSecrets();
     if (!brevoReady()) return;
     const ps = payState(res as never);
     const warn = ps === "payé" ? "" : `<p style="background:#fde8e8;border:1px solid #f5b5b5;border-radius:8px;padding:8px 10px;color:#b91c1c"><b>⛔ Paiement : ${ps}</b>. Vérifiez avant d'envoyer le dossier à NK Services.</p>`;
     const esc = (s: unknown) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
-    const html = `<p>Nouveau dossier carte grise <b>${esc(fullName(d))}</b> (${esc(d.ref)}) prêt à valider.</p><p>VIN : <b>${esc(d.vin || "non lu")}</b><br>${esc(note)}</p>${warn}<p>Paiement : <b>${esc(ps)}</b></p><p>Rien n'est envoyé à NK Services sans votre clic : <a href="${SITE}/carte-grise-admin">${SITE}/carte-grise-admin</a> (onglet « À valider avant envoi »).</p>`;
-    await sendEmail(OWNER_EMAIL, "Mansour", `Carte grise à valider – ${fullName(d)}${ps === "payé" ? "" : ` – ${ps.toUpperCase()}`}`, html);
+    const html = `<p>Nouveau dossier carte grise <b>${esc(fullName(d))}</b> (${esc(d.ref)}) prêt à valider.</p><p>VIN : <b>${esc(d.vin || "non lu")}</b><br>${esc(note)}</p>${warn}<p>Paiement : <b>${esc(ps)}</b></p>${docCheckHtml(check)}<p>Rien n'est envoyé à NK Services sans votre clic. <a href="${adminUrl(d.id)}" style="display:inline-block;background:#111;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:bold">Ouvrir le dossier (Envoyer à NK Services / Demander les pièces)</a></p>`;
+    await sendEmail(OWNER_EMAIL, "Mansour", `Carte grise à valider – ${fullName(d)}${check ? ` – ${check.overall.toUpperCase()}` : ""}${ps === "payé" ? "" : ` – ${ps.toUpperCase()}`}`, html);
     await db.from("carte_grise_dossiers").update({ founder_notified_at: new Date().toISOString() }).eq("id", d.id);
   } catch (e) { console.error("[CARTE GRISE] e-mail fondateur", e); }
 }
