@@ -71,7 +71,7 @@ export async function sendDossierToProvider(sb: SupabaseClient, d: CarteGriseDos
       if (error || !blob) { missing.push(f); continue; }
       const buf = Buffer.from(await blob.arrayBuffer());
       used += buf.length;
-      attachments.push({ name: `${ascii(CARTE_GRISE_FILE_LABEL[f.key] || f.key).slice(0, 40)}-${slug}.${e}`, content: buf.toString("base64") });
+      attachments.push({ name: `${ascii(f.label || CARTE_GRISE_FILE_LABEL[f.key] || f.key).slice(0, 40)}-${slug}.${e}`, content: buf.toString("base64") });
       attached.push(f);
     } else {
       const { data } = await sb.storage.from(CARTE_GRISE_BUCKET).createSignedUrl(f.path, LINK_TTL, { download: f.name });
