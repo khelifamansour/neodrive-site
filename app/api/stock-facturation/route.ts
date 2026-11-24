@@ -3,7 +3,7 @@ import { isAuthorized } from "../../../lib/integrations";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { DEPOTS, STAGES, isDepot, type ContainerInfo } from "../../../lib/shipments";
 import { INVOICE_BUCKET, ensureAllDrafts, ensureDraftInvoice, linkReservationVin, storeInvoicePdf, validateInvoice, type SalesInvoice } from "../../../lib/stock";
-import { STOCK_STATES, parseImport, payState, stockState, totals, type InvoiceLine } from "../../../lib/stock-shared";
+import { DEBOURS_KEY, STOCK_STATES, parseImport, payState, stockState, totals, type InvoiceLine } from "../../../lib/stock-shared";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -145,7 +145,7 @@ export async function POST(req: Request) {
       }
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (Array.isArray(b.lines)) {
-        const lines: InvoiceLine[] = (b.lines as InvoiceLine[]).slice(0, 10).map(l => ({ key: clean(l.key, 30) || "autre", label: clean(l.label, 160), ttc: Math.round((Number(l.ttc) || 0) * 100) / 100 })).filter(l => l.label);
+        const lines: InvoiceLine[] = (b.lines as InvoiceLine[]).slice(0, 10).map(l => ({ key: clean(l.key, 30) || "autre", label: clean(l.label, 200), ttc: Math.round((Number(l.ttc) || 0) * 100) / 100, ...(l.key === DEBOURS_KEY ? { debours: true } : {}) })).filter(l => l.label);
         if (lines.some(l => l.ttc < 0)) return NextResponse.json({ ok: false, error: "Montant négatif refusé" }, { status: 400 });
         Object.assign(patch, { lines, ...totals(lines), retained_ttc: totals(lines).total_ttc });
       }

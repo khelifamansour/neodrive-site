@@ -228,7 +228,7 @@ function InvoiceCard({ i, run, setMsg }: { i: Inv; run: (b: object, ok?: string)
         <span className={c.small}>{l.label}</span>
         <input className={c.input} style={{ ...sel, textAlign: "right" }} type="number" inputMode="decimal" step="0.01" min="0" disabled={!draft} value={l.ttc} onChange={e => setLines(ls => ls.map((x, j) => j === k ? { ...x, ttc: Number(e.target.value) } : x))} />
       </div>)}
-      <div className={c.small} style={{ textAlign: "right" }}>HT {eurFr(t.total_ht)} · TVA 20 % {eurFr(t.tva)} · <b>TTC {eurFr(t.total_ttc)}</b></div>
+      <div className={c.small} style={{ textAlign: "right" }}>HT {eurFr(t.total_ht)}{lines.some(l => l.debours) ? ` (dont débours sans TVA ${eurFr(lines.filter(l => l.debours).reduce((a, l) => a + Number(l.ttc || 0), 0))})` : ""} · TVA 20 % {eurFr(t.tva)} · <b>TTC {eurFr(t.total_ttc)}</b></div>
       {draft && !i.vin ? <input className={c.input} style={{ ...sel, ...mono }} placeholder="VIN de la voiture vendue (17 caractères)" maxLength={17} value={vin} onChange={e => setVin(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /> : null}
       {draft ? <input className={c.input} style={sel} placeholder={diff ? "Raison de l’écart (obligatoire : défaut, geste commercial…)" : "Raison d’un ajustement (si besoin)"} value={reason} onChange={e => setReason(e.target.value)} /> : null}
       {i.notes ? <div className={c.small} style={{ color: "#666" }}>{i.notes}</div> : null}

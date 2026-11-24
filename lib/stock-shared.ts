@@ -53,16 +53,29 @@ export const SELLER_INVOICE = {
   brand: "NeoDrive",
   address: ["31 rue Jean Nougaro", "31600 Muret, France"],
   siren: "908 645 393",
+  // À compléter (le fondateur les envoie) : RCS, capital social, n° de TVA intracommunautaire.
+  rcs: "Toulouse [à compléter]",
+  capital: "[à compléter] €",
+  tva_intra: "FR[à compléter]",
   contact: ["Tél. 06 89 78 17 10", "contact.neodrivefrance@gmail.com"],
 };
 export const TVA = 0.2;
-export type InvoiceLine = { key: string; label: string; ttc: number };
+/** debours : frais refacturés à l'euro près (carte grise), hors champ de la TVA. */
+export type InvoiceLine = { key: string; label: string; ttc: number; debours?: boolean };
 const r2 = (n: number) => Math.round(n * 100) / 100;
 export const htOf = (ttc: number) => r2(ttc / (1 + TVA));
-/** Totaux depuis des lignes TTC (prix du barème NeoDrive, TVA 20 % incluse). */
+/** Carte grise 150 € : 100 € de débours (sans TVA) + 50 € de frais de mise en route / gestion (TTC, TVA 20 %). */
+export const CG_DEBOURS = 100;
+export const CG_FRAIS = 50;
+export const DEBOURS_KEY = "carte_grise_debours";
+export const DEBOURS_MENTION = "débours – non soumis à TVA";
+/** HT et TVA d'une ligne : un débours n'a pas de TVA (HT = TTC). */
+export const lineHt = (l: InvoiceLine) => l.debours ? r2(Number(l.ttc) || 0) : htOf(Number(l.ttc) || 0);
+/** Totaux depuis des lignes TTC (prix du barème NeoDrive, TVA 20 % incluse, débours exclus de la TVA). */
 export function totals(lines: InvoiceLine[]) {
   const ttc = r2(lines.reduce((a, l) => a + (Number(l.ttc) || 0), 0));
-  const ht = htOf(ttc);
+  const debours = r2(lines.filter(l => l.debours).reduce((a, l) => a + (Number(l.ttc) || 0), 0));
+  const ht = r2(htOf(r2(ttc - debours)) + debours);
   return { total_ttc: ttc, total_ht: ht, tva: r2(ttc - ht) };
 }
 
@@ -72,13 +85,14 @@ export function suggestLines(r: ResForInvoice): { lines: InvoiceLine[]; suggeste
   const key = modelFromLabel(r.modele) || "confort";
   const dept = String(r.departement || "").trim() || String(r.code_postal || "").slice(0, 2);
   const liv = r.delivery_price != null && r.delivery_price !== "" ? Number(r.delivery_price) : deliveryPriceForDepartment(dept) ?? 0;
-  const cg = REGISTRATION_PRICE;
+  const cg = REGISTRATION_PRICE; // = CG_DEBOURS + CG_FRAIS
   const total = r.total != null && r.total !== "" ? Number(r.total) : null;
   const veh = total != null && total - liv - cg > 0 ? total - liv - cg : VEHICLES[key].price;
   const lines: InvoiceLine[] = [
     { key: "vehicule", label: `Véhicule ${String(r.modele || "").trim() || VEHICLES[key].label}`, ttc: veh },
     { key: "livraison", label: "Livraison à domicile", ttc: liv },
-    { key: "carte_grise", label: "Carte grise (démarches d'immatriculation)", ttc: cg },
+    { key: DEBOURS_KEY, label: `Carte grise : frais d'immatriculation refacturés à l'euro près (${DEBOURS_MENTION})`, ttc: CG_DEBOURS, debours: true },
+    { key: "frais_gestion", label: "Frais de mise en route et de gestion du dossier carte grise", ttc: CG_FRAIS },
   ];
   return { lines, suggested: veh + liv + cg, fromGrid: total == null };
 }

@@ -8,7 +8,7 @@ import PDFDocument from "pdfkit";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { safeText } from "./pdf-text";
 import { BANK } from "./parts-server";
-import { SELLER_INVOICE, eurFr, htOf, suggestLines, totals, payState, type InvoiceLine } from "./stock-shared";
+import { DEBOURS_MENTION, SELLER_INVOICE, eurFr, lineHt, suggestLines, totals, payState, type InvoiceLine } from "./stock-shared";
 import { normalizePhone } from "./crm-agent";
 import { applyStoredSecrets } from "./integrations";
 import { brevoReady, OWNER_EMAIL, sendEmail, SITE } from "./brevo";
@@ -120,7 +120,7 @@ export function invoicePdf(inv: SalesInvoice, paid: string): Promise<Buffer> {
     const ink = "#111", grey = "#666", accent = "#ff5a1f";
     doc.font("Helvetica-Bold").fontSize(18).fillColor(ink).text(SELLER_INVOICE.brand, 40, 40);
     doc.font("Helvetica-Bold").fontSize(9).text(SELLER_INVOICE.name, 40, 64);
-    doc.font("Helvetica").fontSize(9).fillColor(grey).text([...SELLER_INVOICE.address, `SIREN ${SELLER_INVOICE.siren}`, ...SELLER_INVOICE.contact].join("\n"), 40, 76, { width: 250 });
+    doc.font("Helvetica").fontSize(9).fillColor(grey).text([...SELLER_INVOICE.address, `SIREN ${SELLER_INVOICE.siren} · RCS ${SELLER_INVOICE.rcs}`, `Capital ${SELLER_INVOICE.capital} · TVA ${SELLER_INVOICE.tva_intra}`, ...SELLER_INVOICE.contact].join("\n"), 40, 76, { width: 250 });
     doc.font("Helvetica-Bold").fontSize(20).fillColor(accent).text("FACTURE", 300, 40, { width: 255, align: "right" });
     doc.font("Helvetica").fontSize(9).fillColor(ink)
       .text(`N° ${inv.number}`, 300, 66, { width: 255, align: "right" })
@@ -146,17 +146,20 @@ export function invoicePdf(inv: SalesInvoice, paid: string): Promise<Buffer> {
       y += h;
     };
     row(cols.map(c => c.h), true, "#f1f1f1");
-    for (const l of inv.lines.filter(l => Number(l.ttc))) { const ht = htOf(Number(l.ttc)); row([l.label, eurFr(ht), eurFr(Number(l.ttc) - ht), eurFr(l.ttc)]); }
+    for (const l of inv.lines.filter(l => Number(l.ttc))) { const ht = lineHt(l); row([l.debours && !l.label.includes(DEBOURS_MENTION) ? `${l.label} (${DEBOURS_MENTION})` : l.label, eurFr(ht), l.debours ? "—" : eurFr(Number(l.ttc) - ht), eurFr(l.ttc)]); }
+    const deb = inv.lines.filter(l => l.debours).reduce((a, l) => a + (Number(l.ttc) || 0), 0);
     y += 10;
     const tot = (k: string, v: string, b = false) => { doc.font(b ? "Helvetica-Bold" : "Helvetica").fontSize(b ? 11 : 9.5).fillColor(ink).text(k, 340, y, { width: 120 }).text(v, 460, y, { width: 95, align: "right" }); y += b ? 18 : 14; };
-    tot("Total HT", eurFr(inv.total_ht)); tot("TVA 20 %", eurFr(inv.tva)); tot("Total TTC", eurFr(inv.total_ttc), true);
+    tot("Total HT", eurFr(inv.total_ht));
+    if (deb) tot("dont débours (sans TVA)", eurFr(deb));
+    tot("TVA 20 %", eurFr(inv.tva)); tot("Total TTC", eurFr(inv.total_ttc), true);
     doc.font("Helvetica").fontSize(9).fillColor(grey).text(`Règlement : ${paid}`, 300, y + 2, { width: 255, align: "right" }); y += 26;
 
     doc.roundedRect(40, y, 515, 70, 6).lineWidth(0.6).stroke("#bbb");
     doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Paiement par virement bancaire", 52, y + 10);
     doc.font("Helvetica").fontSize(9).text(`Titulaire : ${BANK.holder}  ·  Banque : ${BANK.bank}\nIBAN : ${BANK.iban}  ·  BIC : ${BANK.bic}\nRéférence : ${inv.number}`, 52, y + 26, { width: 490 });
     y += 84;
-    doc.font("Helvetica").fontSize(7.5).fillColor(grey).text("Prix en euros, TVA 20 % incluse. En cas de retard de paiement : pénalités au taux d'intérêt légal majoré de 10 points ; pour un client professionnel, indemnité forfaitaire pour frais de recouvrement de 40 €. Pas d'escompte pour paiement anticipé. Le véhicule reste la propriété de MK HOLDING SAS jusqu'au paiement intégral du prix.", 40, y, { width: 515 });
+    doc.font("Helvetica").fontSize(7.5).fillColor(grey).text("Prix en euros, TVA 20 % incluse sauf débours. Débours : frais d'immatriculation payés au nom et pour le compte du client et refacturés à l'euro près, non soumis à TVA (article 267 II 2° du CGI). En cas de retard de paiement : pénalités au taux d'intérêt légal majoré de 10 points ; pour un client professionnel, indemnité forfaitaire pour frais de recouvrement de 40 €. Pas d'escompte pour paiement anticipé. Le véhicule reste la propriété de MK HOLDING SAS jusqu'au paiement intégral du prix.", 40, y, { width: 515 });
     doc.end();
   });
 }
