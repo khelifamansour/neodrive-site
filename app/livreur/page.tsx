@@ -97,8 +97,12 @@ export default function Livreur() {
   if (state === "login") return <main className={c.page}><div className={c.login}>
     <h1>🧰 Mon espace NeoDrive</h1>
     <p className={c.muted}>Livraison, préparation</p>
-    <p className={c.muted}>Connectez-vous avec votre code personnel sur la page Organisation, puis revenez ici.</p>
-    <a className={`${c.btn} ${c.btnBrand}`} href="/organisation" style={{ textAlign: "center", textDecoration: "none" }}>Se connecter</a>
+    <p className={c.muted}>Entrez votre code ici (le même que sur la page Organisation).</p>
+    <form style={{ display: "grid", gap: 8 }} onSubmit={e => { e.preventDefault(); const v = String(new FormData(e.currentTarget).get("code") || "").trim(); if (!v) return; try { sessionStorage.setItem("nd_pc", v); } catch { /* privé */ } setState("loading"); load(); }}>
+      <input name="code" type="password" inputMode="text" autoComplete="current-password" placeholder="Votre code" className={c.input} style={{ padding: 12, fontSize: 16 }} />
+      <button className={`${c.btn} ${c.btnBrand}`} type="submit">Se connecter</button>
+    </form>
+    <a className={c.muted} href="/organisation" style={{ textAlign: "center" }}>Membre de l’équipe : se connecter depuis Organisation</a>
   </div></main>;
 
   const contract = me?.docs.contrat;
