@@ -5,8 +5,22 @@
  */
 import { DEBOURS_KEY, lineHt, type InvoiceLine } from "./stock-shared";
 
-export const CATEGORIES = ["vente voiture", "pièces", "achat véhicules", "transport", "douane", "salaires/prestataires", "logiciel", "publicité", "carburant/péage", "frais bancaires", "virement interne", "autre"] as const;
+export const CATEGORIES = ["vente voiture", "pièces", "achat véhicules", "transport", "douane", "salaires/prestataires", "logiciel", "publicité", "carburant/péage", "hôtel/repas", "fournitures", "frais bancaires", "virement interne", "autre"] as const;
 export type Category = typeof CATEGORIES[number];
+/** Catégories d'un justificatif (ticket, facture fournisseur). */
+export const RECEIPT_CATEGORIES = ["carburant", "péage", "hôtel/repas", "pièces", "transport", "douane", "logiciel", "fournitures", "autre"] as const;
+export const receiptToBankCategory = (c: string | null | undefined): Category => c === "carburant" || c === "péage" ? "carburant/péage" : (CATEGORIES as readonly string[]).includes(String(c)) ? c as Category : "autre";
+/** Nom de fichier pour l'export : AAAA-MM-JJ_fournisseur_montant.ext */
+export const receiptFileName = (r: { date: string | null; merchant: string | null; total_ttc: number | null; file_name: string | null; kind?: string | null; id: number }) => {
+  const ext = (String(r.file_name || "").match(/\.([a-z0-9]{1,5})$/i)?.[1] || "pdf").toLowerCase();
+  const slug = String(r.merchant || (r.kind === "attestation" ? "attestation" : "fournisseur")).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "fournisseur";
+  return `${r.date || "sans-date"}_${slug}_${Number(r.total_ttc || 0).toFixed(2).replace(".", ",")}${r.kind === "attestation" ? "_attestation" : ""}_${r.id}.${ext}`;
+};
+export type ReceiptForExport = { date: string | null; merchant: string | null; category: string | null; total_ttc: number | null; tva_amount: number | null; is_invoice: boolean | null; kind: string; vat_deductible: boolean; file: string; tx: string };
+export function receiptsCsv(rows: ReceiptForExport[]) {
+  return "\uFEFF" + [["Date", "Fournisseur", "Catégorie", "Montant TTC", "TVA", "TVA déductible", "Type", "Fichier", "Opération bancaire"].join(";"),
+    ...rows.map(r => [r.date ? new Date(`${r.date}T12:00:00`).toLocaleDateString("fr-FR") : "", r.merchant, r.category, Number(r.total_ttc || 0).toFixed(2).replace(".", ","), r.tva_amount == null ? "" : Number(r.tva_amount).toFixed(2).replace(".", ","), r.vat_deductible ? "oui" : "non", r.kind === "attestation" ? "attestation (justificatif manquant)" : r.is_invoice ? "facture" : "ticket", r.file, r.tx].map(csvCell).join(";"))].join("\r\n");
+}
 
 /* ───────────── Relevé Revolut Business ───────────── */
 

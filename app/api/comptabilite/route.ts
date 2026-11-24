@@ -4,7 +4,8 @@ import { zipSync } from "fflate";
 import { isAuthorized } from "../../../lib/integrations";
 import { crmDatabase } from "../../../lib/crm-agent";
 import { INVOICE_BUCKET, storeInvoicePdf, type SalesInvoice } from "../../../lib/stock";
-import { CATEGORIES, bankMatchCsv, matchCredit, parseRevolutCsv, pennylaneInvoiceRows, pennylaneInvoicesCsv, supplierOf, type InvLite, type ResLite } from "../../../lib/accounting";
+import { RECEIPT_BUCKET, RECEIPT_FOLDER, attestationPdf, matchReceipt, readReceipt, syncTransaction } from "../../../lib/receipts";
+import { CATEGORIES, RECEIPT_CATEGORIES, receiptFileName, receiptsCsv, bankMatchCsv, matchCredit, parseRevolutCsv, pennylaneInvoiceRows, pennylaneInvoicesCsv, supplierOf, type InvLite, type ResLite } from "../../../lib/accounting";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -13,6 +14,8 @@ const clean = (v: unknown, n = 300) => String(v ?? "").replace(/[<>]/g, "").trim
 const MONTH = /^\d{4}-\d{2}$/;
 const monthEnd = (m: string) => { const [y, mo] = m.split("-").map(Number); return new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10); };
 const r2 = (n: number) => Math.round(n * 100) / 100;
+const RC = "id,created_at,month,kind,path,file_name,mime,size,status,date,merchant,total_ttc,tva_amount,tva_rate,payment_hint,category,is_invoice,buyer,vat_deductible,transaction_id,match_kind,note";
+const safeName = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(-60) || "justificatif";
 const TX = "id,date,label,amount,currency,counterparty,reference,balance,category,supplier,match_kind,invoice_id,reservation_id,parts_order,vat_deductible,ignored,note,import_month";
 
 /** Rapprochement automatique des opérations non rapprochées d'un mois (jamais celles réglées à la main). */
@@ -73,7 +76,91 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, rows: rows.length, inserted, duplicates: rows.length - inserted, months, matched, errors: errors.slice(0, 20) });
     }
 
-    if (b.action === "automatch") return NextResponse.json({ ok: true, matched: await autoMatch(db, month) });
+    if (b.action === "automatch") {
+      const matched = await autoMatch(db, month);
+      const { data: rcs } = await db.from("receipts").select("id").eq("month", month).is("transaction_id", null);
+      let receipts = 0; for (const r of rcs || []) if (await matchReceipt(db, r.id)) receipts++;
+      return NextResponse.json({ ok: true, matched, receipts });
+    }
+
+    /* ───────────── Justificatifs ───────────── */
+    if (b.action === "receipt_upload") {
+      const type = String(b.type || "");
+      if (!/^(image\/[a-z0-9.+-]+|application\/pdf)$/i.test(type)) return NextResponse.json({ ok: false, error: "Photo ou PDF seulement" }, { status: 400 });
+      if (!(Number(b.size) > 0) || Number(b.size) > 20 * 1024 * 1024) return NextResponse.json({ ok: false, error: "Fichier trop lourd (20 Mo maximum)" }, { status: 400 });
+      const path = `${RECEIPT_FOLDER}/${month}/${crypto.randomUUID().slice(0, 8)}-${safeName(String(b.name || ""))}`;
+      const { data, error } = await db.storage.from(RECEIPT_BUCKET).createSignedUploadUrl(path);
+      if (error || !data) return NextResponse.json({ ok: false, error: "Stockage indisponible" }, { status: 502 });
+      return NextResponse.json({ ok: true, bucket: RECEIPT_BUCKET, path: data.path, token: data.token });
+    }
+    if (b.action === "receipt_read") {
+      const path = String(b.path || "");
+      if (!path.startsWith(`${RECEIPT_FOLDER}/`) || path.includes("..")) return NextResponse.json({ ok: false, error: "Fichier invalide" }, { status: 400 });
+      await db.from("receipts").upsert({ path, month, file_name: clean(b.name, 200), mime: clean(b.type, 80), size: Number(b.size) || null }, { onConflict: "path", ignoreDuplicates: true });
+      const { data: rc } = await db.from("receipts").select(RC).eq("path", path).single();
+      if (!rc) throw new Error("Justificatif non enregistré");
+      try {
+        const { data: blob } = await db.storage.from(RECEIPT_BUCKET).download(path);
+        if (!blob) throw new Error("Fichier introuvable dans le stockage");
+        const o = await readReceipt(new Uint8Array(await blob.arrayBuffer()), rc.mime || blob.type || "", rc.file_name || path);
+        await db.from("receipts").update({ status: "lu", date: o.date, month: o.date ? o.date.slice(0, 7) : month, merchant: o.merchant || null, total_ttc: o.total_ttc, tva_amount: o.tva_amount, tva_rate: o.tva_rate, payment_hint: o.payment_hint || null, category: o.category, is_invoice: o.is_invoice, buyer: o.buyer || null, vat_deductible: o.is_invoice && Number(o.tva_amount) > 0, extracted: o, note: o.objet || null, updated_at: new Date().toISOString() }).eq("id", rc.id);
+        await matchReceipt(db, rc.id);
+      } catch (e) {
+        await db.from("receipts").update({ status: "erreur", note: (e as Error).message.slice(0, 300), updated_at: new Date().toISOString() }).eq("id", rc.id);
+      }
+      const { data: out } = await db.from("receipts").select(RC).eq("id", rc.id).single();
+      return NextResponse.json({ ok: true, receipt: out });
+    }
+    if (b.action === "receipt_update") {
+      const id = Number(b.id); const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if ("date" in b) { patch.date = /^\d{4}-\d{2}-\d{2}$/.test(String(b.date)) ? b.date : null; if (patch.date) patch.month = String(patch.date).slice(0, 7); }
+      if ("merchant" in b) patch.merchant = clean(b.merchant, 120) || null;
+      for (const k of ["total_ttc", "tva_amount", "tva_rate"]) if (k in b) patch[k] = b[k] === "" || b[k] === null ? null : r2(Number(String(b[k]).replace(",", ".")) || 0);
+      if ("category" in b) patch.category = (RECEIPT_CATEGORIES as readonly string[]).includes(b.category) ? b.category : "autre";
+      if ("is_invoice" in b) patch.is_invoice = !!b.is_invoice;
+      if ("vat_deductible" in b) patch.vat_deductible = !!b.vat_deductible;
+      if ("note" in b) patch.note = clean(b.note, 500) || null;
+      const { data: cur } = await db.from("receipts").select("transaction_id").eq("id", id).maybeSingle();
+      if ("transaction_id" in b && (Number(b.transaction_id) || null) !== (cur?.transaction_id ?? null)) {
+        if (b.transaction_id) { const { data: other } = await db.from("receipts").select("id").eq("transaction_id", Number(b.transaction_id)).neq("id", id).limit(1); if (other?.length) return NextResponse.json({ ok: false, error: "Ce débit a déjà un justificatif." }, { status: 409 }); }
+        patch.transaction_id = Number(b.transaction_id) || null; patch.match_kind = patch.transaction_id ? "manuel" : null;
+      }
+      const { error } = await db.from("receipts").update(patch).eq("id", id);
+      if (error) throw new Error(error.message);
+      await syncTransaction(db, id);
+      return NextResponse.json({ ok: true });
+    }
+    if (b.action === "receipt_url") {
+      const { data: rc } = await db.from("receipts").select("path,file_name").eq("id", Number(b.id)).maybeSingle();
+      if (!rc) return NextResponse.json({ ok: false, error: "Introuvable" }, { status: 404 });
+      const { data } = await db.storage.from(RECEIPT_BUCKET).createSignedUrl(rc.path, 900);
+      return NextResponse.json({ ok: !!data, url: data?.signedUrl });
+    }
+    if (b.action === "receipt_delete") {
+      const { data: rc } = await db.from("receipts").select("id,path,kind,transaction_id").eq("id", Number(b.id)).maybeSingle();
+      if (!rc) return NextResponse.json({ ok: false, error: "Introuvable" }, { status: 404 });
+      await db.from("receipts").delete().eq("id", rc.id);
+      await db.storage.from(RECEIPT_BUCKET).remove([rc.path]);
+      return NextResponse.json({ ok: true });
+    }
+    // Ticket perdu : attestation interne signée, rangée comme justificatif du débit ; TVA non déductible.
+    if (b.action === "missing_receipt") {
+      const { data: t } = await db.from("bank_transactions").select("id,date,label,counterparty,amount,supplier").eq("id", Number(b.tx_id)).maybeSingle();
+      if (!t || Number(t.amount) >= 0) return NextResponse.json({ ok: false, error: "Débit introuvable" }, { status: 404 });
+      const { data: has } = await db.from("receipts").select("id").eq("transaction_id", t.id).limit(1);
+      if (has?.length) return NextResponse.json({ ok: false, error: "Ce débit a déjà un justificatif." }, { status: 409 });
+      const objet = clean(b.objet, 300), raison = clean(b.raison, 300), supplier = clean(b.supplier, 120) || t.supplier || t.counterparty || t.label || "";
+      if (!objet || !raison) return NextResponse.json({ ok: false, error: "Indiquez l'objet professionnel et la raison." }, { status: 400 });
+      const at = new Date().toISOString(); const amount = -Number(t.amount);
+      const pdf = await attestationPdf({ date: t.date, amount, supplier, objet, raison, label: `${t.date} · ${t.label || ""} · ${amount.toFixed(2)} €`, signedAt: at });
+      const path = `${RECEIPT_FOLDER}/${t.date.slice(0, 7)}/attestation-${t.id}-${Date.now()}.pdf`;
+      const up = await db.storage.from(RECEIPT_BUCKET).upload(path, pdf, { contentType: "application/pdf", upsert: false });
+      if (up.error) throw new Error("PDF non enregistré : " + up.error.message);
+      const { data: rc, error } = await db.from("receipts").insert({ kind: "attestation", path, file_name: "attestation.pdf", mime: "application/pdf", size: pdf.length, status: "lu", month: t.date.slice(0, 7), date: t.date, merchant: supplier, total_ttc: amount, tva_amount: null, category: "autre", is_invoice: false, vat_deductible: false, transaction_id: t.id, match_kind: "manuel", note: `Justificatif manquant : ${objet} (${raison})` }).select("id").single();
+      if (error) throw new Error(error.message);
+      await syncTransaction(db, rc.id);
+      return NextResponse.json({ ok: true, id: rc.id });
+    }
 
     if (b.action === "tx_update") {
       const id = Number(b.id); const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -106,7 +193,12 @@ export async function POST(req: Request) {
         db.from("bank_imports").select("id,created_at,file_name,months,rows,inserted").order("id", { ascending: false }).limit(12),
         db.from("bank_transactions").select("import_month").limit(10000),
       ]);
+      const { data: rcs } = await db.from("receipts").select(RC).eq("month", month).order("date", { nullsFirst: true }).order("id");
       const txs = tx || []; const invs = inv || [];
+      const withReceipt = new Set((rcs || []).map(r => r.transaction_id).filter(Boolean));
+      const { data: linkedOther } = txs.length ? await db.from("receipts").select("transaction_id").in("transaction_id", txs.map(t => t.id)) : { data: [] };
+      for (const l of linkedOther || []) withReceipt.add(l.transaction_id);
+      const needsReceipt = (t: typeof txs[number]) => Number(t.amount) < 0 && !t.ignored && t.category !== "frais bancaires" && t.category !== "virement interne";
       const inMonth = (d?: string | null) => !!d && d.slice(0, 10) >= from && d.slice(0, 10) <= to;
       const validated = invs.filter(i => i.status === "validée" && inMonth(i.issued_at));
       const drafts = invs.filter(i => i.status === "brouillon" && inMonth(i.delivered_at));
@@ -128,6 +220,7 @@ export async function POST(req: Request) {
         rapproche: txs.length > 0 && live.every(matched),
         factures: drafts.length === 0,
         pennylane: !!am?.pennylane_exported_at,
+        justificatifs: txs.length > 0 && txs.filter(needsReceipt).every(t => withReceipt.has(t.id)),
       };
       return NextResponse.json({
         ok: true, month, months, transactions: txs, imports: imports || [],
@@ -138,6 +231,8 @@ export async function POST(req: Request) {
           caTtc, caHt, tvaCollectee, debours, validated: validated.length, drafts: drafts.length, achatsTtc, tvaDeductible, marge: r2(caHt - (achatsTtc - tvaDeductible)),
         },
         invoicesNoPayment, paymentsNoInvoice, checklist, exportedAt: am?.pennylane_exported_at || null,
+        receipts: rcs || [], withReceipt: [...withReceipt],
+        receiptStats: { debitsWith: txs.filter(t => needsReceipt(t) && withReceipt.has(t.id)).length, debitsWithout: txs.filter(t => needsReceipt(t) && !withReceipt.has(t.id)).length, receiptsNoDebit: (rcs || []).filter(r => !r.transaction_id).length, attestations: (rcs || []).filter(r => r.kind === "attestation").length },
       });
     }
 
@@ -154,11 +249,21 @@ export async function POST(req: Request) {
         const { data: blob } = await db.storage.from(INVOICE_BUCKET).download(path);
         if (blob) files[`factures/${i.number}.pdf`] = new Uint8Array(await blob.arrayBuffer());
       }
+      const { data: rcs } = await db.from("receipts").select(`${RC},bank_transactions(date,label,amount)`).eq("month", month).order("date");
+      const rrows = [];
+      for (const r of rcs || []) {
+        const name = receiptFileName(r);
+        const { data: blob } = await db.storage.from(RECEIPT_BUCKET).download(r.path);
+        if (blob) files[`justificatifs/${name}`] = new Uint8Array(await blob.arrayBuffer());
+        const t = r.bank_transactions as unknown as { date: string; label: string | null; amount: number } | null;
+        rrows.push({ date: r.date, merchant: r.merchant, category: r.category, total_ttc: r.total_ttc, tva_amount: r.tva_amount, is_invoice: r.is_invoice, kind: r.kind, vat_deductible: r.vat_deductible, file: name, tx: t ? `${t.date} ${t.label || ""} ${Number(t.amount).toFixed(2)} €` : "aucune (payé hors Revolut)" });
+      }
+      files[`justificatifs-${month}.csv`] = new TextEncoder().encode(receiptsCsv(rrows));
       const csv = pennylaneInvoicesCsv(rows);
       files[`factures-ventes-${month}.csv`] = new TextEncoder().encode(csv);
       const zip = zipSync(files, { level: 6 });
       await db.from("accounting_months").upsert({ month, pennylane_exported_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: "month" });
-      return NextResponse.json({ ok: true, count: (inv || []).length, csv, zip: Buffer.from(zip).toString("base64") });
+      return NextResponse.json({ ok: true, count: (inv || []).length, receipts: rrows.length, csv, zip: Buffer.from(zip).toString("base64") });
     }
 
     if (b.action === "export_bank") {
