@@ -9,7 +9,7 @@ export const maxDuration = 60;
 const BUCKET = "job-applications";
 const t9 = (p: unknown) => String(p ?? "").replace(/\D/g, "").slice(-9);
 
-const INSTRUCTIONS = (poste: string) => `Tu es un recruteur exigeant. Analyse en profondeur ce CV d'un candidat algérien pour le poste « ${isPoste(poste) ? POSTES[poste].title : poste} » chez NeoDrive (voitures sans permis électriques vendues en France, freelance en présentiel à Alger, horaires français). Mission : ${isPoste(poste) ? POSTES[poste].summary : ""}
+const INSTRUCTIONS = (poste: string) => `Tu es un recruteur exigeant. Analyse en profondeur ce CV d'un candidat algérien pour le poste « ${isPoste(poste) ? POSTES[poste].title : poste} » chez NeoDrive (voitures sans permis électriques vendues en France, freelance à distance depuis l'Algérie (télétravail), horaires français). Mission : ${isPoste(poste) ? POSTES[poste].summary : ""}
 IMPORTANT : nous sommes le ${new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} ; des dates en 2025 ou 2026 ne sont donc pas dans le futur, ne les signale pas comme incohérentes. Reconstitue le parcours et évalue, en t'appuyant uniquement sur le CV :
 - experience (0-100) : pertinence et niveau de l'expérience pour CE poste (responsabilités, résultats chiffrés, secteur, clients français).
 - jobs : liste des postes {company, role, start: "AAAA-MM" ou null, end: "AAAA-MM" ou "en cours", months}, hors stages de moins de 3 mois.
