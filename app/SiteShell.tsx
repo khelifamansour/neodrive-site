@@ -1,5 +1,6 @@
 "use client";
 import React,{useState}from"react";
+import { usePathname } from "next/navigation";
 import SeoGlobalTracker from "./SeoGlobalTracker";
 import SocialLinks from "./_components/SocialLinks";
 
@@ -11,6 +12,9 @@ const cityLinks=[
 
 export default function SiteShell({children}:{children:React.ReactNode}){
  const[open,setOpen]=useState(false);const close=()=>setOpen(false);
+ // Pages de travail sur téléphone (tournée du chauffeur, signature du client) : plein écran, sans en-tête ni pied de page du site.
+ const bare=/^\/(chauffeur|accuse\/confirmer)(\/|$)/.test(usePathname()||"");
+ if(bare)return <>{children}<style jsx global>{`html,body{margin:0;padding:0;background:#f6f4f0}*{box-sizing:border-box}`}</style></>;
  return <>
   <SeoGlobalTracker/>
   <header className="header"><a className="stockNotice" href="/reservation-devis?modele=confort" onClick={close}>🚗 <b>Confort en stock</b> : livrée en 2 à 3 semaines · <span>Essentielle sur commande : 6 à 8 mois</span></a><div className="top"><a href="/" className="brand" onClick={close}><span className="icon">N</span><span><strong>NeoDrive</strong><small>Mobilité électrique accessible</small></span></a><div className="actions"><a className="reserveBtn" href="/reservation-devis" onClick={close}>Réserver</a><a className="whatsapp" href="https://wa.me/33676192234" target="_blank" rel="noreferrer">WhatsApp</a><button onClick={()=>setOpen(!open)}>{open?"✕":"☰"}</button></div></div><nav className={open?"menu open":"menu"}><a href="/" onClick={close}>Accueil</a><a className="reserveLink" href="/reservation-devis" onClick={close}>Réserver</a><a href="/produit" onClick={close}>Voitures</a><a href="/catalogue" onClick={close}>Catalogue</a><a className="financeLink" href="/financement" onClick={close}>Financement</a><a href="/livraison" onClick={close}>Livraison</a><a href="/videos" onClick={close}>Vidéos</a><a href="/sav" onClick={close}>SAV</a><a href="/faq" onClick={close}>FAQ</a><a href="/contact" onClick={close}>Contact</a><a className="cities" href="/voiture-sans-permis" onClick={close}>Villes</a><a className="pro" href="/professional" onClick={close}>NeoDrive Pro</a><a href="/devenir-partenaire" onClick={close}>Devenir partenaire</a><a href="/devenir-ambassadeur" onClick={close}>Devenir ambassadeur</a><a className="light" href="/light-mobility" onClick={close}>NeoDrive Deux Roues</a><a href="/neodiag" onClick={close}>🧰 NeoDiag</a><a href="/pieces" onClick={close}>Pièces</a><a href="/reservation" onClick={close}>Carte grise / contrat</a></nav></header>
