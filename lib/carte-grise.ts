@@ -29,8 +29,17 @@ export type CarteGriseFile = { key: string; label: string; path: string; name: s
 /* ───────────── Contrôle des pièces ───────────── */
 
 export type DocStatus = "ok" | "manquant" | "à refaire" | "à vérifier";
-export type DocPiece = { status: DocStatus; reason: string; detail?: string; files: number; checked_at: string };
+/**
+ * « à refaire » / « manquant » : bloquant (pièce redemandée au client). « à vérifier » : doute ou remarque, non bloquant.
+ * remark : remarque non bloquante sur une pièce ok ou à vérifier (ex. nom d'épouse, scan de qualité moyenne).
+ */
+export type DocPiece = { status: DocStatus; reason: string; detail?: string; remark?: string; files: number; checked_at: string };
+/** overall : « incomplet » seulement s'il reste une pièce manquante ou à refaire ; « à vérifier » s'il ne reste que des remarques. */
 export type DocCheck = { at: string; overall: "complet" | "incomplet" | "à vérifier"; pieces: Record<string, DocPiece> };
+/** Libellé du statut global (e-mails, admin) : « COMPLET avec remarques » quand des remarques non bloquantes subsistent. */
+export const overallLabel = (c: Pick<DocCheck, "overall" | "pieces">) =>
+  c.overall === "complet" ? (Object.values(c.pieces || {}).some(p => p.remark) ? "COMPLET avec remarques" : "COMPLET")
+  : c.overall === "à vérifier" ? "À VÉRIFIER (non bloquant)" : "INCOMPLET";
 /** Demande de pièces au client (lien /carte-grise/pieces/<missing_token>). received : pièces déposées depuis la demande. */
 export type MissingRequest = { keys: string[]; note?: string; at: string; by?: string; received?: string[]; done_at?: string; sms?: boolean; email?: boolean };
 

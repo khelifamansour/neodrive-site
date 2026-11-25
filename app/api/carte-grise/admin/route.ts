@@ -39,8 +39,9 @@ export async function POST(req: Request) {
       const rid = (d as { reservation_id?: number | null }).reservation_id;
       const { data: r } = rid ? await sb.from("reservations").select(RES).eq("id", rid).maybeSingle() : { data: null };
       const ps = payState(r);
-      if (ps !== "payé" && !b.unpaid_ok) return NextResponse.json({ ok: false, unpaid: ps, error: `Paiement : ${ps}. Confirmez l'envoi malgré tout.` }, { status: 409 });
-      return NextResponse.json({ ok: true, ...(await sendDossierToProvider(sb, d, { force: Boolean(b.force) })) });
+      const allowUnpaid = b.allow_unpaid === true || b.unpaid_ok === true;
+      if (ps !== "payé" && !allowUnpaid) return NextResponse.json({ ok: false, unpaid: ps, error: `Paiement : ${ps}. Confirmez l'envoi malgré tout.` }, { status: 409 });
+      return NextResponse.json({ ok: true, ...(await sendDossierToProvider(sb, d, { force: Boolean(b.force), allowUnpaid, allowMissing: b.allow_missing === true || b.force === true })) });
     }
     // Contrôle des pièces (lecture de chaque document) : toutes les pièces, ou seulement keys.
     if (b.action === "check") return NextResponse.json({ ok: true, check: await checkDocuments(sb, d.id, { keys: Array.isArray(b.keys) ? b.keys.map(String) : undefined }) });

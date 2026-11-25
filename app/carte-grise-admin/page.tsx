@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import c from "../giga/giga.module.css";
 import { PAY_STYLE, type PayState } from "../../lib/stock-shared";
-import { CARTE_GRISE_CLIENT_TEXT, CARTE_GRISE_FILES, CARTE_GRISE_FILE_LABEL, missingWaText, pendingKeys, type DocCheck, type MissingRequest } from "../../lib/carte-grise";
+import { CARTE_GRISE_CLIENT_TEXT, CARTE_GRISE_FILES, CARTE_GRISE_FILE_LABEL, missingWaText, overallLabel, pendingKeys, type DocCheck, type MissingRequest } from "../../lib/carte-grise";
 
 type F = { key: string; label: string; name: string; size: number };
 type D = {
@@ -54,11 +54,12 @@ export default function CarteGriseAdmin() {
   const send = async (d: D) => {
     const again = !!d.sent_to_provider_at;
     const unpaid = d.pay !== "payé";
-    const docs = d.doc_check && d.doc_check.overall !== "complet" ? `⚠️ Pièces : dossier ${d.doc_check.overall.toUpperCase()}.\n\n` : "";
+    const absent = Object.entries(d.doc_check?.pieces || {}).filter(([, p]) => p.status === "manquant").map(([k]) => CARTE_GRISE_FILE_LABEL[k] || k);
+    const docs = (d.doc_check && d.doc_check.overall !== "complet" ? `⚠️ Pièces : dossier ${overallLabel(d.doc_check)}.\n` : "") + (absent.length ? `❌ Manquant (signalé à ${provider.name}) : ${absent.join(", ")}.\n` : "") + (d.doc_check && d.doc_check.overall !== "complet" ? "\n" : "");
     if (!confirm(`${unpaid ? `⛔ ATTENTION : paiement ${d.pay.toUpperCase()}.\n\n` : ""}${docs}${again ? "RENVOYER" : "Envoyer"} le dossier de ${[d.prenom, d.nom].filter(Boolean).join(" ")} à ${provider.name} (${provider.email}) ?\nVous serez en copie.`)) return;
     setBusy(d.id); setMsg("");
     try {
-      const r = await api<{ to: string; attached: string[]; linked: string[]; missing: string[] }>({ action: "send", id: d.id, force: again, unpaid_ok: unpaid });
+      const r = await api<{ to: string; attached: string[]; linked: string[]; missing: string[] }>({ action: "send", id: d.id, force: again, unpaid_ok: unpaid, allow_missing: true });
       setMsg(`✅ Envoyé à ${r.to} : ${r.attached.length} pièce(s) jointe(s)${r.linked.length ? `, ${r.linked.length} en lien (14 jours)` : ""}${r.missing.length ? ` ⚠️ manquantes : ${r.missing.join(", ")}` : ""}.`);
       await load();
     } catch (e) { setMsg("❌ " + (e as Error).message); } finally { setBusy(null); }
@@ -123,8 +124,8 @@ export default function CarteGriseAdmin() {
             {d.match_note ? <><br /><span style={{ color: "#666" }}>{d.match_note}</span></> : null}
           </div>
           <div style={{ marginTop: 8, background: d.doc_check ? OVERALL_BG[d.doc_check.overall] : "#f5f5f5", borderRadius: 10, padding: "8px 10px" }} className={c.small}>
-            <b>📋 Contrôle des pièces : {d.doc_check ? d.doc_check.overall.toUpperCase() : "pas encore fait"}</b>{d.doc_check ? <span style={{ color: "#666" }}> · {fmt(d.doc_check.at)}</span> : null}
-            {d.doc_check ? <ul style={{ margin: "4px 0 0", paddingLeft: 18, lineHeight: 1.5 }}>{Object.entries(d.doc_check.pieces).map(([k, p]) => <li key={k}>{DOC_ICON[p.status]} <b>{CARTE_GRISE_FILE_LABEL[k] || k}</b> : {p.status}{p.reason ? ` – ${p.reason}` : ""}{p.detail ? <span style={{ color: "#777" }}> ({p.detail})</span> : null}</li>)}</ul> : null}
+            <b>📋 Contrôle des pièces : {d.doc_check ? overallLabel(d.doc_check) : "pas encore fait"}</b>{d.doc_check ? <span style={{ color: "#666" }}> · {fmt(d.doc_check.at)}</span> : null}
+            {d.doc_check ? <ul style={{ margin: "4px 0 0", paddingLeft: 18, lineHeight: 1.5 }}>{Object.entries(d.doc_check.pieces).map(([k, p]) => <li key={k}>{DOC_ICON[p.status]} <b>{CARTE_GRISE_FILE_LABEL[k] || k}</b> : {p.status}{p.reason ? ` – ${p.reason}` : ""}{p.remark && p.remark !== p.reason ? <span style={{ color: "#a16207" }}> · Remarque : {p.remark}</span> : null}{p.detail ? <span style={{ color: "#777" }}> ({p.detail})</span> : null}</li>)}</ul> : null}
             {d.missing_token ? <div style={{ marginTop: 6 }}>
               📨 Pièces demandées{d.missing_request ? ` le ${fmt(d.missing_request.at)} : ${d.missing_request.keys.map(k => CARTE_GRISE_FILE_LABEL[k] || k).join(", ")}` : ""}{d.missing_request?.received?.length ? ` · reçues : ${d.missing_request.received.map(k => CARTE_GRISE_FILE_LABEL[k] || k).join(", ")}` : ""}{d.missing_request?.done_at ? " · ✅ terminé" : ""}<br />
               <a href={piecesUrl(d.missing_token)} target="_blank" rel="noreferrer">Lien client</a>{waUrl(d) ? <> · <a href={waUrl(d)!} target="_blank" rel="noreferrer">Envoyer sur WhatsApp</a></> : null}{" · "}
