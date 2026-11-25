@@ -19,7 +19,7 @@ export type Certificat = {
   buyer: string[];
   /** Lignes du véhicule (modèle, VIN, CNIT…). */
   vehicle: string[];
-  /** Lignes de prix [libellé, montant] ; la dernière est le total, en gras. */
+  /** Lignes de prix [libellé, montant] ; la dernière est le total, en gras. Vide : aucune ligne de prix. */
   prices: [string, string][];
   statement: string;
   footer?: string;
@@ -42,7 +42,8 @@ export function writeCertificat<P extends CertificatPdf>(pdf: P, x: Certificat):
   let y = 108;
   for (const t of ["Voiturette électrique neuve (quadricycle léger, catégorie L6e)", ...x.vehicle].filter(Boolean)) { pdf.text(pdfText(t), 20, y, { maxWidth: 170 }); y += 7; }
 
-  y += 5; pdf.line(20, y, 190, y); y += 8;
+  // Sans prix (facultatif sur la page partenaire) : aucune ligne de prix.
+  if (x.prices.length) { y += 5; pdf.line(20, y, 190, y); y += 8; }
   x.prices.forEach(([label, value], i) => {
     const last = i === x.prices.length - 1;
     if (last && x.prices.length > 1) { pdf.line(20, y - 5, 190, y - 5); y += 2; }
@@ -51,7 +52,7 @@ export function writeCertificat<P extends CertificatPdf>(pdf: P, x: Certificat):
     const v = pdfText(value); pdf.text(v, 190 - pdf.getTextWidth(v), y);
     y += 8;
   });
-  pdf.line(20, y - 3, 190, y - 3); y += 9;
+  if (x.prices.length) { pdf.line(20, y - 3, 190, y - 3); y += 9; } else y += 8;
 
   pdf.setFontSize(10);
   pdf.text(pdfText(x.statement), 20, y, { maxWidth: 170 });

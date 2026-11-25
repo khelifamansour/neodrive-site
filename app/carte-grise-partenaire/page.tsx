@@ -97,10 +97,12 @@ export default function CarteGrisePartenaire() {
   const vinShapeOk = vin.length === 17 && !/[IOQ]/.test(vin);
   const vinSource = readOk ? "lu sur le COC" : vinShapeOk ? "saisi à la main" : "";
   const price = Number(sale.prix_vente_ttc.replace(",", "."));
-  const priceOk = sale.prix_vente_ttc.trim() !== "" && Number.isFinite(price) && price > 0;
+  // Prix facultatif (le partenaire peut ne pas le communiquer) ; s'il est saisi, il doit être un montant positif.
+  const hasPrice = sale.prix_vente_ttc.trim() !== "";
+  const priceOk = !hasPrice || (Number.isFinite(price) && price > 0);
   const modelLabel = MODELES.find(m => m.value === sale.version)?.label || [coc.marque, coc.type].filter(Boolean).join(" ");
 
-  const contactDone = !!(client.nom && client.prenom && client.telephone && client.email && client.adresse && /^[0-9]{5}$/.test(client.code_postal) && client.ville);
+  const contactDone = !!(client.nom && client.prenom && client.adresse && /^[0-9]{5}$/.test(client.code_postal) && client.ville);
   const piecesDone = !!(files.cni && files.justificatif_domicile && files.coc && vinShapeOk);
   const stepState = [contactDone, piecesDone, priceOk && !!partnerName, !!files.mandat_carte_grise_signe];
 
@@ -161,13 +163,13 @@ export default function CarteGrisePartenaire() {
       seller: [partnerName, sale.partenaire_siret.trim() ? `SIRET : ${sale.partenaire_siret.trim()}` : "", sale.partenaire_adresse.trim()],
       buyer: [clientName, client.adresse.trim(), `${client.code_postal} ${client.ville.trim()}`, client.telephone.trim(), client.email.trim()],
       vehicle: [modelLabel ? `Modèle : ${modelLabel}` : "", `Numéro d’identification (VIN) : ${vin}`, sale.cnit_code.trim() ? `CNIT : ${sale.cnit_code.trim()}` : ""],
-      prices: [["Prix de vente TTC", pdfEuros(price)]],
-      statement: `${partnerName} certifie avoir vendu le véhicule désigné ci-dessus à ${clientName}, au prix indiqué.`,
+      prices: hasPrice && priceOk ? [["Prix de vente TTC", pdfEuros(price)]] : [],
+      statement: `${partnerName} certifie avoir vendu le véhicule désigné ci-dessus à ${clientName}${hasPrice && priceOk ? ", au prix indiqué" : ""}.`,
       footer: `Établi par ${partnerName} le ${today} via le formulaire partenaire NeoDrive. NeoDrive (MK HOLDING SAS) n’est pas le vendeur : elle réalise uniquement les démarches d’immatriculation pour le compte de l’acheteur, sur mandat signé.`,
     });
   };
   const previewCertificat = () => {
-    if (!partnerName || !priceOk || !vinShapeOk || !clientName) { alert("Complétez d’abord le client, le COC (VIN), le nom du partenaire et le prix de vente."); return; }
+    if (!partnerName || !priceOk || !vinShapeOk || !clientName) { alert(!priceOk ? "Le prix de vente doit être un montant en euros (ou laissez-le vide)." : "Complétez d’abord le client, le COC (VIN) et le nom du partenaire."); return; }
     buildCertificat()?.save(`certificat-vente-${safeFileName(client.nom)}.pdf`);
   };
 
@@ -182,7 +184,7 @@ export default function CarteGrisePartenaire() {
       [has("cni"), "doc-cni", "Ajoutez la pièce d’identité du client."],
       [has("justificatif_domicile"), "doc-domicile", "Ajoutez le justificatif de domicile du client."],
       [!!partnerName, "partenaire", "Indiquez le nom du partenaire."],
-      [priceOk, "prix", "Indiquez le prix de vente TTC."],
+      [priceOk, "prix", "Le prix de vente doit être un montant en euros (ou laissez-le vide)."],
       [has("mandat_carte_grise_signe"), "sign-mandat", "Signez le mandat (avec le doigt dans le cadre, ou en important le mandat signé)."],
     ];
     const missing = checks.find(([ok]) => !ok);
@@ -234,7 +236,7 @@ export default function CarteGrisePartenaire() {
           <span className={s.kicker}><i /> Partenaire NeoDrive{partnerName ? ` · ${partnerName}` : ""}</span>
           <h1>Carte grise<br /><span>de votre client.</span></h1>
           <p>Ce dossier sert à faire la carte grise du client d’un partenaire NeoDrive{partnerName ? <> (<b>{partnerName}</b>)</> : null}. <b>La carte grise est prise en charge par NeoDrive : rien à payer, ni pour vous, ni pour votre client.</b></p>
-          <p style={{ marginTop: 12 }}>Quelques minutes depuis votre téléphone : les coordonnées du client, trois documents en photo, le prix de vente et la signature du mandat. Nous nous occupons du reste.</p>
+          <p style={{ marginTop: 12 }}>Quelques minutes depuis votre téléphone : les coordonnées du client, trois documents en photo et la signature du mandat. Nous nous occupons du reste.</p>
           <div className={s.heroCtas}>
             <a href="#dossier" className={s.btnPrimary}>Commencer le dossier</a>
             <a href={WHATSAPP} target="_blank" rel="noreferrer" className={s.btnLink}>{Icon.chat} Une question ?</a>
@@ -276,8 +278,8 @@ export default function CarteGrisePartenaire() {
             <div className={s.fields}>
               {cField("prenom", "Prénom", { autoComplete: "off", placeholder: "Prénom" })}
               {cField("nom", "Nom", { autoComplete: "off", placeholder: "Nom" })}
-              {cField("telephone", "Téléphone", { type: "tel", autoComplete: "off", inputMode: "tel", placeholder: "06 12 34 56 78" })}
-              {cField("email", "Adresse e-mail", { type: "email", autoComplete: "off", inputMode: "email", placeholder: "client@exemple.fr" })}
+              {cField("telephone", "Téléphone", { required: false, type: "tel", autoComplete: "off", inputMode: "tel", placeholder: "06 12 34 56 78" })}
+              {cField("email", "Adresse e-mail", { required: false, type: "email", autoComplete: "off", inputMode: "email", placeholder: "client@exemple.fr" })}
               {cField("adresse", "Adresse", { autoComplete: "off", wide: true, placeholder: "N° et rue" })}
               {cField("code_postal", "Code postal", { inputMode: "numeric", autoComplete: "off", placeholder: "Ex. 31600", maxLength: 5 })}
               {cField("ville", "Ville", { autoComplete: "off", list: "cgp-cities" })}
@@ -325,8 +327,9 @@ export default function CarteGrisePartenaire() {
             <header className={s.cardHead}><span className={s.stepNum}>3</span><div><h2>Prix de vente</h2><p>Un certificat de vente à votre nom est créé et joint au dossier : il prouve la vente pour la carte grise (il ne remplace pas votre facture).</p></div></header>
             <div className={s.fields}>
               <label className={`${s.field} ${s.wide}`}>
-                <span>Prix de vente TTC payé par votre client (€)</span>
-                <span className={s.inputWrap}><input id="prix" name="prix_vente_ttc" required inputMode="decimal" autoComplete="off" placeholder="Ex. 8990" value={sale.prix_vente_ttc} onChange={onSale} />{priceOk ? <i className={s.ok}>{Icon.check}</i> : null}</span>
+                <span>Prix de vente TTC payé par votre client (€) <em>(facultatif)</em></span>
+                <span className={s.inputWrap}><input id="prix" name="prix_vente_ttc" inputMode="decimal" autoComplete="off" placeholder="Ex. 8990" value={sale.prix_vente_ttc} onChange={onSale} />{hasPrice && priceOk ? <i className={s.ok}>{Icon.check}</i> : null}</span>
+                <em>Laissez vide si vous préférez ne pas l’indiquer : il n’apparaîtra pas sur le certificat.</em>
               </label>
               {sField("partenaire", "Nom du partenaire (vendeur)", { id: "partenaire", wide: true, autoComplete: "organization", placeholder: "Ex. Lolan Mobility" })}
               {sField("partenaire_siret", "SIRET", { required: false, inputMode: "numeric", autoComplete: "off", placeholder: "14 chiffres" })}
@@ -379,7 +382,7 @@ export default function CarteGrisePartenaire() {
               <li>Le COC du véhicule (première page)</li>
               <li>La pièce d’identité du client</li>
               <li>Son justificatif de domicile</li>
-              <li>Le prix de vente</li>
+              <li>Le prix de vente (facultatif)</li>
             </ul>
             <p style={{ margin: "12px 0 0", fontSize: 14, color: "#1d7a4c", fontWeight: 700 }}>Carte grise offerte par NeoDrive</p>
           </div>
