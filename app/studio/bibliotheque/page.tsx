@@ -39,6 +39,9 @@ export default function Bibliotheque() {
   const [failedBatches, setFailedBatches] = useState<StoredBatch[]>([]);
   const [install, setInstall] = useState<{ prompt: () => Promise<void> } | null>(null);
   const [filter, setFilter] = useState<"all" | Item["status"]>("all");
+  const [sel, setSel] = useState<string | null>(null);
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [batch, setBatch] = useState("");
   const jobsRef = useRef<Map<string, UploadJob>>(new Map());
   const codeRef = useRef("");
 
@@ -174,6 +177,26 @@ export default function Bibliotheque() {
     if (!confirm(`Supprimer « ${it.name} » de la bibliothèque ?`)) return;
     try { await api({ action: "delete", id: it.id }); setItems(xs => xs.filter(x => x.id !== it.id)); } catch (e) { setErr((e as Error).message); }
   };
+  const upd = (it: Item) => setItems(xs => xs.map(x => x.id === it.id ? { ...x, ...it } : x));
+  const analyse = async (it: Item) => {
+    setBusy(b => ({ ...b, [it.id]: true })); upd({ ...it, status: "analysing" }); setErr("");
+    try { const j = await api({ action: "analyse", id: it.id }); upd(j.item); setSel(it.id); }
+    catch (e) { setErr((e as Error).message); load().catch(() => null); }
+    finally { setBusy(b => ({ ...b, [it.id]: false })); }
+  };
+  const analyseAll = async () => {
+    setErr("");
+    for (let round = 0; round < 60; round++) {
+      setBatch(`Analyse en cours… (gardez la page ouverte, ou laissez faire l’analyse automatique)`);
+      try { const j = await api({ action: "queue", max: 2 }); await load(); if (!j.remaining || !j.done.length) break; setBatch(`Analyse en cours… encore ${j.remaining}`); }
+      catch (e) { setErr((e as Error).message); break; }
+    }
+    setBatch("");
+  };
+  const setFlag = async (it: Item, patch: Partial<Pick<Item, "consent" | "has_client">>) => {
+    upd({ ...it, ...patch });
+    try { const j = await api({ action: "update", id: it.id, ...patch }); if (j.item) upd(j.item); } catch (e) { setErr((e as Error).message); upd(it); }
+  };
   const open = async (it: Item) => { try { const j = await api({ action: "get", id: it.id }); if (j.url) window.open(j.url, "_blank", "noopener"); } catch (e) { setErr((e as Error).message); } };
 
   if (authed === null) return <main className="s"><p className="muted">Chargement…</p><style jsx>{css}</style></main>;
@@ -221,12 +244,30 @@ export default function Bibliotheque() {
     </section> : null}
 
     <h2>Vidéos ({items.length})</h2>
+    {items.some(i => i.status === "uploaded") ? <button className="go" disabled={!!batch} onClick={analyseAll}>🧠 Analyser les {items.filter(i => i.status === "uploaded").length} vidéo(s) en attente</button> : null}
+    {batch ? <div className="busy">{batch}<div className="bar pulse"><i /></div></div> : null}
+    <p className="muted">L’analyse se fait aussi automatiquement toutes les 20 minutes.</p>
+    {(() => { const it = items.find(i => i.id === sel); if (!it || !it.analysis) return null; const a = it.analysis as Record<string, unknown> & { best_moments?: { start: number; end: number; why: string; kind: string }[]; pii?: { start: number; end: number; label: string; visual: boolean }[]; hooks?: string[]; scenes?: string[] };
+      return <section className="card det" id="det">
+        <div className="head"><b>{it.name}</b><button className="link" onClick={() => setSel(null)}>Fermer</button></div>
+        <p>{String(a.summary || "")}</p>
+        {a.scenes?.length ? <p className="chips">{a.scenes.map(x => <span key={x}>{x}</span>)}</p> : null}
+        <p className="muted">Qualité {String(a.quality || "?")}/5 · {String(a.light || "")} · {String(a.setting || "")}</p>
+        {a.best_moments?.length ? <><b>Meilleurs moments</b><ul>{a.best_moments.map((m, i) => <li key={i}><b>{dur(m.start) || "0:00"}–{dur(m.end)}</b> {m.why}</li>)}</ul></> : null}
+        {a.hooks?.length ? <><b>Accroches</b><ul>{a.hooks.map((h, i) => <li key={i}>{h}</li>)}</ul></> : null}
+        {a.pii?.length ? <><b>🔒 Infos personnelles repérées (masquées au montage)</b><ul>{a.pii.map((m, i) => <li key={i}>{dur(m.start) || "0:00"} : {m.label}{m.visual ? " (image)" : ""}</li>)}</ul></> : null}
+      </section>; })()}
     <div className="seg">{(["all", "uploaded", "analysed", "error"] as const).map(f => <button key={f} className={filter === f ? "on" : ""} onClick={() => setFilter(f)}>{f === "all" ? "Toutes" : STATUS[f]}</button>)}</div>
     <div className="grid">{shown.map(it => <article key={it.id} className="vid">
       <button className="thumb" onClick={() => open(it)} aria-label={`Voir ${it.name}`}>{it.posterUrl ? <img src={it.posterUrl} alt="" loading="lazy" /> : <span>🎬</span>}{it.duration ? <em>{dur(it.duration)}</em> : null}</button>
       <div className="meta"><b title={it.name}>{it.name}</b><small>{mb(it.size)} · {new Date(it.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</small>
-        <span className={`st ${it.status}`}>{STATUS[it.status]}</span>
+        <span className={`st ${it.status}`}>{busy[it.id] ? "Analyse…" : STATUS[it.status]}</span>
         <button className="x" onClick={() => del(it)} aria-label="Supprimer">🗑</button>
+        {it.status === "analysed" ? <button className="mini" onClick={() => { setSel(it.id); setTimeout(() => document.getElementById("det")?.scrollIntoView({ behavior: "smooth" }), 50); }}>Détails</button>
+          : <button className="mini" disabled={!!busy[it.id] || it.status === "analysing"} onClick={() => analyse(it)}>{it.status === "error" ? "Réessayer" : "Analyser"}</button>}
+        {it.status === "error" && it.error ? <small className="e">{it.error}</small> : null}
+        <label className="cons"><input type="checkbox" checked={it.has_client} onChange={e => setFlag(it, { has_client: e.target.checked })} /> Client visible</label>
+        {it.has_client ? <label className={`cons${it.consent ? " yes" : " no"}`}><input type="checkbox" checked={it.consent} onChange={e => setFlag(it, { consent: e.target.checked })} /> Accord du client</label> : null}
       </div>
     </article>)}</div>
     {!shown.length ? <p className="muted">Aucune vidéo pour l’instant.</p> : null}
@@ -257,4 +298,9 @@ button{font:inherit;cursor:pointer}.login button{padding:15px;border:0;border-ra
 .thumb{position:relative;border:0;padding:0;background:#111;aspect-ratio:9/12;display:grid;place-items:center;color:#fff;font-size:34px;overflow:hidden}.thumb img{width:100%;height:100%;object-fit:cover}.thumb em{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.7);color:#fff;font-size:12px;font-style:normal;padding:2px 6px;border-radius:6px;font-weight:700}
 .meta{display:grid;grid-template-columns:1fr auto;gap:2px 6px;padding:8px;font-size:13px;align-items:center}.meta b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;grid-column:1/3}.meta small{color:#777;grid-column:1/3}
 .st{justify-self:start;font-size:12px;font-weight:800;padding:3px 8px;border-radius:999px;background:#f2f4f7;color:#344054}.st.analysed{background:#ecfdf3;color:#067647}.st.analysing{background:#fff7ed;color:#b54708}.st.error{background:#fef3f2;color:#b42318}
+.go{padding:14px;border:0;border-radius:14px;background:linear-gradient(135deg,#ff8a00,#f05a28);color:#fff;font-weight:900;font-size:16px;width:100%;margin:4px 0}.go:disabled{opacity:.5}
+.mini{grid-column:1/3;padding:9px 10px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:800;font-size:13px;color:#111}.mini:disabled{opacity:.5}
+.cons{grid-column:1/3;display:flex;gap:6px;align-items:center;font-size:12px;font-weight:700;color:#344054}.cons input{width:18px;height:18px;padding:0;margin:0}.cons.no{color:#b42318}.cons.yes{color:#067647}
+.e{color:#b42318!important;font-size:11px}
+.det ul{margin:4px 0 8px;padding-left:18px;font-size:14px;line-height:1.5}.det p{margin:2px 0}.chips{display:flex;flex-wrap:wrap;gap:4px}.chips span{background:#f2f4f7;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700}
 .x{border:1px solid #eee;background:#fff;border-radius:10px;min-width:40px;min-height:40px;font-size:16px}`;

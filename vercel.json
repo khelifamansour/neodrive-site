@@ -116,6 +116,10 @@
     {
       "path": "/api/tableau-de-bord",
       "schedule": "5 5,6 * * 1-6"
+    },
+    {
+      "path": "/api/studio/library",
+      "schedule": "*/20 5-21 * * *"
     }
   ]
 }

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import OpenAI from "openai";
 import { authorizeSection, logSection } from "../../../../lib/access";
 import { crmDatabase } from "../../../../lib/crm-agent";
 import { BUCKET } from "../../../../lib/studio-video";
+import { analyseItem } from "../../../../lib/video-analysis";
 import {
   LIB_MAX_BYTES, blankItem, deleteItem, getItem, libId, libPath, listItems, patchItem, readTicket, reconcile, safeLibId, saveItem, signTicket,
   type LibItem,
@@ -39,6 +41,20 @@ async function withUrls(db: Db, items: LibItem[]) {
   const signed = posters.length ? (await db.storage.from(BUCKET).createSignedUrls(posters, 60 * 60 * 6)).data || [] : [];
   const map = new Map(signed.map(s => [s.path, s.signedUrl]));
   return items.map(i => ({ ...i, transcript: undefined, posterUrl: i.poster_path ? map.get(i.poster_path) || null : null, hasTranscript: !!i.transcript }));
+}
+
+/** Analyse les vidéos en attente, une par une, tant qu'il reste du temps dans l'appel (Vercel : 300 s). */
+async function processQueue(db: Db, client: OpenAI, max = 3, budgetMs = 150000) {
+  const t0 = Date.now(); const done: { id: string; ok: boolean; error?: string }[] = [];
+  const stale = Date.now() - 12 * 60000;
+  const all = await listItems(db, { status: ["uploaded", "analysing"], limit: 200 });
+  const todo = all.filter(i => i.status === "uploaded" || new Date(i.updated_at).getTime() < stale).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  for (const it of todo) {
+    if (done.length >= max || Date.now() - t0 > budgetMs) break;
+    try { await analyseItem(db, client, it); done.push({ id: it.id, ok: true }); }
+    catch (e) { const m = (e as Error).message.slice(0, 200); await patchItem(db, it.id, { status: "error", error: m }).catch(() => null); done.push({ id: it.id, ok: false, error: m }); }
+  }
+  return { done, remaining: Math.max(0, todo.length - done.length) };
 }
 
 const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
@@ -90,6 +106,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, bucket: BUCKET, files: out });
     }
 
+    if (action === "queue") {
+      const key = process.env.OPENAI_API_KEY; if (!key) return fail("Clé IA absente", 503);
+      const q = await processQueue(db, new OpenAI({ apiKey: key }), Math.min(5, Number(b.max) || 2));
+      return NextResponse.json({ ok: true, ...q });
+    }
+
     if (action === "list") {
       let items = await listItems(db, { limit: 400 });
       if (b.reconcile !== false) { const added = await reconcile(db, items).catch(() => []); if (added.length) items = [...added, ...items].sort((x, y) => y.created_at.localeCompare(x.created_at)); }
@@ -104,6 +126,18 @@ export async function POST(req: Request) {
     if (action === "get") {
       const { data } = await db.storage.from(BUCKET).createSignedUrl(it.path, 60 * 60 * 6);
       return NextResponse.json({ ok: true, item: { ...(await withUrls(db, [it]))[0], transcript: it.transcript }, url: data?.signedUrl || null });
+    }
+    if (action === "analyse") {
+      const key = process.env.OPENAI_API_KEY; if (!key) return fail("Clé IA absente", 503);
+      try {
+        const next = await analyseItem(db, new OpenAI({ apiKey: key }), it);
+        await logSection(acc, "studio_library_analyse", { id });
+        return NextResponse.json({ ok: true, item: { ...(await withUrls(db, [next]))[0] } });
+      } catch (e) {
+        const m = (e as Error).message.slice(0, 200);
+        await patchItem(db, id, { status: "error", error: m }).catch(() => null);
+        return fail("Analyse impossible : " + m, 500);
+      }
     }
     if (action === "update") {
       const patch: Partial<LibItem> = {};
@@ -124,4 +158,13 @@ export async function POST(req: Request) {
     console.error("[studio-library]", action, msg.slice(0, 500));
     return fail("Erreur : " + msg.slice(0, 200), 500);
   }
+}
+
+/** Tâche planifiée (Vercel Cron, Authorization: Bearer CRON_SECRET) : analyse les vidéos en attente. */
+export async function GET(req: Request) {
+  const acc = await authorizeSection(req, null, "contenu");
+  if (!acc) return fail("Non autorisé", 401);
+  const key = process.env.OPENAI_API_KEY; if (!key) return fail("Clé IA absente", 503);
+  try { return NextResponse.json({ ok: true, ...(await processQueue(crmDatabase(), new OpenAI({ apiKey: key }), 4, 200000)) }); }
+  catch (e) { return fail("Erreur : " + (e as Error).message.slice(0, 200), 500); }
 }
