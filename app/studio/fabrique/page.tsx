@@ -11,6 +11,8 @@ type Lib = { total: number; usable: number; pending: number; needConsent: number
 
 const API = "/api/studio/fabrique";
 const ST: Record<Proposal["status"], string> = { draft: "En attente de rendu", rendering: "Rendu en cours…", rendered: "Prête", error: "Erreur" };
+/** Trou à remplir ([X], [à vérifier]…) : la vidéo doit être vérifiée avant téléchargement. */
+const toCheck = (p: Proposal) => /\[[^\]]*\]/.test(`${p.hook} ${p.script} ${p.caption}`);
 const fmtDay = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
 export default function Fabrique() {
@@ -20,7 +22,7 @@ export default function Fabrique() {
   const [day, setDay] = useState(""); const [today, setToday] = useState(""); const [days, setDays] = useState<string[]>([]);
   const [angles, setAngles] = useState<Record<string, string>>({});
   const [ps, setPs] = useState<Proposal[]>([]); const [lib, setLib] = useState<Lib | null>(null);
-  const [fb, setFb] = useState<Record<string, string>>({}); const [one, setOne] = useState<Record<string, boolean>>({});
+  const [fb, setFb] = useState<Record<string, string>>({}); const [checked, setChecked] = useState<Record<string, boolean>>({}); const [one, setOne] = useState<Record<string, boolean>>({});
   const codeRef = useRef(""); const rendering = useRef(false); const autoDone = useRef(false);
 
   const api = useCallback(async (body: Record<string, unknown>, pc = codeRef.current) => {
@@ -112,7 +114,8 @@ export default function Fabrique() {
       <h2>{p.hook || p.title}</h2>
       {p.url ? <video className="vid" src={p.url} controls playsInline preload="metadata" /> : null}
       {p.status === "error" && p.error ? <p className="err small">{p.error}</p> : null}
-      {p.downloadUrl ? <a className="go dl" href={p.downloadUrl}>⬇️ Télécharger la vidéo{p.duration ? ` (${Math.round(p.duration)} s)` : ""}</a> : null}
+      {toCheck(p) ? <label className="warn chk"><input type="checkbox" checked={!!checked[p.id]} onChange={e => setChecked(c => ({ ...c, [p.id]: e.target.checked }))} /> ⚠️ À vérifier : le texte contient un élément entre crochets. Cochez après vérification (ou « Refaire »).</label> : null}
+      {p.downloadUrl && (!toCheck(p) || checked[p.id]) ? <a className="go dl" href={p.downloadUrl}>⬇️ Télécharger la vidéo{p.duration ? ` (${Math.round(p.duration)} s)` : ""}</a> : null}
       {(p.status === "draft" || p.status === "error") && !busy ? <button className="ghost" disabled={!!one[p.id]} onClick={() => renderOne(p)}>▶️ Fabriquer cette vidéo</button> : null}
       <div className="cap"><p>{p.caption}{p.hashtags.length ? "\n\n" + p.hashtags.join(" ") : ""}</p><button className="mini" onClick={() => copy(`${p.caption}\n\n${p.hashtags.join(" ")}`)}>Copier la légende</button></div>
       <details><summary>Script et extraits</summary><p className="script">{p.script}</p><ul>{p.segments.map((s, k) => <li key={k}>{s.clip.slice(-5)} : {s.start.toFixed(1)}–{s.end.toFixed(1)} s{s.why ? ` — ${s.why}` : ""}</li>)}</ul>{p.feedback ? <p className="muted">Dernière remarque : « {p.feedback} »</p> : null}</details>
@@ -143,4 +146,5 @@ button{font:inherit;cursor:pointer}.login button{padding:15px;border:0;border-ra
 .mini{justify-self:start;padding:8px 12px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:800;font-size:13px;color:#111}
 details summary{font-weight:800;cursor:pointer;padding:4px 0}.script{white-space:pre-line;font-size:15px;line-height:1.5}details ul{padding-left:18px;font-size:13px;color:#444}
 .pub{display:flex;gap:8px;align-items:center;font-weight:800}.pub input{width:22px;height:22px;margin:0}
+.chk{display:flex;gap:8px;align-items:flex-start}.chk input{width:20px;height:20px;margin:2px 0 0;flex:none}
 .redo{display:grid;gap:4px;border-top:1px dashed #e5e7eb;padding-top:8px}`;

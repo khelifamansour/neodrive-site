@@ -23,29 +23,31 @@ const META = "fabrique/";
 // ───────────── faits vérifiés (seule source des chiffres) ─────────────
 const eur = (n: number) => n.toLocaleString("fr-FR").replace(/ /g, " ");
 const MONTHS = Math.max(...FINANCE.durations);
-const monthly = (price: number) => Math.round(monthlyPayment(price, MONTHS));
-const TAEG = String(FINANCE.taeg).replace(".", ",");
-export const CREDIT_MENTION = `Exemple indicatif : ${eur(VEHICLES.essentielle.price)} € sur ${MONTHS} mois, ${monthly(VEHICLES.essentielle.price)} €/mois, TAEG fixe ${TAEG} %. Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager.`;
+/** Mensualité « dès » affichée par le site (simulateur, durée la plus longue). Seul chiffre de financement autorisé. */
+const FROM_MONTHLY = Math.round(monthlyPayment(VEHICLES.essentielle.price, MONTHS));
+/** Mention obligatoire, à l'écran et dans la légende, dès qu'une mensualité est citée (règle de la stratégie contenu). */
+export const CREDIT_ONSCREEN = `Exemple, sous réserve d'acceptation, TAEG à préciser. Un crédit vous engage et doit être remboursé.`;
+export const CREDIT_MENTION = `${CREDIT_ONSCREEN} Vérifiez vos capacités de remboursement avant de vous engager.`;
 export const FACTS = [
   `Marque NeoDrive : voitures sans permis neuves, 100 % électriques, 2 places, 45 km/h, accessibles dès 14 ans avec le permis AM. Société MK HOLDING (Muret, Haute-Garonne), vente directe en ligne et par téléphone.`,
-  `Prix TTC : Essentielle ${eur(VEHICLES.essentielle.price)} € (${AVAILABILITY.essentielle.short.toLowerCase()}), Confort ${eur(VEHICLES.confort.price)} € (${AVAILABILITY.confort.short.toLowerCase()}), Confort Plus ${eur(VEHICLES.confortPlus.price)} €.`,
-  `Financement : à partir de ${monthly(VEHICLES.essentielle.price)} €/mois (Essentielle, ${MONTHS} mois, TAEG fixe indicatif ${TAEG} %) ; Confort environ ${monthly(VEHICLES.confort.price)} €/mois sur ${MONTHS} mois. Toute mention du financement impose la mention légale (ajoutée automatiquement).`,
+  `Prix : on ne cite QUE la NeoDrive Confort à ${eur(VEHICLES.confort.price)} € TTC (${AVAILABILITY.confort.short.toLowerCase()}). Ne jamais citer d'autre prix de voiture.`,
+  `Financement : « dès ${FROM_MONTHLY} €/mois » uniquement, toujours présenté comme un exemple, sous réserve d'acceptation (la mention légale est ajoutée automatiquement à l'écran et dans la légende). Aucun autre chiffre de crédit (durée, taux).`,
   `Livraison à domicile partout en France continentale : 450 € (Haute-Garonne, Tarn, Tarn-et-Garonne, Gers, Ariège), puis 590 €, 690 € ou 790 € selon le département ; Corse et outre-mer sur devis.`,
   `Réservation sans acompte, paiement à la livraison. Recharge sur une prise 220 V classique (environ 6 heures). Autonomie indicative 50 à 70 km selon conditions et version.`,
   `Pas de concession : import direct depuis le fabricant (conteneurs), vente directe, livrée chez le client par l'équipe NeoDrive.`,
 ].join("\n");
 const ALLOWED = new Set<number>([
-  VEHICLES.essentielle.price, VEHICLES.confort.price, VEHICLES.confortPlus.price, monthly(VEHICLES.essentielle.price), monthly(VEHICLES.confort.price), MONTHS, FINANCE.taeg,
+  VEHICLES.confort.price, FROM_MONTHLY,
   450, 590, 690, 790, 45, 14, 220, 50, 70, 100, 2026, 24,
 ]);
 const COMPETITORS = /\b(aixam|ligier|microcar|chatenet|bellier|jdm|casalini|citro[eë]n|ami\b|topolino|fiat|twizy|mobilize|opel|rocks-e|renault|dacia|tesla|silence\s*s0[14])/i;
 
 export const ANGLES: Record<string, string> = {
-  prix_velo: "Le prix d'un bon vélo électrique… et t'as une voiture (prix réels de la gamme)",
+  prix_velo: "Le prix d'un bon vélo électrique… et t'as une voiture (Confort 4 990 € TTC)",
   pourquoi_prix: "Pourquoi nos prix sont bas : vente directe, pas de concession, livrée chez vous (sans se dire « les moins chers » ni chiffrer les autres)",
   electrique: "Électrique : pas de station-service, recharge sur une prise 220 V (qualitatif, aucun coût d'énergie chiffré)",
   concession: "Ce que les concessionnaires ne vous disent pas (questions à poser avant d'acheter, sans attaquer personne)",
-  financement: `Financement dès ${monthly(VEHICLES.essentielle.price)} €/mois`,
+  financement: `Financement dès ${FROM_MONTHLY} €/mois (exemple, sous réserve d'acceptation)`,
   livraison: "Livraison partout en France, chez vous (tarifs réels par zone)",
   temoignage: "Témoignage / livraison client (seulement avec des clips dont le client a donné son accord)",
   coulisses: "Coulisses : arrivage, préparation, remorque, l'équipe sur la route",
@@ -132,6 +134,9 @@ export function checkText(...texts: string[]) {
   const bad = numbersIn(t).filter(n => n > 10 && !ALLOWED.has(n));
   if (bad.length) return `chiffre non vérifié : ${bad.slice(0, 3).join(", ")}`;
   const c = COMPETITORS.exec(t); if (c) return `concurrent cité : ${c[0]}`;
+  if (/\[[^\]]*\]/.test(t)) return "élément à vérifier ou trou à remplir ([…])";
+  if (/(permis|licence)[^.!?]{0,60}(suspendu|suspension|annul|retir)|(suspendu|suspension|annul|retrait)[^.!?]{0,60}permis/i.test(t) && !/décision|decision|jugement|juge|avocat/i.test(t)) return "permis suspendu : il faut renvoyer à la décision de justice";
+  if (/(permis|licence)[^.!?]{0,60}(suspendu|suspension|annul|retir)[^.!?]{0,80}(tu peux|vous pouvez|autoris|le droit de) conduire(?! pas)/i.test(t) && !/peut aussi t'interdire|peut vous interdire|interdire de conduire tout|ça dépend|cela dépend/i.test(t)) return "permis suspendu : ne jamais dire qu'on peut conduire";
   if (/\bles?\s+moins\s+chers?\b|\ble moins cher\b|\bmoins cher(e)? (de|en) france\b/i.test(t)) return "affirmation « les moins chers » non vérifiable";
   return null;
 }
@@ -168,7 +173,7 @@ function toProposal(day: string, j: Record<string, unknown>, clips: Map<string, 
   if (p.voice === "tts" && p.script.split(/\s+/).length < 12) return { reject: "script trop court" };
   const bad = checkText(p.hook, p.script, p.caption, p.title, p.hashtags.join(" "));
   if (bad) return { reject: bad };
-  if (/financ|€\s*\/\s*mois|par mois|mensualit/i.test(`${p.script} ${p.caption} ${p.hook}`) && !p.caption.includes("Un crédit vous engage")) p.caption = `${p.caption}\n\n${CREDIT_MENTION}`.trim();
+  if (/financ|€\s*\/\s*mois|par mois|mensualit/i.test(`${p.script} ${p.caption} ${p.hook}`) && !p.caption.includes("sous réserve d'acceptation")) p.caption = `${p.caption}\n\n${CREDIT_MENTION}`.trim();
   return p;
 }
 
@@ -178,6 +183,9 @@ Règles :
 - Accroche provocante mais vraie, en français oral de TikTok (tutoiement possible), moins de 12 mots.
 - Script de voix off : 15 à 40 secondes (40 à 100 mots), phrases courtes, termine par un appel simple (lien en bio, réservation sans acompte, livraison partout en France).
 - Publicité comparative : ne cite AUCUNE marque ni aucun concurrent ; ne dis jamais « les moins chers » ; parle des concessionnaires en général seulement par des questions ou des faits vérifiables, sans dénigrer.
+- Permis suspendu ou annulé : ne dis JAMAIS que la personne peut conduire une voiture sans permis ; dis « vérifie ta décision de justice » (le juge peut interdire tout véhicule à moteur).
+- La polémique vise des pratiques (acompte, prix hors taxes, délais), jamais une marque nommée.
+- Aucun trou à remplir ([X], [à vérifier]) : écris uniquement ce qui est sûr.
 - Ne promets rien hors des faits (pas de garantie, pas de délai autre que ceux donnés, pas d'économie chiffrée).
 - Jamais de nom, d'adresse ou de ville d'un client.
 - "voice" : "tts" (voix off lue sur les images, le son d'origine est baissé) ou "original" (on garde la parole du fondateur face caméra, le script = ce qu'il dit dans les extraits).
@@ -325,7 +333,7 @@ export async function renderProposal(db: Db, client: OpenAI, p: Proposal) {
     const useVoice = !!voice;
     const overlays: { text: string; start: number; end: number | null; position: "top" | "bottom" }[] = [];
     if (p.hook) overlays.push({ text: p.hook, start: 0, end: Math.min(3.5, D), position: "top" });
-    if (/financ|€\s*\/\s*mois|par mois|mensualit/i.test(`${p.script} ${p.hook}`)) overlays.push({ text: CREDIT_MENTION.replace(" Vérifiez vos capacités de remboursement avant de vous engager.", ""), start: Math.max(0, D - 5), end: null, position: "bottom" });
+    if (/financ|€\s*\/\s*mois|par mois|mensualit/i.test(`${p.script} ${p.hook}`)) overlays.push({ text: CREDIT_ONSCREEN, start: 0, end: null, position: "bottom" });
     const plan = sanitizePlan({
       ...defaultPlan(), cuts: [], subtitles: true, frame: "auto", maskMode: useVoice ? "silence" : "beep",
       masks: masks.map((m, i) => ({ id: `p${i}`, ...m, kind: "autre", source: "ia", on: true })),

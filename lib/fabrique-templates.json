@@ -1,5 +1,5 @@
 {
- "source": "Banque de départ NeoDrive + strategie-scripts.json (recherche du 25/11/2026). Les modèles contenant « [à vérifier] » ou un chiffre non vérifié sont ignorés automatiquement.",
+ "source": "Banque de départ NeoDrive + strategie-scripts.json (recherche du 25/11/2026). Les modèles contenant « [à vérifier] » ou un chiffre non vérifié sont ignorés automatiquement. Règles : prix Confort 4 990 € TTC uniquement, « dès 59 €/mois » avec mention « exemple, sous réserve d'acceptation, TAEG à préciser », permis suspendu → « vérifie ta décision de justice », polémique sur des pratiques jamais une marque, trous [ ] interdits.",
  "hooks": [
   {
    "type": "prix",
@@ -7,7 +7,7 @@
   },
   {
    "type": "prix",
-   "text": "Une voiture neuve à 3 990 €. Oui, neuve."
+   "text": "Une voiture neuve à 4 990 €. Oui, neuve."
   },
   {
    "type": "prix",
@@ -223,11 +223,11 @@
     },
     {
      "t": 3,
-     "text": "La NeoDrive Essentielle, c'est 3 990 euros TTC. Neuve, 100 % électrique, deux places."
+     "text": "La NeoDrive Confort, c'est 4 990 euros TTC. Neuve, 100 % électrique, deux places."
     },
     {
      "t": 10,
-     "text": "La Confort, 4 990 euros, elle est en stock et livrée en 2 à 3 semaines."
+     "text": "Elle est en stock et livrée chez toi en 2 à 3 semaines."
     },
     {
      "t": 16,
@@ -238,7 +238,7 @@
      "text": "Réservation sans acompte, tu paies à la livraison. Le lien est en bio."
     }
    ],
-   "onscreen": "3 990 € TTC · neuve · électrique",
+   "onscreen": "4 990 € TTC · neuve · électrique",
    "footage": [
     "fondateur face caméra",
     "voiture extérieur",
@@ -273,7 +273,7 @@
     },
     {
      "t": 13,
-     "text": "Résultat : 3 990 euros pour l'Essentielle, 4 990 pour la Confort, prix TTC."
+     "text": "Résultat : 4 990 euros TTC pour la Confort, et elle est en stock."
     },
     {
      "t": 19,
@@ -306,7 +306,7 @@
     },
     {
      "t": 3,
-     "text": "La NeoDrive Essentielle peut se financer à partir de 59 euros par mois sur 84 mois."
+     "text": "Exemple : dès 59 euros par mois, sous réserve d'acceptation de ton dossier."
     },
     {
      "t": 10,
