@@ -45,13 +45,13 @@ export async function POST(req: Request) {
       q = t ? q.eq("tour_id", tour) : q.eq("status", "chargée");
       const { data: veh } = await q;
       const events = t ? await listEvents(db, [tour]) : [];
-      // Suivi par client : VIN, paiement confirmé par Mansour, lien d'accusé envoyé, accusé signé (et règlement déclaré)
+      // Suivi par client : VIN, remise signée, paiement arrivé, lien envoyé, accusé signé (et règlement déclaré)
       const res: Record<string, unknown> = {};
       if (t && t.clientIds.length) {
-        const { data: rs } = await db.from("reservations").select("id,plan_client_id,vin,paiement_confirme_at,paiement_en_attente,confirm_sent_at,accuse_token,accuse_data,livre_at,total,montant_du,reserve_token,reserve_due,reserve_data").in("plan_client_id", t.clientIds);
+        const { data: rs } = await db.from("reservations").select("id,plan_client_id,vin,email,telephone,paiement_confirme_at,paiement_en_attente,confirm_sent_at,accuse_token,accuse_data,livre_at,total,montant_du,reserve_token,reserve_due,reserve_data").in("plan_client_id", t.clientIds);
         for (const r of rs || []) {
           const d = (r.accuse_data || {}) as { signed_at?: string; reglement?: { mode: string; amount: number }[] | null; driver_name?: string | null };
-          res[String(r.plan_client_id)] = { id: r.id, vin: r.vin, paid: r.paiement_confirme_at, pending: !!r.paiement_en_attente, sent_at: r.confirm_sent_at, signed_at: r.accuse_token ? (d.signed_at || r.livre_at) : null, reglement: d.reglement || null, driver_name: d.driver_name || null, pdf: r.accuse_token ? `/api/accuse/${r.accuse_token}` : null, total: r.total == null ? null : Number(r.total), montant_du: r.montant_du == null ? null : Number(r.montant_du), reserve_at: r.reserve_token ? ((r.reserve_data as { signed_at?: string } | null)?.signed_at || r.livre_at) : null, reserve_pdf: r.reserve_token ? `/api/accuse/${r.reserve_token}` : null, reserve_due: r.reserve_due || null };
+          res[String(r.plan_client_id)] = { id: r.id, vin: r.vin, has_email: !!r.email, has_phone: !!r.telephone, paid: r.paiement_confirme_at, pending: !!r.paiement_en_attente, sent_at: r.confirm_sent_at, signed_at: r.accuse_token ? (d.signed_at || r.livre_at) : null, reglement: d.reglement || null, driver_name: d.driver_name || null, pdf: r.accuse_token ? `/api/accuse/${r.accuse_token}` : null, total: r.total == null ? null : Number(r.total), montant_du: r.montant_du == null ? null : Number(r.montant_du), reserve_at: r.reserve_token ? ((r.reserve_data as { signed_at?: string } | null)?.signed_at || r.livre_at) : null, reserve_pdf: r.reserve_token ? `/api/accuse/${r.reserve_token}` : null, reserve_due: r.reserve_due || null };
         }
       }
       return NextResponse.json({ ok: true, tour: t ? { id: t.id, name: t.name, date: t.date, driver: t.driver, hubId: t.hubId, status: t.status, departTime: t.departTime || "", stops: t.stops || [], km: t.km || 0, rate: t.driverRate || DEFAULT_DRIVER_RATE, estH: estimateHours(t), closed_at: t.closed_at || null, en_route: t.en_route || [] } : null, res, clients, depots: DEPOTS, events, vehicles: (veh || []).map((v: any) => ({ ...v, has_plate: !!v.plate_photo, plate_photo: undefined, shipment: v.shipments?.name || "", stage: vehicleStage(v, v.shipments), shipments: undefined })) });

@@ -5,16 +5,11 @@ import s from "../planificateur/planif.module.css";
 import { supabase } from "../../lib/supabase";
 import { STAGE_ICON, vinValid, type Stage } from "../../lib/shipments";
 import TourDay, { type TourData } from "./TourDay";
+import { PhotoPick, ResChips, type ResInfo } from "./DeliverySign";
 
 type Client = { id: string; name: string; adresse: string; telephone: string; modele: string; couleur: string; status: string; received_at: string | null; reception: string | null };
 type Veh = { id: number; vin: string; container?: string; depot?: string | null; client_id?: string | null; client_name?: string | null; tour_id?: string | null; shipment: string; stage: Stage; delivered_at?: string | null; has_plate?: boolean };
 type Match = { vin: string; valid: boolean; vehicle: Veh | null; suggestions: Veh[] };
-type ResInfo = { id: number; vin: string | null; paid: string | null; pending: boolean; sent_at: string | null; signed_at: string | null; reglement: { mode: string; amount: number }[] | null; driver_name: string | null; pdf: string | null; total?: number | null; montant_du?: number | null; reserve_at?: string | null; reserve_pdf?: string | null; reserve_due?: string | null };
-/** Échéance par défaut : 3 jours ouvrés. */
-const dueDefault = () => { const d = new Date(); let n = 0; while (n < 3) { d.setDate(d.getDate() + 1); if (d.getDay() % 6) n++; } return d.toISOString().slice(0, 10); };
-const eur0 = (n: number | null | undefined) => n == null ? "?" : `${Math.round(n).toLocaleString("fr-FR")} €`;
-const hhmm = (d: string) => new Date(d).toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-const MODE: Record<string, string> = { virement: "Virement", especes: "Espèces remises au chauffeur", carte: "Carte bancaire", autre: "Autre" };
 const big: React.CSSProperties = { fontSize: 18, padding: 16, width: "100%", textAlign: "center", cursor: "pointer" };
 
 /** Réduit la photo (≤ 2000 px, JPEG) : envoi rapide en 4G, plaque toujours lisible. */
@@ -28,14 +23,17 @@ async function shrink(file: File): Promise<Blob> {
 }
 
 function Driver() {
-  const k = useSearchParams().get("k") || "";
+  const sp = useSearchParams(); const k = sp.get("k") || "";
   const [data, setData] = useState<{ tour: any; res?: Record<string, ResInfo>; clients: Client[]; depots: { id: string; name: string }[]; vehicles: Veh[]; events?: TourData["events"] } | null>(null);
-  const [deliverId, setDeliverId] = useState<string | null>(null); const [vplate, setVplate] = useState<Record<number, string>>({});
+  // Retour de la page de signature : la livraison du client se rouvre (« &livrer=<client> »).
+  const [deliverId, setDeliverId] = useState<string | null>(() => sp.get("livrer"));
+  const backUrl = (cid: string) => `/chauffeur?k=${encodeURIComponent(k)}&livrer=${encodeURIComponent(cid)}`;
+  const openDelivery = (cid: string) => { setDeliverId(cid); setTimeout(() => document.getElementById("livraison")?.scrollIntoView({ behavior: "smooth" }), 50); }; const [vplate, setVplate] = useState<Record<number, string>>({});
   const [err, setErr] = useState(""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
   const [depot, setDepot] = useState(""); const [photo, setPhoto] = useState(""); const [match, setMatch] = useState<Match | null>(null); const [vin, setVin] = useState(""); const [client, setClient] = useState(""); const [driver, setDriver] = useState("");
   const [tail, setTail] = useState(""); const [found, setFound] = useState<{ vin: string; label: string; here: boolean }[] | null>(null); const [owner, setOwner] = useState(false);
   const call = async (body: object) => { const r = await fetch("/api/chauffeur", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ k, driver, ...body }) }); const j = await r.json().catch(() => ({ ok: false, error: "Connexion impossible" })); if (!j.ok && !j.conflict) throw new Error(j.error || "Erreur"); return j; };
-  const load = async () => { try { const j = await call({ action: "get" }); setData(j); if (!depot) { const d = j.depots.find((x: any) => x.id === j.tour?.hubId); if (d) setDepot(d.id); } } catch (e) { setErr((e as Error).message); } };
+  const load = async () => { try { const j = await call({ action: "get" }); const first = !data; setData(j); if (first && sp.get("livrer")) setTimeout(() => document.getElementById("livraison")?.scrollIntoView(), 150); if (!depot) { const d = j.depots.find((x: any) => x.id === j.tour?.hubId); if (d) setDepot(d.id); } } catch (e) { setErr((e as Error).message); } };
   useEffect(() => { if (!k) { setErr("Lien incomplet : utilisez le lien envoyé par NeoDrive."); return; } try { setDriver(localStorage.getItem("nd_driver") || ""); } catch { } try { setOwner(!!sessionStorage.getItem("nd_pc")); } catch { } load(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Suivi en direct (paiement confirmé, accusé signé par le client) : rafraîchi toutes les 15 s
@@ -67,14 +65,10 @@ function Driver() {
     const path = f ? await uploadPhoto(f) : null;
     const j = await call({ action: "deliver", vehicle_id: v.id, path, plate_path: vplate[v.id] || null, vin_confirm: vinConfirm || null }); await load();
     const ri = v.client_id ? data?.res?.[v.client_id] : undefined;
-    if (ri && !ri.signed_at) { if (confirm("✅ Livraison enregistrée. Faire signer l'accusé au client maintenant, sur ce téléphone ? (Annuler = lui envoyer le lien par SMS plus bas)")) await signHere(v.client_id!); }
+    if (ri && !ri.signed_at && v.client_id && data?.tour?.stops?.some((p: { id: string }) => p.id === v.client_id)) openDelivery(v.client_id);
     else if (j.reception) { if (confirm("✅ Livraison enregistrée. Faire signer l'accusé de réception au client maintenant ?")) window.location.href = j.reception; }
     return `✅ ${v.vin} livré`;
   });
-  const [resv, setResv] = useState<Record<string, { montant: string; due: string } | undefined>>({});
-  const startRes = (clientId: string) => run("rs" + clientId, async () => { const f = resv[clientId]; await call({ action: "reserve_start", client_id: clientId, montant_du: f?.montant, due: f?.due }); setResv(x => ({ ...x, [clientId]: undefined })); await load(); return "🔒 Remise avec réserve de propriété prête : faites signer le client (sur ce téléphone ou par lien)."; });
-  const signHere = async (clientId: string) => { const j = await call({ action: "accuse_link", client_id: clientId }); window.location.href = j.url; };
-  const sendLink = (clientId: string) => run("al" + clientId, async () => { const j = await call({ action: "accuse_send", client_id: clientId }); await load(); return `📩 Lien envoyé au client${j.sent?.sms ? " par SMS" : ""}${j.sent?.email ? (j.sent?.sms ? " et e-mail" : " par e-mail") : ""}. Son accusé apparaîtra ici dès qu'il aura signé.`; });
   const addVehicle = () => run("add", async () => { const j = await call({ action: "add_vehicle", vin, depot: depot || null }); setMatch(j.match); return "✅ Véhicule ajouté au stock du dépôt : choisissez le client puis confirmez le chargement."; });
   const undo = (v: Veh) => confirm(`Annuler le chargement de ${v.vin} ?`) && run("u" + v.id, async () => { await call({ action: "undo", vehicle_id: v.id }); await load(); return "Chargement annulé"; });
 
@@ -91,15 +85,16 @@ function Driver() {
       <p className={s.muted}>La liste des clients est figée. Un client ne peut être ajouté qu’en cours de route, par NeoDrive, avec votre accord.</p>
       {(data.tour.en_route || []).length ? <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>{(data.tour.en_route as { clientId: string; note: string; at: string }[]).map(e => { const c = data.clients.find(x => x.id === e.clientId); return <li key={e.clientId + e.at}><b>➕ {c ? c.name : "Client ajouté"}</b>{c ? ` · ${c.adresse}` : ""} — {e.note}</li>; })}</ul> : null}
     </section> : null}
-    {data.tour ? <TourDay data={{ tour: data.tour, clients: data.clients, vehicles: data.vehicles, events: data.events || [] }} call={call} upload={uploadPhoto} reload={load} onMsg={setMsg} deliverId={deliverId} setDeliverId={setDeliverId} /> : null}
+    {data.tour ? <TourDay data={{ tour: data.tour, clients: data.clients, vehicles: data.vehicles, events: data.events || [], res: data.res }} backUrl={backUrl} call={call} upload={uploadPhoto} reload={load} onMsg={setMsg} deliverId={deliverId} setDeliverId={setDeliverId} /> : null}
 
     <section className={s.card}>
       <h2>1. Charger un véhicule</h2>
       <label className={s.field}>Votre prénom<input value={driver} onChange={e => setDriver(e.target.value)} placeholder={data.tour?.driver || "Prénom"} /></label>
       <label className={s.field}>Dépôt de chargement<select value={depot} onChange={e => setDepot(e.target.value)}><option value="">—</option>{data.depots.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
-      <label className={s.primary} style={{ ...big, opacity: busy === "read" ? .6 : 1 }}>{busy === "read" ? "Lecture du VIN…" : "📷 Photographier la plaque VIN"}
-        <input type="file" accept="image/*" hidden disabled={!!busy} onChange={e => { onPlate(e.target.files?.[0]); e.target.value = ""; }} /></label>
-      <div style={{ display: "flex", gap: 8 }}><input value={vin} onChange={e => setVin(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 17))} placeholder="ou tapez le VIN (17 caractères)" style={{ fontFamily: "monospace", flex: 1 }} /><button className={s.ghost} disabled={vin.length !== 17 || !!busy} onClick={check}>Vérifier</button></div>
+      <b>Plaque du numéro de série (VIN)</b>
+      {busy === "read" ? <p className={s.muted}>Lecture du numéro de série…</p> : null}
+      <PhotoPick busy={busy === "read"} disabled={!!busy} onFile={f => onPlate(f)} />
+      <div style={{ display: "flex", gap: 8 }}><input value={vin} onChange={e => setVin(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 17))} placeholder="⌨️ ou tapez le numéro (17 caractères)" style={{ fontFamily: "monospace", flex: 1 }} /><button className={s.ghost} disabled={vin.length !== 17 || !!busy} onClick={check}>Vérifier</button></div>
       <label className={s.field}>Ou les derniers chiffres du VIN (3 à 6)<input value={tail} inputMode="text" onChange={e => searchTail(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))} placeholder="ex. 483" style={{ fontFamily: "monospace", fontSize: 18 }} /></label>
       <small className={s.muted}>Nos VIN commencent par <code>LP4SE0D0</code> et finissent par <code>T1600…</code> : tapez juste la fin, puis touchez la bonne voiture.</small>
       {found ? found.length ? <div style={{ display: "grid", gap: 6 }}>{found.map(x => <button key={x.vin} className={s.ghost} style={{ textAlign: "left", fontFamily: "monospace", ...(x.here ? { borderColor: "#16a34a" } : {}) }} disabled={!!busy} onClick={() => pick(x.vin)}><b>{x.vin}</b><br /><small style={{ fontFamily: "inherit" }}>{x.here ? "✅ au dépôt · " : ""}{x.label}</small></button>)}</div> : <small className={s.err}>Aucun VIN connu ne finit par « {tail} ». Tapez le VIN complet ci-dessus.</small> : null}
@@ -126,12 +121,13 @@ function Driver() {
         {c ? <small>{c.adresse}{c.telephone ? <> · <a href={`tel:${c.telephone}`}>{c.telephone}</a></> : null}</small> : null}
         <small style={{ fontFamily: "monospace" }}>{x.vin}</small>
         {data.tour && x.client_id && data.tour.stops?.some((p: { id: string }) => p.id === x.client_id) ? <>
-          <button className={s.primary} style={big} disabled={!!busy} onClick={() => { setDeliverId(x.client_id || null); setTimeout(() => document.getElementById("livraison")?.scrollIntoView({ behavior: "smooth" }), 50); }}>✅ Livré (photo de la plaque VIN)</button>
+          <button className={s.primary} style={big} disabled={!!busy} onClick={() => openDelivery(x.client_id!)}>🚗 Livrer ce client</button>
           <button className={s.ghost} disabled={!!busy} onClick={() => undo(x)}>Annuler le chargement</button>
         </> : <>
-          {data.tour && !x.has_plate ? <label className={s.ghost} style={{ cursor: "pointer" }}>{busy === "vp" + x.id ? "Envoi…" : vplate[x.id] ? "✅ Plaque VIN photographiée" : "📷 Photo de la plaque VIN (obligatoire)"}<input type="file" accept="image/*" hidden disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) run("vp" + x.id, async () => { const p = await uploadPhoto(f); setVplate(v => ({ ...v, [x.id]: p })); return "✅ Photo de la plaque VIN prête."; }); }} /></label> : null}
-          <label className={s.primary} style={big}>{busy === "dl" + x.id ? "…" : "📷 Livré : photo du véhicule chez le client"}<input type="file" accept="image/*" hidden disabled={!!busy || (!!data.tour && !x.has_plate && !vplate[x.id])} onChange={e => { deliver(x, e.target.files?.[0]); e.target.value = ""; }} /></label>
-          <div style={{ display: "flex", gap: 8 }}><button className={s.ghost} style={{ flex: 1 }} disabled={!!busy} onClick={() => { if (data.tour && !x.has_plate && !vplate[x.id]) { const typed = prompt(`Pas d'appareil photo ? Retapez les 4 derniers caractères du VIN de la voiture (prévu : …${x.vin.slice(-6, -4)}••••)`); if (typed) deliver(x, undefined, typed); } else deliver(x); }}>Livré sans photo</button><button className={s.ghost} disabled={!!busy} onClick={() => undo(x)}>Annuler</button></div>
+          {data.tour && !x.has_plate ? <>{vplate[x.id] ? <small className={s.okTxt}>✅ Photo de la plaque prête</small> : <small className={s.muted}>Photo de la plaque du numéro de série (obligatoire) :</small>}<PhotoPick main={false} busy={busy === "vp" + x.id} disabled={!!busy} cam={vplate[x.id] ? "📷 Reprendre la photo" : "📷 Prendre la photo"} onFile={f => run("vp" + x.id, async () => { const p = await uploadPhoto(f); setVplate(v => ({ ...v, [x.id]: p })); return "✅ Photo de la plaque prête."; })} /></> : null}
+          <small className={s.muted}>Livré : photo de la voiture chez le client</small>
+          <PhotoPick busy={busy === "dl" + x.id} disabled={!!busy || (!!data.tour && !x.has_plate && !vplate[x.id])} onFile={f => deliver(x, f)} />
+          <div style={{ display: "flex", gap: 8 }}><button className={s.ghost} style={{ flex: 1 }} disabled={!!busy} onClick={() => { if (data.tour && !x.has_plate && !vplate[x.id]) { const typed = prompt(`Pas d'appareil photo ? Retapez les 4 derniers caractères du VIN de la voiture (prévu : …${x.vin.slice(-6, -4)}••••)`); if (typed) deliver(x, undefined, typed); } else deliver(x); }}>⌨️ Livré sans photo</button><button className={s.ghost} disabled={!!busy} onClick={() => undo(x)}>Annuler</button></div>
         </>}
       </div>; })}
     </section>
@@ -141,28 +137,14 @@ function Driver() {
       {data.clients.map(c => { const veh = data.vehicles.find(x => x.client_id === c.id); return <div key={c.id} style={{ borderBottom: "1px solid #eee", padding: "6px 0", display: "grid", gap: 4 }}>
         <span><b>{c.name}</b> · {c.modele} {c.couleur}</span>
         <small className={s.muted}>{veh ? `${STAGE_ICON[veh.stage]} ${veh.stage} · ${veh.vin}` : "pas encore de VIN : chargez la voiture (étape 1)"}{c.received_at ? " · ✍️ réception signée" : ""}</small>
-        {(() => { const ri = data.res?.[c.id]; if (!ri) return veh?.stage === "livrée" && c.reception && !c.received_at ? <a className={s.ghost} href={c.reception}>✍️ Faire signer l'accusé de réception</a> : null;
-          const resSigned = !!ri.reserve_at && !ri.paid; const paid = !!ri.paid || ri.pending; const canSign = !!ri.vin && paid && !ri.signed_at && !resSigned; const rf = resv[c.id];
-          return <div style={{ display: "grid", gap: 4, fontSize: 14 }}>
-            <span>{ri.vin ? "✅" : "⏳"} Numéro de série {ri.vin ? <code>{ri.vin}</code> : "pas encore chargé"}</span>
-            <span>{ri.paid ? `✅ Paiement confirmé par Mansour (${hhmm(ri.paid)})` : resSigned ? <b style={{ color: "#b42318" }}>🔒 Remis avec réserve de propriété – {eur0(ri.montant_du)} en attente{ri.reserve_due ? ` (échéance ${new Date(ri.reserve_due + "T12:00:00").toLocaleDateString("fr-FR")})` : ""} – clés et papiers conservés par NeoDrive</b> : ri.pending ? `🟠 Paiement en attente : remise avec réserve de propriété à faire signer (${eur0(ri.montant_du)} dus) — gardez les clés et les papiers` : "⏳ Paiement pas encore confirmé par Mansour : ne remettez pas les clés"}</span>
-            {ri.reserve_pdf ? <a className={s.ghost} href={ri.reserve_pdf} target="_blank" rel="noreferrer">📄 Remise avec réserve signée le {hhmm(ri.reserve_at || "")} (PDF)</a> : null}
-            {ri.paid && ri.reserve_at && !ri.signed_at ? <b style={{ color: "#15803d" }}>✅ Payé – clés et papiers à remettre : faites signer l&apos;accusé final ci-dessous</b> : null}
-            {!ri.paid && !ri.pending && !ri.signed_at && ri.vin ? (rf ? <div style={{ display: "grid", gap: 6, background: "#fff4d6", borderRadius: 10, padding: 10 }}>
-              <b>⏳ Remise avec réserve de propriété</b>
-              <small>Seulement avec l&apos;accord de Mansour. Laissez la voiture fermée à clé, <b>gardez les clés et les papiers</b>. Le client signe qu&apos;elle reste à NeoDrive jusqu&apos;au paiement.</small>
-              <label style={{ display: "grid", gap: 2 }}>Montant restant dû (€)<input inputMode="decimal" value={rf.montant} onChange={e => setResv(x => ({ ...x, [c.id]: { ...rf, montant: e.target.value } }))} style={{ padding: 10, borderRadius: 8, border: "1px solid #ccc", fontSize: 16 }} /></label>
-              <label style={{ display: "grid", gap: 2 }}>Paiement à recevoir au plus tard le<input type="date" value={rf.due} onChange={e => setResv(x => ({ ...x, [c.id]: { ...rf, due: e.target.value } }))} style={{ padding: 10, borderRadius: 8, border: "1px solid #ccc", fontSize: 16 }} /></label>
-              <div style={{ display: "flex", gap: 8 }}><button className={s.primary} style={{ flex: 1 }} disabled={!!busy} onClick={() => startRes(c.id)}>{busy === "rs" + c.id ? "…" : "Valider puis faire signer"}</button><button className={s.ghost} onClick={() => setResv(x => ({ ...x, [c.id]: undefined }))}>Annuler</button></div>
-            </div> : <button className={s.ghost} onClick={() => setResv(x => ({ ...x, [c.id]: { montant: ri.montant_du != null ? String(ri.montant_du) : ri.total != null ? String(ri.total) : "", due: dueDefault() } }))}>⏳ Paiement pas encore reçu : remise avec réserve de propriété</button>) : null}
-            {!ri.paid && !ri.pending && (owner || String(data.tour?.id || "").startsWith("test-")) ? <a className={s.ghost} href="/reservations-admin" target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>👉 Mansour : Réservations clients → {c.name} → 💶 Confirmer le paiement</a> : null}
-            <span>{ri.signed_at ? <b style={{ color: "#15803d" }}>✅ Accusé signé par le client le {hhmm(ri.signed_at)}</b> : ri.sent_at ? `📩 Lien de signature envoyé le ${hhmm(ri.sent_at)} : en attente de la signature du client` : "✍️ Accusé pas encore signé"}</span>
-            {ri.signed_at && ri.reglement?.length ? <span>💶 Règlement déclaré : {ri.reglement.map(x => `${MODE[x.mode] || x.mode}${x.mode === "especes" && ri.driver_name ? " " + ri.driver_name : ""} : ${Math.round(x.amount).toLocaleString("fr-FR")} €`).join(" ; ")}</span> : null}
-            {ri.signed_at && ri.pdf ? <a className={s.ghost} href={ri.pdf} target="_blank" rel="noreferrer">📄 Voir l&apos;accusé signé (PDF)</a> : null}
-            {canSign ? <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className={s.primary} style={{ flex: 1 }} disabled={!!busy} onClick={() => run("sh" + c.id, () => signHere(c.id))}>{ri.pending && !ri.paid ? "✍️ Faire signer la remise (réserve) sur ce téléphone" : "✍️ Faire signer sur ce téléphone"}</button>
-              <button className={s.ghost} style={{ flex: 1 }} disabled={!!busy} onClick={() => sendLink(c.id)}>{busy === "al" + c.id ? "Envoi…" : ri.sent_at ? "📩 Renvoyer le lien au client" : ri.pending && !ri.paid ? "📩 Envoyer la remise (réserve) à signer au client" : "📩 Envoyer le lien de signature au client (SMS + e-mail)"}</button>
-            </div> : resSigned ? <small className={s.muted}>L&apos;accusé final se signera quand Mansour aura confirmé le paiement (la page se met à jour toute seule).</small> : !ri.signed_at && ri.vin && !paid ? <small className={s.muted}>Les boutons de signature apparaissent dès que Mansour a confirmé le paiement (la page se met à jour toute seule).</small> : null}
+        {(() => { const ri = data.res?.[c.id];
+          if (!ri) return veh?.stage === "livrée" && c.reception && !c.received_at ? <a className={s.ghost} href={c.reception}>✍️ Faire signer le client ici</a> : null;
+          return <div style={{ display: "grid", gap: 6 }}>
+            <ResChips ri={ri} />
+            {ri.reserve_at && !ri.paid ? <small style={{ color: "#b45309", fontWeight: 700 }}>Remise signée le {new Date(ri.reserve_at).toLocaleDateString("fr-FR")} – en attente du paiement : gardez les clés et les papiers.</small> : null}
+            {ri.paid && ri.reserve_at && !ri.signed_at ? <small className={s.okTxt}>💶 Paiement reçu : faites signer l&apos;accusé final.</small> : null}
+            {!ri.paid && (owner || String(data.tour?.id || "").startsWith("test-")) ? <a className={s.ghost} href="/reservations-admin" target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>👉 Mansour : Réservations clients → {c.name} → 💶 Confirmer le paiement</a> : null}
+            {data.tour?.stops?.some((p: { id: string }) => p.id === c.id) ? <button className={ri.signed_at ? s.ghost : s.primary} style={{ padding: 12 }} onClick={() => openDelivery(c.id)}>{ri.signed_at ? "📄 Voir la livraison" : "🚗 Ouvrir la livraison (numéro de série → signature)"}</button> : null}
           </div>; })()}
       </div>; })}
     </section> : null}

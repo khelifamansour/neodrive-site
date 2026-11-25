@@ -12,40 +12,48 @@ const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g,
 type Res = { id: number; prenom: string | null; nom: string | null; telephone: string | null; email: string | null; vin: string | null; modele: string | null; paiement_confirme_at: string | null; paiement_en_attente: boolean | null; accuse_token: string | null; confirm_token: string | null; reserve_token: string | null };
 export class AccuseError extends Error { constructor(msg: string, public status = 400) { super(msg); } }
 
-async function ready(db: SupabaseClient, id: number): Promise<Res> {
+async function load(db: SupabaseClient, id: number): Promise<Res> {
   const { data: r } = await db.from("reservations").select("id,prenom,nom,telephone,email,vin,modele,paiement_confirme_at,paiement_en_attente,accuse_token,confirm_token,reserve_token").eq("id", id).maybeSingle();
   if (!r) throw new AccuseError("Réservation introuvable", 404);
-  if (r.accuse_token) throw new AccuseError("Le client a déjà signé l'accusé de réception.", 409);
-  if (!r.vin) throw new AccuseError("Chargez d'abord le véhicule (numéro de série) pour ce client.");
-  if (!r.paiement_confirme_at && !r.paiement_en_attente) throw new AccuseError("Le paiement n'est pas encore confirmé par Mansour : ne remettez pas les clés, appelez Mansour.", 409);
-  if (!r.paiement_confirme_at && r.reserve_token) throw new AccuseError("Le client a déjà signé la remise avec réserve de propriété : attendez que Mansour confirme le paiement, puis faites signer l'accusé final.", 409);
   return r as Res;
 }
 
-/** Lien personnel du client (créé si besoin), sans rien envoyer : pour faire signer sur le téléphone du chauffeur. */
-export async function accuseLink(db: SupabaseClient, id: number) {
-  const r = await ready(db, id);
-  const token = r.confirm_token || randomBytes(24).toString("hex");
-  if (!r.confirm_token) await db.from("reservations").update({ confirm_token: token, updated_at: new Date().toISOString() }).eq("id", id);
-  return `${SITE}/accuse/confirmer/${token}`;
+/** Jeton du lien personnel : créé une seule fois, jamais effacé (le lien affiche toujours où en est la livraison). */
+async function tokenOf(db: SupabaseClient, r: Res) {
+  if (r.confirm_token) return r.confirm_token;
+  const token = randomBytes(24).toString("hex");
+  await db.from("reservations").update({ confirm_token: token, updated_at: new Date().toISOString() }).eq("id", r.id);
+  r.confirm_token = token;
+  return token;
 }
 
-/** Envoie le lien au client par SMS (transactionnel, envoyé à toute heure) et par e-mail. */
+/** Lien personnel du client (créé si besoin), sans rien envoyer : pour faire signer sur le téléphone du chauffeur. La page affiche l'étape en cours. */
+export async function accuseLink(db: SupabaseClient, id: number) {
+  const r = await load(db, id);
+  return `${SITE}/accuse/confirmer/${await tokenOf(db, r)}`;
+}
+
+/**
+ * Envoie le lien au client par SMS (transactionnel, envoyé à toute heure) et par e-mail.
+ * Paiement pas encore arrivé sur le compte : remise avec réserve de propriété (par défaut). Paiement arrivé : accusé final.
+ */
 export async function sendAccuseLink(db: SupabaseClient, id: number) {
-  const r = await ready(db, id);
+  const r = await load(db, id);
+  if (r.accuse_token) throw new AccuseError("Le client a déjà signé l'accusé de réception.", 409);
+  if (!r.vin) throw new AccuseError("Enregistrez d'abord le numéro de série de la voiture.");
+  if (!r.paiement_confirme_at && r.reserve_token) throw new AccuseError("La remise est déjà signée. Le client signera l'accusé final sur le même lien quand le paiement sera arrivé.", 409);
   if (!r.telephone && !r.email) throw new AccuseError("Ni téléphone ni e-mail pour ce client : faites signer sur ce téléphone.");
-  const token = r.confirm_token || randomBytes(24).toString("hex");
-  const link = `${SITE}/accuse/confirmer/${token}`;
   const first = String(r.prenom || "").split(/\s+/)[0];
-  const reserve = !r.paiement_confirme_at && !!r.paiement_en_attente;
+  const reserve = !r.paiement_confirme_at;
   const sent = { sms: false, email: false, errors: [] as string[] };
   await applyStoredSecrets();
   if (!brevoReady()) throw new AccuseError("Envoi indisponible : faites signer sur ce téléphone.", 503);
-  if (r.telephone) { try { sent.sms = !!(await sendSms(r.telephone, reserve ? `Bonjour ${first}, NeoDrive : votre paiement n'est pas encore recu. Merci de signer la remise de votre vehicule (paiement en attente) sur ce lien : ${link}` : `Bonjour ${first}, NeoDrive : merci de confirmer la reception de votre vehicule en 30 secondes sur ce lien : ${link}`, "transactional")); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
-  if (r.email) { try { sent.email = !!(await sendEmail(r.email, `${r.prenom || ""} ${r.nom || ""}`.trim(), reserve ? "Remise de votre NeoDrive – paiement en attente : à signer" : "Confirmez la réception de votre NeoDrive", reserve ? `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive ${esc(r.modele || "")} (n° de série ${esc(r.vin)}) vous est remise alors que votre paiement n'est pas encore reçu. Merci de lire et signer le document de remise (réserve de propriété) :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Lire et signer</a></p><p>Les clés et les documents vous seront remis dès réception du paiement.</p><p>Merci,<br>Mansour - NeoDrive</p>` : `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive ${esc(r.modele || "")} (n° de série ${esc(r.vin)}) vient de vous être remise. Merci de confirmer sa réception en 30 secondes :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Je confirme la réception</a></p><p>Vous recevrez ensuite votre accusé de réception en PDF.</p><p>Merci,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
+  const link = `${SITE}/accuse/confirmer/${await tokenOf(db, r)}`;
+  if (r.telephone) { try { sent.sms = !!(await sendSms(r.telephone, reserve ? `Bonjour ${first}, NeoDrive : merci de signer la remise de votre vehicule sur ce lien (paiement pas encore arrive sur notre compte). Ce lien reste valable : ${link}` : `Bonjour ${first}, NeoDrive : votre paiement est bien arrive. Merci de signer l'accuse de reception de votre vehicule sur ce lien : ${link}`, "transactional")); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
+  if (r.email) { try { sent.email = !!(await sendEmail(r.email, `${r.prenom || ""} ${r.nom || ""}`.trim(), reserve ? "Remise de votre NeoDrive – paiement en attente : à signer" : "Confirmez la réception de votre NeoDrive", reserve ? `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive ${esc(r.modele || "")} (n° de série ${esc(r.vin)}) vous est remise avant l'arrivée de votre paiement sur notre compte. Merci de lire et signer le document de remise (réserve de propriété) :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Lire et signer</a></p><p>Les clés et les documents vous seront remis dès réception du paiement.</p><p>Merci,<br>Mansour - NeoDrive</p>` : `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive ${esc(r.modele || "")} (n° de série ${esc(r.vin)}) vient de vous être remise. Merci de confirmer sa réception en 30 secondes :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Je confirme la réception</a></p><p>Vous recevrez ensuite votre accusé de réception en PDF.</p><p>Merci,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
   if (!sent.sms && !sent.email) throw new AccuseError("Envoi impossible : " + sent.errors.join(" · "), 502);
   const at = new Date().toISOString();
-  await db.from("reservations").update({ confirm_token: token, confirm_sent_at: at, updated_at: at }).eq("id", id);
+  await db.from("reservations").update({ confirm_sent_at: at, updated_at: at }).eq("id", id);
   return sent;
 }
 

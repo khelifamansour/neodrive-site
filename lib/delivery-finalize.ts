@@ -83,7 +83,7 @@ export async function finalizeDelivery(db: DB, r: any, data: ReceiptData, signat
 
 /**
  * Remise avec paiement en attente (réserve de propriété) : PDF signé par le client, rangé à part de l'accusé final.
- * Le véhicule est remis (livre_at), clés et documents gardés ; l'accusé final se signe après le paiement (nouveau lien).
+ * Le véhicule est remis (livre_at), clés et documents gardés ; l'accusé final se signe après le paiement, sur le même lien.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function finalizeReserve(db: DB, r: any, data: ReceiptData, signature: Buffer | null) {
@@ -98,8 +98,8 @@ export async function finalizeReserve(db: DB, r: any, data: ReceiptData, signatu
   const du = data.reserve?.montant_du ?? data.pending?.montant_du ?? null;
   const keep = keptLabel(data.kept || { cles: true, documents: true });
   const line = `[${new Date(at).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] Remis avec réserve de propriété${du ? ` (${eur(du)} en attente` : " (paiement en attente"}${data.reserve?.due ? `, échéance ${new Date(data.reserve.due + "T12:00:00").toLocaleDateString("fr-FR")}` : ""}), signé par ${data.signer} (VIN ${r.vin}) : ${keep ? `${keep} conservé(e)s par NeoDrive` : "clés et documents remis au client (client de confiance)"}${data.declaration ? ` · déclaration du client : « ${declText(data.declaration, du)} »` : ""}`;
-  // Le lien personnel est remis à zéro : l'accusé final aura son propre lien après le paiement.
-  const patch: Record<string, unknown> = { livre_at: at, reserve_path: `${base}.pdf`, reserve_token: token, reserve_data: data, confirm_token: null, confirm_sent_at: null, notes: [r.notes, line].filter(Boolean).join("\n"), updated_at: at };
+  // Le lien personnel du client reste valable : il affiche la remise signée, puis l'accusé final une fois le paiement arrivé.
+  const patch: Record<string, unknown> = { livre_at: at, reserve_path: `${base}.pdf`, reserve_token: token, reserve_data: data, confirm_sent_at: null, notes: [r.notes, line].filter(Boolean).join("\n"), updated_at: at };
   const { data: upd, error } = await db.from("reservations").update(patch).eq("id", id).is("reserve_token", null).is("accuse_token", null).select("id");
   if (error) throw new Error(error.message);
   if (!upd?.length) throw new Error("Cette remise est déjà signée.");

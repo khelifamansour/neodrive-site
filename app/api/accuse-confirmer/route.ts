@@ -30,24 +30,44 @@ async function tourDriver(r: any): Promise<string> {
   } catch { return ""; }
 }
 
+type Step = "done" | "reserve_done" | "no_vin" | "reserve" | "final";
+const EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}$/i;
+
+/**
+ * Où en est la livraison ? Tant que l'argent n'est pas arrivé sur le compte (paiement_confirme_at vide),
+ * le client signe par défaut la remise avec réserve de propriété ; une fois le paiement confirmé,
+ * le même lien propose l'accusé de réception final. Le lien reste valable à chaque étape.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function stepOf(r: any): Step {
+  if (r.accuse_token) return "done";
+  if (!r.paiement_confirme_at && r.reserve_token) return "reserve_done";
+  if (!r.vin) return "no_vin";
+  return r.paiement_confirme_at ? "final" : "reserve";
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const montantOf = (r: any) => r.montant_du != null ? Number(r.montant_du) : r.total != null ? Number(r.total) : null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const signedAt = (d: any, fallback: string | null) => (d && typeof d === "object" && typeof d.signed_at === "string" ? d.signed_at : null) || fallback;
+
 export async function GET(req: Request) {
   const r = await find(new URL(req.url).searchParams.get("token") || "");
-  if (!r) return NextResponse.json({ ok: false, error: "Lien invalide ou expiré." }, { status: 404 });
-  const pending = !r.paiement_confirme_at && !!r.paiement_en_attente;
-  // Paiement en attente : le client signe la remise avec réserve de propriété (puis l'accusé final après paiement).
-  const reserve = pending && !r.reserve_token;
+  if (!r) return NextResponse.json({ ok: false, error: "Ce lien n'existe pas." }, { status: 404 });
+  const step = stepOf(r);
+  const pending = !r.paiement_confirme_at;
+  const reserve = step === "reserve";
   const lieu = [r.adresse, `${r.code_postal || ""} ${r.ville || ""}`.trim()].filter(Boolean).join(", ");
   const due = r.reserve_due || defaultDue();
-  const montant = r.montant_du == null ? null : Number(r.montant_du);
-  const reserveDone = pending && !!r.reserve_token;
+  const montant = montantOf(r);
   const kept = pending ? keptOf(r.remise_data) : null;
-  // Lien reçu avec le SMS « j'arrive » : le bon n'est prêt qu'une fois le numéro de série et le paiement (ou la remise sans paiement) réglés par le livreur.
-  const ready = !!r.vin && (!!r.paiement_confirme_at || !!r.paiement_en_attente);
   return NextResponse.json({
-    ok: true, ready, kept, done: !!r.accuse_token || reserveDone, accuse_url: r.accuse_token ? `/api/accuse/${r.accuse_token}` : reserveDone ? `/api/accuse/${r.reserve_token}` : null,
-    reserve, reserve_done: reserveDone, due, clauses: reserve ? reserveClauses({ modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin || "", date: new Date().toISOString(), lieu, montant_du: montant, due, kept }) : null,
+    ok: true, step, ready: step === "reserve" || step === "final", kept,
+    done: step === "done" || step === "reserve_done", reserve, reserve_done: step === "reserve_done",
+    accuse_url: r.accuse_token ? `/api/accuse/${r.accuse_token}` : null, accuse_at: r.accuse_token ? signedAt(r.accuse_data, r.livre_at) : null,
+    reserve_url: r.reserve_token ? `/api/accuse/${r.reserve_token}` : null, reserve_at: r.reserve_token ? signedAt(r.reserve_data, r.livre_at) : null,
+    has_email: !!r.email, due, clauses: reserve ? reserveClauses({ modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin || "", date: new Date().toISOString(), lieu, montant_du: montant, due, kept }) : null,
     client: `${r.prenom || ""} ${r.nom || ""}`.replace(/\(.*?\)/g, "").trim(), modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin || "",
-    date: new Date().toISOString(), pending, montant_du: pending && r.montant_du != null ? Number(r.montant_du) : null, checks: checksFor(pending, kept), driver: await tourDriver(r), total: r.total == null ? null : Number(r.total),
+    date: new Date().toISOString(), pending, montant_du: pending ? montant : null, checks: checksFor(pending, kept), driver: await tourDriver(r), total: r.total == null ? null : Number(r.total),
   });
 }
 
@@ -55,12 +75,17 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({})) as Record<string, unknown>;
   try {
     const r = await find(String(b.token || ""));
-    if (!r) return NextResponse.json({ ok: false, error: "Lien invalide ou expiré." }, { status: 404 });
-    if (r.accuse_token) return NextResponse.json({ ok: true, done: true, accuse_url: `/api/accuse/${r.accuse_token}` });
-    if (!r.paiement_confirme_at && r.reserve_token) return NextResponse.json({ ok: true, done: true, accuse_url: `/api/accuse/${r.reserve_token}` });
-    if (!r.vin || (!r.paiement_confirme_at && !r.paiement_en_attente)) return NextResponse.json({ ok: false, error: "Cette livraison n'est pas prête à être confirmée. Contactez NeoDrive au 06 89 78 17 10." }, { status: 409 });
+    if (!r) return NextResponse.json({ ok: false, error: "Ce lien n'existe pas." }, { status: 404 });
+    const step = stepOf(r);
+    if (step === "done") return NextResponse.json({ ok: true, done: true, accuse_url: `/api/accuse/${r.accuse_token}` });
+    if (step === "reserve_done") return NextResponse.json({ ok: true, done: true, reserve: true, accuse_url: `/api/accuse/${r.reserve_token}` });
+    if (step === "no_vin") return NextResponse.json({ ok: false, reload: true, error: "Le chauffeur doit d'abord enregistrer le numéro de série." }, { status: 409 });
+    const pending = step === "reserve";
+    // La page a été ouverte avant un changement (paiement arrivé entre-temps, ou l'inverse) : elle doit être rechargée.
+    if (pending && !b.reserve) return NextResponse.json({ ok: false, reload: true, error: "Le document a changé : rechargez la page." }, { status: 409 });
+    if (!pending && b.reserve) return NextResponse.json({ ok: false, reload: true, error: "Votre paiement est maintenant arrivé : rechargez la page." }, { status: 409 });
     const signer = clean(b.name, 120);
-    if (!b.accept) return NextResponse.json({ ok: false, error: (!r.paiement_confirme_at && r.paiement_en_attente) ? "Cochez « J'ai lu et j'accepte les conditions de remise »." : "Cochez « J'ai bien reçu mon véhicule »." }, { status: 400 });
+    if (!b.accept) return NextResponse.json({ ok: false, error: pending ? "Cochez « J'ai lu et j'accepte les conditions »." : "Cochez « J'ai bien reçu mon véhicule »." }, { status: 400 });
     if (signer.length < 3) return NextResponse.json({ ok: false, error: "Écrivez votre nom et prénom." }, { status: 400 });
     // Signature manuscrite tracée au doigt par le client (PNG en data URL).
     const sigRaw = String(b.signature || "");
@@ -68,13 +93,9 @@ export async function POST(req: Request) {
     const signature = sigM ? Buffer.from(sigM[1], "base64") : null;
     if (!signature || signature.length < 1500) return NextResponse.json({ ok: false, error: "Signez avec le doigt dans le cadre." }, { status: 400 });
     if (signature.length > 1_500_000) return NextResponse.json({ ok: false, error: "Signature trop lourde, effacez et recommencez." }, { status: 400 });
-    const pending = !r.paiement_confirme_at && !!r.paiement_en_attente;
     const kept = pending ? keptOf(r.remise_data) : null;
-    const montantDu = r.montant_du == null ? null : Number(r.montant_du);
+    const montantDu = pending ? montantOf(r) : null;
     const declaration = pending ? cleanDecl(b.declaration, montantDu) : null;
-    // La page a été ouverte avant que le livreur ne choisisse « paiement pas encore reçu » : elle doit être rechargée.
-    if (pending && !b.reserve) return NextResponse.json({ ok: false, reload: true, error: "Le bon de livraison a changé : rechargez la page." }, { status: 409 });
-    if (!pending && b.reserve) return NextResponse.json({ ok: false, reload: true, error: "Votre paiement est maintenant confirmé : rechargez la page." }, { status: 409 });
     if (pending && !declaration) return NextResponse.json({ ok: false, error: "Choisissez votre déclaration de paiement et la date." }, { status: 400 });
     const reglement = cleanPayment(b.payment);
     if (!reglement && !pending) return NextResponse.json({ ok: false, error: "Indiquez comment vous avez réglé (moyen et montant)." }, { status: 400 });
@@ -84,6 +105,9 @@ export async function POST(req: Request) {
     if (vire && !checksIn.virement) return NextResponse.json({ ok: false, error: "Cochez l'engagement sur le virement." }, { status: 400 });
     const checks = Object.fromEntries(checksFor(pending, kept, vire).map(c => [c.id, !!checksIn[c.id]]));
     const at = new Date().toISOString();
+    // E-mail facultatif donné par le client pour recevoir son PDF : enregistré sur la réservation.
+    const email = clean(b.email, 160).toLowerCase();
+    if (!r.email && email && EMAIL.test(email)) { await crmDatabase().from("reservations").update({ email, updated_at: at }).eq("id", r.id); r.email = email; }
     const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || null;
     const ua = clean(req.headers.get("user-agent"), 200);
     const data: ReceiptData = {
@@ -96,8 +120,15 @@ export async function POST(req: Request) {
       reglement, driver_name: driverName || null, kept, declaration,
     };
     if (pending) {
+      // Remise avec réserve par défaut : montant dû et échéance remplis automatiquement s'ils manquent.
+      const due = r.reserve_due || defaultDue();
+      const fill: Record<string, unknown> = { paiement_en_attente: true, reserve_due: due };
+      if (r.montant_du == null && montantDu != null) fill.montant_du = montantDu;
+      if (!r.remise_data) fill.remise_data = { kept: { cles: true, documents: true }, by: "défaut (paiement non arrivé)", at };
+      await crmDatabase().from("reservations").update(fill).eq("id", r.id);
+      Object.assign(r, fill);
       data.numero = `RES-${at.slice(0, 4)}-${String(r.id).padStart(6, "0")}`;
-      data.reserve = { due: r.reserve_due || defaultDue(), montant_du: r.montant_du == null ? null : Number(r.montant_du), lieu: data.adresse };
+      data.reserve = { due, montant_du: montantDu, lieu: data.adresse };
       const out = await finalizeReserve(crmDatabase(), r, data, signature);
       return NextResponse.json({ ok: true, done: true, reserve: true, accuse_url: out.url.replace(/^https?:\/\/[^/]+/, ""), emailed: out.emailed });
     }
