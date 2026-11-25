@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 import { readCocFromDocument } from "../../../../lib/vin-read";
+import { cnitFor } from "../../../../lib/cnit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -30,7 +31,9 @@ export async function POST(req: Request) {
     const out = await readCocFromDocument(new Uint8Array(await file.arrayBuffer()), file.type, file.name || "coc");
     if (!out?.vin) return NextResponse.json({ ok: false, error: "VIN illisible sur ce document" });
     const x = out.extra || {};
-    return NextResponse.json({ ok: true, vin: out.vin, check_ok: out.check_ok, doubt: out.doubt, marque: x.marque || "", type: x.type || "", cnit: x.cnit || "" });
+    // CNIT : modèle connu (lib/cnit) en priorité, sinon celui lu sur le document.
+    const cnit = cnitFor({ reception: x.reception, type: x.type }) || (x.cnit || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    return NextResponse.json({ ok: true, vin: out.vin, check_ok: out.check_ok, doubt: out.doubt, marque: x.marque || "", type: x.type || "", reception: x.reception || "", cnit });
   } catch (e) {
     console.error("[carte-grise] lecture COC", e);
     return NextResponse.json({ ok: false, error: "Lecture automatique indisponible" });

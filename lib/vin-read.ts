@@ -67,8 +67,8 @@ export function nearestVin(vin: string, list: string[]) {
 
 const COC_INSTRUCTIONS = `Tu lis la première page d'un certificat de conformité européen (COC) d'un véhicule (souvent une voiture sans permis fabriquée en Chine, VIN commençant souvent par L).
 - "vin" : numéro d'identification du véhicule (rubrique « 0.10 » ou « numéro d'identification »), 17 caractères, jamais les lettres I, O ni Q. Recopie-le exactement, caractère par caractère.
-- "marque" : la marque (rubrique « 0.1 »), "type" : le type / variante / version (rubriques « 0.2 »), "cnit" : le code CNIT s'il figure sur le document. Chaîne vide si absent.
-Réponds uniquement en JSON : {"vin": "", "marque": "", "type": "", "cnit": "", "doute": "<positions ou caractères incertains du VIN, sinon vide>"}`;
+- "marque" : la marque (rubrique « 0.1 »), "type" : le type / variante / version (rubriques « 0.2 »), "reception" : le numéro de réception par type (ex. « e13*168/2013*02123*01 »), "cnit" : le code CNIT s'il figure sur le document. Chaîne vide si absent.
+Réponds uniquement en JSON : {"vin": "", "marque": "", "type": "", "reception": "", "cnit": "", "doute": "<positions ou caractères incertains du VIN, sinon vide>"}`;
 
 /** COC (photo ou PDF) : VIN, et si visibles marque, type et CNIT (dans extra). null si le format n'est pas lisible (HEIC…). */
 export async function readCocFromDocument(buf: Uint8Array, mime: string, name: string): Promise<VinRead | null> {

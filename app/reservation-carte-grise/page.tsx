@@ -61,10 +61,12 @@ export default function ReservationCarteGrise() {
   const [model, setModel] = useState<VehicleKey>("confort");
   const [client, setClient] = useState({ nom: "", prenom: "", telephone: "", email: "", adresse: "", code_postal: "", ville: "" });
   const [noDelivery, setNoDelivery] = useState(false);
-  const [wantsCarteGrise, setWantsCarteGrise] = useState(true);
+  const [wantsCarteGriseChoice, setWantsCarteGrise] = useState(true);
   // Client qui a déjà réservé ou reçu son véhicule : il dépose ses documents carte grise, le « devis » devient son contrat de vente (pas de nouvelle commande).
   const [dejaClient, setDejaClient] = useState(false);
   useEffect(() => { try { if (new URLSearchParams(location.search).get("client") === "1") setDejaClient(true); } catch { /* rien */ } }, []);
+  // Client existant : il envoie son dossier carte grise, la carte grise est donc forcément confiée à NeoDrive (étape « Carte grise » masquée).
+  const wantsCarteGrise = dejaClient || wantsCarteGriseChoice;
   // Client d'un partenaire revendeur : NeoDrive ne lui a rien vendu, aucun devis / contrat NeoDrive ne doit être généré → page dédiée.
   useEffect(() => { try { const p = new URLSearchParams(location.search).get("partenaire"); if (p) location.replace(`/carte-grise-partenaire?partenaire=${encodeURIComponent(p)}`); } catch { /* rien */ } }, []);
   // Options conseiller (non envoyées dans le formulaire, elles ne servent qu'au devis).
@@ -82,6 +84,9 @@ export default function ReservationCarteGrise() {
   const [sending, setSending] = useState(false);
   // Lecture du VIN sur le COC (pour le certificat de vente) et champ fichier qui reçoit le certificat.
   const cocRef = useRef<Promise<CocVin> | null>(null);
+  const cocReadId = useRef(0);
+  const [cocInfo, setCocInfo] = useState<{ status: "idle" | "reading" | "done"; read: CocVin | null }>({ status: "idle", read: null });
+  const [manualVin, setManualVin] = useState("");
   const certificatRef = useRef<HTMLInputElement>(null);
 
   const postal = client.code_postal;
@@ -129,6 +134,15 @@ export default function ReservationCarteGrise() {
   const contactDone = !!(client.nom && client.prenom && client.telephone && client.email && client.adresse && client.ville && postalComplete);
   const docsDone = !!(files.cni && files.justificatif_domicile && (!wantsCarteGrise || files.mandat_carte_grise_signe));
   const stepState = [true, contactDone, true, docsDone, !!files.devis_signe];
+  // Client existant : pas d'étape « Carte grise » (confiée à NeoDrive d'office).
+  const steps: [string, boolean][] = dejaClient
+    ? [["Véhicule", true], ["Coordonnées", contactDone], ["Documents", docsDone], ["Contrat", !!files.devis_signe]]
+    : [["Véhicule", true], ["Livraison", contactDone], ["Carte grise", true], ["Documents", docsDone], ["Devis", !!files.devis_signe]];
+
+  const cocRead = cocInfo.status === "done" ? cocInfo.read : null;
+  const cocVinOk = !!cocRead?.ok && vinValid(cocRead.vin);
+  const needManualVin = cocInfo.status === "done" && !cocVinOk;
+  const knownVin = cocVinOk ? cocRead!.vin : needManualVin && manualVin.length === 17 && !/[IOQ]/.test(manualVin) ? manualVin : "";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = e.target;
@@ -138,7 +152,16 @@ export default function ReservationCarteGrise() {
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, files: list } = e.target;
     setFiles(p => ({ ...p, [name]: list?.[0]?.name || "" }));
-    if (name === "coc") cocRef.current = list?.[0] ? readCocVin(list[0]) : null;
+    if (name === "coc") {
+      // VIN (et CNIT des modèles connus) lus automatiquement sur le COC, pour le certificat de vente et le dossier.
+      const id = ++cocReadId.current;
+      if (!list?.[0]) { cocRef.current = null; setCocInfo({ status: "idle", read: null }); return; }
+      setCocInfo({ status: "reading", read: null });
+      cocRef.current = readCocVin(list[0]).then(read => {
+        if (id === cocReadId.current) { setCocInfo({ status: "done", read }); if (read.ok && !vinValid(read.vin)) setManualVin(read.vin); }
+        return read;
+      });
+    }
   };
   const setFileName = (name: string, fileName: string) => setFiles(p => p[name] === fileName ? p : ({ ...p, [name]: fileName }));
   const safeFileName = (v: string) => v.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9_-]/g, "-") || "client";
@@ -307,7 +330,7 @@ export default function ReservationCarteGrise() {
     const jsPDF = (window as unknown as PdfGlobals).jspdf?.jsPDF;
     if (!jsPDF) return null;
     const read = cocRef.current ? await Promise.race([cocRef.current, new Promise<null>(res => setTimeout(() => res(null), 15000))]) : null;
-    const vin = read?.ok && vinValid(read.vin) ? read.vin : "";
+    const vin = read?.ok && vinValid(read.vin) ? read.vin : manualVin.length === 17 && !/[IOQ]/.test(manualVin) ? manualVin : "";
     const prices: [string, string][] = [[`${VERSION_FORM[model].devis} x${quantity}`, pdfEuros(vehiclesTotal)]];
     prices.push(noDelivery ? ["Retrait sur place", pdfEuros(0)] : [`Livraison à domicile${postalComplete ? ` (code postal ${postal})` : ""}`, transport === null ? "sur devis" : pdfEuros(transport)]);
     if (wantsCarteGrise) prices.push([`Pack mise en route et accompagnement administratif x${quantity}`, pdfEuros(registrationTotal)]);
@@ -364,10 +387,10 @@ export default function ReservationCarteGrise() {
       </span>
     </label>;
   };
-  const fileInput = (name: string, title: string, hint: string, required: boolean) => (
+  const fileInput = (name: string, title: string, hint: string, required: boolean, multiple = false) => (
     <label className={`${c.file} ${files[name] ? c.fileDone : ""}`}>
       <span className={c.fileHead}><span><b>{title}</b><small>{hint}</small></span><em className={required ? c.req : ""}>{files[name] ? "Ajouté" : required ? "Obligatoire" : "Facultatif"}</em></span>
-      <input type="file" name={name} accept=".pdf,image/*" required={required} onChange={onFile} />
+      <input type="file" name={name} accept=".pdf,image/*" required={required} multiple={multiple} onChange={onFile} />
     </label>
   );
 
@@ -440,11 +463,17 @@ export default function ReservationCarteGrise() {
           </label>
           <input type="hidden" name="version" value={VERSION_FORM[model].value} />
           <input ref={certificatRef} type="file" name="certificat_vente" accept="application/pdf" hidden tabIndex={-1} aria-hidden="true" />
+          {dejaClient ? <input type="hidden" name="service_carte_grise" value="oui" /> : null}
+          <input type="hidden" name="vin" value={knownVin} />
+          <input type="hidden" name="vin_source" value={knownVin ? (cocVinOk ? "lu sur le COC" : "saisi à la main") : ""} />
+          <input type="hidden" name="coc_type" value={cocRead?.type || ""} />
+          <input type="hidden" name="coc_reception" value={cocRead?.reception || ""} />
+          <input type="hidden" name="cnit_code" value={cocRead?.cnit || ""} />
           <input type="hidden" name="departement_livraison" value={departementLivraison} />
           <input type="hidden" name="livraison" value={livraisonValue} />
 
-          <ol className={`${s.progress} ${c.progress5}`} aria-label="Étapes du dossier">
-            {["Véhicule", "Livraison", "Carte grise", "Documents", dejaClient ? "Contrat" : "Devis"].map((t, i) => <li key={t} className={stepState[i] ? s.done : ""}><b>{stepState[i] ? Icon.check : i + 1}</b><span>{t}</span></li>)}
+          <ol className={`${s.progress} ${dejaClient ? "" : c.progress5}`} style={dejaClient ? { gridTemplateColumns: "repeat(4,minmax(0,1fr))" } : undefined} aria-label="Étapes du dossier">
+            {steps.map(([t, done], i) => <li key={t} className={done ? s.done : ""}><b>{done ? Icon.check : i + 1}</b><span>{t}</span></li>)}
           </ol>
 
           {/* ÉTAPE 1 — VÉHICULE */}
@@ -496,8 +525,8 @@ export default function ReservationCarteGrise() {
             {postalVerified && client.ville && !cityMatches ? <p className={s.note}>Vérifiez la ville : elle ne correspond pas au code postal {postal} (communes possibles&nbsp;: {postalCities.slice(0, 6).join(", ")}).</p> : null}
           </section>
 
-          {/* ÉTAPE 3 — CARTE GRISE */}
-          <section className={s.card}>
+          {/* ÉTAPE 3 — CARTE GRISE (masquée pour un client existant) */}
+          <section className={s.card} style={dejaClient ? { display: "none" } : undefined}>
             <header className={s.cardHead}><span className={s.stepNum}>3</span><div><h2>Carte grise</h2><p>Souhaitez-vous que Neodrive réalise les démarches d’immatriculation&nbsp;?</p></div></header>
             <div className={c.choices}>
               <label className={`${c.choice} ${wantsCarteGrise ? c.choiceOn : ""}`}>
@@ -513,11 +542,23 @@ export default function ReservationCarteGrise() {
 
           {/* ÉTAPE 4 — DOCUMENTS */}
           <section className={s.card}>
-            <header className={s.cardHead}><span className={s.stepNum}>4</span><div><h2>Documents obligatoires</h2><p>Photo lisible ou PDF, depuis votre téléphone ou votre ordinateur.</p></div></header>
+            <header className={s.cardHead}><span className={s.stepNum}>{dejaClient ? 3 : 4}</span><div><h2>Documents obligatoires</h2><p>Une photo bien lisible avec votre téléphone suffit (ou un PDF).</p></div></header>
             <div className={c.docGrid}>
-              {fileInput("cni", "Carte nationale d’identité", "Du titulaire — recto et verso", true)}
-              {fileInput("justificatif_domicile", "Justificatif de domicile", "De moins de 6 mois", true)}
+              {wantsCarteGrise ? fileInput("coc", "Certificat de conformité (COC)", dejaClient ? "La première page avec le numéro d’identification — remis avec votre véhicule" : "La première page avec le numéro d’identification — peut être ajouté plus tard", dejaClient) : null}
+              {fileInput("cni", "Carte nationale d’identité", "Recto et verso (2 photos possibles), ou passeport", true, true)}
+              {fileInput("justificatif_domicile", "Justificatif de domicile", "De moins de 6 mois, à votre nom et à votre adresse", true)}
             </div>
+            {wantsCarteGrise ? <div aria-live="polite">
+              {cocInfo.status === "reading" ? <p className={s.note} style={{ background: "#f3f7ff", color: "#2b4a8a" }}>Lecture du numéro d’identification sur le COC…</p> : null}
+              {cocVinOk ? <p className={s.note} style={{ background: "#ecf8f0", color: "#15803d" }}><b>✓ Numéro d’identification (VIN) lu sur le COC : <span style={{ fontFamily: "ui-monospace, Menlo, monospace" }}>{cocRead!.vin}</span></b></p> : null}
+              {needManualVin ? <div className={s.fields} style={{ marginTop: 12 }}>
+                <label className={`${s.field} ${s.wide}`}>
+                  <span>Numéro de série (VIN)</span>
+                  <span className={s.inputWrap}><input autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={17} placeholder="17 caractères, sur le COC" value={manualVin} onChange={e => setManualVin(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 17))} style={{ fontFamily: "ui-monospace, Menlo, monospace", letterSpacing: ".06em" }} />{knownVin ? <i className={s.ok}>{Icon.check}</i> : null}</span>
+                  <em>{cocRead?.ok ? "Vérifiez le numéro lu sur le COC, caractère par caractère." : `${cocRead?.error || "Lecture impossible."} Recopiez le numéro depuis le COC (rubrique « numéro d’identification »).`}</em>
+                </label>
+              </div> : null}
+            </div> : null}
 
             {wantsCarteGrise && (
               <div className={c.mandat}>
@@ -538,18 +579,13 @@ export default function ReservationCarteGrise() {
                   </>}
                   renderFileInput={required => fileInput("mandat_carte_grise_signe", "Mandat signé", "Avec la mention « Lu et approuvé »", required)}
                 />
-                <div className={c.docGrid}>
-                  {fileInput("coc", "Certificat de conformité européen (COC)", dejaClient ? "Remis avec votre véhicule — obligatoire" : "Peut être ajouté plus tard", dejaClient)}
-                  {fileInput("cnit", "CNIT / document d’homologation", "Peut être ajouté plus tard", false)}
-                </div>
-                <p className={s.note}>Le COC et le CNIT peuvent être ajoutés ici au dossier. Ils restent facultatifs lors de l’envoi initial.</p>
               </div>
             )}
           </section>
 
           {/* ÉTAPE 5 — DEVIS */}
           <section className={s.card} id="devis">
-            <header className={s.cardHead}><span className={s.stepNum}>5</span><div><h2>{dejaClient ? "Votre contrat de vente" : "Votre devis"}</h2><p>{dejaClient ? "Il reprend votre commande (ce n’est pas une nouvelle commande) : relisez-le, puis signez-le avec le doigt ci-dessous." : "Relisez-le, puis signez-le avec le doigt ci-dessous."}</p></div></header>
+            <header className={s.cardHead}><span className={s.stepNum}>{dejaClient ? 4 : 5}</span><div><h2>{dejaClient ? "Votre contrat de vente" : "Votre devis"}</h2><p>{dejaClient ? "Il reprend votre commande (ce n’est pas une nouvelle commande) : relisez-le, puis signez-le avec le doigt ci-dessous." : "Relisez-le, puis signez-le avec le doigt ci-dessous."}</p></div></header>
 
             <div className={c.devisWrap}>
               <div ref={printRef} style={pdf}>
@@ -687,7 +723,7 @@ export default function ReservationCarteGrise() {
             </details>
 
             <div className={c.devisActions}>
-              <button type="button" onClick={downloadPDF} className={s.btnGhost}>{Icon.download} {dejaClient ? "Télécharger le contrat PDF" : "Télécharger le devis PDF"}</button>
+              {dejaClient ? null : <button type="button" onClick={downloadPDF} className={s.btnGhost}>{Icon.download} Télécharger le devis PDF</button>}
               <button type="submit" className={s.btnPrimary} disabled={sending} aria-busy={sending}>{Icon.lock} {sending ? "Envoi en cours…" : "Envoyer mon dossier"}</button>
             </div>
           </section>

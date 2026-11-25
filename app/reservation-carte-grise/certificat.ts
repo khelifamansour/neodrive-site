@@ -64,7 +64,7 @@ export function writeCertificat<P extends CertificatPdf>(pdf: P, x: Certificat):
 
 /** Taille maximale envoyée à la lecture automatique (limite Vercel ~4,5 Mo). */
 const READ_MAX = 4 * 1024 * 1024;
-export type CocVin = { ok: boolean; vin: string; marque: string; type: string; cnit: string; error: string };
+export type CocVin = { ok: boolean; vin: string; marque: string; type: string; reception: string; cnit: string; error: string };
 
 /** Photo réduite en JPEG (≤ 2000 px) ; PDF envoyé tel quel s'il n'est pas trop lourd. null si illisible (HEIC hors Safari…). */
 async function readable(file: File): Promise<File | null> {
@@ -83,15 +83,15 @@ async function readable(file: File): Promise<File | null> {
 
 /** VIN (et si visibles marque, type, CNIT) lus sur le COC. Ne lève jamais d'erreur. */
 export async function readCocVin(file: File): Promise<CocVin> {
-  const fail = (error: string): CocVin => ({ ok: false, vin: "", marque: "", type: "", cnit: "", error });
+  const fail = (error: string): CocVin => ({ ok: false, vin: "", marque: "", type: "", reception: "", cnit: "", error });
   const f = await readable(file);
   if (!f) return fail("Nous n’arrivons pas à lire ce fichier automatiquement.");
   try {
     const fd = new FormData(); fd.append("file", f);
     const r = await fetch("/api/carte-grise/read-vin", { method: "POST", body: fd, signal: AbortSignal.timeout(70000) });
-    const j = await r.json().catch(() => null) as { ok?: boolean; vin?: string; marque?: string; type?: string; cnit?: string; error?: string } | null;
+    const j = await r.json().catch(() => null) as { ok?: boolean; vin?: string; marque?: string; type?: string; reception?: string; cnit?: string; error?: string } | null;
     if (!j?.ok || !j.vin) return fail(j?.error ? `${j.error}.` : "Lecture impossible.");
-    return { ok: true, vin: String(j.vin).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 17), marque: j.marque || "", type: j.type || "", cnit: String(j.cnit || "").toUpperCase().slice(0, 40), error: "" };
+    return { ok: true, vin: String(j.vin).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 17), marque: j.marque || "", type: j.type || "", reception: String(j.reception || "").slice(0, 80), cnit: String(j.cnit || "").toUpperCase().slice(0, 40), error: "" };
   } catch { return fail("Lecture trop longue."); }
 }
 

@@ -119,7 +119,7 @@ export default function SignOnScreen({ id, name, label, docWord, ville, date, fi
       setSigned({ url, key: invalidateKey, size: blob.size });
       onFile(name, fileName);
     } catch {
-      setNotice("La création du PDF signé a échoué. Réessayez, ou choisissez « imprimer et signer à la main ».");
+      setNotice("La création du PDF signé a échoué. Réessayez, ou choisissez « Je préfère imprimer ».");
     } finally { setBusy(false); }
   };
 
@@ -158,7 +158,7 @@ export default function SignOnScreen({ id, name, label, docWord, ville, date, fi
       </div>
     ))}
 
-    {!manualMode ? <button type="button" style={linkBtn} onClick={toManual}>Je préfère imprimer et signer à la main</button> : <>
+    {!manualMode ? <button type="button" style={linkBtn} onClick={toManual}>Je préfère imprimer</button> : <>
       {notice ? <p role="alert" style={{ margin: 0, fontSize: 15, color: "#b45309", fontWeight: 700 }}>{notice}</p> : null}
       {manual}
       {supported ? <button type="button" style={linkBtn} onClick={toScreen}>Signer plutôt avec le doigt à l’écran</button> : null}

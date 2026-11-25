@@ -19,7 +19,7 @@ import { vinValid } from "../../lib/shipments";
 
 type Pdf = CertificatPdf & { save: (name: string) => void; output: (type: "blob") => Blob };
 type JsPdfCtor = new (...args: unknown[]) => Pdf;
-type CocRead = { status: "idle" | "reading" | "ok" | "fail"; vin: string; marque: string; type: string; message: string };
+type CocRead = { status: "idle" | "reading" | "ok" | "fail"; vin: string; marque: string; type: string; reception?: string; message: string };
 
 const WHATSAPP = "https://wa.me/33676192234?text=" + encodeURIComponent("Bonjour, je suis partenaire NeoDrive et j’ai une question sur le dossier carte grise d’un client.");
 const MODELES: { value: string; label: string }[] = [
@@ -126,7 +126,7 @@ export default function CarteGrisePartenaire() {
     const j = await readCocVin(file);
     if (id !== readId.current) return;
     if (!j.ok) return fail(j.error);
-    setCoc({ status: "ok", vin: j.vin, marque: j.marque, type: j.type, message: "" });
+    setCoc({ status: "ok", vin: j.vin, marque: j.marque, type: j.type, reception: j.reception, message: "" });
     if (!vinValid(j.vin)) setManualVin(j.vin);
     // CNIT : seulement s'il est lu sur le COC (sinon NeoDrive l'ajoute dans l'admin), sans champ à remplir.
     if (j.cnit) setSale(p => ({ ...p, cnit_code: j.cnit }));
@@ -268,6 +268,7 @@ export default function CarteGrisePartenaire() {
           <input type="hidden" name="coc_marque" value={coc.marque} />
           <input type="hidden" name="cnit_code" value={sale.cnit_code} />
           <input type="hidden" name="coc_type" value={coc.type} />
+          <input type="hidden" name="coc_reception" value={coc.reception || ""} />
           <input type="hidden" name="date_vente" value={today} />
           <input ref={certificatRef} type="file" name="certificat_vente" accept="application/pdf" hidden tabIndex={-1} aria-hidden="true" />
 

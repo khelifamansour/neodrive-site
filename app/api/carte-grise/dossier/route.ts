@@ -4,6 +4,7 @@ import { CARTE_GRISE_COLUMNS, CARTE_GRISE_FILE_LABEL, CARTE_GRISE_MAX_FILE, type
 import { CARTE_GRISE_BUCKET } from "../../../../lib/carte-grise-server";
 import { analyseDossier } from "../../../../lib/stock";
 import { vinValid } from "../../../../lib/shipments";
+import { cnitFor } from "../../../../lib/cnit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -58,7 +59,10 @@ export async function POST(req: Request) {
       // Client d'un partenaire revendeur (/carte-grise-partenaire) : marqué dans les notes, VIN saisi repris s'il est valide (recoupé ensuite avec le COC).
       const partner = (fields.partenaire || "").trim();
       const vin = (fields.vin || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-      const extra = partner ? { notes: `🤝 Partenaire : ${partner} — carte grise offerte par NeoDrive`, ...(vinValid(vin) ? { vin } : {}) } : {};
+      const extra = { ...(partner ? { notes: `🤝 Partenaire : ${partner} — carte grise offerte par NeoDrive` } : {}), ...(vinValid(vin) ? { vin } : {}) };
+      // CNIT des modèles connus (jamais demandé au client) : déduit de la réception par type / du type lus sur le COC.
+      const cnit = cnitFor({ reception: fields.coc_reception, type: fields.coc_type });
+      if (cnit) fields.cnit_code = cnit;
       const { data: row, error } = await sb.from("carte_grise_dossiers").insert({ ref, folder, ...cols, ...extra, fields, files: planned, status: "envoi en cours" }).select("id").single();
       if (error) throw new Error(error.message);
       return NextResponse.json({ ok: true, id: row.id, ref, folder, bucket: CARTE_GRISE_BUCKET, uploads });
