@@ -1,6 +1,6 @@
 /**
- * Lien de signature de l'accusé de réception (/accuse/confirmer/<token>), partagé par l'espace livreur
- * et la page chauffeur (/chauffeur). Le client y déclare son mode de règlement puis signe.
+ * Lien de signature du bon de livraison (/accuse/confirmer/<token>), partagé par l'espace livreur
+ * et la page chauffeur (/chauffeur). Document unique (réserve de propriété incluse), signé une seule fois.
  */
 import { randomBytes } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -34,23 +34,21 @@ export async function accuseLink(db: SupabaseClient, id: number) {
 }
 
 /**
- * Envoie le lien au client par SMS (transactionnel, envoyé à toute heure) et par e-mail.
- * Paiement pas encore arrivé sur le compte : remise avec réserve de propriété (par défaut). Paiement arrivé : accusé final.
+ * Envoie le lien du bon de livraison au client par SMS (transactionnel, envoyé à toute heure) et par e-mail.
+ * Même document que le paiement soit arrivé ou non ; aucun montant dans le message.
  */
 export async function sendAccuseLink(db: SupabaseClient, id: number) {
   const r = await load(db, id);
-  if (r.accuse_token) throw new AccuseError("Le client a déjà signé l'accusé de réception.", 409);
+  if (r.accuse_token || r.reserve_token) throw new AccuseError("Le client a déjà signé le bon de livraison.", 409);
   if (!r.vin) throw new AccuseError("Enregistrez d'abord le numéro de série de la voiture.");
-  if (!r.paiement_confirme_at && r.reserve_token) throw new AccuseError("La remise est déjà signée. Le client signera l'accusé final sur le même lien quand le paiement sera arrivé.", 409);
   if (!r.telephone && !r.email) throw new AccuseError("Ni téléphone ni e-mail pour ce client : faites signer sur ce téléphone.");
   const first = String(r.prenom || "").split(/\s+/)[0];
-  const reserve = !r.paiement_confirme_at;
   const sent = { sms: false, email: false, errors: [] as string[] };
   await applyStoredSecrets();
   if (!brevoReady()) throw new AccuseError("Envoi indisponible : faites signer sur ce téléphone.", 503);
   const link = `${SITE}/accuse/confirmer/${await tokenOf(db, r)}`;
-  if (r.telephone) { try { sent.sms = !!(await sendSms(r.telephone, reserve ? `Bonjour ${first}, NeoDrive : merci de signer la remise de votre vehicule sur ce lien (paiement pas encore arrive sur notre compte). Ce lien reste valable : ${link}` : `Bonjour ${first}, NeoDrive : votre paiement est bien arrive. Merci de signer l'accuse de reception de votre vehicule sur ce lien : ${link}`, "transactional")); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
-  if (r.email) { try { sent.email = !!(await sendEmail(r.email, `${r.prenom || ""} ${r.nom || ""}`.trim(), reserve ? "Remise de votre NeoDrive – paiement en attente : à signer" : "Confirmez la réception de votre NeoDrive", reserve ? `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive ${esc(r.modele || "")} (n° de série ${esc(r.vin)}) vous est remise avant l'arrivée de votre paiement sur notre compte. Merci de lire et signer le document de remise (réserve de propriété) :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Lire et signer</a></p><p>Les clés et les documents vous seront remis dès réception du paiement.</p><p>Merci,<br>Mansour - NeoDrive</p>` : `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive ${esc(r.modele || "")} (n° de série ${esc(r.vin)}) vient de vous être remise. Merci de confirmer sa réception en 30 secondes :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Je confirme la réception</a></p><p>Vous recevrez ensuite votre accusé de réception en PDF.</p><p>Merci,<br>Mansour - NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
+  if (r.telephone) { try { sent.sms = !!(await sendSms(r.telephone, `Bonjour ${first}, NeoDrive : merci de signer le bon de livraison de votre vehicule sur ce lien (une seule signature). Ce lien reste valable : ${link}`, "transactional")); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
+  if (r.email) { try { sent.email = !!(await sendEmail(r.email, `${r.prenom || ""} ${r.nom || ""}`.trim(), "Votre bon de livraison NeoDrive à signer", `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive ${esc(r.modele || "")} (n° de série ${esc(r.vin)}) vous est remise. Merci de lire et signer le bon de livraison, en une seule fois :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Lire et signer</a></p><p>Vous recevrez ensuite votre bon de livraison en PDF. Aucune autre signature ne vous sera demandée.</p><p>Merci,<br>L'équipe NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
   if (!sent.sms && !sent.email) throw new AccuseError("Envoi impossible : " + sent.errors.join(" · "), 502);
   const at = new Date().toISOString();
   await db.from("reservations").update({ confirm_sent_at: at, updated_at: at }).eq("id", id);

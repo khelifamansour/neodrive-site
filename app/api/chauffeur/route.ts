@@ -54,7 +54,7 @@ export async function POST(req: Request) {
         const { data: rs } = await db.from("reservations").select("id,plan_client_id,vin,email,telephone,paiement_confirme_at,paiement_en_attente,confirm_sent_at,accuse_token,accuse_data,livre_at,total,montant_du,reserve_token,reserve_due,reserve_data").in("plan_client_id", t.clientIds);
         for (const r of rs || []) {
           const d = (r.accuse_data || {}) as { signed_at?: string; reglement?: { mode: string; amount: number }[] | null; driver_name?: string | null };
-          res[String(r.plan_client_id)] = { id: r.id, vin: r.vin, has_email: !!r.email, has_phone: !!r.telephone, paid: r.paiement_confirme_at, pending: !!r.paiement_en_attente, sent_at: r.confirm_sent_at, signed_at: r.accuse_token ? (d.signed_at || r.livre_at) : null, reglement: d.reglement || null, driver_name: d.driver_name || null, pdf: r.accuse_token ? `/api/accuse/${r.accuse_token}` : null, total: r.total == null ? null : Number(r.total), montant_du: r.montant_du == null ? null : Number(r.montant_du), reserve_at: r.reserve_token ? ((r.reserve_data as { signed_at?: string } | null)?.signed_at || r.livre_at) : null, reserve_pdf: r.reserve_token ? `/api/accuse/${r.reserve_token}` : null, reserve_due: r.reserve_due || null };
+          res[String(r.plan_client_id)] = { id: r.id, vin: r.vin, has_email: !!r.email, has_phone: !!r.telephone, paid: r.paiement_confirme_at, pending: !!r.paiement_en_attente, sent_at: r.confirm_sent_at, signed_at: r.accuse_token ? (d.signed_at || r.livre_at) : r.reserve_token ? ((r.reserve_data as { signed_at?: string } | null)?.signed_at || r.livre_at) : null, reglement: d.reglement || null, driver_name: d.driver_name || null, pdf: r.accuse_token ? `/api/accuse/${r.accuse_token}` : r.reserve_token ? `/api/accuse/${r.reserve_token}` : null, total: r.total == null ? null : Number(r.total), montant_du: r.montant_du == null ? null : Number(r.montant_du), reserve_at: r.reserve_token ? ((r.reserve_data as { signed_at?: string } | null)?.signed_at || r.livre_at) : null, reserve_pdf: r.reserve_token && r.accuse_token ? `/api/accuse/${r.reserve_token}` : null, reserve_due: r.reserve_due || null };
         }
       }
       // Mission transporteur : jamais de montant, de taux horaire ni d'heures (le transporteur ne voit que la livraison).
@@ -216,8 +216,8 @@ export async function POST(req: Request) {
       if (error) throw new Error(error.message);
       return NextResponse.json({ ok: true, match: await matchVin(db, vin) });
     }
-    // Accusé de réception : lien de signature envoyé au client (SMS + e-mail) ou ouvert sur ce téléphone
-    // Paiement pas encore reçu : remise avec réserve de propriété (montant dû + échéance), puis signature du client.
+    // Bon de livraison : lien de signature envoyé au client (SMS + e-mail) ou ouvert sur ce téléphone.
+    // Paiement pas encore reçu : montant dû + échéance notés pour le suivi interne (le bon ne change pas pour le client).
     if (b.action === "reserve_start") {
       if (carrier) return NextResponse.json({ ok: false, error: "Action réservée à NeoDrive." }, { status: 403 });
       const r = await resOf(clean(b.client_id, 80));

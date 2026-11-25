@@ -82,7 +82,7 @@ export default function CarrierFlow({ data, call, upload, reload, msg, onMsg, ba
   const searchTail = (q: string) => { setTail(q); if (q.length < 3) { setFound(null); return; } call({ action: "search_vin", q, depot: data.tour.hubId || null }).then(j => setFound(j.results || [])).catch(() => setFound([])); };
   const pickVin = (cid: string, vin: string) => run("load", async () => { const j = await call({ action: "match", vin }); return applyMatch(cid, j.match, null); });
   const arrive = (cid: string, i: number) => run("arrive", async () => { await event({ kind: "arrive", client_id: cid, stop_index: i }); return "📍 Arrivée notée. Prenez la photo du client à côté de la voiture."; });
-  const clientPhoto = (cid: string, i: number, f: File) => run("photo", async () => { const path = await upload(f); await event({ kind: "photo_client", client_id: cid, stop_index: i, path }); return "✅ Photo enregistrée. Faites signer la remise au client."; });
+  const clientPhoto = (cid: string, i: number, f: File) => run("photo", async () => { const path = await upload(f); await event({ kind: "photo_client", client_id: cid, stop_index: i, path }); return "✅ Photo enregistrée. Faites signer le bon de livraison au client."; });
   const sign = (cid: string) => run("sign", async () => { await openSign(call, cid, backUrl(cid)); });
   const finish = (cid: string, i: number) => run("finish", async () => { await event({ kind: "livre", client_id: cid, stop_index: i, vin_confirm: vin4[cid] || null }); setOpen(null); window.scrollTo({ top: 0, behavior: "smooth" }); return "✅ Livraison terminée. Merci ! Passez au client suivant."; });
   const refuse = (cid: string, i: number) => run("refus", async () => { await event({ kind: "refus", client_id: cid, stop_index: i, note: refusNote.trim() || null }); setRefus(null); setRefusNote(""); return "↩️ Refus noté. Rechargez la voiture : NeoDrive est prévenu et vous appelle."; });
@@ -125,12 +125,12 @@ export default function CarrierFlow({ data, call, upload, reload, msg, onMsg, ba
 
       {step === "sign" ? <>
         <b style={{ fontSize: 17 }}>3. Signature du client</b>
-        <small className={s.muted}>Donnez votre téléphone au client : il lit et signe la remise, puis vous le rend.</small>
-        <button className={s.primary} style={bigBtn} disabled={!!busy} onClick={() => sign(cid)}>{busy === "sign" ? "…" : "✍️ Faire signer la remise"}</button>
+        <small className={s.muted}>Donnez votre téléphone au client : il lit et signe le bon de livraison, puis vous le rend.</small>
+        <button className={s.primary} style={bigBtn} disabled={!!busy} onClick={() => sign(cid)}>{busy === "sign" ? "…" : "✍️ Faire signer le bon de livraison"}</button>
       </> : null}
 
       {step === "finish" ? <>
-        <b style={{ fontSize: 17, color: "#067647" }}>✅ Remise signée par le client</b>
+        <b style={{ fontSize: 17, color: "#067647" }}>✅ Bon de livraison signé par le client</b>
         {v && !v.has_plate ? <label className={s.field}>4 derniers caractères de la plaque VIN<input value={vin4[cid] || ""} maxLength={6} onChange={e => setVin4(x => ({ ...x, [cid]: tidy(e.target.value, 6) }))} placeholder="ex. 0483" style={{ fontFamily: "monospace", fontSize: 20 }} /></label> : null}
         <button className={s.primary} style={bigBtn} disabled={!!busy} onClick={() => finish(cid, i)}>{busy === "finish" ? "…" : "4. ✅ Terminé : voiture remise"}</button>
       </> : null}
@@ -154,7 +154,7 @@ export default function CarrierFlow({ data, call, upload, reload, msg, onMsg, ba
         <li>Au chargement : photo de la plaque VIN de chaque voiture (ou tapez le numéro).</li>
         <li>Appelez le client 30 minutes avant d’arriver.</li>
         <li>Chez le client : « Je suis arrivé », puis photo du client à côté de la voiture.</li>
-        <li>Le client signe la remise sur votre téléphone, puis touchez « Terminé ».</li>
+        <li>Le client signe le bon de livraison sur votre téléphone, puis touchez « Terminé ».</li>
         <li>Aucun paiement à encaisser. Si le client refuse de signer, rechargez la voiture.</li>
       </ol>
     </section>

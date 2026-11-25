@@ -31,3 +31,18 @@ export function cleanDecl(raw: unknown, montant: number | null): Declaration | n
   if (!kind || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   return { kind, montant, date };
 }
+
+/**
+ * Bon de livraison unique : clause de réserve de propriété, toujours présente (que le client ait déjà payé ou non).
+ * Reprend la formulation de l'ancien document de remise, sans montant (le bon ne mentionne pas le prix).
+ * Aucune nouvelle signature n'est demandée au client après celle du bon.
+ */
+export const SELLER_NAME = "MK HOLDING SAS";
+export function bonClauses(vin: string) {
+  return [
+    `RÉSERVE DE PROPRIÉTÉ – Le véhicule (VIN ${vin || "…"}) reste la propriété de ${SELLER_NAME} jusqu'au paiement intégral du prix, conformément aux articles 2367 et suivants du Code civil.`,
+    `Le transfert de propriété au client a lieu automatiquement dès le paiement intégral du prix, sans autre formalité ni nouvelle signature. Si le prix est déjà intégralement payé à la date de la livraison, la propriété est transférée au client à cette date.`,
+    `Jusqu'au paiement intégral, le client s'engage à ne pas vendre, prêter, céder ou modifier le véhicule, à en assurer la garde, et à le restituer à ${SELLER_NAME} sur simple demande en cas de non-paiement du prix.`,
+    `Le client reconnaît que toute fausse déclaration concernant le paiement du prix, ainsi que l'annulation ou le rappel d'un virement après la remise du véhicule, peuvent constituer une infraction pénale (notamment escroquerie, article 313-1 du Code pénal), pour laquelle ${SELLER_NAME} déposera plainte, en plus de récupérer le véhicule au titre de la réserve de propriété.`,
+  ];
+}

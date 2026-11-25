@@ -2,7 +2,7 @@
 import { useState } from "react";
 import s from "../planificateur/planif.module.css";
 
-/** Suivi d'un client : numéro de série, remise signée, paiement arrivé, accusé signé. */
+/** Suivi d'un client : numéro de série, bon de livraison signé (document unique), paiement arrivé. */
 export type ResInfo = { id: number; vin: string | null; has_email?: boolean; has_phone?: boolean; paid: string | null; pending: boolean; sent_at: string | null; signed_at: string | null; reglement: { mode: string; amount: number }[] | null; driver_name: string | null; pdf: string | null; total?: number | null; montant_du?: number | null; reserve_at?: string | null; reserve_pdf?: string | null; reserve_due?: string | null };
 type Call = (body: object) => Promise<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -37,21 +37,17 @@ export function SignInfo({ cid, ri, call, reload, onMsg }: { cid: string; ri: Re
   const saveEdit = () => run("edit", async () => { await call({ action: "reserve_start", client_id: cid, montant_du: edit?.montant, due: edit?.due }); setEdit(null); await reload(); return "✅ Montant et date limite enregistrés."; });
   const paid = !!ri.paid;
   if (ri.signed_at) return <div style={{ display: "grid", gap: 6 }}>
-    <b style={{ color: "#15803d" }}>✅ Accusé signé le {hhmm(ri.signed_at)}</b>
+    <b style={{ color: "#15803d" }}>✅ Bon de livraison signé le {hhmm(ri.signed_at)}</b>
+    {!paid ? <small>⏳ Paiement pas encore arrivé : réserve de propriété en cours. Aucune autre signature à faire.</small> : null}
     {ri.reglement?.length ? <small>💶 {ri.reglement.map(x => `${MODE[x.mode] || x.mode}${x.mode === "especes" && ri.driver_name ? " " + ri.driver_name : ""} : ${eur0(x.amount)}`).join(" ; ")}</small> : null}
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {ri.pdf ? <a className={s.ghost} style={{ flex: 1 }} href={ri.pdf} target="_blank" rel="noreferrer">📄 Accusé (PDF)</a> : null}
+      {ri.pdf ? <a className={s.ghost} style={{ flex: 1 }} href={ri.pdf} target="_blank" rel="noreferrer">📄 Bon de livraison (PDF)</a> : null}
       {ri.reserve_pdf ? <a className={s.ghost} style={{ flex: 1 }} href={ri.reserve_pdf} target="_blank" rel="noreferrer">📄 Remise (PDF)</a> : null}
     </div>
   </div>;
-  if (ri.reserve_at && !paid) return <div style={{ display: "grid", gap: 6 }}>
-    <b style={{ color: "#b45309" }}>✅ Remise signée le {hhmm(ri.reserve_at)} – en attente du paiement</b>
-    <small>Gardez les clés et les papiers. Le client signera l’accusé final sur le même lien quand le paiement sera arrivé.</small>
-    {ri.reserve_pdf ? <a className={s.ghost} href={ri.reserve_pdf} target="_blank" rel="noreferrer">📄 Remise signée (PDF)</a> : null}
-  </div>;
   return <div style={{ display: "grid", gap: 6 }}>
-    {paid ? <small className={s.okTxt}>💶 Paiement reçu{ri.reserve_at ? " : remettez les clés et les papiers, puis faites signer l’accusé final." : "."}</small>
-      : <small style={{ background: "#fff4d6", borderRadius: 10, padding: 10, color: "#7a4b00", fontWeight: 700 }}>⏳ Paiement pas encore arrivé{ri.montant_du ?? ri.total ? ` (${eur0(ri.montant_du ?? ri.total)})` : ""} : le client signe la remise avec réserve. <b>Gardez les clés et les papiers.</b></small>}
+    {paid ? <small className={s.okTxt}>💶 Paiement reçu.</small>
+      : <small style={{ background: "#fff4d6", borderRadius: 10, padding: 10, color: "#7a4b00", fontWeight: 700 }}>⏳ Paiement pas encore arrivé{ri.montant_du ?? ri.total ? ` (${eur0(ri.montant_du ?? ri.total)})` : ""} : le client signe le même bon de livraison (réserve de propriété incluse). <b>Gardez les clés et les papiers.</b></small>}
     {ri.has_phone || ri.has_email ? <button className={s.ghost} disabled={!!busy} onClick={sendLink}>{busy === "sms" ? "Envoi…" : ri.sent_at ? `📩 Renvoyer le lien par SMS (envoyé le ${hhmm(ri.sent_at)})` : "📩 Envoyer le lien par SMS"}</button> : null}
     {!paid && !ri.reserve_at ? (edit ? <div style={{ display: "grid", gap: 6, background: "#fff4d6", borderRadius: 10, padding: 10 }}>
       <label style={{ display: "grid", gap: 2 }}>Montant restant dû (€)<input inputMode="decimal" value={edit.montant} onChange={e => setEdit({ ...edit, montant: e.target.value })} /></label>

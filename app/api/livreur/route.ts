@@ -13,10 +13,10 @@ import { roadKm, splitTrips, type PlanClient, type PlanTour, type Stop } from ".
 import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType } from "../../../lib/driver-hours";
 import { addTickets, readTicket, type TicketData } from "../../../lib/driver-tickets";
 import { randomBytes } from "crypto";
-import { RECEIPT_FOLDER, VIN_RE, checksFor, cleanPayment, defaultDue, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
-import { finalizeDelivery, finalizeReserve, intlPhone } from "../../../lib/delivery-finalize";
+import { CHECKS, RECEIPT_FOLDER, VIN_RE, checksFor, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
+import { finalizeDelivery, intlPhone } from "../../../lib/delivery-finalize";
 import { AccuseError, sendAccuseLink } from "../../../lib/accuse-link";
-import { cleanDecl, keptOf, needsVireCheck, type Kept } from "../../../lib/reserve-text";
+import { keptOf } from "../../../lib/reserve-text";
 import { nearestVin, readVinFromImage } from "../../../lib/vin-read";
 import { linkReservationVin } from "../../../lib/stock";
 import { createDemoTour, deleteTestData } from "../../../lib/demo-tour";
@@ -325,7 +325,7 @@ export async function POST(req: Request) {
       if (error) throw new Error(error.message);
       const rows = (data || []).map(r => ({ ...r, ...(r.plan_client_id ? where.get(r.plan_client_id) || {} : {}) })) as (Record<string, unknown> & { tour_date?: string; tour_id?: string; ordre?: number })[];
       if (mine) rows.sort((a, z) => String(a.tour_date || "").localeCompare(String(z.tour_date || "")) || String(a.tour_id || "").localeCompare(String(z.tour_id || "")) || (a.ordre || 0) - (z.ordre || 0));
-      return NextResponse.json({ ok: true, mine, who: acc.who, deliveries: rows.map(r => ({ ...r, kept: r.paiement_en_attente && !r.paiement_confirme_at ? keptOf(r.remise_data) : null, remise_data: undefined, plan_client_id: undefined, email: undefined, has_email: !!r.email, has_vin_photo: !!r.vin_photo_path, vin_photo_path: undefined, accuse_url: r.accuse_token ? `${SITE}/api/accuse/${r.accuse_token}` : null, accuse_token: undefined, reserve_url: r.reserve_token ? `${SITE}/api/accuse/${r.reserve_token}` : null, reserve_token: undefined, remote_confirmed: !!r.remote_confirm, remote_confirm: undefined })), checks: checksFor(false), checks_pending: checksFor(true) });
+      return NextResponse.json({ ok: true, mine, who: acc.who, deliveries: rows.map(r => ({ ...r, kept: r.paiement_en_attente && !r.paiement_confirme_at ? keptOf(r.remise_data) : null, remise_data: undefined, plan_client_id: undefined, email: undefined, has_email: !!r.email, has_vin_photo: !!r.vin_photo_path, vin_photo_path: undefined, accuse_url: r.accuse_token ? `${SITE}/api/accuse/${r.accuse_token}` : r.reserve_token ? `${SITE}/api/accuse/${r.reserve_token}` : null, accuse_token: undefined, reserve_url: r.reserve_token ? `${SITE}/api/accuse/${r.reserve_token}` : null, reserve_token: undefined, remote_confirmed: !!r.remote_confirm, remote_confirm: undefined })), checks: checksFor(false), checks_pending: checksFor(false) });
     }
     if (b.action === "free_vins") {
       const [{ data: sv }, { data: used }] = await Promise.all([db.from("shipment_vehicles").select("vin,container,status,client_name").neq("status", "livrée").order("vin").limit(500), db.from("reservations").select("vin").not("vin", "is", null)]);
@@ -389,7 +389,7 @@ export async function POST(req: Request) {
       const patch: Record<string, unknown> = { paiement_confirme_at: at, updated_at: at };
       if (r.livre_at) {
         patch.statut = "Livrée"; patch.paiement_en_attente = false;
-        patch.notes = [r.notes, `[${day}] Paiement reçu après remise (confirmé par Mansour depuis la livraison) : clés et papiers à remettre si gardés, accusé final à faire signer.`].filter(Boolean).join("\n");
+        patch.notes = [r.notes, `[${day}] Paiement reçu après livraison (confirmé par Mansour depuis la livraison) : réserve de propriété levée, la voiture appartient au client (aucune nouvelle signature). Clés et papiers à remettre si gardés.`].filter(Boolean).join("\n");
       } else {
         // Payé avant la remise : livraison normale, on annule un éventuel « paiement en attente ».
         Object.assign(patch, { paiement_en_attente: false, montant_du: null, remise_data: null, reserve_due: null });
@@ -447,28 +447,21 @@ export async function POST(req: Request) {
       const id = Number(b.id);
       const { data: r } = await db.from("reservations").select("*").eq("id", id).maybeSingle();
       if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
-      if (r.accuse_token) return NextResponse.json({ ok: false, error: "Cette livraison est déjà confirmée." }, { status: 409 });
+      if (r.accuse_token || r.reserve_token) return NextResponse.json({ ok: false, error: "Le bon de livraison est déjà signé." }, { status: 409 });
       if (!r.vin) return NextResponse.json({ ok: false, error: "Enregistrez d'abord le numéro de série (VIN)." }, { status: 400 });
       if (!r.paiement_confirme_at && !r.paiement_en_attente) return NextResponse.json({ ok: false, error: "Le paiement n'est pas encore confirmé par NeoDrive. Ne remettez pas les clés : appelez Mansour." }, { status: 409 });
       const signer = clean(b.signer, 120);
       if (signer.length < 3) return NextResponse.json({ ok: false, error: "Le client doit écrire son nom et prénom." }, { status: 400 });
+      if (!b.accept) return NextResponse.json({ ok: false, error: "Le client coche « J'ai bien reçu mon véhicule et j'accepte la réserve de propriété »." }, { status: 400 });
       const sigUrl = String(b.signature || "");
       const m = sigUrl.match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/);
       if (!m || m[1].length < 800) return NextResponse.json({ ok: false, error: "Le client doit signer dans le cadre." }, { status: 400 });
       if (m[1].length > 900_000) return NextResponse.json({ ok: false, error: "Signature trop lourde, recommencez." }, { status: 400 });
-      const pending = !r.paiement_confirme_at && !!r.paiement_en_attente;
-      const kept: Kept | null = pending ? keptOf(r.remise_data) : null;
-      const montantDu = r.montant_du == null ? null : Number(r.montant_du);
-      const declaration = pending ? cleanDecl(b.declaration, montantDu) : null;
-      if (pending && !declaration) return NextResponse.json({ ok: false, error: "Le client choisit : « virement déjà ordonné » ou « je m'engage à payer », avec la date." }, { status: 400 });
-      // Remise sans paiement : la déclaration remplace le mode de règlement (facultatif).
-      const reglement = cleanPayment(b.payment);
-      if (!reglement && !pending) return NextResponse.json({ ok: false, error: "Le client doit indiquer comment il a réglé (au moins un mode avec un montant)." }, { status: 400 });
+      // Bon de livraison unique (réserve de propriété toujours incluse) : ni déclaration de paiement ni montant à faire signer.
+      const pending = !r.paiement_confirme_at;
       const driverName = acc.who === "member" ? driverDisplay(name) : (driverDisplay(clean(b.driver_name, 80)) || "Mansour Khelifa");
       const checksIn = (b.checks || {}) as Record<string, unknown>;
-      const vire = needsVireCheck(pending, reglement);
-      if (vire && !checksIn.virement) return NextResponse.json({ ok: false, error: "Le client doit cocher l'engagement sur le virement." }, { status: 400 });
-      const checks = Object.fromEntries(checksFor(pending, kept, vire).map(c => [c.id, !!checksIn[c.id]]));
+      const checks = Object.fromEntries(CHECKS.map(c => [c.id, !!checksIn[c.id]]));
       const at = new Date().toISOString();
       const num = (x: unknown) => { const n = Number(x); return Number.isFinite(n) ? n : null; };
       const data: ReceiptData = {
@@ -477,17 +470,9 @@ export async function POST(req: Request) {
         telephone: r.telephone || "", email: r.email || "", modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin,
         checks, reserves: clean(b.reserves, 600), signer, signed_at: at, livreur: name || acc.name || "NeoDrive",
         paiement_confirme_at: r.paiement_confirme_at, lat: num(b.lat), lng: num(b.lng), mode: "signature",
-        pending: pending ? { montant_du: montantDu } : null,
-        reglement, driver_name: driverName, kept, declaration,
+        pending: pending ? { montant_du: r.montant_du == null ? null : Number(r.montant_du) } : null,
+        reglement: null, driver_name: driverName, kept: null, declaration: null,
       };
-      if (pending) {
-        if (r.reserve_token) return NextResponse.json({ ok: false, error: "La remise avec réserve est déjà signée : l'accusé final se signe après le paiement." }, { status: 409 });
-        data.numero = `RES-${at.slice(0, 4)}-${String(id).padStart(6, "0")}`;
-        data.reserve = { due: r.reserve_due || defaultDue(), montant_du: r.montant_du == null ? null : Number(r.montant_du), lieu: data.adresse };
-        const out = await finalizeReserve(db, r, data, Buffer.from(m[1], "base64"));
-        await logSection(acc, "livraison_reserve", { id, vin: r.vin });
-        return NextResponse.json({ ok: true, ...out });
-      }
       const out = await finalizeDelivery(db, r, data, Buffer.from(m[1], "base64"));
       await logSection(acc, "livraison_accuse", { id, vin: r.vin, pending });
       return NextResponse.json({ ok: true, ...out });

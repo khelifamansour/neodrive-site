@@ -1,10 +1,10 @@
-/** Accusé de réception du véhicule : signé par le client sur le téléphone du livreur, ou confirmé à distance par le client (lien SMS / e-mail). Serveur uniquement. */
+/** Bon de livraison du véhicule (document unique, avec réserve de propriété) : signé par le client sur le téléphone du livreur, ou confirmé à distance par le client (lien SMS / e-mail). Serveur uniquement. */
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import PDFDocument from "pdfkit";
 
 import { safeText } from "./pdf-text";
-import { PENAL_TEXT, PROCESS_TEXT, VIRE_CHECK, declText, keptLabel, propertyText, type Declaration, type Kept } from "./reserve-text";
+import { PENAL_TEXT, PROCESS_TEXT, VIRE_CHECK, bonClauses, declText, keptLabel, propertyText, type Declaration, type Kept } from "./reserve-text";
 export const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
 export const RECEIPT_FOLDER = "livraisons";
 
@@ -98,7 +98,7 @@ export function reserveClauses(x: { modele: string; couleur: string; vin: string
   ];
 }
 
-const SELLER = ["MK HOLDING - NeoDrive", "31600 Muret, France", "SIREN 908 645 393", "Tél. 06 89 78 17 10 · contact.neodrivefrance@gmail.com"];
+const SELLER = ["MK HOLDING SAS - NeoDrive", "31600 Muret, France", "SIREN 908 645 393", "Tél. 06 89 78 17 10 · contact.neodrivefrance@gmail.com"];
 const fr = (iso: string | null) => iso ? new Date(iso).toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
 /** Encadré « Réserve de propriété » + déclaration choisie par le client + mention pénale. Renvoie le nouveau y. */
@@ -114,17 +114,21 @@ function reserveBlock(doc: any, d: ReceiptData, y: number) {
   return y + h + 10;
 }
 
-/** PDF « Accusé de réception du véhicule » avec la signature manuscrite du client (PNG). */
+/**
+ * PDF « Bon de livraison » (document unique signé une seule fois à la remise) avec la signature manuscrite du client (PNG).
+ * Toujours le même document, que le client ait déjà payé ou non : il contient la clause de réserve de propriété
+ * et ne mentionne pas le prix (le chauffeur ou le transporteur ne voit aucun montant).
+ */
 export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
-    const doc = safeText(new PDFDocument({ size: "A4", margin: 40, info: { Title: `Accusé de réception ${d.numero}`, Author: "MK HOLDING - NeoDrive" } }));
+    const doc = safeText(new PDFDocument({ size: "A4", margin: 40, info: { Title: `Bon de livraison ${d.numero}`, Author: "MK HOLDING SAS - NeoDrive" } }));
     const chunks: Buffer[] = [];
     doc.on("data", (b: Buffer) => chunks.push(b)); doc.on("end", () => resolve(Buffer.concat(chunks))); doc.on("error", reject);
     const ink = "#111", grey = "#666", accent = "#ff5a1f";
 
     doc.font("Helvetica-Bold").fontSize(18).fillColor(ink).text("NeoDrive", 40, 40);
     doc.font("Helvetica").fontSize(8.5).fillColor(grey).text(SELLER.join("\n"), 40, 62, { width: 260 });
-    doc.font("Helvetica-Bold").fontSize(15).fillColor(accent).text("ACCUSÉ DE RÉCEPTION DU VÉHICULE", 250, 40, { width: 305, align: "right" });
+    doc.font("Helvetica-Bold").fontSize(16).fillColor(accent).text("BON DE LIVRAISON", 250, 40, { width: 305, align: "right" });
     doc.font("Helvetica").fontSize(9).fillColor(ink).text(`N° ${d.numero}`, 250, 62, { width: 305, align: "right" }).text(`Livré le ${fr(d.signed_at)}`, 250, 74, { width: 305, align: "right" });
 
     let y = 128;
@@ -133,42 +137,42 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
       doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text(title, x + 10, y + 8);
       doc.font("Helvetica").fontSize(9).fillColor(ink).text(lines.filter(Boolean).join("\n"), x + 10, y + 21, { width: w - 20, height: h - 26, ellipsis: true });
     };
-    box("CLIENT", [d.client, d.adresse, d.telephone ? `Tél. ${d.telephone}` : "", d.email], 40, 250, 96);
-    box("VÉHICULE", [d.modele, d.couleur ? `Couleur : ${d.couleur}` : "", `N° de série (VIN) : ${d.vin}`], 305, 250, 96);
-    y += 112;
+    box("CLIENT", [d.client, d.adresse, d.telephone ? `Tél. ${d.telephone}` : "", d.email], 40, 250, 86);
+    box("VÉHICULE", [d.modele, d.couleur ? `Couleur : ${d.couleur}` : "", `N° de série (VIN) : ${d.vin}`], 305, 250, 86);
+    y += 96;
+    const lieu = `Date de livraison : ${fr(d.signed_at)}${d.adresse ? ` · Lieu de livraison : ${d.adresse}` : ""}`;
+    doc.font("Helvetica").fontSize(9).fillColor(ink).text(lieu, 40, y, { width: 515 });
+    y += doc.heightOfString(lieu, { width: 515 }) + 10;
 
-    doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Contrôles à la remise du véhicule", 40, y); y += 16;
-    for (const c of checksFor(!!d.pending, d.kept, "virement" in (d.checks || {}))) {
+    doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("État du véhicule et éléments remis", 40, y); y += 16;
+    // Toujours la même liste ; une case non cochée = élément non remis (ou point non vérifié).
+    const list = [...CHECKS, ...("virement" in (d.checks || {}) ? [VIRE_CHECK] : [])];
+    for (const c of list) {
       const ok = !!d.checks[c.id];
       doc.rect(44, y + 1, 9, 9).lineWidth(0.8).stroke(ok ? "#067647" : "#999");
       if (ok) doc.font("Helvetica-Bold").fontSize(9).fillColor("#067647").text("X", 46, y + 1.5);
       doc.font(c.id === "virement" ? "Helvetica-Bold" : "Helvetica").fontSize(9.5).fillColor(ok ? ink : grey).text(c.label, 60, y, { width: 490 });
-      y += Math.max(16, doc.heightOfString(c.label, { width: 490 }) + 5);
+      y += Math.max(15, doc.heightOfString(c.label, { width: 490 }) + 4);
     }
-    y += 6;
-    doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Réserves ou remarques du client", 40, y); y += 14;
-    doc.roundedRect(40, y, 515, 54, 6).lineWidth(0.6).stroke("#bbb");
-    doc.font("Helvetica").fontSize(9).fillColor(d.reserves ? ink : grey).text(d.reserves || "Aucune réserve.", 50, y + 8, { width: 495, height: 42, ellipsis: true });
-    y += 66;
+    y += 4;
+    doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Réserves ou remarques du client (état du véhicule)", 40, y); y += 14;
+    doc.roundedRect(40, y, 515, 44, 6).lineWidth(0.6).stroke("#bbb");
+    doc.font("Helvetica").fontSize(9).fillColor(d.reserves ? ink : grey).text(d.reserves || "Aucune réserve.", 50, y + 7, { width: 495, height: 32, ellipsis: true });
+    y += 54;
 
-    doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text("Paiement", 40, y); y += 14;
-    const eur = (n: number | null | undefined) => n == null ? "" : `${Math.round(n).toLocaleString("fr-FR")} €`;
-    const payText = d.paiement_confirme_at ? `Paiement reçu : confirmé par NeoDrive le ${fr(d.paiement_confirme_at)}.`
-      : d.pending ? `Paiement en attente${d.pending.montant_du ? ` : ${eur(d.pending.montant_du)} restant dus` : ""}.${keptLabel(d.kept || { cles: true, documents: true }) ? ` NeoDrive conserve ${keptLabel(d.kept || { cles: true, documents: true })} du véhicule jusqu'au paiement.` : ""}`
-      : "Paiement : non confirmé.";
-    doc.font("Helvetica").fontSize(9.5).fillColor(d.pending && !d.paiement_confirme_at ? "#b42318" : ink).text(payText, 40, y, { width: 515 });
-    y += d.pending ? 36 : 24;
-    if (d.reglement?.length) {
-      const t = `Mode de règlement déclaré par le client : ${paymentText(d.reglement, driverDisplay(d.driver_name))}.`;
-      doc.font("Helvetica-Bold").fontSize(9.5).fillColor(ink).text(t, 40, y, { width: 515 });
-      y += doc.heightOfString(t, { width: 515 }) + 8;
-    }
-    if (d.declaration && !d.paiement_confirme_at) y = reserveBlock(doc, d, y);
+    // Clause de réserve de propriété : toujours présente, valable que le prix soit déjà payé ou non.
+    const clauses = bonClauses(d.vin);
+    const f = (i: number) => doc.font(i === 0 ? "Helvetica-Bold" : "Helvetica").fontSize(8.8);
+    const h = clauses.reduce((a, t, i) => a + f(i).heightOfString(t, { width: 495 }) + 4, 0) + 12;
+    doc.roundedRect(40, y, 515, h, 6).lineWidth(1).stroke("#b42318");
+    let yy = y + 7;
+    clauses.forEach((t, i) => { f(i).fillColor(i ? ink : "#b42318").text(t, 50, yy, { width: 495 }); yy += doc.heightOfString(t, { width: 495 }) + 4; });
+    y += h + 10;
 
-    doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(
-      `Je soussigné(e) ${d.signer} reconnais avoir reçu ce jour le véhicule décrit ci-dessus, avec les éléments cochés, sous réserve des remarques indiquées.${d.pending && !d.paiement_confirme_at ? " Je m'engage à régler le montant restant dû." : ""} La garantie légale de conformité de 2 ans s'applique à compter de cette date.`,
-      40, y, { width: 515 });
-    y += 46;
+    const engage = `Je soussigné(e) ${d.signer} reconnais avoir reçu ce jour le véhicule décrit ci-dessus, avec les éléments cochés, sous réserve des remarques indiquées, et accepte la clause de réserve de propriété ci-dessus. La garantie légale de conformité de 2 ans s'applique à compter de cette date.`;
+    doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(engage, 40, y, { width: 515 });
+    y += doc.heightOfString(engage, { width: 515 }) + 10;
+    if (y > 640) { doc.addPage(); y = 40; }
 
     const remote = d.mode === "distance";
     doc.font("Helvetica-Bold").fontSize(9).fillColor(ink).text("Signature du client", 40, y).text("Remis par", 330, y);
@@ -176,22 +180,22 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
     if (signaturePng) { try { doc.image(signaturePng, 48, y + 18, { fit: [254, remote ? 56 : 84], align: "center", valign: "center" }); } catch { /* signature illisible : le nom reste */ } }
     if (remote) {
       const top = signaturePng ? y + 76 : y + 24;
-      doc.font("Helvetica-Bold").fontSize(signaturePng ? 8 : 10).fillColor("#067647").text(signaturePng ? "SIGNÉ À DISTANCE PAR LE CLIENT" : "CONFIRMÉ À DISTANCE PAR LE CLIENT", 48, top, { width: 254 });
-      doc.font("Helvetica").fontSize(7.5).fillColor(ink).text(`${signaturePng ? "Signature manuscrite tracée" : "Case cochée et nom saisi"} par le client sur son téléphone, via le lien sécurisé envoyé au ${d.remote?.phone || d.telephone || "numéro du client"}.${d.remote?.ip ? ` Adresse IP : ${d.remote.ip}` : ""}`, 48, top + 10, { width: 254 });
+      doc.font("Helvetica-Bold").fontSize(signaturePng ? 8 : 10).fillColor("#067647").text(signaturePng ? "SIGNÉ PAR LE CLIENT SUR TÉLÉPHONE" : "CONFIRMÉ PAR LE CLIENT SUR TÉLÉPHONE", 48, top, { width: 254 });
+      doc.font("Helvetica").fontSize(7.5).fillColor(ink).text(`${signaturePng ? "Signature manuscrite tracée" : "Case cochée et nom saisi"} par le client, via le lien sécurisé personnel du ${d.remote?.phone || d.telephone || "client"}.${d.remote?.ip ? ` Adresse IP : ${d.remote.ip}` : ""}`, 48, top + 10, { width: 254 });
     }
     doc.font("Helvetica").fontSize(8.5).fillColor(grey).text(`${d.signer} · ${fr(remote ? d.remote?.at || d.signed_at : d.signed_at)}`, 48, y + 112, { width: 254 });
     const remis = driverDisplay(d.driver_name) || (d.livreur && d.livreur !== "NeoDrive" ? driverDisplay(d.livreur) : "");
-    doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(remis ? `${remis}${/mansour/i.test(remis) ? "" : " (chauffeur)"}\npour MK HOLDING – NeoDrive` : "MK HOLDING – NeoDrive", 330, y + 18, { width: 225 });
+    doc.font("Helvetica").fontSize(9.5).fillColor(ink).text(remis ? `${remis}${/mansour/i.test(remis) ? "" : " (chauffeur)"}\npour MK HOLDING SAS – NeoDrive` : "MK HOLDING SAS – NeoDrive", 330, y + 18, { width: 225 });
     y += 140;
 
     doc.font("Helvetica").fontSize(7.5).fillColor(grey).text(
-      `${remote ? "Confirmation électronique simple recueillie sur l'appareil du client (lien personnel à usage unique)" : "Signature électronique simple recueillie sur l'appareil du livreur"}${d.lat != null && d.lng != null ? `, position du livreur ${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}` : ""}. Document généré automatiquement par NeoDrive ; un exemplaire est remis au client par e-mail ou lien sécurisé.`,
+      `${remote ? "Signature électronique simple recueillie via le lien personnel du client" : "Signature électronique simple recueillie sur l'appareil du livreur"}${d.lat != null && d.lng != null ? `, position du livreur ${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}` : ""}. Document unique de livraison : aucune autre signature ne sera demandée au client. Document généré automatiquement par NeoDrive ; un exemplaire est remis au client par e-mail ou lien sécurisé.`,
       40, Math.min(y, 770), { width: 515 });
     doc.end();
   });
 }
 
-/** PDF « Remise du véhicule – paiement en attente (réserve de propriété) », signé par le client. */
+/** Ancien PDF « Remise du véhicule – paiement en attente (réserve de propriété) ». Plus utilisé pour les nouvelles livraisons (bon de livraison unique) ; gardé pour les anciennes. */
 export function reservePdf(d: ReceiptData, signaturePng: Buffer | null): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     const doc = safeText(new PDFDocument({ size: "A4", margin: 40, info: { Title: `Remise avec réserve de propriété ${d.numero}`, Author: "MK HOLDING - NeoDrive" } }));

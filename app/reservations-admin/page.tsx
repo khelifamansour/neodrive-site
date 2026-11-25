@@ -24,6 +24,8 @@ const SRC: Record<string, string> = { site_devis: "Site (devis)", site_formulair
 /** Modèle hors stock : tout sauf la Confort simple (Essentielle, Confort Plus…). */
 const horsStock = (m: string) => /essentiel|plus/i.test(m || "");
 const ACTIVE = ["Nouvelle", "Confirmée", "Planifiée"];
+/** Livrée (bon de livraison signé) mais paiement pas encore confirmé : réserve de propriété en cours, reste visible « En cours ». */
+const waitPay = (r: { livre_at?: string | null; paiement_en_attente?: boolean | null; paiement_confirme_at?: string | null }) => !!r.livre_at && !!r.paiement_en_attente && !r.paiement_confirme_at;
 const eur = (n: number | null) => n == null ? "—" : `${Math.round(n).toLocaleString("fr-FR")} €`;
 const fmt = (d?: string | null) => d ? new Date(d.length === 10 ? d + "T12:00:00" : d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "—";
 const code = () => { try { return sessionStorage.getItem("nd_pc") || ""; } catch { return ""; } };
@@ -54,7 +56,7 @@ export default function ReservationsAdmin() {
   useEffect(() => { load().catch(() => null); }, [load]);
 
   const counts = useMemo(() => Object.fromEntries(STATUTS.map(s => [s, rows.filter(r => r.statut === s).length])), [rows]);
-  const shown = rows.filter(r => filter === "toutes" ? true : filter === "actives" ? !["Livrée", "Annulée"].includes(r.statut) : filter === "horsstock" ? ACTIVE.includes(r.statut) && horsStock(r.modele) : r.statut === filter);
+  const shown = rows.filter(r => filter === "toutes" ? true : filter === "actives" ? !["Livrée", "Annulée"].includes(r.statut) || waitPay(r) : filter === "horsstock" ? ACTIVE.includes(r.statut) && horsStock(r.modele) : r.statut === filter);
   const enCours = rows.filter(r => ACTIVE.includes(r.statut));
   const chosen = rows.filter(r => sel.has(r.id));
 
@@ -62,7 +64,7 @@ export default function ReservationsAdmin() {
   const save = (id: number, patch: Partial<R>) => run(async () => { await api({ action: "update", id, ...patch }); setOpen(null); return "✅ Enregistré."; });
   const toPlanner = () => run(async () => { const j = await api<{ done: number; errors: string[] }>({ action: "to_planner", ids: [...sel] }); setSel(new Set()); return `🚚 ${j.done} réservation(s) dans le planificateur.${j.errors.length ? " ⚠️ " + j.errors.join(" ; ") : ""}`; });
   const importPlanner = () => run(async () => { const j = await api<{ added: number }>({ action: "import_planner" }); return `📥 ${j.added} réservation(s) reprise(s) du planificateur.`; });
-  const setPaid = (r: R) => { const on = !r.paiement_confirme_at; if (!confirm(on ? `Confirmer que le paiement de ${r.prenom} ${r.nom} est bien reçu sur le compte ? Le livreur pourra alors faire signer l'accusé et remettre les clés.` : `Annuler la confirmation de paiement de ${r.prenom} ${r.nom} ?`)) return; run(async () => { await api({ action: "update", id: r.id, paiement_confirme: on }); return on ? (r.livre_at && r.paiement_en_attente ? `💶 Paiement de ${r.prenom} ${r.nom} confirmé : réservation passée en « Livrée ». SMS envoyés : à vous (envoyer clés et papiers en lettre suivie) et au client.` : `💶 Paiement de ${r.prenom} ${r.nom} confirmé : le livreur peut faire confirmer l'accusé.`) : "Confirmation de paiement annulée."; }); };
+  const setPaid = (r: R) => { const on = !r.paiement_confirme_at; if (!confirm(on ? `Confirmer que le paiement de ${r.prenom} ${r.nom} est bien reçu sur le compte ? S'il est déjà livré, la réserve de propriété est levée (aucune nouvelle signature du client).` : `Annuler la confirmation de paiement de ${r.prenom} ${r.nom} ?`)) return; run(async () => { await api({ action: "update", id: r.id, paiement_confirme: on }); return on ? (r.livre_at && r.paiement_en_attente ? `💶 Paiement de ${r.prenom} ${r.nom} confirmé : réservation passée en « Livrée ». Réserve de propriété levée, aucune nouvelle signature. SMS envoyés : à vous (clés et papiers à envoyer s'ils ont été gardés) et au client.` : `💶 Paiement de ${r.prenom} ${r.nom} confirmé.`) : "Confirmation de paiement annulée."; }); };
   const logContact = (id: number, channel: string, template: string) => { api({ action: "contact_log", id, channel, template }).then(() => load()).catch(e => setMsg("❌ " + (e as Error).message)); };
   const saveTemp = (id: number, temperature: Temperature | null, signals: string[]) => run(async () => { await api({ action: "temperature", id, temperature, signals }); setTempOpen(null); return "🌡️ Température enregistrée."; });
   const clientReplied = (id: number) => run(async () => { await api({ action: "client_reply", id }); return "✅ Réponse du client notée."; });
@@ -130,7 +132,7 @@ export default function ReservationsAdmin() {
       </section> : null}
     </div>
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "16px 0 8px" }}>
-      {[["actives", `En cours (${rows.filter(r => !["Livrée", "Annulée"].includes(r.statut)).length})`], ["horsstock", `🔴 Hors stock (${enCours.filter(r => horsStock(r.modele)).length})`], ...STATUTS.map(s => [s, `${s} (${counts[s] || 0})`]), ["toutes", `Toutes (${rows.length})`]].map(([k, l]) =>
+      {[["actives", `En cours (${rows.filter(r => !["Livrée", "Annulée"].includes(r.statut) || waitPay(r)).length})`], ["horsstock", `🔴 Hors stock (${enCours.filter(r => horsStock(r.modele)).length})`], ...STATUTS.map(s => [s, `${s} (${counts[s] || 0})`]), ["toutes", `Toutes (${rows.length})`]].map(([k, l]) =>
         <button key={k} className={`${c.btn} ${filter === k ? c.btnBrand : c.btnGhost}`} style={{ padding: "6px 12px" }} onClick={() => setFilter(k)}>{l}</button>)}
     </div>
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
@@ -150,7 +152,7 @@ export default function ReservationsAdmin() {
               <span className={c.badge} style={{ background: ST_BG[r.statut] || "#eee", color: "#111" }}>{r.statut}</span>
               {r.reserve_token && !r.paiement_confirme_at ? <span className={c.badge} style={{ background: "#fde8e7", color: "#b42318" }}>🔒 Remis avec réserve de propriété – {r.montant_du ? `${Math.round(Number(r.montant_du)).toLocaleString("fr-FR")} €` : "montant"} en attente{r.reserve_due ? ` (échéance ${new Date(r.reserve_due + "T12:00:00").toLocaleDateString("fr-FR")})` : ""} – clés et papiers conservés par NeoDrive</span>
                 : r.reserve_token && r.paiement_confirme_at && !r.accuse_token ? <span className={c.badge} style={{ background: "#e7f6ec", color: "#067647" }}>✅ Payé – clés et papiers à remettre</span>
-                : r.livre_at && r.paiement_en_attente && !r.paiement_confirme_at ? <span className={c.badge} style={{ background: "#fde8e7", color: "#b42318" }}>Livrée – paiement en attente{r.montant_du ? ` (${Math.round(Number(r.montant_du)).toLocaleString("fr-FR")} €)` : ""}</span> : null}
+                : waitPay(r) ? <span className={c.badge} style={{ background: "#fde8e7", color: "#b42318" }}>🔒 Livrée – réserve de propriété jusqu’au paiement{r.montant_du ? ` (${Math.round(Number(r.montant_du)).toLocaleString("fr-FR")} € en attente)` : ""}</span> : null}
               {r.priorite !== "Normale" ? <span className={c.badge} style={{ background: r.priorite === "Urgente" ? "#fde8e7" : r.priorite === "Haute" ? "#fff4d6" : "#f1f1f1", color: "#111" }}>{r.priorite}</span> : null}
               {r.plan_client_id ? <span className={c.badge} style={{ background: "#ede7fb", color: "#111" }}>🚚 au planificateur</span> : null}
               {hs ? <span className={c.badge} style={{ background: "#d92d20", color: "#fff" }}>Hors stock — rappeler</span> : null}
@@ -166,9 +168,9 @@ export default function ReservationsAdmin() {
               {r.telephone ? <a className={`${c.btn} ${c.btnGhost}`} href={`tel:${r.telephone}`}>📞 {r.telephone}</a> : null}
               {r.telephone ? <a className={`${c.btn} ${c.btnGhost}`} target="_blank" rel="noreferrer" href={`https://wa.me/${r.telephone.replace(/[^\d]/g, "").replace(/^0/, "33")}`}>💬 WhatsApp</a> : null}
               {r.telephone ? <button className={`${c.btn} ${c.btnBrand}`} onClick={() => setContact(contact === r.id ? null : r.id)}>💬 Contacter</button> : null}
-              {r.accuse_token ? <a className={`${c.btn} ${c.btnGhost}`} href={`/api/accuse/${r.accuse_token}`} target="_blank" rel="noreferrer">📄 {r.remote_confirm ? "Accusé confirmé à distance" : "Accusé signé"}</a> : null}
+              {r.accuse_token ? <a className={`${c.btn} ${c.btnGhost}`} href={`/api/accuse/${r.accuse_token}`} target="_blank" rel="noreferrer">📄 Bon de livraison signé</a> : null}
               {r.reserve_token ? <a className={`${c.btn} ${c.btnGhost}`} href={`/api/accuse/${r.reserve_token}`} target="_blank" rel="noreferrer">🔒 Remise avec réserve (PDF)</a> : null}
-              {!["Livrée", "Annulée"].includes(r.statut) ? <button className={`${c.btn} ${r.paiement_confirme_at ? c.btnGhost : c.btnBrand}`} title={r.livre_at && r.paiement_en_attente ? "Paiement reçu après livraison : passe en Livrée et prévient le client" : undefined} style={r.paiement_confirme_at ? { background: "#e7f6ec" } : undefined} onClick={() => setPaid(r)}>{r.paiement_confirme_at ? "💶 Paiement confirmé ✅" : "💶 Confirmer le paiement"}</button> : null}
+              {!["Livrée", "Annulée"].includes(r.statut) || waitPay(r) ? <button className={`${c.btn} ${r.paiement_confirme_at ? c.btnGhost : c.btnBrand}`} title={r.livre_at && r.paiement_en_attente ? "Paiement reçu après livraison : lève la réserve de propriété et prévient le client" : undefined} style={r.paiement_confirme_at ? { background: "#e7f6ec" } : undefined} onClick={() => setPaid(r)}>{r.paiement_confirme_at ? "💶 Paiement confirmé ✅" : "💶 Confirmer le paiement"}</button> : null}
               {!["Livrée", "Annulée"].includes(r.statut) ? <button className={`${c.btn} ${c.btnGhost}`} onClick={() => setTempOpen(tempOpen === r.id ? null : r.id)}>{tempOpen === r.id ? "Fermer 🌡️" : "🌡️ Température"}</button> : null}
               <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { setOpen(isOpen ? null : r.id); setEdit({ statut: r.statut, priorite: r.priorite, date_promise: r.date_promise, acompte: r.acompte, notes: r.notes }); }}>{isOpen ? "Fermer" : "✏️ Modifier"}</button>
             </div>

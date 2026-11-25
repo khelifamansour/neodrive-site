@@ -1,13 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import PaymentDeclare, { payValid, type PayDecl } from "../_components/PaymentDeclare";
-import ReserveDeclare from "../_components/ReserveDeclare";
 import SignaturePad from "./SignaturePad";
 import c from "../giga/giga.module.css";
 import s from "./delivery.module.css";
 import { supabase } from "../../lib/supabase";
 import { VIN_FORMAT, vinCheckOk } from "../../lib/vin";
-import { VIRE_CHECK, keptLabel, needsVireCheck, type Declaration, type Kept } from "../../lib/reserve-text";
+import { bonClauses, keptLabel, type Kept } from "../../lib/reserve-text";
 
 /** Livraisons en 4 étapes : 1 prévenir le client (« j'arrive »), 2 numéro de série (photo → lecture auto), 3 paiement, 4 signature (téléphone du client ou du livreur). */
 /** Échéance par défaut : 3 jours ouvrés. */
@@ -80,7 +78,6 @@ async function toJpeg(f: File): Promise<Blob> {
 }
 
 export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; onMsg: (m: string) => void; driverName?: string }) {
-  const [pay, setPay] = useState<PayDecl>({ lines: [], driver: driverName });
   const [list, setList] = useState<Dlv[]>([]); const [mine, setMine] = useState(false); const [who, setWho] = useState<"owner" | "member">("member");
   const [checksAll, setChecks] = useState<Check[]>([]);
   const [sigMode, setSigMode] = useState(false); const [sent, setSent] = useState<{ sms: boolean; email: boolean; whatsapp: string | null } | null>(null);
@@ -90,7 +87,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   const [sel, setSel] = useState<number | null>(null); const [busy, setBusy] = useState("");
   const [vin, setVin] = useState(""); const [photo, setPhoto] = useState(""); const [tail, setTail] = useState(""); const [vinInfo, setVinInfo] = useState<VinInfo | null>(null); const [editVin, setEditVin] = useState(false);
   const [ck, setCk] = useState<Record<string, boolean>>({}); const [reserves, setReserves] = useState(""); const [signer, setSigner] = useState(""); const [sig, setSig] = useState<string | null>(null);
-  const [decl, setDecl] = useState<Declaration | null>(null); const [accept, setAccept] = useState(false);
+  const [accept, setAccept] = useState(false);
   const [done, setDone] = useState<{ url: string; emailed: boolean; whatsapp: string | null } | null>(null);
 
   const load = useCallback(async () => {
@@ -105,7 +102,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
 
   const r = list.find(x => x.id === sel) || null;
   const open = (x: Dlv) => {
-    setSel(x.id); setVin(x.vin || ""); setPhoto(""); setVinInfo(null); setEditVin(false); setTail(""); setCk({}); setAccept(true); setReserves(""); setSigner(`${x.prenom} ${x.nom}`.replace(/\(.*?\)/g, "").trim()); setSig(null); setDone(null); setSigMode(true); setSent(null); setArrived(""); setDecl(null); setChoice("");
+    setSel(x.id); setVin(x.vin || ""); setPhoto(""); setVinInfo(null); setEditVin(false); setTail(""); setCk({}); setAccept(false); setReserves(""); setSigner(`${x.prenom} ${x.nom}`.replace(/\(.*?\)/g, "").trim()); setSig(null); setDone(null); setSigMode(true); setSent(null); setArrived(""); setChoice("");
     setNotif({ date: x.date_promise || "", from: "14:00", to: "16:00" }); setPend({ montant: x.montant_du != null ? String(x.montant_du) : x.total != null ? String(x.total) : "", cles: true, documents: true, due: "" }); window.scrollTo({ top: 0 });
   };
   const run = async (key: string, f: () => Promise<void>) => { setBusy(key); try { await f(); } catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); } };
@@ -157,8 +154,8 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   });
   const signNow = (checksOut: Record<string, boolean>) => r && sig && run("sign", async () => {
     const pos = await position();
-    const j = await api<{ url: string; emailed: boolean; whatsapp: string | null; reserve?: boolean }>({ action: "sign", id: r.id, checks: checksOut, reserves, signer, signature: sig, payment: pay.lines, driver_name: pay.driver, declaration: decl, ...pos });
-    setDone(j); onMsg(j.reserve ? `✅ Remise sans paiement signée par ${r.prenom}.` : `✅ Livraison de ${r.prenom} ${r.nom} terminée, accusé signé.`); await load();
+    const j = await api<{ url: string; emailed: boolean; whatsapp: string | null; reserve?: boolean }>({ action: "sign", id: r.id, checks: checksOut, reserves, signer, signature: sig, accept, driver_name: driverName, ...pos });
+    setDone(j); onMsg(`✅ Livraison de ${r.prenom} ${r.nom} terminée, bon de livraison signé.`); await load();
   });
   const sendConfirm = () => r && run("send", async () => {
     const j = await api<{ sent: { sms: boolean; email: boolean }; whatsapp: string | null }>({ action: "send_confirm", id: r.id });
@@ -173,10 +170,10 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
     const owner = who === "owner";
     const paid = !!r.paiement_confirme_at; const pending = !paid && r.paiement_en_attente;
     const kept: Kept = r.kept || { cles: true, documents: true }; const keep = keptLabel(kept);
-    const ready = !!r.vin && (paid || (pending && !r.reserve_url));
-    const vire = needsVireCheck(!!pending, pay.lines);
-    const checks = [...(pending ? checksAll.filter(x => !(x.id === "cles" && kept.cles) && !(x.id === "documents" && kept.documents)) : checksAll), ...(vire ? [VIRE_CHECK] : [])];
-    const canSign = ready && signer.trim().length >= 3 && !!sig && !r.accuse_url && (pending ? !!decl && accept : payValid(pay)) && (!vire || ck.virement !== false);
+    // Bon de livraison unique : même document payé ou non (réserve de propriété toujours incluse), mêmes points à cocher.
+    const ready = !!r.vin && (paid || pending) && !r.accuse_url;
+    const checks = checksAll;
+    const canSign = ready && signer.trim().length >= 3 && !!sig && accept;
     const vinNow = vin.toUpperCase().replace(/[\s-]/g, "");
     const vinOk = VIN_FORMAT.test(vinNow); const checkOk = vinOk && vinCheckOk(vinNow);
     const showVinForm = !r.vin || editVin;
@@ -270,7 +267,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
 
         <Step n={3} title="Paiement" done={paid || (pending && !!r.reserve_url)} tone={paid ? "#e7f6ec" : pending ? "#fff4d6" : undefined}>
           {paid ? <>
-              <span>✅ <b>Paiement reçu.</b>{r.reserve_url ? " Remettez ce qui avait été gardé et faites signer l’accusé final." : ""}</span>
+              <span>✅ <b>Paiement reçu.</b>{r.reserve_url || r.accuse_url ? " Remettez ce qui avait été gardé (aucune nouvelle signature)." : ""}</span>
               {owner && !r.livre_at && !r.reserve_url ? <button className={`${c.btn} ${c.btnGhost}`} disabled={!!busy} onClick={() => { if (confirm("Annuler « Paiement reçu » et choisir à nouveau ?")) unconfirmPaid(); }}>Modifier</button> : null}
             </>
             : pending && r.reserve_url ? <>
@@ -305,7 +302,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
         </Step>
 
         <Step n={4} title="Signature du client" done={!!r.accuse_url}>
-          {!ready ? <small className={c.err}>{!r.vin ? "D’abord le numéro de série (étape 2)." : pending && r.reserve_url ? "Remise déjà signée. L’accusé final se signe après le paiement." : "D’abord le paiement (étape 3)."}</small> : <>
+          {!ready ? <small className={c.err}>{!r.vin ? "D’abord le numéro de série (étape 2)." : "D’abord le paiement (étape 3)."}</small> : <>
             <span>✍️ <b>Le client signe sur votre téléphone</b>, juste en dessous.</span>
             <button className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} disabled={!!busy} onClick={sendConfirm}>{busy === "send" ? "Envoi…" : r.confirm_sent_at ? "📲 Renvoyer le lien au client" : "📲 Ou envoyer le lien au client (il signe sur son téléphone)"}</button>
             {r.confirm_sent_at ? <div style={{ display: "grid", gap: 6, background: "#e8f0fe", borderRadius: 10, padding: 10 }}>
@@ -317,22 +314,22 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
         </Step>
 
         {sigMode && ready ? <div className={c.card} style={{ display: "grid", gap: 10, padding: 14 }}>
-          <b>Le client lit et signe</b>
-          {pending ? <span className={s.warn}>Paiement pas encore reçu{r.montant_du ? ` (${eur(r.montant_du)})` : ""}. {keep ? `NeoDrive garde ${keep} jusqu’au paiement.` : "Le client reçoit la voiture, les clés et les documents."}</span> : null}
+          <b>Bon de livraison : le client lit et signe</b>
           <button type="button" className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} onClick={() => setCk({})}>✅ Tout cocher</button>
-          {checks.map(x => <label key={x.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 16 }}><input type="checkbox" checked={ck[x.id] !== false} onChange={e => setCk({ ...ck, [x.id]: e.target.checked })} /><span style={x.id === "virement" ? { fontWeight: 700, fontSize: 15 } : undefined}>{x.label}</span></label>)}
-          <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Remarques du client (facultatif)
+          {checks.map(x => <label key={x.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 16 }}><input type="checkbox" checked={ck[x.id] !== false} onChange={e => setCk({ ...ck, [x.id]: e.target.checked })} /><span>{x.label}</span></label>)}
+          <small className={c.muted}>Décochez ce qui n’est pas remis.</small>
+          <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Remarques du client sur l’état du véhicule (facultatif)
             <textarea className={c.input} rows={2} value={reserves} onChange={e => setReserves(e.target.value)} placeholder="Ex. petite rayure porte gauche" /></label>
+          <div style={{ display: "grid", gap: 6, border: "1px solid #f5c2c0", borderRadius: 12, padding: 10 }}>
+            <b>Réserve de propriété</b>
+            {bonClauses(r.vin || "").map((t, i) => <span key={i} style={{ fontSize: 14, lineHeight: 1.45 }}><b>{i + 1}.</b> {t}</span>)}
+          </div>
           <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Nom et prénom du client
             <input className={c.input} value={signer} onChange={e => setSigner(e.target.value)} autoComplete="off" style={{ fontSize: 17 }} /></label>
-          {pending ? <>
-            <ReserveDeclare vin={r.vin || ""} montant={r.montant_du} due={r.reserve_due || null} onChange={setDecl} />
-            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 16, fontWeight: 700 }}><input type="checkbox" checked={accept} onChange={e => setAccept(e.target.checked)} /><span>J’ai lu et j’accepte ces conditions, dont la réserve de propriété.</span></label>
-          </> : <PaymentDeclare key={r.id} driver={driverName} total={r.total} defaultVirement onChange={setPay} />}
-          <b style={{ fontSize: 15 }}>En signant, le client confirme avoir lu et accepté chacun des points ci-dessus.</b>
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 16, fontWeight: 700 }}><input type="checkbox" checked={accept} onChange={e => setAccept(e.target.checked)} /><span>J’ai bien reçu mon véhicule et j’accepte la réserve de propriété ci-dessus.</span></label>
           <SignaturePad onChange={setSig} btnClass={`${c.btn} ${c.btnGhost}`} />
-          <button className={`${c.btn} ${c.btnBrand}`} style={{ ...big, opacity: canSign ? 1 : .5 }} disabled={!canSign || !!busy} onClick={() => signNow(Object.fromEntries(checks.map(x => [x.id, ck[x.id] !== false])))}>{busy === "sign" ? "Enregistrement…" : "✍️ Valider la signature"}</button>
-          {pending && !decl ? <small className={c.muted}>Le client choisit sa déclaration de paiement.</small> : pending && !accept ? <small className={c.muted}>Le client coche « J’ai lu et j’accepte ».</small> : !pending && !payValid(pay) ? <small className={c.muted}>Le client indique comment il a réglé (moyen + montant).</small> : vire && ck.virement === false ? <small className={c.muted}>Le client coche l’engagement sur le virement.</small> : !sig ? <small className={c.muted}>Le client signe dans le cadre.</small> : null}
+          <button className={`${c.btn} ${c.btnBrand}`} style={{ ...big, opacity: canSign ? 1 : .5 }} disabled={!canSign || !!busy} onClick={() => signNow(Object.fromEntries(checks.map(x => [x.id, ck[x.id] !== false])))}>{busy === "sign" ? "Enregistrement…" : "✍️ Le client signe le bon de livraison"}</button>
+          {!accept ? <small className={c.muted}>Le client coche « J’ai bien reçu mon véhicule et j’accepte la réserve de propriété ».</small> : !sig ? <small className={c.muted}>Le client signe dans le cadre.</small> : <small className={c.muted}>Document unique : aucune autre signature ne sera demandée au client.</small>}
         </div> : null}
       </>}
     </section>;

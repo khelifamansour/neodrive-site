@@ -35,6 +35,8 @@ export function payState(r: RP): PayState {
   if (!r) return "inconnu";
   if (r.paiement_confirme_at) return "payé";
   if (r.reserve_path || r.reserve_token) return "réserve de propriété";
+  // Bon de livraison unique signé sans paiement confirmé : livrée, réserve de propriété jusqu'au paiement.
+  if (r.statut === "Livrée" && r.paiement_en_attente) return "réserve de propriété";
   // Anciennes livraisons passées « Livrée » à la main, sans paiement en attente : considérées payées.
   if (r.statut === "Livrée" && !r.paiement_en_attente && !Number(r.montant_du)) return "payé";
   return "non payé";

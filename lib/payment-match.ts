@@ -161,7 +161,7 @@ export async function linkPayment(db: DB, txId: number, resId: number, o: { by: 
         const subject = `✅ ${kind === "acompte" ? "Acompte reçu" : "Paiement reçu"} : ${client} – ${eurFr(amount)}`;
         const html = `<p><b>${esc(client)}</b> (réservation n° ${resId}${r.modele ? `, ${esc(r.modele)}` : ""}) : ${kind === "acompte" ? "acompte" : kind === "solde" ? "solde" : "paiement"} de <b>${eurFr(amount)}</b> reçu sur Revolut le ${esc(t.date)}.</p>
 <p>Libellé : ${esc(t.label || t.counterparty || "—")}</p><p>${esc(how)}.</p>
-${full ? `<p>${wasPaid ? "La réservation était déjà marquée payée." : "✅ La réservation est maintenant marquée <b>payée</b> : le livreur peut remettre la voiture."}${r.livre_at && r.paiement_en_attente ? " Voiture déjà livrée : clés et papiers à remettre ou envoyer, accusé final à faire signer." : ""}</p>` : `<p>Reste à payer : <b>${eurFr(Math.max(0, total - paidBefore - amount))}</b>.</p>`}
+${full ? `<p>${wasPaid ? "La réservation était déjà marquée payée." : "✅ La réservation est maintenant marquée <b>payée</b> : le livreur peut remettre la voiture."}${r.livre_at && r.paiement_en_attente ? " Voiture déjà livrée (bon de livraison signé) : réserve de propriété levée, aucune nouvelle signature. Clés et papiers à remettre ou envoyer s'ils ont été gardés." : ""}</p>` : `<p>Reste à payer : <b>${eurFr(Math.max(0, total - paidBefore - amount))}</b>.</p>`}
 <p>Une erreur ? <a href="${SITE}/tableau-de-bord">Tableau de bord</a> · <a href="${SITE}/reservations-admin">Réservations</a></p>`;
         await sendEmail(OWNER_EMAIL, "Mansour", subject, html);
         emailed = true;

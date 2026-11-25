@@ -127,7 +127,7 @@ export default function TourFlow({ data, call, upload, reload, msg, onMsg, selId
     if (!x.ri) { if (x.c.reception) { window.location.href = x.c.reception; return; } return "Pas de réservation liée à ce client : appelez Mansour."; }
     await openSign(call, x.c.id, backUrl(x.c.id));
   });
-  const checkPaid = (cid: string) => run("paid", async () => { const j = await call({ action: "get" }); await reload(); return j.res?.[cid]?.paid ? "💶 Paiement reçu : faites signer l’accusé final." : "⏳ Paiement pas encore arrivé. Passez au client suivant : la page se met à jour toute seule."; });
+  const checkPaid = (cid: string) => run("paid", async () => { const j = await call({ action: "get" }); await reload(); return j.res?.[cid]?.paid ? "💶 Paiement reçu." : "⏳ Paiement pas encore arrivé. Passez au client suivant : la page se met à jour toute seule."; });
   const nextClient = () => { setSelId(null); onMsg(""); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
   // ── Bouton « Prochaine étape » (toujours la prochaine action du client affiché)
@@ -141,7 +141,7 @@ export default function TourFlow({ data, call, upload, reload, msg, onMsg, selId
   else if (sel.stage === "load") next = cam("1 · 📷 Charger : photo de la plaque", f => loadPhoto(sel.c.id, f));
   else if (sel.stage === "travel") next = driving && sel.i >= 0 ? btn(`2 · 📍 Je suis arrivé chez ${sel.c.name}`, () => arrive(sel.c.id, sel.i), "go") : btn(`2 · 🚚 Je pars${sel.i >= 0 ? ` chez ${sel.c.name}` : ""}`, depart, "go");
   else if (sel.stage === "deliver") next = sel.v?.has_plate || typedOk ? btn("3 · ✅ Voiture remise au client", () => deliver(sel.c.id, null), "deliver") : cam("3 · 📷 Livrer : photo de la plaque", f => deliverPhoto(sel.c.id, f));
-  else if (sel.stage === "sign") next = btn(sel.paid && sel.ri?.reserve_at ? "4 · ✍️ Faire signer l’accusé final" : "4 · ✍️ Faire signer le client", () => sign(sel), "sign");
+  else if (sel.stage === "sign") next = btn("4 · ✍️ Faire signer le bon de livraison", () => sign(sel), "sign");
   else if (sel.stage === "wait") next = btn("5 · 💶 Paiement reçu ?", () => checkPaid(sel.c.id), "paid");
   else if (leftToFinish && sel !== current) next = btn("➡️ Client suivant", nextClient);
   else if (!prog.finished && prog.nextIndex != null && stops[prog.nextIndex]?.kind === "depot") next = driving ? btn("📍 Arrivé au dépôt", () => run("go", async () => { await event({ kind: "arrive", stop_index: prog.nextIndex }); return "🏁 Tournée terminée. Merci !"; }), "go") : btn("🚚 Je rentre au dépôt", depart, "go");
@@ -149,7 +149,7 @@ export default function TourFlow({ data, call, upload, reload, msg, onMsg, selId
 
   const steps = (x: typeof all[number]) => {
     const it = (ok: boolean, txt: string) => <span style={{ color: ok ? "#067647" : "#9aa3ad", fontWeight: ok ? 800 : 600, whiteSpace: "nowrap" }}>{ok ? "✅" : "○"} {txt}</span>;
-    return <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 10px", fontSize: 14 }}>{it(!!x.v || x.delivered, "chargée")}{it(x.delivered, "livrée")}{it(x.signed || !!x.ri?.reserve_at, x.signed ? "signé" : x.ri?.reserve_at ? "remise signée" : "signé")}{it(x.paid, "payé")}</div>;
+    return <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 10px", fontSize: 14 }}>{it(!!x.v || x.delivered, "chargée")}{it(x.delivered, "livrée")}{it(x.signed || !!x.ri?.reserve_at, "bon signé")}{it(x.paid, "payé")}</div>;
   };
   const stopOf = (x: typeof all[number]) => x.i >= 0 ? stops[x.i] : null;
 
