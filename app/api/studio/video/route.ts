@@ -340,3 +340,18 @@ Réponds en json.`, 800);
     return fail(/timed out|killed|SIGTERM/i.test(msg) ? "Le rendu a pris trop de temps : raccourcissez la vidéo (coupes) et réessayez." : "Erreur : " + msg.slice(0, 200), 500);
   }
 }
+
+/** Lecture par jeton (admin_once_tokens.purpose « studio-get », payload { id }) : projet + liens signés de la source et du dernier rendu. */
+export async function GET(req: Request) {
+  const token = new URL(req.url).searchParams.get("token") || "";
+  if (!/^[a-f0-9]{48}$/.test(token)) return fail("Jeton invalide", 401);
+  const db = crmDatabase();
+  const { data } = await db.from("admin_once_tokens").select("payload").eq("token", token).eq("purpose", "studio-get").gt("expires_at", new Date().toISOString()).limit(1);
+  const id = String((data?.[0] as { payload?: { id?: string } } | undefined)?.payload?.id || "");
+  if (!/^[a-z0-9]{6,40}$/.test(id)) return fail("Jeton invalide", 401);
+  const p = await readProject(db, id);
+  if (!p) return fail("Projet introuvable", 404);
+  const { data: files } = await db.storage.from(BUCKET).list("renders", { search: id, sortBy: { column: "created_at", order: "desc" } });
+  const last = (files || []).filter(f => f.name.startsWith(id))[0];
+  return NextResponse.json({ ok: true, project: p, sourceUrl: await signed(db, p.source.path), renderUrl: last ? await signed(db, `renders/${last.name}`) : null, renderName: last?.name || null });
+}
