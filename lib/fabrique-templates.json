@@ -1,0 +1,1522 @@
+{
+ "source": "Banque de départ NeoDrive + strategie-scripts.json (recherche du 25/11/2026). Les modèles contenant « [à vérifier] » ou un chiffre non vérifié sont ignorés automatiquement.",
+ "hooks": [
+  {
+   "type": "prix",
+   "text": "Le prix d'un bon vélo électrique… et t'as une voiture."
+  },
+  {
+   "type": "prix",
+   "text": "Une voiture neuve à 3 990 €. Oui, neuve."
+  },
+  {
+   "type": "prix",
+   "text": "Pourquoi nos voitures sans permis coûtent ce prix-là ?"
+  },
+  {
+   "type": "concession",
+   "text": "Ce qu'on ne te dit pas avant d'acheter une voiture sans permis."
+  },
+  {
+   "type": "concession",
+   "text": "3 questions à poser avant d'acheter une voiture sans permis."
+  },
+  {
+   "type": "financement",
+   "text": "59 € par mois pour ne plus attendre le bus."
+  },
+  {
+   "type": "livraison",
+   "text": "On te la livre devant chez toi, partout en France."
+  },
+  {
+   "type": "electrique",
+   "text": "Plus jamais de station-service. Une prise, c'est tout."
+  },
+  {
+   "type": "permis_am",
+   "text": "14 ans, permis AM… et ta propre voiture."
+  },
+  {
+   "type": "coulisses",
+   "text": "Ce matin, une voiture part chez un client. Viens avec nous."
+  },
+  {
+   "type": "temoignage",
+   "text": "Il l'a réservée sans acompte. Aujourd'hui on lui livre."
+  },
+  {
+   "type": "faq",
+   "text": "On me pose cette question tous les jours."
+  },
+  {
+   "type": "choc/prix",
+   "text": "4 990 €. Pour une voiture neuve. Oui, électrique."
+  },
+  {
+   "type": "choc/prix",
+   "text": "Cette voiture coûte moins cher qu'un bon scooter [à vérifier]."
+  },
+  {
+   "type": "choc/prix",
+   "text": "On m'a dit « à ce prix-là c'est une arnaque ». Regarde."
+  },
+  {
+   "type": "choc/prix",
+   "text": "Pourquoi payer 9 000 € [à vérifier] quand celle-ci est à 4 990 € ?"
+  },
+  {
+   "type": "choc/prix",
+   "text": "Le prix est écrit sur la vitre. Personne ne me croit."
+  },
+  {
+   "type": "curiosité",
+   "text": "Ce container vient de Chine. Devine ce qu'il y a dedans."
+  },
+  {
+   "type": "curiosité",
+   "text": "Si tu es né avant 1988, regarde ça jusqu'au bout."
+  },
+  {
+   "type": "curiosité",
+   "text": "Il y a une chose que personne ne vérifie avant d'acheter une sans permis."
+  },
+  {
+   "type": "curiosité",
+   "text": "Cette dame a 0 permis, et elle repart en voiture aujourd'hui."
+  },
+  {
+   "type": "curiosité",
+   "text": "J'ai livré une voiture à l'autre bout de la France. Voilà comment."
+  },
+  {
+   "type": "humour",
+   "text": "POV : ton fils de 14 ans découvre qu'il peut avoir une voiture."
+  },
+  {
+   "type": "humour",
+   "text": "Quand le voisin a payé sa sans permis deux fois plus cher [à vérifier]…"
+  },
+  {
+   "type": "humour",
+   "text": "« Elle va à combien ? » — 45. « Ah… » — Mais elle se gare partout."
+  },
+  {
+   "type": "humour",
+   "text": "Mon métier : déballer des voitures comme des colis Amazon."
+  },
+  {
+   "type": "humour",
+   "text": "Les parents quand ils voient le prix vs quand ils voient la couleur."
+  },
+  {
+   "type": "data",
+   "text": "En 2025, les ventes de sans permis neuves ont chuté de 21 % [à vérifier]. Voilà pourquoi."
+  },
+  {
+   "type": "data",
+   "text": "45 km/h, 14 ans, 0 permis avant 1988 : les 3 chiffres à retenir."
+  },
+  {
+   "type": "data",
+   "text": "4 990 € ÷ 59 €/mois [à vérifier] : je te fais le calcul en 10 secondes."
+  },
+  {
+   "type": "data",
+   "text": "Le bonus de 900 € a disparu fin 2024 [à vérifier]. Ce que ça change pour toi."
+  },
+  {
+   "type": "data",
+   "text": "Plus de 41 000 sans permis d'occasion revendues en 2025 [à vérifier]. Pourquoi acheter neuf ?"
+  },
+  {
+   "type": "comparatif",
+   "text": "Même catégorie L6e, même 45 km/h. La différence ? Plusieurs milliers d'euros."
+  },
+  {
+   "type": "comparatif",
+   "text": "Sans permis neuve vs sans permis d'occasion : laquelle choisir ?"
+  },
+  {
+   "type": "comparatif",
+   "text": "Scooter ou voiture sans permis pour ton ado ? Je compare honnêtement."
+  },
+  {
+   "type": "comparatif",
+   "text": "Ce que tu as pour 4 990 €, et ce que tu n'as pas."
+  },
+  {
+   "type": "comparatif",
+   "text": "Voiture sans permis électrique vs thermique : le match en 20 secondes."
+  },
+  {
+   "type": "témoignage",
+   "text": "« J'avais perdu mon permis, j'ai retrouvé ma liberté. » Elle raconte."
+  },
+  {
+   "type": "témoignage",
+   "text": "Il a 15 ans, c'est sa première voiture. Regarde sa tête."
+  },
+  {
+   "type": "témoignage",
+   "text": "Une maman m'a dit un truc à la livraison que je n'oublierai pas."
+  },
+  {
+   "type": "témoignage",
+   "text": "Il habite à 12 km du premier bus [à vérifier]. Voilà sa solution."
+  },
+  {
+   "type": "témoignage",
+   "text": "J'ai demandé à un client : « franchement, ça vaut le coup ? »"
+  },
+  {
+   "type": "coulisses import Chine",
+   "text": "Ouverture du container en direct. On découvre ensemble."
+  },
+  {
+   "type": "coulisses import Chine",
+   "text": "De l'usine à ton allée : le trajet d'une NeoDrive."
+  },
+  {
+   "type": "coulisses import Chine",
+   "text": "Ce que personne ne montre quand on importe des voitures de Chine."
+  },
+  {
+   "type": "coulisses import Chine",
+   "text": "6 h du mat, la remorque est chargée. On part livrer."
+  },
+  {
+   "type": "coulisses import Chine",
+   "text": "Container n°[X], épisode 1. Abonne-toi pour la suite."
+  },
+  {
+   "type": "objection/réponse",
+   "text": "« C'est chinois donc c'est de la camelote. » Je te réponds."
+  },
+  {
+   "type": "objection/réponse",
+   "text": "« Et le SAV, il est où ? » Bonne question."
+  },
+  {
+   "type": "objection/réponse",
+   "text": "« Permis suspendu, j'ai le droit de la conduire ? » Ça dépend. Écoute."
+  },
+  {
+   "type": "objection/réponse",
+   "text": "« C'est dangereux pour un ado ? » Ma réponse de vendeur ET de parent."
+  },
+  {
+   "type": "objection/réponse",
+   "text": "« Pourquoi c'est si peu cher ? » Je te montre où passe l'argent."
+  }
+ ],
+ "scripts": [
+  {
+   "id": "prix-velo",
+   "title": "Le prix d'un vélo électrique",
+   "type": "prix_velo",
+   "hook": "Le prix d'un bon vélo électrique… et t'as une voiture.",
+   "lines": [
+    {
+     "t": 0,
+     "text": "Le prix d'un bon vélo électrique… et t'as une voiture."
+    },
+    {
+     "t": 3,
+     "text": "La NeoDrive Essentielle, c'est 3 990 euros TTC. Neuve, 100 % électrique, deux places."
+    },
+    {
+     "t": 10,
+     "text": "La Confort, 4 990 euros, elle est en stock et livrée en 2 à 3 semaines."
+    },
+    {
+     "t": 16,
+     "text": "Elle se recharge sur une prise normale, et elle est accessible dès 14 ans avec le permis AM."
+    },
+    {
+     "t": 23,
+     "text": "Réservation sans acompte, tu paies à la livraison. Le lien est en bio."
+    }
+   ],
+   "onscreen": "3 990 € TTC · neuve · électrique",
+   "footage": [
+    "fondateur face caméra",
+    "voiture extérieur",
+    "remise des clés"
+   ],
+   "caption": "Tu savais qu'une voiture sans permis neuve pouvait coûter ce prix-là ? 👀",
+   "hashtags": [
+    "#voituresanspermis",
+    "#neodrive",
+    "#voitureelectrique",
+    "#permisAM",
+    "#prix"
+   ]
+  },
+  {
+   "id": "pourquoi-prix",
+   "title": "Pourquoi ce prix",
+   "type": "pourquoi_prix",
+   "hook": "Pourquoi nos voitures sans permis coûtent ce prix-là ?",
+   "lines": [
+    {
+     "t": 0,
+     "text": "Pourquoi nos voitures sans permis coûtent ce prix-là ?"
+    },
+    {
+     "t": 3,
+     "text": "Pas de concession, pas de vitrine : on vend en direct."
+    },
+    {
+     "t": 8,
+     "text": "On prépare la voiture et on te la livre nous-mêmes, chez toi."
+    },
+    {
+     "t": 13,
+     "text": "Résultat : 3 990 euros pour l'Essentielle, 4 990 pour la Confort, prix TTC."
+    },
+    {
+     "t": 19,
+     "text": "Et tu ne paies qu'à la livraison. Lien en bio."
+    }
+   ],
+   "onscreen": "Vente directe · livrée chez toi",
+   "footage": [
+    "entrepôt",
+    "remorque",
+    "livraison"
+   ],
+   "caption": "Vente directe, livraison à domicile, paiement à la livraison. Des questions ?",
+   "hashtags": [
+    "#voituresanspermis",
+    "#neodrive",
+    "#ventedirecte",
+    "#electrique"
+   ]
+  },
+  {
+   "id": "financement",
+   "title": "Dès 59 €/mois",
+   "type": "financement",
+   "hook": "59 € par mois pour ne plus attendre le bus.",
+   "lines": [
+    {
+     "t": 0,
+     "text": "59 euros par mois pour ne plus attendre le bus."
+    },
+    {
+     "t": 3,
+     "text": "La NeoDrive Essentielle peut se financer à partir de 59 euros par mois sur 84 mois."
+    },
+    {
+     "t": 10,
+     "text": "Une voiture neuve, électrique, deux places, livrée chez toi."
+    },
+    {
+     "t": 16,
+     "text": "Fais ta simulation sur le site, le lien est en bio."
+    }
+   ],
+   "onscreen": "Dès 59 €/mois (exemple indicatif)",
+   "footage": [
+    "voiture extérieur",
+    "conduite",
+    "fondateur face caméra"
+   ],
+   "caption": "Tu préfères payer comptant ou en plusieurs fois ?",
+   "hashtags": [
+    "#voituresanspermis",
+    "#financement",
+    "#neodrive",
+    "#permisAM"
+   ]
+  },
+  {
+   "id": "livraison",
+   "title": "Livrée partout en France",
+   "type": "livraison",
+   "hook": "On te la livre devant chez toi, partout en France.",
+   "lines": [
+    {
+     "t": 0,
+     "text": "On te la livre devant chez toi, partout en France."
+    },
+    {
+     "t": 3,
+     "text": "Ce matin, la remorque part avec une NeoDrive pour un client."
+    },
+    {
+     "t": 8,
+     "text": "La livraison démarre à 450 euros près de Toulouse, et selon ton département c'est 590, 690 ou 790 euros."
+    },
+    {
+     "t": 16,
+     "text": "Pas d'acompte à la réservation, tu paies le jour où on te la livre."
+    }
+   ],
+   "onscreen": "Livraison à domicile · France continentale",
+   "footage": [
+    "remorque",
+    "route",
+    "livraison",
+    "remise des clés"
+   ],
+   "caption": "Tu es dans quel département ? On calcule ta livraison 👇",
+   "hashtags": [
+    "#voituresanspermis",
+    "#livraison",
+    "#neodrive",
+    "#france"
+   ]
+  },
+  {
+   "id": "concession",
+   "title": "Les questions à poser",
+   "type": "concession",
+   "hook": "3 questions à poser avant d'acheter une voiture sans permis.",
+   "lines": [
+    {
+     "t": 0,
+     "text": "3 questions à poser avant d'acheter une voiture sans permis."
+    },
+    {
+     "t": 3,
+     "text": "Un : le prix affiché, il est TTC, livraison comprise ou pas ?"
+    },
+    {
+     "t": 8,
+     "text": "Deux : est-ce que je dois verser un acompte avant d'avoir la voiture ?"
+    },
+    {
+     "t": 13,
+     "text": "Trois : elle est en stock, ou je vais attendre des mois ?"
+    },
+    {
+     "t": 18,
+     "text": "Chez NeoDrive : prix TTC affichés, pas d'acompte, et la Confort est en stock."
+    }
+   ],
+   "onscreen": "Avant d'acheter : 3 questions",
+   "footage": [
+    "fondateur face caméra",
+    "voiture intérieur"
+   ],
+   "caption": "Quelle question tu poserais en premier ?",
+   "hashtags": [
+    "#voituresanspermis",
+    "#conseil",
+    "#neodrive",
+    "#achatvoiture"
+   ]
+  },
+  {
+   "id": "1",
+   "title": "4 990 € pour une voiture neuve",
+   "type": "choc/prix + comparatif",
+   "hook": "4 990 €. Pour une voiture neuve. Électrique.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "4 990 €. Pour une voiture neuve. Électrique."
+    },
+    {
+     "t": "2-6s",
+     "text": "Je m'appelle Mansour, je vends des voitures sans permis, et oui, c'est le vrai prix TTC."
+    },
+    {
+     "t": "6-12s",
+     "text": "Les modèles des grandes marques en France démarrent autour de 9 000 € [à vérifier : prix catalogue + date] et montent jusqu'à environ 17 000 € [à vérifier]."
+    },
+    {
+     "t": "12-18s",
+     "text": "Même catégorie : quadricycle léger L6e, 45 km/h, conduite dès 14 ans avec le permis AM."
+    },
+    {
+     "t": "18-24s",
+     "text": "La différence ? On importe directement, sans réseau de concessions."
+    },
+    {
+     "t": "24-28s",
+     "text": "Livrée partout en France. Lien en bio, ou pose ta question en commentaire."
+    }
+   ],
+   "onscreen": "4 990 € TTC | « Autres modèles neufs : dès ~9 000 € [à vérifier, source + date] » | L6e • 45 km/h • dès 14 ans",
+   "footage": [
+    "face camera",
+    "extérieur voiture",
+    "écran prix",
+    "conduite"
+   ],
+   "caption": "Oui c'est le vrai prix. Pose-moi toutes tes questions 👇 (prix concurrents relevés le [date], sources en commentaire épinglé)",
+   "hashtags": [
+    "#voituresanspermis",
+    "#vsp",
+    "#voitureelectrique",
+    "#permisAM",
+    "#bonplan",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "2",
+   "title": "Le container arrive de Chine",
+   "type": "coulisses import Chine",
+   "hook": "Ce container vient de Chine. Devine combien de voitures il y a dedans.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Ce container vient de Chine. Devine combien de voitures il y a dedans."
+    },
+    {
+     "t": "2-6s",
+     "text": "Écris ton chiffre en commentaire avant la fin."
+    },
+    {
+     "t": "6-14s",
+     "text": "(ouverture des portes, bruit réel, pas de musique 2 s) On ouvre…"
+    },
+    {
+     "t": "14-22s",
+     "text": "Une, deux… [nombre réel à dire]. Toutes en voitures sans permis électriques."
+    },
+    {
+     "t": "22-28s",
+     "text": "Elles partent chez des clients partout en France dans les prochains jours [à vérifier délai]."
+    },
+    {
+     "t": "28-32s",
+     "text": "Celui qui avait le bon chiffre, t'as gagné… mon respect. Abonne-toi pour la livraison."
+    }
+   ],
+   "onscreen": "Devine combien ? 👇 | Container ouvert ✅ | Prochain épisode : la 1re livraison",
+   "footage": [
+    "face camera",
+    "déchargement container",
+    "extérieur voiture"
+   ],
+   "caption": "Ouverture du container en vrai. T'avais dit combien ? 👇",
+   "hashtags": [
+    "#container",
+    "#importchine",
+    "#coulisses",
+    "#voituresanspermis",
+    "#entrepreneur",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "3",
+   "title": "Pourquoi c'est si peu cher ?",
+   "type": "objection/réponse",
+   "hook": "« Pourquoi c'est si peu cher ? » Je te montre où passe l'argent.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "« Pourquoi c'est si peu cher ? » Je te montre où passe l'argent."
+    },
+    {
+     "t": "2-8s",
+     "text": "Un : on importe nous-mêmes, directement depuis le fabricant."
+    },
+    {
+     "t": "8-14s",
+     "text": "Deux : pas de réseau de concessions à financer, pas de showroom en centre-ville."
+    },
+    {
+     "t": "14-20s",
+     "text": "Trois : on livre nous-mêmes, partout en France."
+    },
+    {
+     "t": "20-26s",
+     "text": "Résultat : 4 990 € TTC pour la Confort."
+    },
+    {
+     "t": "26-30s",
+     "text": "T'as une autre question ? Je réponds en vidéo."
+    }
+   ],
+   "onscreen": "1. Import direct | 2. Zéro concession | 3. Livraison directe | = 4 990 € TTC",
+   "footage": [
+    "face camera",
+    "déchargement container",
+    "remorque",
+    "écran prix"
+   ],
+   "caption": "Pas de magie, juste moins d'intermédiaires. Ta question suivante ? 👇",
+   "hashtags": [
+    "#voituresanspermis",
+    "#prix",
+    "#importdirect",
+    "#transparence",
+    "#neodrive",
+    "#vsp"
+   ]
+  },
+  {
+   "id": "4",
+   "title": "Elle n'a jamais eu le permis",
+   "type": "témoignage (senior)",
+   "hook": "Cette dame n'a jamais eu le permis. Et elle repart en voiture aujourd'hui.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Cette dame n'a jamais eu le permis. Et elle repart en voiture aujourd'hui."
+    },
+    {
+     "t": "2-6s",
+     "text": "Si tu es né avant 1988, tu n'as besoin d'aucun permis pour une voiture sans permis."
+    },
+    {
+     "t": "6-16s",
+     "text": "(client, face caméra) « [sa phrase réelle : pourquoi elle l'a achetée, ce que ça change] »"
+    },
+    {
+     "t": "16-22s",
+     "text": "(Mansour) Courses, médecin, petits-enfants : à 45 km/h, mais toute seule."
+    },
+    {
+     "t": "22-26s",
+     "text": "Tu connais quelqu'un dans ce cas ? Envoie-lui la vidéo."
+    }
+   ],
+   "onscreen": "Née avant 1988 = aucun permis requis | « [citation client] » | Envoie à quelqu'un 💌",
+   "footage": [
+    "livraison avec client",
+    "face camera",
+    "conduite"
+   ],
+   "caption": "Merci à [prénom] d'avoir accepté de témoigner 🙏 (autorisation écrite) — Tu connais quelqu'un qui en a besoin ?",
+   "hashtags": [
+    "#voituresanspermis",
+    "#senior",
+    "#autonomie",
+    "#liberte",
+    "#temoignage",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "5",
+   "title": "14 ans et déjà une voiture",
+   "type": "témoignage (ado + parent)",
+   "hook": "Il a 14 ans [à vérifier âge réel]. C'est sa première voiture. Regarde sa tête.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Il a 14 ans. C'est sa première voiture. Regarde sa tête."
+    },
+    {
+     "t": "2-6s",
+     "text": "(réaction ado à la découverte, son réel)"
+    },
+    {
+     "t": "6-12s",
+     "text": "Dès 14 ans, avec le permis AM, on peut conduire une voiture sans permis en France."
+    },
+    {
+     "t": "12-18s",
+     "text": "(parent) « [phrase réelle : pourquoi ils ont choisi ça plutôt qu'un scooter] »"
+    },
+    {
+     "t": "18-24s",
+     "text": "Électrique, 45 km/h, ceinture, toit au-dessus de la tête."
+    },
+    {
+     "t": "24-28s",
+     "text": "Parents : vos questions en commentaire, je réponds à toutes."
+    }
+   ],
+   "onscreen": "Dès 14 ans avec le permis AM | Le choix des parents | Questions 👇",
+   "footage": [
+    "livraison avec client",
+    "intérieur voiture",
+    "conduite",
+    "face camera"
+   ],
+   "caption": "Première voiture à 14 ans 🔑 (vidéo publiée avec l'accord écrit des deux parents)",
+   "hashtags": [
+    "#permisAM",
+    "#ado",
+    "#premierevoiture",
+    "#voituresanspermis",
+    "#parents",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "6",
+   "title": "« C'est de la camelote chinoise »",
+   "type": "objection/réponse (réponse à commentaire)",
+   "hook": "« C'est chinois donc c'est de la camelote. » OK, je te réponds.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "(sticker du commentaire à l'écran) « C'est chinois donc c'est de la camelote. » OK, je te réponds."
+    },
+    {
+     "t": "2-8s",
+     "text": "Ton téléphone, il est fabriqué où ? Ok, mais tu veux des preuves, pas des blagues."
+    },
+    {
+     "t": "8-16s",
+     "text": "Avant d'acheter n'importe quelle sans permis importée, vérifie trois choses : l'homologation européenne L6e, le certificat de conformité, et qui fait le SAV."
+    },
+    {
+     "t": "16-22s",
+     "text": "Chez nous, [ce que NeoDrive fournit réellement : COC, garantie, pièces — à vérifier]."
+    },
+    {
+     "t": "22-28s",
+     "text": "Viens la voir, monte dedans, et juge toi-même. Je réponds aux autres commentaires."
+    }
+   ],
+   "onscreen": "Réponse à @[pseudo] | ✅ Homologation L6e ✅ Certificat de conformité ✅ SAV [à vérifier]",
+   "footage": [
+    "face camera",
+    "extérieur voiture",
+    "intérieur voiture"
+   ],
+   "caption": "J'adore ce genre de commentaire. Continue de me challenger 👇",
+   "hashtags": [
+    "#reponse",
+    "#voiturechinoise",
+    "#voituresanspermis",
+    "#homologation",
+    "#neodrive",
+    "#vsp"
+   ]
+  },
+  {
+   "id": "7",
+   "title": "Né avant 1988 ? Aucun permis",
+   "type": "curiosité + data",
+   "hook": "Si tu es né avant 1988, regarde ça jusqu'au bout.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Si tu es né avant 1988, regarde ça jusqu'au bout."
+    },
+    {
+     "t": "2-8s",
+     "text": "Pour conduire une voiture sans permis, tu n'as besoin d'aucun permis. Rien."
+    },
+    {
+     "t": "8-14s",
+     "text": "Né en 1988 ou après ? Il te faut le permis AM, l'ancien BSR. Accessible dès 14 ans."
+    },
+    {
+     "t": "14-20s",
+     "text": "Et si tu as le permis B, tu as déjà l'AM."
+    },
+    {
+     "t": "20-26s",
+     "text": "Dans tous les cas : assurance obligatoire."
+    },
+    {
+     "t": "26-30s",
+     "text": "Enregistre la vidéo et envoie-la à tes parents."
+    }
+   ],
+   "onscreen": "Avant 1988 → 0 permis | 1988 et après → permis AM (dès 14 ans) | Assurance obligatoire",
+   "footage": [
+    "face camera",
+    "extérieur voiture",
+    "conduite"
+   ],
+   "caption": "La règle que beaucoup ne connaissent pas 👀 Enregistre ⬇️",
+   "hashtags": [
+    "#voituresanspermis",
+    "#permisAM",
+    "#BSR",
+    "#1988",
+    "#bonasavoir",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "8",
+   "title": "Combien ça coûte par mois",
+   "type": "data + choc/prix",
+   "hook": "4 990 €, ou environ 59 € par mois [à vérifier]. Je t'explique.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "4 990 €, ou environ 59 € par mois. Je t'explique."
+    },
+    {
+     "t": "2-8s",
+     "text": "Tu peux payer comptant, ou en plusieurs mois avec notre partenaire financement [nom à vérifier]."
+    },
+    {
+     "t": "8-14s",
+     "text": "59 € par mois, c'est [durée, TAEG, montant total dû : à vérifier, à afficher]."
+    },
+    {
+     "t": "14-20s",
+     "text": "Attention, un crédit vous engage et doit être remboursé. Vérifie ta capacité de remboursement."
+    },
+    {
+     "t": "20-26s",
+     "text": "Tu veux une simulation pour ta situation ? Envoie-moi « SIMU » en message."
+    }
+   ],
+   "onscreen": "Dès ~59 €/mois [à vérifier] | Mention à l'écran si mensualité affichée : « Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager. » + exemple représentatif (TAEG, durée, montant total) [à vérifier avec l'organisme de financement]",
+   "footage": [
+    "face camera",
+    "écran prix",
+    "extérieur voiture"
+   ],
+   "caption": "Simulation perso ? Écris SIMU en DM. Un crédit vous engage et doit être remboursé.",
+   "hashtags": [
+    "#voituresanspermis",
+    "#financement",
+    "#budget",
+    "#vsp",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "9",
+   "title": "Le prix d'un scooter… ou d'une voiture ?",
+   "type": "comparatif",
+   "hook": "Scooter ou voiture sans permis pour ton ado ? Je compare honnêtement.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Scooter ou voiture sans permis pour ton ado ? Je compare honnêtement."
+    },
+    {
+     "t": "2-8s",
+     "text": "Même permis : l'AM, dès 14 ans."
+    },
+    {
+     "t": "8-14s",
+     "text": "Un scooter 50 neuf de marque, c'est souvent [prix à vérifier]. La Confort : 4 990 €."
+    },
+    {
+     "t": "14-20s",
+     "text": "Voiture : un toit, des portes, une ceinture, pas de pluie dans la figure."
+    },
+    {
+     "t": "20-26s",
+     "text": "Scooter : plus maniable, plus facile à garer. Je ne vais pas te mentir."
+    },
+    {
+     "t": "26-30s",
+     "text": "Toi, tu choisis quoi ? Dis-le en commentaire."
+    }
+   ],
+   "onscreen": "Scooter vs Sans permis | Même permis AM | Prix : [à vérifier] vs 4 990 € | Ton choix ? 👇",
+   "footage": [
+    "face camera",
+    "extérieur voiture",
+    "conduite",
+    "écran prix"
+   ],
+   "caption": "Débat ouvert : scooter ou voiture ? 👇 (prix scooter relevé le [date], source [à compléter])",
+   "hashtags": [
+    "#scooter",
+    "#voituresanspermis",
+    "#permisAM",
+    "#ado",
+    "#parents",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "10",
+   "title": "POV : papa offre la sans permis",
+   "type": "humour (POV)",
+   "hook": "POV : ton fils de 14 ans découvre qu'il peut avoir une voiture.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "POV : ton fils de 14 ans découvre qu'il peut avoir une voiture."
+    },
+    {
+     "t": "2-6s",
+     "text": "(Mansour joue l'ado) « Attends… une VOITURE ? Pas un scooter ? »"
+    },
+    {
+     "t": "6-10s",
+     "text": "(Mansour joue le père) « 45 km/h, pas 46. Et tu ramènes ta sœur. »"
+    },
+    {
+     "t": "10-14s",
+     "text": "(ado) « Elle a la clim ? » [à vérifier équipement] (père) « Elle a un prix, c'est déjà bien. »"
+    },
+    {
+     "t": "14-18s",
+     "text": "(face caméra) 4 990 €, dès 14 ans avec le permis AM. Tague le parent qui doit voir ça."
+    }
+   ],
+   "onscreen": "POV 😂 | « 45 km/h, pas 46 » | Tague un parent 👇",
+   "footage": [
+    "face camera",
+    "extérieur voiture",
+    "intérieur voiture"
+   ],
+   "caption": "Tague le parent qui doit voir ça 😂",
+   "hashtags": [
+    "#pov",
+    "#humour",
+    "#voituresanspermis",
+    "#ado",
+    "#permisAM",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "11",
+   "title": "Livraison à l'autre bout de la France",
+   "type": "coulisses (livraison)",
+   "hook": "6 h du matin, la remorque est chargée. Direction [ville réelle].",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "6 h du matin, la remorque est chargée. Direction [ville réelle]."
+    },
+    {
+     "t": "2-6s",
+     "text": "[distance réelle] km à faire. Le client attend depuis [durée réelle]."
+    },
+    {
+     "t": "6-12s",
+     "text": "(timelapse route, sangles, péage)"
+    },
+    {
+     "t": "12-20s",
+     "text": "On arrive. (réaction client, déchargement)"
+    },
+    {
+     "t": "20-26s",
+     "text": "Livrée partout en France : du Nord au Sud, à la campagne comme en ville."
+    },
+    {
+     "t": "26-30s",
+     "text": "Ta ville, c'est laquelle ? Je te dis si on est déjà passés."
+    }
+   ],
+   "onscreen": "[Départ] → [Arrivée] • [X] km | Livraison partout en France | Ta ville ? 👇",
+   "footage": [
+    "remorque",
+    "conduite",
+    "livraison avec client",
+    "face camera"
+   ],
+   "caption": "Encore une livrée 🚚 Ta ville, c'est laquelle ? 👇",
+   "hashtags": [
+    "#livraison",
+    "#voituresanspermis",
+    "#roadtrip",
+    "#entrepreneur",
+    "#neodrive",
+    "#vsp"
+   ]
+  },
+  {
+   "id": "12",
+   "title": "3 choses à vérifier avant d'acheter",
+   "type": "éducation / confiance",
+   "hook": "Il y a une chose que personne ne vérifie avant d'acheter une sans permis.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Il y a une chose que personne ne vérifie avant d'acheter une sans permis."
+    },
+    {
+     "t": "2-8s",
+     "text": "Un : l'homologation. Elle doit être un quadricycle léger L6e, 45 km/h max."
+    },
+    {
+     "t": "8-14s",
+     "text": "Deux : le certificat de conformité, indispensable pour la carte grise."
+    },
+    {
+     "t": "14-20s",
+     "text": "Trois : qui s'occupe du SAV et des pièces après l'achat."
+    },
+    {
+     "t": "20-26s",
+     "text": "Si un vendeur ne peut pas te montrer ces trois choses, fuis. Même si c'est moi."
+    },
+    {
+     "t": "26-30s",
+     "text": "Enregistre la vidéo pour le jour où tu achètes."
+    }
+   ],
+   "onscreen": "✅ L6e ✅ Certificat de conformité ✅ SAV | Enregistre 📌",
+   "footage": [
+    "face camera",
+    "extérieur voiture",
+    "intérieur voiture"
+   ],
+   "caption": "La checklist anti-mauvaise surprise 📌",
+   "hashtags": [
+    "#conseil",
+    "#voituresanspermis",
+    "#achat",
+    "#homologation",
+    "#bonasavoir",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "13",
+   "title": "Permis suspendu : tu peux conduire ?",
+   "type": "objection/réponse (éducation)",
+   "hook": "« Permis suspendu, j'ai le droit de conduire une sans permis ? » Ça dépend.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "« Permis suspendu, j'ai le droit de conduire une sans permis ? » Ça dépend."
+    },
+    {
+     "t": "2-8s",
+     "text": "Une suspension ou une annulation t'interdit les véhicules qui demandent un permis."
+    },
+    {
+     "t": "8-14s",
+     "text": "Mais le juge peut aussi t'interdire de conduire TOUT véhicule à moteur. Là, sans permis comprise."
+    },
+    {
+     "t": "14-20s",
+     "text": "Donc avant d'acheter : lis ta décision, ou demande à ton avocat."
+    },
+    {
+     "t": "20-26s",
+     "text": "Et si c'est OK pour toi, on en parle. Je préfère te le dire maintenant qu'après."
+    }
+   ],
+   "onscreen": "Suspension ≠ forcément interdiction totale | Lis ta décision ⚖️ | Pas un conseil juridique",
+   "footage": [
+    "face camera",
+    "extérieur voiture"
+   ],
+   "caption": "Je préfère perdre une vente que te mettre dans la galère. Vérifie toujours ta décision.",
+   "hashtags": [
+    "#permissuspendu",
+    "#voituresanspermis",
+    "#droitroutier",
+    "#bonasavoir",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "14",
+   "title": "Le marché a chuté de 21 %",
+   "type": "data",
+   "hook": "En 2025, les ventes de sans permis neuves ont chuté de 21 % [à vérifier]. Voilà pourquoi.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "En 2025, les ventes de sans permis neuves ont chuté de 21 % [à vérifier]. Voilà pourquoi."
+    },
+    {
+     "t": "2-8s",
+     "text": "Le bonus de 900 € a disparu fin 2024 [à vérifier], et les prix sont restés hauts."
+    },
+    {
+     "t": "8-14s",
+     "text": "Pendant ce temps, l'occasion a grimpé : plus de 41 000 revendues [à vérifier]."
+    },
+    {
+     "t": "14-20s",
+     "text": "Les gens veulent une sans permis, mais pas à n'importe quel prix."
+    },
+    {
+     "t": "20-26s",
+     "text": "C'est exactement pour ça qu'on vend la Confort neuve à 4 990 €."
+    },
+    {
+     "t": "26-30s",
+     "text": "Neuf ou occasion, toi ? Dis-moi."
+    }
+   ],
+   "onscreen": "-21 % (neuf, 2025) [source : AAA Data via Journal de l'Automobile, à vérifier] | Occasion +7,9 % | 4 990 € neuve",
+   "footage": [
+    "face camera",
+    "écran prix",
+    "extérieur voiture"
+   ],
+   "caption": "Les chiffres du marché, sources en commentaire épinglé 📊",
+   "hashtags": [
+    "#data",
+    "#marcheauto",
+    "#voituresanspermis",
+    "#economie",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "15",
+   "title": "Ce qu'on ne te dit pas sur le prix",
+   "type": "polémique (éthique)",
+   "hook": "Pourquoi une voiture sans permis neuve coûte souvent le prix d'une citadine d'occasion ?",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Pourquoi une sans permis neuve coûte souvent le prix d'une citadine d'occasion ?"
+    },
+    {
+     "t": "2-8s",
+     "text": "Je ne dis pas que les autres modèles sont mauvais. Certains sont très bien finis."
+    },
+    {
+     "t": "8-14s",
+     "text": "Mais dans un prix, tu paies aussi le réseau, le showroom, la pub, les intermédiaires."
+    },
+    {
+     "t": "14-20s",
+     "text": "Nous, on a choisi l'inverse : import direct, livraison directe, 4 990 €."
+    },
+    {
+     "t": "20-26s",
+     "text": "Est-ce que ça vaut 2 fois plus cher [à vérifier ratio] ? À toi de juger. Débat en commentaire, mais poliment."
+    }
+   ],
+   "onscreen": "Je ne critique personne | Tu paies quoi dans un prix ? | Débat 👇 (poli)",
+   "footage": [
+    "face camera",
+    "extérieur voiture",
+    "écran prix"
+   ],
+   "caption": "Débat ouvert, respectueux 🙏 Tu paierais plus pour une marque ?",
+   "hashtags": [
+    "#debat",
+    "#voituresanspermis",
+    "#prix",
+    "#consommation",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "16",
+   "title": "Déballer une voiture comme un colis",
+   "type": "coulisses import Chine + humour",
+   "hook": "Mon métier : déballer des voitures comme des colis.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Mon métier : déballer des voitures comme des colis."
+    },
+    {
+     "t": "2-8s",
+     "text": "(sangles qui sautent, bâche, protections) Ça c'est la livraison Chine-France."
+    },
+    {
+     "t": "8-14s",
+     "text": "On retire les protections, on vérifie tout : carrosserie, batterie, lumières [à vérifier checklist réelle]."
+    },
+    {
+     "t": "14-20s",
+     "text": "Premier démarrage. (son réel)"
+    },
+    {
+     "t": "20-25s",
+     "text": "Elle est prête pour son propriétaire. C'est peut-être toi ?"
+    }
+   ],
+   "onscreen": "Unboxing 📦→🚗 | Contrôle avant livraison ✅ | C'est peut-être la tienne",
+   "footage": [
+    "déchargement container",
+    "extérieur voiture",
+    "intérieur voiture",
+    "face camera"
+   ],
+   "caption": "L'unboxing le plus satisfaisant de ta journée 📦",
+   "hashtags": [
+    "#unboxing",
+    "#satisfying",
+    "#coulisses",
+    "#voituresanspermis",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "17",
+   "title": "Visite intérieure en 20 secondes",
+   "type": "produit",
+   "hook": "Ce que tu as pour 4 990 €, et ce que tu n'as pas.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Ce que tu as pour 4 990 €, et ce que tu n'as pas."
+    },
+    {
+     "t": "2-12s",
+     "text": "Tu as : [équipements réels du modèle Confort — à vérifier : places, écran, coffre, chauffage…]."
+    },
+    {
+     "t": "12-18s",
+     "text": "Tu n'as pas : [limites réelles — ex. autonomie, vitesse 45 km/h]."
+    },
+    {
+     "t": "18-22s",
+     "text": "Je préfère que tu saches tout avant de commander."
+    },
+    {
+     "t": "22-25s",
+     "text": "Une question sur un détail ? Commente, je filme la réponse."
+    }
+   ],
+   "onscreen": "✅ Tu as… | ❌ Tu n'as pas… | Question ? 👇",
+   "footage": [
+    "intérieur voiture",
+    "extérieur voiture",
+    "face camera"
+   ],
+   "caption": "Visite honnête, sans filtre 👀",
+   "hashtags": [
+    "#visite",
+    "#interieur",
+    "#voituresanspermis",
+    "#voitureelectrique",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "18",
+   "title": "45 km/h, c'est lent ?",
+   "type": "démonstration",
+   "hook": "45 km/h, c'est trop lent ? Test en vrai, en ville.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "45 km/h, c'est trop lent ? Test en vrai, en ville."
+    },
+    {
+     "t": "2-10s",
+     "text": "(conduite, caméra fixée, ceinture visible) En ville, on est limité à 50 de toute façon."
+    },
+    {
+     "t": "10-16s",
+     "text": "Rond-point, petite rue, créneau. (plans courts)"
+    },
+    {
+     "t": "16-22s",
+     "text": "Sur nationale par contre, tu restes à droite et tu laisses passer."
+    },
+    {
+     "t": "22-26s",
+     "text": "Pour le village, le collège, les courses : franchement, ça suffit. Ton avis ?"
+    }
+   ],
+   "onscreen": "Test réel en ville 🏙️ | 45 km/h max | Ton avis ? 👇",
+   "footage": [
+    "conduite",
+    "intérieur voiture",
+    "face camera"
+   ],
+   "caption": "Test réel, sans accélérer la vidéo. Ça te suffirait ?",
+   "hashtags": [
+    "#essai",
+    "#voituresanspermis",
+    "#45kmh",
+    "#ville",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "19",
+   "title": "La réaction à la livraison",
+   "type": "témoignage",
+   "hook": "J'ai demandé à un client : « franchement, ça vaut le coup ? »",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "J'ai demandé à un client : « franchement, ça vaut le coup ? »"
+    },
+    {
+     "t": "2-14s",
+     "text": "(client) « [réponse réelle, non scénarisée] »"
+    },
+    {
+     "t": "14-18s",
+     "text": "(Mansour) Et le prix, t'en as pensé quoi ? (client) « [réponse réelle] »"
+    },
+    {
+     "t": "18-24s",
+     "text": "Merci [prénom]. Tous nos témoignages sont des vrais clients, filmés à la livraison."
+    },
+    {
+     "t": "24-28s",
+     "text": "Tu veux être le prochain ? Lien en bio."
+    }
+   ],
+   "onscreen": "Vrai client, vraie livraison | « [citation courte] » | Le prochain, c'est toi ?",
+   "footage": [
+    "livraison avec client",
+    "face camera"
+   ],
+   "caption": "Vrai client, aucun script. Merci [prénom] 🙏 (témoignage non rémunéré [à vérifier])",
+   "hashtags": [
+    "#avisclient",
+    "#temoignage",
+    "#voituresanspermis",
+    "#livraison",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "20",
+   "title": "Ma journée de vendeur",
+   "type": "coulisses fondateur",
+   "hook": "Une journée dans la vie d'un vendeur de voitures sans permis.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Une journée dans la vie d'un vendeur de voitures sans permis."
+    },
+    {
+     "t": "2-6s",
+     "text": "7 h : les appels des clients. (téléphone, carnet)"
+    },
+    {
+     "t": "6-12s",
+     "text": "10 h : préparation des voitures. (nettoyage, contrôle)"
+    },
+    {
+     "t": "12-18s",
+     "text": "14 h : chargement remorque, départ livraison."
+    },
+    {
+     "t": "18-24s",
+     "text": "18 h : remise des clés. Le meilleur moment."
+    },
+    {
+     "t": "24-28s",
+     "text": "21 h : je réponds à vos commentaires. Comme celui-ci. Abonne-toi pour demain."
+    }
+   ],
+   "onscreen": "7h ☎️ | 10h 🧽 | 14h 🚚 | 18h 🔑 | 21h 💬",
+   "footage": [
+    "face camera",
+    "extérieur voiture",
+    "remorque",
+    "livraison avec client"
+   ],
+   "caption": "La vraie vie d'entrepreneur, pas celle des pubs 😅",
+   "hashtags": [
+    "#dayinmylife",
+    "#entrepreneur",
+    "#autoentrepreneur",
+    "#voituresanspermis",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "21",
+   "title": "Pourquoi j'ai lancé NeoDrive",
+   "type": "storytelling fondateur",
+   "hook": "On m'a dit que c'était impossible de vendre une voiture neuve à moins de 5 000 €.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "On m'a dit que c'était impossible de vendre une voiture neuve à moins de 5 000 €."
+    },
+    {
+     "t": "2-10s",
+     "text": "[Déclencheur réel : histoire perso, proche sans permis, constat sur les prix — à raconter par Mansour]."
+    },
+    {
+     "t": "10-18s",
+     "text": "Alors j'ai cherché les fabricants, j'ai importé, j'ai tout organisé moi-même."
+    },
+    {
+     "t": "18-24s",
+     "text": "Aujourd'hui, on livre partout en France, la Confort à 4 990 €."
+    },
+    {
+     "t": "24-30s",
+     "text": "C'est le début. Abonne-toi si tu veux voir la suite de l'aventure."
+    }
+   ],
+   "onscreen": "« Impossible » qu'ils disaient | De l'idée au container | Épisode 1",
+   "footage": [
+    "face camera",
+    "déchargement container",
+    "livraison avec client"
+   ],
+   "caption": "L'histoire de NeoDrive, épisode 1. La suite ? 👇",
+   "hashtags": [
+    "#storytime",
+    "#entrepreneur",
+    "#startup",
+    "#voituresanspermis",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "22",
+   "title": "« C'est dangereux pour un ado ? »",
+   "type": "objection/réponse (parents)",
+   "hook": "« C'est dangereux pour un ado ? » Ma réponse honnête.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "« C'est dangereux pour un ado ? » Ma réponse honnête."
+    },
+    {
+     "t": "2-8s",
+     "text": "Une voiture sans permis n'est pas une voiture classique. Elle est limitée à 45 km/h."
+    },
+    {
+     "t": "8-14s",
+     "text": "Ton ado doit avoir le permis AM : une formation avec de la pratique encadrée."
+    },
+    {
+     "t": "14-20s",
+     "text": "Ceinture, assurance obligatoire, et les mêmes règles de la route que tout le monde."
+    },
+    {
+     "t": "20-26s",
+     "text": "Le vrai facteur de sécurité, c'est le comportement. Parlez-en ensemble. Vos questions, je réponds."
+    }
+   ],
+   "onscreen": "45 km/h max | Permis AM obligatoire (né ≥ 1988) | Ceinture + assurance | Parlez-en 💬",
+   "footage": [
+    "face camera",
+    "conduite",
+    "intérieur voiture"
+   ],
+   "caption": "Parents, je réponds à toutes vos questions, sans langue de bois 👇",
+   "hashtags": [
+    "#parents",
+    "#securiteroutiere",
+    "#permisAM",
+    "#ado",
+    "#voituresanspermis",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "23",
+   "title": "Devine le prix",
+   "type": "curiosité (jeu)",
+   "hook": "Je demande à des gens de deviner le prix de cette voiture.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Je demande à des gens de deviner le prix de cette voiture."
+    },
+    {
+     "t": "2-12s",
+     "text": "(micro-trottoir, 3-4 réponses réelles, avec accord filmé)"
+    },
+    {
+     "t": "12-16s",
+     "text": "Le vrai prix ? (pause 1 s)"
+    },
+    {
+     "t": "16-20s",
+     "text": "4 990 € TTC. (réactions)"
+    },
+    {
+     "t": "20-25s",
+     "text": "Et toi, t'aurais dit combien ? Sois honnête en commentaire."
+    }
+   ],
+   "onscreen": "Devine le prix 🤔 | [réponses passants] | Vrai prix : 4 990 € TTC",
+   "footage": [
+    "face camera",
+    "extérieur voiture",
+    "écran prix"
+   ],
+   "caption": "T'aurais dit combien ? Sois honnête 👇",
+   "hashtags": [
+    "#devineleprix",
+    "#microtrottoir",
+    "#voituresanspermis",
+    "#prix",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "24",
+   "title": "12 km du premier bus",
+   "type": "témoignage (rural)",
+   "hook": "Il habite à [X] km du premier bus. Voilà sa solution.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Il habite à [X] km du premier bus. Voilà sa solution."
+    },
+    {
+     "t": "2-12s",
+     "text": "(client) « [son quotidien réel : travail, courses, distances] »"
+    },
+    {
+     "t": "12-18s",
+     "text": "Une voiture sans permis électrique, rechargée à la maison [à vérifier : prise standard]."
+    },
+    {
+     "t": "18-22s",
+     "text": "Livrée jusque devant chez lui, en pleine campagne."
+    },
+    {
+     "t": "22-26s",
+     "text": "Toi aussi t'es loin de tout ? Dis-moi d'où tu viens."
+    }
+   ],
+   "onscreen": "[X] km du 1er bus 🚌 | Livrée à la campagne | D'où tu viens ? 👇",
+   "footage": [
+    "livraison avec client",
+    "conduite",
+    "extérieur voiture",
+    "face camera"
+   ],
+   "caption": "La campagne mérite aussi sa liberté 🌾",
+   "hashtags": [
+    "#campagne",
+    "#rural",
+    "#mobilite",
+    "#voituresanspermis",
+    "#neodrive"
+   ]
+  },
+  {
+   "id": "25",
+   "title": "Série : Container n°[X], épisode 1",
+   "type": "série (coulisses import Chine)",
+   "hook": "Container n°[X], épisode 1. On suit une voiture de l'arrivée jusqu'au client.",
+   "lines": [
+    {
+     "t": "0-2s",
+     "text": "Container n°[X], épisode 1. On suit une voiture de l'arrivée jusqu'au client."
+    },
+    {
+     "t": "2-8s",
+     "text": "Elle vient d'arriver. Couleur [réelle]. Elle a déjà un propriétaire."
+    },
+    {
+     "t": "8-14s",
+     "text": "Indice : il habite dans [région réelle], et il a [âge/profil réel, avec accord]."
+    },
+    {
+     "t": "14-20s",
+     "text": "Épisode 2 : la préparation. Épisode 3 : la livraison."
+    },
+    {
+     "t": "20-24s",
+     "text": "Abonne-toi pour ne pas rater la suite. Devine qui c'est 👇"
+    }
+   ],
+   "onscreen": "Épisode 1/3 | Elle a déjà un propriétaire 👀 | Suite demain",
+   "footage": [
+    "déchargement container",
+    "extérieur voiture",
+    "face camera"
+   ],
+   "caption": "Série « Container n°[X] » — épisode 1/3. Devine le profil du client 👇",
+   "hashtags": [
+    "#serie",
+    "#episode1",
+    "#coulisses",
+    "#importchine",
+    "#voituresanspermis",
+    "#neodrive"
+   ]
+  }
+ ]
+}

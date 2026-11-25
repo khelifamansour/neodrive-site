@@ -187,7 +187,7 @@ function assTime(s: number) { const cs = Math.max(0, Math.round(s * 100)); const
 const assText = (t: string) => t.replace(/[{}]/g, "").replace(/\\/g, "/").replace(/\n/g, "\\N");
 
 /** Sous-titres et textes au format ASS, déjà placés sur la ligne de temps finale. */
-export function buildAss(plan: EditPlan, D: number, transcript: Transcript | null) {
+export function buildAss(plan: EditPlan, D: number, transcript: Transcript | null, maskWords = true) {
   const outD = outputDuration(plan, D);
   const masks = plan.masks.filter(m => m.on);
   const lines: string[] = [];
@@ -197,7 +197,7 @@ export function buildAss(plan: EditPlan, D: number, transcript: Transcript | nul
     for (const w of transcript.words) {
       const s = mapTime(w.s, plan, D), e = mapTime(Math.max(w.s, w.e - 0.01), plan, D);
       if (s === null || e === null) continue;
-      const masked = masks.some(m => w.s < m.end && w.e > m.start);
+      const masked = maskWords && masks.some(m => w.s < m.end && w.e > m.start);
       const t = masked ? "***" : w.w.trim();
       if (!t) continue;
       if (masked && toks.length && toks[toks.length - 1].t === "***" && s - toks[toks.length - 1].e < 0.6) { toks[toks.length - 1].e = e; continue; }
@@ -250,6 +250,8 @@ ${lines.join("\n")}
 export type RenderInput = {
   src: string; out: string; work: string; plan: EditPlan; D: number; width: number; height: number; hasAudio: boolean;
   transcript: Transcript | null; voice?: { file: string; duration: number } | null; burnText: boolean;
+  /** Sous-titres d'une voix off (Fabrique) : ne pas remplacer ses mots par *** sur les passages masqués du son d'origine. */
+  subtitlesUnmasked?: boolean;
 };
 
 /** Construit et lance la commande ffmpeg du rendu final (1080x1920, H.264/AAC). */
@@ -281,7 +283,7 @@ export async function renderVideo(r: RenderInput) {
     f.push(`[bg][fg]overlay=(W-w)/2:(H-h)/2[vf]`);
   }
   let vLast = "vf";
-  const ass = r.burnText ? buildAss(plan, D, r.transcript) : null;
+  const ass = r.burnText ? buildAss(plan, D, r.transcript, !r.subtitlesUnmasked) : null;
   if (ass) {
     const assFile = path.join(r.work, "texte.ass");
     await writeFile(assFile, ass, "utf8");

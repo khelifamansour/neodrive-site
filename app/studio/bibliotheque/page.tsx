@@ -210,7 +210,7 @@ export default function Bibliotheque() {
   const shown = filter === "all" ? items : items.filter(i => i.status === filter);
 
   return <main className="s">
-    <p className="nav"><a href="/studio/video">← Studio vidéo</a></p>
+    <p className="nav"><a href="/studio/video">← Studio vidéo</a> · <a href="/studio/fabrique">🏭 Fabrique TikTok</a></p>
     <h1>Bibliothèque vidéo</h1>
     <p className="sub">Envoyez tous vos rushes d’un coup. L’IA les analysera ensuite pour fabriquer les vidéos TikTok.</p>
 

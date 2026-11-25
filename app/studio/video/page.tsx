@@ -150,7 +150,7 @@ export default function StudioVideo() {
   };
 
   return <main className="s">
-    <p className="nav"><a href="/studio">← Studio</a> · <a href="/studio/bibliotheque">📚 Bibliothèque vidéo</a></p>
+    <p className="nav"><a href="/studio">← Studio</a> · <a href="/studio/bibliotheque">📚 Bibliothèque vidéo</a> · <a href="/studio/fabrique">🏭 Fabrique</a></p>
     <h1>Studio vidéo</h1>
     <p className="sub">Vidéo de livraison prête pour TikTok : infos personnelles masquées, sous-titres, voix off, format 9:16.</p>
     <p className="limits">📏 Limites : vidéo de <b>{MAX_S} s maximum</b>, <b>{MAX_MB} Mo maximum</b> (mp4 ou mov). Le rendu prend 1 à 4 minutes.</p>

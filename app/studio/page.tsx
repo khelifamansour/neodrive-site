@@ -52,6 +52,7 @@ export default function Studio(){
  return <main className="s">
   <h1>Studio</h1><p className="sub">Vous filmez, l’IA écrit, ça se publie.</p>
   <a className="vlink" href="/studio/bibliotheque"><b>📚 Bibliothèque vidéo</b><small>Envoyer tous les rushes d’un coup depuis la galerie, même écran éteint</small></a>
+  <a className="vlink" href="/studio/fabrique"><b>🏭 Fabrique TikTok</b><small>Chaque jour, 10 vidéos proposées à partir de la bibliothèque</small></a>
   <a className="vlink" href="/studio/video"><b>🎞️ Studio vidéo</b><small>Masquer adresses et noms, sous-titres, voix off, format TikTok 9:16</small></a>
   <div className="chips">{([["publier","🎬 Publier une vidéo"],["scripts","📝 Scripts et idées"]] as const).map(([k,l])=><button key={k} type="button" className={tab===k?"on":""} onClick={()=>setTab(k)}>{l}</button>)}</div>
   {tab==="scripts"?<Scripts code={code}/>:<>
