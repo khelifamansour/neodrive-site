@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { crmDatabase, generateCommercialReply, normalizePhone, sendWhatsApp } from "@/lib/crm-agent";
 import { applyStoredSecrets } from "../../../../lib/integrations";
+import { markClientReply } from "../../../../lib/reservations";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
       const stop = /^(stop|désabonner|desabonner|unsubscribe|ne plus contacter|non merci)$/i.test(text);
       const now = new Date().toISOString();
       await db.from("leads").update({ last_inbound_at: now, whatsapp_opt_in: !stop, opted_out_at: stop ? now : null, next_followup_at: null, statut: stop ? "Perdu" : "Chaud", phase: stop ? "Terminé" : "Attente réponse", updated_at: now }).eq("id", lead.id);
+      await markClientReply(db, phone, now);
 
       // WhatsApp inbound conversations should be answered automatically by default.
       // Only an explicit ai_enabled=false disables the agent.

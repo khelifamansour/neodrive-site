@@ -17,6 +17,7 @@ type D = {
   fournisseurs: { unpaid: { id: number; date: string | null; merchant: string; number: string | null; total: number | null; currency: string }[]; debitsWithout: number; months: string[] } | null;
   conteneurs: { id: number; name: string; status: string; pipeline: string; eta: string; late: boolean }[] | null;
   recrutement: { id: number; name: string; poste: string; city: string; score: number; status: string; tel: string; wa: string }[] | null;
+  chaudsSilence?: { id: number; client: string; ville: string; statut: string; date: string | null; since: string; tel: string; wa: string }[] | null;
 };
 
 const code = () => { try { return sessionStorage.getItem("nd_pc") || ""; } catch { return ""; } };
@@ -78,6 +79,7 @@ export default function TableauDeBord() {
       {d.rappels ? <div className={c.stat}><p className={c.statLabel}>Rappels</p><p className={c.statValue}>{d.rappels.length}</p><p className={c.statNote}>{late ? `dont ${late} en retard` : "à faire aujourd’hui"}</p></div> : null}
       {r ? <div className={c.stat}><p className={c.statLabel}>Livraisons 7 jours</p><p className={c.statValue}>{r.soon.length}</p><p className={c.statNote}>{r.noDate.length} sans date</p></div> : null}
       {d.paidToday ? <div className={c.stat}><p className={c.statLabel}>Paiements reçus</p><p className={c.statValue}>{d.paidToday.length}</p><p className={c.statNote}>hier et aujourd’hui · {r?.expected.length ?? 0} attendu(s)</p></div> : null}
+      {d.chaudsSilence?.length ? <div className={c.stat}><p className={c.statLabel}>⚠️ Chauds muets</p><p className={c.statValue} style={{ color: "#b42318" }}>{d.chaudsSilence.length}</p><p className={c.statNote}>sans réponse 48 h</p></div> : null}
       {cg ? <div className={c.stat}><p className={c.statLabel}>Carte grise</p><p className={c.statValue}>{cgN}</p><p className={c.statNote}>dossier(s) à suivre</p></div> : null}
     </div>
 
@@ -86,6 +88,13 @@ export default function TableauDeBord() {
         <div style={{ minWidth: 0, flex: "1 1 220px" }}><b>{l.nom}</b> <span className={c.small}>· {l.statut}{l.phase ? ` · ${l.phase}` : ""} · {l.overdue ? <span style={{ color: "#b91c1c" }}>en retard ({dfr(l.rappel)})</span> : `à ${hfr(l.rappel)}`}</span>
           {l.note ? <div className={c.small} style={{ overflowWrap: "anywhere" }}>{l.note}</div> : null}</div>
         <Links tel={l.tel} wa={l.wa} />
+      </div>)}
+    </Section> : null}
+
+    {d.chaudsSilence?.length ? <Section title="⚠️ Clients chauds sans réponse depuis 48 h" n={d.chaudsSilence.length} href="/reservations-admin">
+      {d.chaudsSilence.map(x => <div key={x.id} style={row}>
+        <div style={{ minWidth: 0, flex: "1 1 220px" }}><b>{x.client}</b>{x.ville ? ` (${x.ville})` : ""}<div className={c.small}>{x.statut} · dernière réponse {dfr(x.since)}{x.date ? ` · date promise ${dfr(x.date)}` : ""} · à relancer avant de réserver Rabouin</div></div>
+        <Links tel={x.tel} wa={x.wa} />
       </div>)}
     </Section> : null}
 

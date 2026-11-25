@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import c from "../giga/giga.module.css";
 import Contact from "./Contact";
 import Registre from "./Registre";
+import { RabouinList, TempBadges, TempPanel } from "./Temperature";
+import { hotSilent, type TempSignals, type Temperature } from "../../lib/reservation-temperature";
 
 type R = {
   id: number; created_at: string; source: string; nom: string; prenom: string; telephone: string; email: string;
@@ -12,6 +14,8 @@ type R = {
   vin?: string | null; avis_google?: string | null; avis_at?: string | null;
   paiement_confirme_at?: string | null; livre_at?: string | null; accuse_token?: string | null;
   paiement_en_attente?: boolean | null; montant_du?: number | null; remote_confirm?: { name?: string; at?: string } | null; reserve_token?: string | null; reserve_due?: string | null;
+  temperature?: Temperature | null; temperature_signals?: TempSignals | null; temperature_at?: string | null; last_client_reply_at?: string | null;
+  signature_at?: string | null; pack_confirmed_at?: string | null; livraison_mode?: string | null;
 };
 const STATUTS = ["Nouvelle", "Confirmée", "Planifiée", "Livrée", "Annulée"];
 const PRIOS = ["Urgente", "Haute", "Normale", "Basse"];
@@ -39,7 +43,7 @@ export default function ReservationsAdmin() {
   const [rows, setRows] = useState<R[]>([]); const [filter, setFilter] = useState("actives");
   const [sel, setSel] = useState<Set<number>>(new Set()); const [open, setOpen] = useState<number | null>(null);
   const [edit, setEdit] = useState<Partial<R>>({}); const [add, setAdd] = useState<typeof blank | null>(null);
-  const [view, setView] = useState<"liste" | "registre">("liste");
+  const [view, setView] = useState<"liste" | "registre" | "rabouin">("liste"); const [tempOpen, setTempOpen] = useState<number | null>(null);
   const regApi = useCallback(<T,>(body: object) => api<T>(body), []);
   const [contact, setContact] = useState<number | null>(null); const [video, setVideo] = useState(""); const [videoDraft, setVideoDraft] = useState(""); const [showSet, setShowSet] = useState(false);
 
@@ -60,6 +64,10 @@ export default function ReservationsAdmin() {
   const importPlanner = () => run(async () => { const j = await api<{ added: number }>({ action: "import_planner" }); return `📥 ${j.added} réservation(s) reprise(s) du planificateur.`; });
   const setPaid = (r: R) => { const on = !r.paiement_confirme_at; if (!confirm(on ? `Confirmer que le paiement de ${r.prenom} ${r.nom} est bien reçu sur le compte ? Le livreur pourra alors faire signer l'accusé et remettre les clés.` : `Annuler la confirmation de paiement de ${r.prenom} ${r.nom} ?`)) return; run(async () => { await api({ action: "update", id: r.id, paiement_confirme: on }); return on ? (r.livre_at && r.paiement_en_attente ? `💶 Paiement de ${r.prenom} ${r.nom} confirmé : réservation passée en « Livrée ». SMS envoyés : à vous (envoyer clés et papiers en lettre suivie) et au client.` : `💶 Paiement de ${r.prenom} ${r.nom} confirmé : le livreur peut faire confirmer l'accusé.`) : "Confirmation de paiement annulée."; }); };
   const logContact = (id: number, channel: string, template: string) => { api({ action: "contact_log", id, channel, template }).then(() => load()).catch(e => setMsg("❌ " + (e as Error).message)); };
+  const saveTemp = (id: number, temperature: Temperature | null, signals: string[]) => run(async () => { await api({ action: "temperature", id, temperature, signals }); setTempOpen(null); return "🌡️ Température enregistrée."; });
+  const clientReplied = (id: number) => run(async () => { await api({ action: "client_reply", id }); return "✅ Réponse du client notée."; });
+  const rabouinN = rows.filter(r => ["Nouvelle", "Confirmée"].includes(r.statut) && r.temperature === "chaud" && !r.livre_at).length;
+  const silentN = rows.filter(r => hotSilent(r)).length;
   const copyList = () => { const t = (chosen.length ? chosen : shown).map(r => `${r.prenom} ${r.nom}, ${r.adresse}, ${r.code_postal} ${r.ville}, ${r.telephone}`).join("\n"); navigator.clipboard?.writeText(t).then(() => setMsg("📋 Liste copiée.")); };
 
   if (state === "loading") return <main className={c.page}><p className={c.muted} style={{ padding: 30 }}>Chargement…</p></main>;
@@ -84,16 +92,17 @@ export default function ReservationsAdmin() {
     <p className={c.muted}>Toutes les réservations du site arrivent ici automatiquement. Ajoutez à la main les anciennes (reçues seulement par e-mail), fixez une date promise, puis envoyez-les au planificateur.</p>
     {msg ? <p className={c.msg} style={{ fontWeight: 700 }}>{msg}</p> : null}
     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "12px 0 0" }}>
-      {([["📋 En cours", enCours.length, "#111", "#fff", "actives"], ["🔴 Hors stock", enCours.filter(r => horsStock(r.modele)).length, "#b42318", "#fef3f2", "horsstock"], ["⚡ Urgentes", enCours.filter(r => r.priorite === "Urgente").length, "#b54708", "#fffaeb", "actives"]] as const).map(([l, n, col, bg, f]) =>
-        <button key={l} onClick={() => setFilter(f)} style={{ flex: "1 1 120px", textAlign: "left", padding: "10px 14px", borderRadius: 14, border: `1.5px solid ${col === "#111" ? "#e5e0d8" : col}`, background: bg, cursor: "pointer", font: "inherit" }}>
+      {([["📋 En cours", enCours.length, "#111", "#fff", "actives"], ["🔴 Hors stock", enCours.filter(r => horsStock(r.modele)).length, "#b42318", "#fef3f2", "horsstock"], ["⚡ Urgentes", enCours.filter(r => r.priorite === "Urgente").length, "#b54708", "#fffaeb", "actives"], [silentN ? `🚛 Prêts Rabouin · ⚠️ ${silentN}` : "🚛 Prêts Rabouin", rabouinN, "#067647", "#e7f6ec", "rabouin"]] as const).map(([l, n, col, bg, f]) =>
+        <button key={l} onClick={() => f === "rabouin" ? setView("rabouin") : (setView("liste"), setFilter(f))} style={{ flex: "1 1 120px", textAlign: "left", padding: "10px 14px", borderRadius: 14, border: `1.5px solid ${col === "#111" ? "#e5e0d8" : col}`, background: bg, cursor: "pointer", font: "inherit" }}>
           <small style={{ display: "block", color: col, fontWeight: 700 }}>{l}</small><b style={{ fontSize: 26, color: col }}>{n}</b></button>)}
     </div>
 
     <div style={{ display: "flex", gap: 6, margin: "14px 0 0" }}>
       <button className={`${c.btn} ${view === "liste" ? c.btnBrand : c.btnGhost}`} onClick={() => setView("liste")}>📋 Réservations</button>
       <button className={`${c.btn} ${view === "registre" ? c.btnBrand : c.btnGhost}`} onClick={() => setView("registre")}>📒 Registre clients</button>
+      <button className={`${c.btn} ${view === "rabouin" ? c.btnBrand : c.btnGhost}`} onClick={() => setView("rabouin")}>🚛 Prêts pour Rabouin ({rabouinN})</button>
     </div>
-    {view === "registre" ? <Registre rows={rows} api={regApi} onSaved={m => { setMsg(m); load().catch(() => null); }} /> : <>
+    {view === "registre" ? <Registre rows={rows} api={regApi} onSaved={m => { setMsg(m); load().catch(() => null); }} /> : view === "rabouin" ? <RabouinList rows={rows} busy={busy} onReply={clientReplied} onCopy={t => navigator.clipboard?.writeText(t).then(() => setMsg("📋 Liste copiée pour Rabouin."))} /> : <>
     {add ? <section className={c.card} style={{ marginTop: 14, display: "grid", gap: 10 }}>
       <h2 style={{ margin: 0 }}>Nouvelle réservation</h2>
       <div style={grid}>
@@ -145,6 +154,7 @@ export default function ReservationsAdmin() {
               {r.priorite !== "Normale" ? <span className={c.badge} style={{ background: r.priorite === "Urgente" ? "#fde8e7" : r.priorite === "Haute" ? "#fff4d6" : "#f1f1f1", color: "#111" }}>{r.priorite}</span> : null}
               {r.plan_client_id ? <span className={c.badge} style={{ background: "#ede7fb", color: "#111" }}>🚚 au planificateur</span> : null}
               {hs ? <span className={c.badge} style={{ background: "#d92d20", color: "#fff" }}>Hors stock — rappeler</span> : null}
+              <TempBadges r={r} />
               <b style={{ fontSize: 17 }}>{r.prenom} {r.nom}</b>
             </div>
             <div className={c.muted} style={{ marginTop: 4 }}>
@@ -159,11 +169,13 @@ export default function ReservationsAdmin() {
               {r.accuse_token ? <a className={`${c.btn} ${c.btnGhost}`} href={`/api/accuse/${r.accuse_token}`} target="_blank" rel="noreferrer">📄 {r.remote_confirm ? "Accusé confirmé à distance" : "Accusé signé"}</a> : null}
               {r.reserve_token ? <a className={`${c.btn} ${c.btnGhost}`} href={`/api/accuse/${r.reserve_token}`} target="_blank" rel="noreferrer">🔒 Remise avec réserve (PDF)</a> : null}
               {!["Livrée", "Annulée"].includes(r.statut) ? <button className={`${c.btn} ${r.paiement_confirme_at ? c.btnGhost : c.btnBrand}`} title={r.livre_at && r.paiement_en_attente ? "Paiement reçu après livraison : passe en Livrée et prévient le client" : undefined} style={r.paiement_confirme_at ? { background: "#e7f6ec" } : undefined} onClick={() => setPaid(r)}>{r.paiement_confirme_at ? "💶 Paiement confirmé ✅" : "💶 Confirmer le paiement"}</button> : null}
+              {!["Livrée", "Annulée"].includes(r.statut) ? <button className={`${c.btn} ${c.btnGhost}`} onClick={() => setTempOpen(tempOpen === r.id ? null : r.id)}>{tempOpen === r.id ? "Fermer 🌡️" : "🌡️ Température"}</button> : null}
               <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { setOpen(isOpen ? null : r.id); setEdit({ statut: r.statut, priorite: r.priorite, date_promise: r.date_promise, acompte: r.acompte, notes: r.notes }); }}>{isOpen ? "Fermer" : "✏️ Modifier"}</button>
             </div>
           </div>
         </div>
         {contact === r.id ? <Contact r={r} hs={hs} video={video} onSent={(ch, t) => logContact(r.id, ch, t)} onClose={() => setContact(null)} /> : null}
+        {tempOpen === r.id ? <TempPanel r={r} busy={busy} onSave={(t, sg) => saveTemp(r.id, t, sg)} onReply={() => clientReplied(r.id)} /> : null}
         {isOpen ? <div style={{ display: "grid", gap: 10, borderTop: "1px solid #eee", paddingTop: 10 }}>
           <div className={c.muted}>{r.adresse} {r.code_postal} {r.ville}{r.email ? ` · ${r.email}` : ""} · Source : {SRC[r.source] || r.source}{r.delivery_price != null ? ` · Livraison ${eur(r.delivery_price)}` : ""}{r.options ? ` · ${r.options}` : ""}</div>
           <div style={grid}>

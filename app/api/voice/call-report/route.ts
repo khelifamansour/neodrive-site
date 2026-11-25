@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 import { crmDatabase, normalizePhone } from "../../../../lib/crm-agent";
 import { whatsappOwner } from "../../../../lib/package-sender";
+import { markClientReply } from "../../../../lib/reservations";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
   if (lead) await db.from("leads").update({ ...patch, ...(nom && (!lead.nom || /prospect/i.test(lead.nom)) ? { nom } : {}) }).eq("id", lead.id);
   else if (phone) lead = (await db.from("leads").insert({ ...patch, nom: nom || "Appel téléphonique", telephone: phone, source: "telephone", whatsapp_opt_in: false, ai_enabled: true, lead_score: 70 }).select().single()).data;
   if (lead) await db.from("crm_messages").insert({ lead_id: lead.id, direction: "inbound", channel: "telephone", body: `📞 Appel (${duration} s) — ${summary}\n\n${transcript}`.slice(0, 9000), status: "received", ai_generated: true });
+  if (phone) await markClientReply(db, phone, now);
   const tel = phone ? ("0" + phone.slice(2)).replace(/(\d{2})(?=\d)/g, "$1 ") : "numéro masqué";
   const txt = `📞 Appel pris par le standard IA (${duration} s)\nClient : ${nom || "?"} — ${tel}${data.code_postal ? ` — ${data.code_postal}` : ""}\nPour : ${data.pour_qui || "?"} · Modèle : ${data.modele || "?"}\n${data.rappel_souhaite ? "➡️ Souhaite être rappelé" + (data.creneau_rappel ? ` (${data.creneau_rappel})` : "") : ""}\n\nRésumé : ${summary || "—"}`;
   await whatsappOwner(txt, "Appel manqué").catch(() => false);

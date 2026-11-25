@@ -8,6 +8,7 @@ import { normalizePhone } from "./crm-agent";
 import { eurFr, payState } from "./stock-shared";
 import { pendingKeys } from "./carte-grise";
 import { reviewList } from "./payment-match";
+import { hotSilent } from "./reservation-temperature";
 
 type DB = SupabaseClient;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -123,8 +124,15 @@ export async function buildDashboard(db: DB, now = new Date()) {
     return rows.map(a => ({ id: a.id, name: a.full_name || "?", poste: a.poste || "", city: a.city || "", score: Number(a.final_score), status: a.status || "", tel: telLink(a.phone), wa: waLink(a.phone) }));
   });
 
-  const [r1, r2, r3, r4, r5, r6, r7, r8] = await Promise.all([rappels, reservations, paidToday, toReview, carteGrise, fournisseurs, conteneurs, recrutement]);
-  return { today, generatedAt: now.toISOString(), rappels: r1, reservations: r2, paidToday: r3, toReview: r4, carteGrise: r5, fournisseurs: r6, conteneurs: r7, recrutement: r8 };
+  // Clients « chauds » (température) sans réponse depuis 48 h : à relancer avant de réserver Rabouin.
+  const chaudsSilence = safe("chauds sans réponse", async () => {
+    const rows = must(await db.from("reservations").select("id,prenom,nom,telephone,ville,statut,date_promise,temperature,temperature_at,last_client_reply_at,livre_at").eq("temperature", "chaud").in("statut", ["Nouvelle", "Confirmée", "Planifiée"]).limit(300)) as Row[];
+    return rows.filter(r => !r.livre_at && hotSilent(r, now.getTime())).map(r => ({ id: r.id as number, client: name(r), ville: r.ville || "", statut: r.statut as string, date: r.date_promise as string | null, since: (r.last_client_reply_at || r.temperature_at) as string, tel: telLink(r.telephone), wa: waLink(r.telephone) }))
+      .sort((x, y) => ts(x.since) - ts(y.since));
+  });
+
+  const [r1, r2, r3, r4, r5, r6, r7, r8, r9] = await Promise.all([rappels, reservations, paidToday, toReview, carteGrise, fournisseurs, conteneurs, recrutement, chaudsSilence]);
+  return { today, generatedAt: now.toISOString(), rappels: r1, reservations: r2, paidToday: r3, toReview: r4, carteGrise: r5, fournisseurs: r6, conteneurs: r7, recrutement: r8, chaudsSilence: r9 };
 }
 
 /* ───────────── E-mail du matin ───────────── */
@@ -149,6 +157,10 @@ export function digestEmail(d: Dashboard) {
     parts.push(block(`🚚 Livraisons des 7 prochains jours (${d.reservations.soon.length})`, d.reservations.soon.slice(0, N).map(r => tr(`<b>${dfr(r.date)}</b> · ${esc(r.client)}${r.ville ? ` (${esc(r.ville)})` : ""} · ${esc(r.modele)}`, r.pay === "payé" ? "✅ payé" : `<span style="color:#b91c1c">${esc(r.pay)}</span>`)), "Aucune livraison prévue.", d.reservations.soon.length - N));
     if (d.reservations.noDate.length) parts.push(block(`📅 Planifiées / confirmées sans date (${d.reservations.noDate.length})`, d.reservations.noDate.slice(0, N).map(r => tr(`${esc(r.client)}${r.ville ? ` (${esc(r.ville)})` : ""} · ${esc(r.statut)}`, a(r.tel, "Appeler"))), "", d.reservations.noDate.length - N));
     todo.push(`${d.reservations.soon.length} livraison(s) cette semaine`);
+  }
+  if (d.chaudsSilence?.length) {
+    todo.push(`${d.chaudsSilence.length} client(s) chaud(s) sans réponse`);
+    parts.push(block(`⚠️ Clients chauds sans réponse depuis 48 h (${d.chaudsSilence.length})`, d.chaudsSilence.slice(0, N).map(r => tr(`<b>${esc(r.client)}</b>${r.ville ? ` (${esc(r.ville)})` : ""} · ${esc(r.statut)} · dernière réponse ${dfr(r.since)}`, a(r.tel, "Appeler"))), "", d.chaudsSilence.length - N));
   }
   const pay: string[] = [];
   for (const p of d.paidToday || []) pay.push(tr(`✅ ${esc(p.client)} <span style="color:#666">(${esc(p.day)}, ${esc(p.source)})</span>`, eurFr(p.amount)));

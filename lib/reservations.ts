@@ -106,3 +106,14 @@ export async function saveReservation(sb: SupabaseClient, b: Record<string, unkn
   }
   return data as Reservation;
 }
+
+/** Message entrant d'un client (WhatsApp, appel…) : met à jour last_client_reply_at de ses réservations en cours. Ne bloque jamais. */
+export async function markClientReply(sb: SupabaseClient, phone: unknown, at = new Date().toISOString()) {
+  try {
+    const p = normalizePhone(phone); if (!p) return;
+    const { data, error } = await sb.from("reservations").select("id,telephone").in("statut", ["Nouvelle", "Confirmée", "Planifiée"]).limit(1000);
+    if (error) return;
+    const ids = (data || []).filter(r => normalizePhone(r.telephone) === p).map(r => r.id);
+    if (ids.length) await sb.from("reservations").update({ last_client_reply_at: at }).in("id", ids);
+  } catch (e) { console.warn("[RESERVATIONS] markClientReply", (e as Error).message); }
+}

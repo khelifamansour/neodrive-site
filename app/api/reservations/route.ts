@@ -7,6 +7,7 @@ import { cleanReservation, saveReservation, type Reservation } from "../../../li
 import { normalizePhone } from "../../../lib/crm-agent";
 import { applyStoredSecrets } from "../../../lib/integrations";
 import { brevoReady, sendSms } from "../../../lib/brevo";
+import { SIGNAL_KEYS, suggestTemperature, tempInfo, type TempSignals } from "../../../lib/reservation-temperature";
 
 export const dynamic = "force-dynamic";
 const VIDEO_KEY = "prise_en_main_video_url";
@@ -72,6 +73,32 @@ export async function POST(req: Request) {
       const contacts = Array.isArray(raw.contacts) ? raw.contacts : [];
       await sb.from("reservations").update({ notes: [r?.notes, line].filter(Boolean).join("\n"), raw: { ...raw, contacts: [...contacts, { at: at.toISOString(), channel, template: tpl, by: acc.name }] }, updated_at: at.toISOString() }).eq("id", id);
       await logSection(acc, "reservation_contact", { id, channel, template: tpl });
+      return NextResponse.json({ ok: true });
+    }
+    // Température (chaud / tiède / froid) + signaux cochés ; la suggestion est recalculée côté serveur.
+    if (b.action === "temperature") {
+      const id = Number(b.id); if (!id) return NextResponse.json({ ok: false, error: "id manquant" }, { status: 400 });
+      const checked = (Array.isArray(b.signals) ? b.signals : []).map(String).filter(k => SIGNAL_KEYS.has(k));
+      const t = b.temperature == null || b.temperature === "" ? null : String(b.temperature);
+      if (t && !tempInfo(t)) return NextResponse.json({ ok: false, error: "Température invalide." }, { status: 400 });
+      const suggested = suggestTemperature(checked);
+      const at = new Date().toISOString();
+      const { data: cur } = await sb.from("reservations").select("temperature_signals").eq("id", id).maybeSingle();
+      const prev = (cur?.temperature_signals && typeof cur.temperature_signals === "object" ? cur.temperature_signals : {}) as TempSignals;
+      const signals: TempSignals = { ...prev, checked, suggested, override: !!t && t !== suggested, by: acc.name };
+      const { error } = await sb.from("reservations").update({ temperature: t, temperature_signals: signals, temperature_at: at, updated_at: at }).eq("id", id);
+      if (error) throw new Error(/temperature/.test(error.message) ? "Colonnes « température » absentes : passer le script SQL 20261125180000_reservation_temperature.sql." : error.message);
+      await logSection(acc, "reservation_temperature", { id, temperature: t, suggested });
+      return NextResponse.json({ ok: true, suggested });
+    }
+    if (b.action === "client_reply") {
+      const id = Number(b.id); if (!id) return NextResponse.json({ ok: false, error: "id manquant" }, { status: 400 });
+      const at = new Date().toISOString();
+      const { data: cur } = await sb.from("reservations").select("temperature_signals").eq("id", id).maybeSingle();
+      const prev = (cur?.temperature_signals && typeof cur.temperature_signals === "object" ? cur.temperature_signals : {}) as TempSignals;
+      const { error } = await sb.from("reservations").update({ last_client_reply_at: at, temperature_signals: { ...prev, reply_by: acc.name }, updated_at: at }).eq("id", id);
+      if (error) throw new Error(error.message);
+      await logSection(acc, "reservation_client_reply", { id });
       return NextResponse.json({ ok: true });
     }
     if (b.action === "list") {
