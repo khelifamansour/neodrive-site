@@ -146,6 +146,10 @@ export default function HomeClient() {
         </div>
         <div className="clientGrid">
           <article>
+            <video controls preload="metadata" playsInline><source src="https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/site/temoignage-yonne.mp4" type="video/mp4" /></video>
+            <div><strong>Témoignage cliente</strong><span>Yonne</span></div>
+          </article>
+          <article>
             <video controls preload="metadata" playsInline><source src="/client1.mp4" type="video/mp4" /></video>
             <div><strong>Livraison client</strong><span>Région de Strasbourg</span></div>
           </article>
