@@ -1,0 +1,26 @@
+{
+  "id": "/studio/bibliotheque",
+  "name": "NeoDrive Studio",
+  "short_name": "NeoDrive Studio",
+  "description": "Envoyer les vidéos du téléphone vers la bibliothèque NeoDrive, même écran éteint.",
+  "start_url": "/studio/bibliotheque",
+  "scope": "/studio/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f05a28",
+  "lang": "fr",
+  "icons": [
+    { "src": "/studio-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/studio-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "share_target": {
+    "action": "/studio/partage",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "files": [{ "name": "videos", "accept": ["video/*", ".mp4", ".mov", ".m4v", ".3gp", ".webm"] }]
+    }
+  }
+}

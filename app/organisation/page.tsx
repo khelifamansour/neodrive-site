@@ -21,6 +21,7 @@ const TILES: Tile[] = [
   { href: "/logistique", icon: "🏗️", title: "Logistique", text: "Les prestataires de dépotage, de stockage et de transport.", section: "logistique" },
   { href: "/logistique/dechargement", icon: "⚠️", title: "Déchargement conteneurs", text: "Consignes de sécurité pour le dépotage", section: "logistique|conteneurs" },
   { href: "/contenu", icon: "🎬", title: "Contenu", text: "Photos, vidéos, catalogue et documents à télécharger.", section: "contenu" },
+  { href: "/studio/bibliotheque", icon: "📚", title: "Bibliothèque vidéo", text: "Envoyer tous les rushes d’un coup depuis la galerie du téléphone, même écran éteint.", section: "contenu" },
   { href: "/studio/video", icon: "🎞️", title: "Studio vidéo", text: "Vidéo de livraison prête pour TikTok : infos personnelles masquées, sous-titres, voix off, format 9:16.", section: "contenu" },
   { href: "/recrutement-admin", icon: "🤝", title: "Recrutement", text: "Les candidatures, les tests et les offres d’emploi.", section: "recrutement" },
   { href: "/equipe", icon: "📞", title: "Prospects", text: "Vos clients à rappeler, les appels et les messages WhatsApp.", section: "crm" },
