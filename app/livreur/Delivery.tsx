@@ -244,7 +244,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
             <small className={c.muted}>Photographiez la plaque du constructeur : le numéro se remplit tout seul.</small>
             <div className={s.two}>
               <label className={`${c.btn} ${c.btnBrand}`} style={{ justifyContent: "center", textAlign: "center", padding: "14px 6px", opacity: busy ? .6 : 1 }}>📷 Prendre la photo
-                <input type="file" accept="image/*" capture="environment" hidden disabled={!!busy} onChange={e => { uploadPhoto(e.target.files?.[0]); e.target.value = ""; }} /></label>
+                <input type="file" accept="image/*" hidden disabled={!!busy} onChange={e => { uploadPhoto(e.target.files?.[0]); e.target.value = ""; }} /></label>
               <label className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center", textAlign: "center", padding: "14px 6px", opacity: busy ? .6 : 1 }}>🖼️ Galerie
                 <input type="file" accept="image/*" hidden disabled={!!busy} onChange={e => { uploadPhoto(e.target.files?.[0]); e.target.value = ""; }} /></label>
             </div>
