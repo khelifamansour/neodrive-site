@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import s from "./app.module.css";
 import { api } from "./ui";
 
@@ -15,8 +15,7 @@ const message = (r: Row) => `Bonjour ${first(r.client)}, c'est Mansour de NeoDri
 export function Planning() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [open, setOpen] = useState<number | null>(null);
-  const load = useCallback(async () => { try { const j = await api<{ plan: Row[] }>("plan"); setRows(j.plan); } catch { setRows([]); } }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { let on = true; api<{ plan: Row[] }>("plan").then(j => { if (on) setRows(j.plan); }).catch(() => { if (on) setRows([]); }); return () => { on = false; }; }, []);
   const update = async (id: number, patch: Record<string, unknown>) => { try { const j = await api<{ plan: Row[] }>("plan_update", { id, ...patch }); setRows(j.plan); } catch (e) { alert((e as Error).message); } };
   if (!rows || !rows.length) return null;
   const blocks = [...new Set(rows.map(r => r.block))];
