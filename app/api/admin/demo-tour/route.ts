@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { crmDatabase } from "../../../../lib/crm-agent";
-import { createDemoTour, createRealTour, createSimulationTour, deleteTestData } from "../../../../lib/demo-tour";
+import { createCustomTour, createDemoTour, createRealTour, createSimulationTour, deleteTestData, type CustomTourInput } from "../../../../lib/demo-tour";
 import { driverKey } from "../../../../lib/driver-link";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +19,11 @@ async function run(req: Request) {
     if (p.action === "real" || p.action === "simulation") {
       const date = /^\d{4}-\d{2}-\d{2}$/.test(p.date || "") ? p.date : undefined;
       const r = p.action === "real" ? await createRealTour(db, date) : await createSimulationTour(db, date);
+      const k = driverKey(r.tour);
+      return NextResponse.json({ ok: true, ...r, link: k ? `https://www.easydrive-auto.fr/chauffeur?k=${encodeURIComponent(k)}` : null });
+    }
+    if (p.action === "custom") {
+      const r = await createCustomTour(db, (p as unknown as { tour: CustomTourInput }).tour);
       const k = driverKey(r.tour);
       return NextResponse.json({ ok: true, ...r, link: k ? `https://www.easydrive-auto.fr/chauffeur?k=${encodeURIComponent(k)}` : null });
     }
