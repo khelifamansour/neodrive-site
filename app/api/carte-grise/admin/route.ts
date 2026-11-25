@@ -6,6 +6,7 @@ import { CARTE_GRISE_PROVIDER_EMAIL, CARTE_GRISE_PROVIDER_NAME } from "../../../
 import { analyseDossier, linkReservationVin } from "../../../../lib/stock";
 import { checkDocuments, requestMissing } from "../../../../lib/carte-grise-check";
 import { payState } from "../../../../lib/stock-shared";
+import { stampMandat } from "../../../../lib/mandat-cachet";
 
 const RES = "id,prenom,nom,telephone,statut,livre_at,vin,total,paiement_confirme_at,paiement_en_attente,montant_du,reserve_path,reserve_token,modele,couleur";
 
@@ -45,6 +46,8 @@ export async function POST(req: Request) {
     if (b.action === "check") return NextResponse.json({ ok: true, check: await checkDocuments(sb, d.id, { keys: Array.isArray(b.keys) ? b.keys.map(String) : undefined }) });
     // Demande des pièces manquantes au client (SMS + e-mail + lien WhatsApp à envoyer soi-même).
     if (b.action === "request_missing") return NextResponse.json({ ok: true, ...(await requestMissing(sb, d, { keys: Array.isArray(b.keys) ? b.keys.map(String) : undefined, note: typeof b.note === "string" ? b.note : "", sms: b.sms !== false, email: b.email !== false })) });
+    // Cachet MK HOLDING (ré)appliqué sur le mandat d'un dossier existant (anciens dossiers : aussi un mandat PDF importé).
+    if (b.action === "stamp_mandat") { const r = await stampMandat(sb, d, { anyPdf: true }); const ok = r.status === "stamped" || r.status === "already"; return NextResponse.json({ ok, ...r, ...(ok ? {} : { error: r.message }) }, { status: r.status === "error" ? 500 : 200 }); }
     if (b.action === "auto_resend") {
       const { error } = await sb.from("carte_grise_dossiers").update({ auto_resend: Boolean(b.value), updated_at: new Date().toISOString() }).eq("id", d.id);
       if (error) throw new Error(error.message);

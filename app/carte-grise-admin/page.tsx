@@ -77,6 +77,7 @@ export default function CarteGriseAdmin() {
   const toggleAuto = async (d: D, value: boolean) => { try { await api({ action: "auto_resend", id: d.id, value }); await load(); } catch (e) { setMsg("❌ " + (e as Error).message); } };
   const showLinks = async (d: D) => { try { const j = await api<{ links: { label: string; url: string }[] }>({ action: "links", id: d.id }); setLinks(l => ({ ...l, [d.id]: j.links })); } catch (e) { setMsg("❌ " + (e as Error).message); } };
   const reread = async (d: D) => { setBusy(d.id); setMsg(""); try { const r = await api<{ vin: string | null; note: string }>({ action: "analyse", id: d.id, reset: true }); setMsg(`🔎 ${r.vin ? `VIN ${r.vin}` : "VIN non lu"} · ${r.note}`); await load(); } catch (e) { setMsg("❌ " + (e as Error).message); } finally { setBusy(null); } };
+  const stamp = async (d: D) => { setBusy(d.id); setMsg(""); try { const r = await api<{ message: string }>({ action: "stamp_mandat", id: d.id }); setMsg(`🖋️ ${r.message}`); await load(); } catch (e) { setMsg("❌ " + (e as Error).message); } finally { setBusy(null); } };
   const fix = async (d: D) => {
     const vin = prompt("VIN du véhicule (17 caractères, vide = inchangé) :", d.vin || ""); if (vin === null) return;
     const rid = prompt("N° de réservation du client (vide = recherche automatique) :", d.reservation_id ? String(d.reservation_id) : ""); if (rid === null) return;
@@ -152,6 +153,7 @@ export default function CarteGriseAdmin() {
             <button className={`${c.btn} ${c.btnGhost}`} disabled={busy !== null} onClick={() => check(d)}>{busy === d.id ? "Analyse…" : "Analyser les pièces"}</button>
             <button className={`${c.btn} ${c.btnGhost}`} disabled={busy !== null} onClick={() => openAsk(d)}>Demander les pièces manquantes</button>
             <button className={`${c.btn} ${c.btnGhost}`} disabled={busy !== null} onClick={() => reread(d)}>{busy === d.id ? "Lecture…" : "Relire le VIN"}</button>
+            <button className={`${c.btn} ${c.btnGhost}`} disabled={busy !== null} onClick={() => stamp(d)} title="Appose le cachet et la signature MK HOLDING sur le mandat">{busy === d.id ? "…" : "🖋️ Cachet sur le mandat"}</button>
             <button className={`${c.btn} ${c.btnGhost}`} onClick={() => fix(d)}>Corriger VIN / client</button>
             <select className={c.input} style={{ width: "auto" }} value={STATUSES.includes(d.status) ? d.status : ""} onChange={e => setStatus(d, e.target.value)}>
               {!STATUSES.includes(d.status) ? <option value="">{d.status}</option> : null}

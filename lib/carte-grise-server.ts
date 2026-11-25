@@ -52,6 +52,9 @@ export async function sendDossierToProvider(sb: SupabaseClient, d: CarteGriseDos
   const to = String(opts.to || CARTE_GRISE_PROVIDER_EMAIL || "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) throw new Error("Adresse du prestataire carte grise manquante (CARTE_GRISE_PROVIDER_EMAIL).");
   if (d.sent_to_provider_at && !opts.force) throw Object.assign(new Error(`Dossier déjà envoyé le ${new Date(d.sent_to_provider_at).toLocaleString("fr-FR", { timeZone: "Europe/Paris" })} à ${d.sent_to || "?"} (ajoutez force pour renvoyer).`), { status: 409 });
+  // Cachet MK HOLDING sur le mandat signé à l'écran, toujours avant que NK ne voie le dossier (idempotent ; met d à jour).
+  const { stampMandat } = await import("./mandat-cachet");
+  await stampMandat(sb, d);
   const current = (d.files || []).filter(f => !f.superseded);
   if (!current.length) throw new Error("Aucune pièce enregistrée pour ce dossier.");
   await applyStoredSecrets();

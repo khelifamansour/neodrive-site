@@ -1,7 +1,8 @@
 import { NextResponse, after } from "next/server";
 import { dataClient } from "../../../../lib/datastore";
 import { CARTE_GRISE_COLUMNS, CARTE_GRISE_FILE_LABEL, CARTE_GRISE_MAX_FILE, type CarteGriseFile } from "../../../../lib/carte-grise";
-import { CARTE_GRISE_BUCKET } from "../../../../lib/carte-grise-server";
+import { CARTE_GRISE_BUCKET, findDossier } from "../../../../lib/carte-grise-server";
+import { stampMandat } from "../../../../lib/mandat-cachet";
 import { analyseDossier } from "../../../../lib/stock";
 import { vinValid } from "../../../../lib/shipments";
 import { cnitFor } from "../../../../lib/cnit";
@@ -82,7 +83,9 @@ export async function POST(req: Request) {
       const lost = ((d.files || []) as CarteGriseFile[]).length - files.length;
       await sb.from("carte_grise_dossiers").update({ files, status: "reçu", ...(lost ? { notes: [d.notes, `⚠️ ${lost} pièce(s) non reçue(s) côté serveur (voir l'e-mail Formspree)`].filter(Boolean).join("\n") } : {}), updated_at: new Date().toISOString() }).eq("id", d.id);
       // VIN lu sur le COC / les documents, rapprochement stock + réservation, contrôle des pièces, e-mail au fondateur (jamais d'envoi automatique à NK Services).
-      after(() => analyseDossier(sb, d.id, { notify: true }).then(() => undefined).catch(e => console.error("[carte-grise] analyse", e)));
+      // Cachet MK HOLDING apposé d'abord sur le mandat signé à l'écran (côté serveur), puis analyse.
+      after(() => findDossier(sb, { id: d.id }).then(x => x ? stampMandat(sb, x) : null).catch(e => console.error("[carte-grise] cachet", e))
+        .then(() => analyseDossier(sb, d.id, { notify: true })).then(() => undefined).catch(e => console.error("[carte-grise] analyse", e)));
       return NextResponse.json({ ok: true, id: d.id, files: files.length, lost });
     }
     return NextResponse.json({ ok: false, error: "Action inconnue" }, { status: 400 });

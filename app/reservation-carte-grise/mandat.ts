@@ -9,7 +9,26 @@ export type MandatPdf = {
   text: (t: string, x: number, y: number, o?: { maxWidth?: number }) => void;
   line: (x1: number, y1: number, x2: number, y2: number) => void;
   addImage: (data: string, format: string, x: number, y: number, w: number, h: number, alias?: string, compression?: "NONE" | "FAST" | "MEDIUM" | "SLOW") => void;
+  setProperties?: (p: Record<string, string>) => void;
 };
+
+/** Cadre du mandataire (bordure et libellés) ; le cachet est ajouté ensuite côté serveur. */
+export function drawMandataireBox(pdf: MandatPdf) {
+  const { x, y, w, h } = MANDAT_CACHET_BOX;
+  pdf.line(x, y, x + w, y); pdf.line(x + w, y, x + w, y + h); pdf.line(x + w, y + h, x, y + h); pdf.line(x, y + h, x, y);
+  pdf.setFontSize(9);
+  pdf.text("Le mandataire – MK HOLDING (Neodrive)", x + 3, y + 6, { maxWidth: w - 6 });
+  pdf.setFontSize(8.5);
+  pdf.text("Cachet et signature", x + 3, y + 15);
+}
+
+/**
+ * Cadre « Le mandataire » à droite de la signature du client (mm, origine en haut à gauche, A4).
+ * Le cachet et la signature de MK HOLDING y sont apposés côté serveur (lib/mandat-cachet.ts) : l'image ne passe jamais par le navigateur.
+ */
+export const MANDAT_CACHET_BOX = { x: 128, y: 186, w: 62, h: 56 };
+/** Marqueur (sujet du PDF) des mandats qui contiennent déjà le cadre du mandataire. */
+export const MANDAT_PDF_SUBJECT = "NeoDrive mandat cadre-mandataire v1";
 
 /** Signature au doigt placée dans un cadre (mm) en gardant ses proportions. */
 export const fitSignature = (sig: Signature, maxW: number, maxH: number) => { const k = Math.min(maxW / sig.w, maxH / sig.h); return { w: sig.w * k, h: sig.h * k }; };
@@ -40,6 +59,10 @@ export function writeMandat<P extends MandatPdf>(pdf: P, m: MandatClient, today:
     "Je certifie l’exactitude des informations communiquées et m’engage à fournir les justificatifs nécessaires au traitement du dossier.",
     20, 158, { maxWidth: 170 }
   );
+
+  pdf.setProperties?.({ subject: MANDAT_PDF_SUBJECT });
+  drawMandataireBox(pdf);
+  pdf.setFontSize(11);
 
   if (sig) {
     pdf.text("Mention : Lu et approuvé", 20, 195);
