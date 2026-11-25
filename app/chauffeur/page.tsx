@@ -5,6 +5,7 @@ import s from "../planificateur/planif.module.css";
 import { supabase } from "../../lib/supabase";
 import { STAGE_ICON, vinValid, type Stage } from "../../lib/shipments";
 import TourFlow, { type TourData } from "./TourFlow";
+import CarrierFlow from "./CarrierFlow";
 import { PhotoPick, type ResInfo } from "./DeliverySign";
 
 type Client = { id: string; name: string; adresse: string; telephone: string; modele: string; couleur: string; status: string; received_at: string | null; reception: string | null };
@@ -76,6 +77,11 @@ function Driver() {
   const loaded = data.vehicles.filter(v => v.stage === "chargée"), delivered = data.vehicles.filter(v => v.stage === "livrée");
   const taken = new Set(data.vehicles.filter(v => v.stage !== "livrée").map(v => v.client_id).filter(Boolean));
   const v = match?.vehicle;
+  // Mission transporteur : page simplifiée (pas d'heures, de frais, de montants ni d'autres tournées)
+  if (data.tour?.transporteur) return <main className={s.page} style={{ maxWidth: 560, paddingTop: 12, paddingBottom: 120 }}>
+    <div style={{ display: "grid", gap: 2 }}><b style={{ fontSize: 19 }}>🚛 Mission {data.tour.carrier?.name || data.tour.driver} pour NeoDrive</b><small className={s.muted}>{data.tour.carrier?.driverName ? `Chauffeur : ${data.tour.carrier.driverName} · ` : ""}{loaded.length} chargée(s) · {delivered.length} livrée(s)</small></div>
+    <CarrierFlow data={{ tour: data.tour, clients: data.clients, vehicles: data.vehicles, events: data.events || [], res: data.res }} call={call} upload={uploadPhoto} reload={load} msg={msg} onMsg={setMsg} backUrl={backUrl} focus={selId} />
+  </main>;
   if (data.tour) return <main className={s.page} style={{ maxWidth: 560, paddingTop: 12, paddingBottom: 150 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}><b style={{ fontSize: 18 }}>🚚 {data.tour.name || "Tournée"}</b><small className={s.muted}>{loaded.length} chargée(s) · {delivered.length} livrée(s)</small></div>
     {(data.tour.en_route || []).length ? <p className={s.tip} style={{ marginTop: 8 }}>➕ Client ajouté en route : {(data.tour.en_route as { clientId: string; note: string }[]).map(e => `${data.clients.find(x => x.id === e.clientId)?.name || "client"} (${e.note})`).join(" · ")}</p> : null}

@@ -14,7 +14,7 @@ export type PlanClient = Point & {
   /** Non livré pendant sa tournée : à livrer au retour (ou lors d'une prochaine tournée). */
   retour?: boolean;
 };
-export type Stop = { kind: "depot" | "client"; id: string; name: string; label: string; lat: number; lng: number; load: number; loaded?: number; action: string; phone?: string; address?: string; legKm?: number; legH?: number };
+export type Stop = { kind: "depot" | "client"; id: string; name: string; label: string; lat: number; lng: number; load: number; loaded?: number; action: string; phone?: string; address?: string; legKm?: number; legH?: number; /** Créneau convenu avec le client (ex. « 9 h – 12 h »). */ slot?: string };
 export type Fuel = "gazole" | "e10" | "sp95" | "e85" | "gpl";
 export const FUELS: { id: Fuel; label: string; conso: number; price: number }[] = [
   { id: "gazole", label: "Gazole (Duster dCi)", conso: 13, price: 1.65 },
@@ -38,11 +38,26 @@ export type PlanTour = {
   closed_at?: string | null;
   /** Clients ajoutés en cours de route après la clôture. */
   en_route?: { clientId: string; note: string; at: string; by: string }[];
+  /** Mission confiée à un transporteur partenaire (Transports Rabouin) : page chauffeur simplifiée, sans heures ni montants. */
+  transporteur?: boolean;
+  carrier?: Carrier;
 };
+/** Transporteur d'une mission : chauffeur inconnu à l'avance (facultatif), lien envoyé par SMS ou e-mail. */
+export type Carrier = { name: string; driverName?: string; driverPhone?: string; email?: string; sent_at?: string | null; sent_to?: string[] };
+export const DEFAULT_CARRIER = "Transports Rabouin";
 
 export const DEFAULT_HUBS: Hub[] = [
   { id: "lamasquere", name: "Lamasquère (Muret)", lat: 43.4836, lng: 1.2483, stock: 0 },
   { id: "boran", name: "Boran-sur-Oise", lat: 49.1686, lng: 2.3583, stock: 0 },
+];
+/** Points de chargement d'une mission transporteur : les hubs du planificateur + les dépôts partenaires (adresse donnée au chauffeur). */
+export type PickupHub = Hub & { address: string };
+const HUB_ADDRESS: Record<string, string> = { lamasquere: "1021 Route de Moundas, 31600 Lamasquère", boran: "60820 Boran-sur-Oise" };
+export const PICKUP_HUBS: PickupHub[] = [
+  ...DEFAULT_HUBS.map(h => ({ ...h, address: HUB_ADDRESS[h.id] || h.name })),
+  { id: "fos", name: "Fos-sur-Mer (CMS)", lat: 43.4378, lng: 4.9447, stock: 0, address: "CMS, 13270 Fos-sur-Mer" },
+  { id: "dls", name: "DLS (Gennevilliers)", lat: 48.9333, lng: 2.3, stock: 0, address: "DLS, Port de Gennevilliers, 92230 Gennevilliers" },
+  { id: "gennevilliers", name: "Gennevilliers (Martin)", lat: 48.9258, lng: 2.2933, stock: 0, address: "Martin, 92230 Gennevilliers" },
 ];
 export const TRAILERS = [
   { value: 1, label: "Petite remorque (1 voiture)" },

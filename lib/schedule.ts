@@ -155,7 +155,7 @@ export const plannedSchedule = (stops: Stop[], date: string, departTime?: string
 
 // ───────── Suivi en direct ─────────
 export type TourEvent = { id?: number; tour_id: string; created_at: string; kind: string; client_id?: string | null; stop_index?: number | null; lat?: number | null; lng?: number | null; accuracy?: number | null; note?: string | null; photo_path?: string | null; author?: string | null; data?: Record<string, unknown> | null };
-export const EVENT_LABEL: Record<string, string> = { cloture: "🔒 Tournée clôturée", ajout: "➕ Client ajouté en cours de route", depart: "🚚 Départ", pause: "☕ Pause", reprise: "▶️ Reprise", arrive: "📍 Arrivé", livre: "✅ Livré", probleme: "⚠️ Problème", position: "📡 Position", prevenir: "📲 Client prévenu", debut_jour: "🌅 Début de journée", fin_jour: "🌙 Fin de journée", correction: "✏️ Correction d’heures", frais: "🧾 Frais" };
+export const EVENT_LABEL: Record<string, string> = { cloture: "🔒 Tournée clôturée", ajout: "➕ Client ajouté en cours de route", depart: "🚚 Départ", pause: "☕ Pause", reprise: "▶️ Reprise", arrive: "📍 Arrivé", livre: "✅ Livré", probleme: "⚠️ Problème", position: "📡 Position", prevenir: "📲 Client prévenu", debut_jour: "🌅 Début de journée", fin_jour: "🌙 Fin de journée", correction: "✏️ Correction d’heures", frais: "🧾 Frais", charge: "📦 Chargé", photo_client: "📷 Photo de remise", refus: "↩️ Refus du client : voiture rechargée", accuse_signe: "✍️ Accusé signé", reserve_signee: "✍️ Remise signée" };
 const MILESTONES = new Set(["depart", "arrive", "livre"]);
 
 export type Progress = {

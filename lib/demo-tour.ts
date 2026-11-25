@@ -142,33 +142,45 @@ export type CustomTourInput = {
   tourId: string; name: string; date: string; departTime?: string; driver?: string;
   hub: { id: string; name: string; address: string; lat: number; lng: number };
   clients: { resId: number; lat: number; lng: number; slot: string; legKm: number; legH: number }[];
-  back: { km: number; h: number };
+  /** Retour au hub en fin de tournée ; null pour une mission transporteur (le chauffeur repart sans revenir). */
+  back: { km: number; h: number } | null;
+  /** Mission confiée à un transporteur : réservations en livraison « transporteur », page chauffeur simplifiée. */
+  transporteur?: boolean; carrier?: PlanTour["carrier"];
+  /** Note ajoutée au client après le créneau (par défaut : paiement par virement instantané à la livraison). */
+  clientNote?: string;
 };
 
-/** Vraie tournée quelconque (réservations existantes), même format que createRealTour. */
+/** Vraie tournée quelconque (réservations existantes), même format que createRealTour. Sert aussi aux missions transporteur. */
 export async function createCustomTour(db: SupabaseClient, t: CustomTourInput) {
   if (!/^t-[a-z0-9-]{3,60}$/.test(t.tourId)) throw new Error("Identifiant de tournée invalide");
   const { data, error } = await db.from("reservations").select("id,prenom,nom,telephone,email,adresse,code_postal,ville,modele,couleur,total,plan_client_id").in("id", t.clients.map(c => c.resId));
   if (error) throw new Error(error.message);
   const now = new Date().toISOString();
+  const n = t.clients.length;
   const hubStop = (label: string, load: number, action: string, legKm?: number, legH?: number): Stop => ({ kind: "depot", id: t.hub.id, name: t.hub.name, label, lat: t.hub.lat, lng: t.hub.lng, load, loaded: Math.max(load, 0), action, address: t.hub.address, ...(legKm ? { legKm, legH } : {}) });
-  const ids: string[] = []; const stops: Stop[] = [hubStop("Départ", t.clients.length, `Charger ${t.clients.length} voiture${t.clients.length > 1 ? "s" : ""}`)];
+  const ids: string[] = []; const stops: Stop[] = [hubStop("Départ", n, `Charger ${n} voiture${n > 1 ? "s" : ""}`)];
   const clientsList = await listJson<PlanClient>(db, PLAN_CLIENTS);
   for (const [i, c] of t.clients.entries()) {
     const x = (data || []).find(d => d.id === c.resId) as Res | undefined;
     if (!x) throw new Error(`Réservation ${c.resId} introuvable`);
     const cid = x.plan_client_id || `res-${x.id}`;
     const prev = clientsList.find(p => p.id === cid);
-    const pc: PlanClient = { ...(prev || {}), id: cid, created_at: prev?.created_at || now, source: "reservation", prenom: x.prenom, nom: x.nom, telephone: x.telephone, email: x.email || "", adresse: x.adresse, code_postal: x.code_postal, ville: x.ville, modele: x.modele || "NeoDrive Confort", couleur: x.couleur || "", total: x.total != null ? Number(x.total) : null, status: "planifie", tour_id: t.tourId, lat: c.lat, lng: c.lng, note: `Créneau ${c.slot} · paiement par virement instantané à la livraison` };
+    const pc: PlanClient = { ...(prev || {}), id: cid, created_at: prev?.created_at || now, source: "reservation", prenom: x.prenom, nom: x.nom, telephone: x.telephone, email: x.email || "", adresse: x.adresse, code_postal: x.code_postal, ville: x.ville, modele: x.modele || "NeoDrive Confort", couleur: x.couleur || "", total: x.total != null ? Number(x.total) : null, status: "planifie", tour_id: t.tourId, lat: c.lat, lng: c.lng, note: `Créneau ${c.slot} · ${t.clientNote ?? "paiement par virement instantané à la livraison"}` };
     await writeJson(db, `${PLAN_CLIENTS}/${cid}.json`, pc);
-    await db.from("reservations").update({ plan_client_id: cid, statut: "Planifiée", date_promise: t.date }).eq("id", x.id);
+    const upd = { plan_client_id: cid, statut: "Planifiée", date_promise: t.date };
+    if (t.transporteur) {
+      // Colonne livraison_mode (migration du 24/11) : repli sans elle si la migration n'est pas encore passée.
+      const { error: e1 } = await db.from("reservations").update({ ...upd, livraison_mode: "transporteur", updated_at: now }).eq("id", x.id);
+      if (e1) await db.from("reservations").update(upd).eq("id", x.id);
+    } else await db.from("reservations").update(upd).eq("id", x.id);
     ids.push(cid);
-    stops.push({ kind: "client", id: cid, name: `${x.prenom} ${x.nom}`.trim(), label: String(i + 1), lat: c.lat, lng: c.lng, load: -1, action: `Livrer 1 voiture (${c.slot})`, phone: x.telephone, address: `${x.adresse}, ${x.code_postal} ${x.ville}`, legKm: c.legKm, legH: c.legH });
+    stops.push({ kind: "client", id: cid, name: `${x.prenom} ${x.nom}`.trim(), label: String(i + 1), lat: c.lat, lng: c.lng, load: -1, action: `Livrer 1 voiture (${c.slot})`, slot: c.slot, phone: x.telephone, address: `${x.adresse}, ${x.code_postal} ${x.ville}`, legKm: c.legKm, legH: c.legH });
   }
-  stops.push(hubStop("Retour", 0, "Retour au dépôt", t.back.km, t.back.h));
-  const km = t.clients.reduce((s, c) => s + c.legKm, 0) + t.back.km;
-  const hours = Math.round((t.clients.reduce((s, c) => s + c.legH, 0) + t.back.h + t.clients.length * 0.75) * 10) / 10;
-  const tour: PlanTour = { id: t.tourId, name: t.name, created_at: now, date: t.date, driver: t.driver || "Mansour", hubId: t.hub.id, trailer: 2, clientIds: ids, status: "valide", stops, km, hours, departTime: t.departTime || "08:00", driverRate: 25, closed_at: null, en_route: [] };
+  if (t.back) stops.push(hubStop("Retour", 0, "Retour au dépôt", t.back.km, t.back.h));
+  const backKm = t.back?.km || 0, backH = t.back?.h || 0;
+  const km = t.clients.reduce((s, c) => s + c.legKm, 0) + backKm;
+  const hours = Math.round((t.clients.reduce((s, c) => s + c.legH, 0) + backH + n * 0.75) * 10) / 10;
+  const tour: PlanTour = { id: t.tourId, name: t.name, created_at: now, date: t.date, driver: t.driver || "Mansour", hubId: t.hub.id, trailer: t.transporteur ? Math.max(n, 1) : 2, clientIds: ids, status: "valide", stops, km, hours, departTime: t.departTime || "08:00", driverRate: 25, closed_at: null, en_route: [], ...(t.transporteur ? { transporteur: true, carrier: t.carrier || { name: t.driver || "Transporteur" } } : {}) };
   await writeJson(db, `${PLAN_TOURS}/${t.tourId}.json`, tour);
   return { tour: t.tourId, clients: ids };
 }

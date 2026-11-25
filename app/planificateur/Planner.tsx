@@ -9,6 +9,7 @@ import {demoApi} from "./demoApi";
 import LiveTrack from "./LiveTrack";
 import HoursAdmin from "./HoursAdmin";
 import TourLock from "./TourLock";
+import MissionTransporteur from "./MissionTransporteur";
 import {ScheduleKpis,ScheduleRulesNote,ScheduleView,downloadIcs} from "./Schedule";
 import {dayOf,hhmm,plannedSchedule} from "../../lib/schedule";
 
@@ -149,6 +150,9 @@ export function Planner({demo=false}:{demo?:boolean}){
    </li>})}</ul>
    {sel.length?<div className={s.assign}><span>{sel.length} sélectionné{sel.length>1?"s":""} →</span><select value={target} onChange={e=>setTarget(e.target.value)}><option value="">Choisir une tournée…</option>{drafts.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><button disabled={!target||!!busy} onClick={assign}>Ajouter</button><button onClick={newTour} disabled={!!busy}>＋ Nouvelle tournée</button></div>:null}
   </section>
+
+  {/* MISSION TRANSPORTEUR (Transports Rabouin) */}
+  {!demo?<MissionTransporteur api={api} onMsg={setMsg} reload={()=>load()}/>:null}
 
   {/* TOURNÉES */}
   <section className={s.card}>

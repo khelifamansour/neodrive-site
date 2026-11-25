@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorizeSection } from "../../../lib/access";
 import { dataClient, listJson, readJson, removeJson, writeJson } from "../../../lib/datastore";
-import { DEFAULT_HUBS, type Hub, type PlanClient, type PlanTour } from "../../../lib/planif";
+import { DEFAULT_HUBS, PICKUP_HUBS, type Hub, type PlanClient, type PlanTour } from "../../../lib/planif";
 import { buildClient, geocode, PLAN_CLIENTS as C } from "../../../lib/planif-server";
 import { saveReservation, takeSignedOrder } from "../../../lib/reservations";
 import { deliveryPriceForDepartment } from "../../../lib/neodrive-pricing";
@@ -10,6 +10,7 @@ import { driverKey } from "../../../lib/driver-link";
 import { addEvent, listEvents, purgeOldPositions } from "../../../lib/tour-live";
 import { PHOTO_BUCKET } from "../../../lib/fleet";
 import { DEFAULT_DRIVER_RATE, estimateHours } from "../../../lib/driver-hours";
+import { MissionError, createMission, listMissions, markPriseEnMainDone, missionCandidates, sendMissionLink } from "../../../lib/transport-mission";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -265,6 +266,18 @@ export async function POST(req: Request) {
       const si = t.stops?.findIndex(s => s.kind === "client" && s.id === cid) ?? -1;
       const event = await addEvent(sb, { tour_id: t.id, kind: "prevenir", client_id: cid, stop_index: si >= 0 ? si : null, note: clean(b.note, 300) || null, author: acc.name });
       return NextResponse.json({ ok: true, event });
+    }
+    // ── Mission transporteur (Transports Rabouin) : réservations → tournée « transporteur » + lien chauffeur sans connexion
+    if (typeof b.action === "string" && b.action.startsWith("mission_")) {
+      try {
+        if (b.action === "mission_list") {
+          const [reservations, missions] = await Promise.all([missionCandidates(sb), listMissions(sb)]);
+          return NextResponse.json({ ok: true, reservations, missions, hubs: PICKUP_HUBS });
+        }
+        if (b.action === "mission_create") return NextResponse.json({ ok: true, ...(await createMission(sb, b)) });
+        if (b.action === "mission_send") return NextResponse.json({ ok: true, sent: await sendMissionLink(sb, clean(b.id, 80), { phone: b.phone, email: b.email }) });
+        if (b.action === "mission_prise_en_main") { await markPriseEnMainDone(sb, Number(b.reservation_id)); return NextResponse.json({ ok: true }); }
+      } catch (e) { if (e instanceof MissionError) return NextResponse.json({ ok: false, error: e.message }, { status: e.status }); throw e; }
     }
     if (b.action === "delete_tour") {
       const id = clean(b.id, 80);

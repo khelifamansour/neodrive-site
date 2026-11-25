@@ -5,12 +5,13 @@ import { checkDriverKey } from "../../../lib/driver-link";
 import { PHOTO_BUCKET, PLAN_CLIENTS, PLAN_TOURS, clientName, matchVin, patchVehicle, readClient } from "../../../lib/fleet";
 import { DEPOTS, isDepot, normVin, vehicleStage, vinDistance } from "../../../lib/shipments";
 import { plannedSchedule, tourProgress } from "../../../lib/schedule";
-import { OFFICE_KINDS, addEvent, cleanGeo, deliverVehicle, isEventKind, listEvents, stopIndexOf } from "../../../lib/tour-live";
+import { CARRIER_KINDS, OFFICE_KINDS, addEvent, cleanGeo, deliverVehicle, isEventKind, listEvents, stopIndexOf } from "../../../lib/tour-live";
 import type { PlanClient, PlanTour } from "../../../lib/planif";
 import { readVinPhoto } from "../conteneurs/extract";
 import { addTickets } from "../../../lib/driver-tickets";
 import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType, isPaidBy } from "../../../lib/driver-hours";
 import { AccuseError, accuseLink, sendAccuseLink, startReserve } from "../../../lib/accuse-link";
+import { clientSigned, markPriseEnMainDue, noteRefusal, notifyCarrierEvent, saveClientPhoto } from "../../../lib/transport-mission";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -33,6 +34,8 @@ export async function POST(req: Request) {
   };
   /** Sans appareil photo : le chauffeur retape les 4 derniers caractères du VIN chargé (contrôle de la bonne voiture). */
   const vinTyped = (vin: string, typed: unknown) => { const x = String(typed || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return x.length >= 4 && vin.toUpperCase().endsWith(x.slice(-4)) && x.length <= 17 && vin.toUpperCase().endsWith(x); };
+  /** Mission transporteur (Transports Rabouin) : page simplifiée, sans heures, frais ni montants. */
+  const carrier = !!t?.transporteur;
   const photoOk = (p: unknown) => typeof p === "string" && p.startsWith(`vehicles/${tour}/`) && !p.includes("..");
 
   try {
@@ -54,13 +57,20 @@ export async function POST(req: Request) {
           res[String(r.plan_client_id)] = { id: r.id, vin: r.vin, has_email: !!r.email, has_phone: !!r.telephone, paid: r.paiement_confirme_at, pending: !!r.paiement_en_attente, sent_at: r.confirm_sent_at, signed_at: r.accuse_token ? (d.signed_at || r.livre_at) : null, reglement: d.reglement || null, driver_name: d.driver_name || null, pdf: r.accuse_token ? `/api/accuse/${r.accuse_token}` : null, total: r.total == null ? null : Number(r.total), montant_du: r.montant_du == null ? null : Number(r.montant_du), reserve_at: r.reserve_token ? ((r.reserve_data as { signed_at?: string } | null)?.signed_at || r.livre_at) : null, reserve_pdf: r.reserve_token ? `/api/accuse/${r.reserve_token}` : null, reserve_due: r.reserve_due || null };
         }
       }
-      return NextResponse.json({ ok: true, tour: t ? { id: t.id, name: t.name, date: t.date, driver: t.driver, hubId: t.hubId, status: t.status, departTime: t.departTime || "", stops: t.stops || [], km: t.km || 0, rate: t.driverRate || DEFAULT_DRIVER_RATE, estH: estimateHours(t), closed_at: t.closed_at || null, en_route: t.en_route || [] } : null, res, clients, depots: DEPOTS, events, vehicles: (veh || []).map((v: any) => ({ ...v, has_plate: !!v.plate_photo, plate_photo: undefined, shipment: v.shipments?.name || "", stage: vehicleStage(v, v.shipments), shipments: undefined })) });
+      // Mission transporteur : jamais de montant, de taux horaire ni d'heures (le transporteur ne voit que la livraison).
+      if (carrier) for (const k of Object.keys(res)) { const x = res[k] as Record<string, unknown>; res[k] = { id: x.id, vin: x.vin, has_email: x.has_email, has_phone: x.has_phone, paid: x.paid ? "oui" : null, pending: false, sent_at: x.sent_at, signed_at: x.signed_at, reglement: null, driver_name: null, pdf: null, reserve_at: x.reserve_at, reserve_pdf: null }; }
+      const tourView = !t ? null : carrier
+        ? { id: t.id, name: t.name, date: t.date, driver: t.driver, hubId: t.hubId, status: t.status, departTime: t.departTime || "", stops: t.stops || [], transporteur: true, carrier: { name: t.carrier?.name || t.driver, driverName: t.carrier?.driverName || "" }, closed_at: null, en_route: [] }
+        : { id: t.id, name: t.name, date: t.date, driver: t.driver, hubId: t.hubId, status: t.status, departTime: t.departTime || "", stops: t.stops || [], km: t.km || 0, rate: t.driverRate || DEFAULT_DRIVER_RATE, estH: estimateHours(t), closed_at: t.closed_at || null, en_route: t.en_route || [] };
+      return NextResponse.json({ ok: true, tour: tourView, res, clients: carrier ? clients.map(c => ({ ...c, reception: null })) : clients, depots: DEPOTS, events: carrier ? events.filter(e => e.kind !== "position") : events, vehicles: (veh || []).map((v: any) => ({ ...v, has_plate: !!v.plate_photo, plate_photo: undefined, shipment: v.shipments?.name || "", stage: vehicleStage(v, v.shipments), shipments: undefined })) });
     }
     // Journal de tournée : départ, pause, reprise, arrivée, livraison, problème, position GPS
     if (b.action === "event") {
       if (!t) return NextResponse.json({ ok: false, error: "Ce lien n'est pas lié à une tournée." }, { status: 400 });
       const kind = b.kind;
-      if (!isEventKind(kind) || (OFFICE_KINDS as readonly string[]).includes(kind)) return NextResponse.json({ ok: false, error: "Événement inconnu" }, { status: 400 });
+      if (!isEventKind(kind) || (OFFICE_KINDS as readonly string[]).includes(kind) || kind === "charge") return NextResponse.json({ ok: false, error: "Événement inconnu" }, { status: 400 });
+      if (carrier && !(CARRIER_KINDS as readonly string[]).includes(kind)) return NextResponse.json({ ok: false, error: "Action non disponible pour une mission transporteur." }, { status: 400 });
+      if (!carrier && (kind === "photo_client" || kind === "refus")) return NextResponse.json({ ok: false, error: "Événement inconnu" }, { status: 400 });
       const geo = cleanGeo(b);
       const stops = t.stops || [];
       const events = await listEvents(db, [tour]);
@@ -94,6 +104,39 @@ export async function POST(req: Request) {
         const event = await addEvent(db, { ...base, data: { date: b.date, minutes } });
         return NextResponse.json({ ok: true, event });
       }
+      // ── Mission transporteur : photo de remise, refus du client, fin de livraison
+      if (carrier && kind === "photo_client") {
+        if (!client_id) return NextResponse.json({ ok: false, error: "Client inconnu." }, { status: 400 });
+        const photo = photoOk(b.path) ? String(b.path) : null;
+        if (!photo) return NextResponse.json({ ok: false, error: "Photo du client à côté de la voiture obligatoire." }, { status: 400 });
+        await saveClientPhoto(db, client_id, photo);
+        const event = await addEvent(db, { ...base, stop_index: stop_index ?? stopIndexOf(t, client_id), photo_path: photo });
+        return NextResponse.json({ ok: true, event });
+      }
+      if (carrier && kind === "refus") {
+        if (!client_id) return NextResponse.json({ ok: false, error: "Client inconnu." }, { status: 400 });
+        const { signed } = await clientSigned(db, client_id);
+        if (signed) return NextResponse.json({ ok: false, error: "Le client a déjà signé : appelez NeoDrive." }, { status: 409 });
+        const event = await addEvent(db, { ...base, stop_index: stop_index ?? stopIndexOf(t, client_id) });
+        await noteRefusal(db, client_id, t.carrier?.name || t.driver, base.note || "");
+        await notifyCarrierEvent(db, t, "refus", { clientId: client_id, note: base.note });
+        return NextResponse.json({ ok: true, event });
+      }
+      if (carrier && kind === "livre") {
+        if (!client_id) return NextResponse.json({ ok: false, error: "Choisissez le client livré." }, { status: 400 });
+        if (!events.some(e => e.kind === "photo_client" && e.client_id === client_id)) return NextResponse.json({ ok: false, error: "Prenez d'abord la photo du client à côté de la voiture." }, { status: 400 });
+        const { signed } = await clientSigned(db, client_id);
+        if (!signed) return NextResponse.json({ ok: false, error: "Faites d'abord signer la remise au client sur votre téléphone." }, { status: 400 });
+        if (events.some(e => e.kind === "livre" && e.client_id === client_id)) return NextResponse.json({ ok: true, already: true });
+        const { data: vs } = await db.from("shipment_vehicles").select("id,vin,status,client_id,client_name,tour_id,plate_photo").eq("client_id", client_id).order("picked_at", { ascending: false });
+        const v = (vs || [])[0];
+        const photo = [...events].reverse().find(e => e.kind === "photo_client" && e.client_id === client_id)?.photo_path || null;
+        if (v) await deliverVehicle(db, v, { driver, photo, note: `livré par ${t.carrier?.name || t.driver} (remise signée)` });
+        const event = await addEvent(db, { ...base, stop_index: stop_index ?? stopIndexOf(t, client_id), photo_path: photo });
+        await markPriseEnMainDue(db, client_id, t.carrier?.name || t.driver);
+        await notifyCarrierEvent(db, t, "livre", { clientId: client_id, vin: v?.vin || null, note: base.note });
+        return NextResponse.json({ ok: true, event, vin: v?.vin || null });
+      }
       if (kind === "livre") {
         if (!client_id) return NextResponse.json({ ok: false, error: "Choisissez le client livré." }, { status: 400 });
         const { data: vs } = await db.from("shipment_vehicles").select("id,vin,status,client_id,client_name,tour_id,plate_photo").eq("client_id", client_id).order("picked_at", { ascending: false });
@@ -117,10 +160,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, reception: r.reception, event, vin: v.vin });
       }
       const event = await addEvent(db, base);
+      if (carrier && (kind === "arrive" || kind === "probleme")) await notifyCarrierEvent(db, t, kind, { clientId: client_id, note: base.note });
       return NextResponse.json({ ok: true, event });
     }
     // Tickets : photos seules, triées ensuite par l'IA (catégorie, montant, date)
     if (b.action === "tickets") {
+      if (carrier) return NextResponse.json({ ok: false, error: "Action non disponible pour une mission transporteur." }, { status: 400 });
       if (!t) return NextResponse.json({ ok: false, error: "Ce lien n'est pas lié à une tournée." }, { status: 400 });
       const paths = (Array.isArray(b.paths) ? b.paths : []).filter(photoOk).map(String);
       if (!paths.length) return NextResponse.json({ ok: false, error: "Aucune photo reçue." }, { status: 400 });
@@ -174,6 +219,7 @@ export async function POST(req: Request) {
     // Accusé de réception : lien de signature envoyé au client (SMS + e-mail) ou ouvert sur ce téléphone
     // Paiement pas encore reçu : remise avec réserve de propriété (montant dû + échéance), puis signature du client.
     if (b.action === "reserve_start") {
+      if (carrier) return NextResponse.json({ ok: false, error: "Action réservée à NeoDrive." }, { status: 403 });
       const r = await resOf(clean(b.client_id, 80));
       if (!r) return NextResponse.json({ ok: false, error: "Pas de réservation liée à ce client : appelez Mansour." }, { status: 404 });
       try { return NextResponse.json({ ok: true, ...(await startReserve(db, r.id, { montant: b.montant_du, due: b.due, by: driver })) }); }
@@ -212,6 +258,12 @@ export async function POST(req: Request) {
         if (r && !r.accuse_token && r.vin !== v.vin) await db.from("reservations").update({ vin: v.vin, updated_at: new Date().toISOString() }).eq("id", r.id);
       }
       await patchVehicle(db, id, patch, { stage: "chargée", by: driver, note: [t ? `tournée ${t.name || t.id}` : "", note].filter(Boolean).join(" · ") });
+      // Mission transporteur : « chargé » noté au journal et signalé au fondateur et au coordinateur
+      if (t && carrier && patch.client_id) {
+        const cid = String(patch.client_id);
+        try { await addEvent(db, { tour_id: tour, kind: "charge", client_id: cid, stop_index: stopIndexOf(t, cid), photo_path: photoOk(b.path) ? String(b.path) : null, author: driver, note: `VIN ${v.vin}` }); } catch (e) { console.error("[CHAUFFEUR] event charge", e); }
+        await notifyCarrierEvent(db, t, "charge", { clientId: cid, vin: v.vin });
+      }
       return NextResponse.json({ ok: true });
     }
     if (b.action === "deliver") {
