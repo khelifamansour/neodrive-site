@@ -355,3 +355,27 @@ export async function GET(req: Request) {
   const last = (files || []).filter(f => f.name.startsWith(id))[0];
   return NextResponse.json({ ok: true, project: p, sourceUrl: await signed(db, p.source.path), renderUrl: last ? await signed(db, `renders/${last.name}`) : null, renderName: last?.name || null });
 }
+
+/** Publication sur le site par jeton (purpose « studio-publish », payload { id, render?, name }) : copie un rendu dans le stockage public « social-media » et renvoie son adresse publique. */
+export async function PUT(req: Request) {
+  const token = new URL(req.url).searchParams.get("token") || "";
+  if (!/^[a-f0-9]{48}$/.test(token)) return fail("Jeton invalide", 401);
+  const db = crmDatabase();
+  const { data } = await db.from("admin_once_tokens").update({ used_at: new Date().toISOString() }).eq("token", token).eq("purpose", "studio-publish").is("used_at", null).gt("expires_at", new Date().toISOString()).select("payload");
+  const pl = (data?.[0] as { payload?: { id?: string; render?: string; name?: string } } | undefined)?.payload;
+  const id = String(pl?.id || ""); const name = String(pl?.name || "").replace(/[^a-z0-9-]/gi, "").slice(0, 60);
+  if (!/^[a-z0-9]{6,40}$/.test(id) || !name) return fail("Jeton invalide", 401);
+  let renderPath = pl?.render && /^renders\/[a-z0-9-]+\.mp4$/.test(pl.render) && pl.render.includes(id) ? pl.render : "";
+  if (!renderPath) {
+    const { data: files } = await db.storage.from(BUCKET).list("renders", { search: id, sortBy: { column: "created_at", order: "desc" } });
+    const last = (files || []).filter(f => f.name.startsWith(id))[0];
+    if (!last) return fail("Aucun rendu", 404);
+    renderPath = `renders/${last.name}`;
+  }
+  const { data: blob } = await db.storage.from(BUCKET).download(renderPath);
+  if (!blob) return fail("Rendu introuvable", 404);
+  const dest = `site/${name}.mp4`;
+  const up = await db.storage.from("social-media").upload(dest, Buffer.from(await blob.arrayBuffer()), { contentType: "video/mp4", upsert: true, cacheControl: "86400" });
+  if (up.error) return fail("Publication impossible : " + up.error.message, 502);
+  return NextResponse.json({ ok: true, render: renderPath, url: db.storage.from("social-media").getPublicUrl(dest).data.publicUrl });
+}
