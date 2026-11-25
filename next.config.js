@@ -13,6 +13,7 @@ const nextConfig = {
   outputFileTracingIncludes: {
     "/api/**": ["./node_modules/pdfkit/js/data/**"],
     "/api/tiktok/publish-reel": ["./node_modules/@ffmpeg-installer/linux-x64/ffmpeg"],
+    "/api/studio/video": ["./node_modules/@ffmpeg-installer/linux-x64/ffmpeg", "./lib/studio-fonts/**", "./public/neodrive-background.mp3"],
   },
 
   eslint: {

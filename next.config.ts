@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/**": ["./node_modules/pdfkit/js/data/**"],
     "/api/video/local-create": ["./node_modules/@ffmpeg-installer/linux-x64/ffmpeg"],
+    "/api/studio/video": ["./node_modules/@ffmpeg-installer/linux-x64/ffmpeg", "./lib/studio-fonts/**", "./public/neodrive-background.mp3"],
   },
 };
 
