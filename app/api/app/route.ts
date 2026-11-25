@@ -95,6 +95,23 @@ export async function POST(req: Request) {
     if (!v) return NextResponse.json({ ok: false, error: "Session expirée : reconnectez-vous.", logout: true }, { status: 401 });
     const db = appDb();
 
+    // ── Planning des livraisons (fondateur seulement) : fenêtres larges, statut d'appel
+    if (b.action === "plan" || b.action === "plan_update") {
+      if (v.user.role !== "fondateur") return fail("Réservé au fondateur.", 403);
+      if (b.action === "plan_update") {
+        const id = Number(b.id); if (!id) return fail("Ligne inconnue.");
+        const upd: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (typeof b.status === "string" && ["à appeler", "confirmé", "décalé", "livré", "annulé"].includes(b.status)) upd.status = b.status;
+        if (typeof b.window === "string" && b.window.trim()) upd.delivery_window = clean(b.window, 120);
+        if (typeof b.note === "string") upd.note = clean(b.note, 300);
+        const { error } = await db.from("app_delivery_plan").update(upd).eq("id", id);
+        if (error) return fail(missingTable(error) ? "Planning pas encore installé." : "Enregistrement impossible.", 500);
+      }
+      const { data, error } = await db.from("app_delivery_plan").select("id,reservation_id,block,sort,client,ville,phone,delivery_window,who,status,note").order("block").order("sort");
+      if (error) return ok({ plan: [] });
+      return ok({ plan: data || [] });
+    }
+
     // ── Missions (sans aucun montant)
     if (b.action === "missions") {
       const missions = await missionsFor(db, v.user);

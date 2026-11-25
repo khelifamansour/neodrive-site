@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import s from "./app.module.css";
 import { Header, InstallCard, Loading, Login, PushButton, useMe, type Me } from "./ui";
+import { Planning } from "./Planning";
 
 /** Accueil de l'application NeoDrive : grandes tuiles vers les outils (fondateur, équipe) ; transporteurs et chauffeurs vont droit à leurs missions. */
 type Tile = { href: string; icon: string; title: string; hint: string; wide?: boolean };
@@ -42,6 +43,7 @@ export default function AppHome() {
   const hello = new Date().getHours() < 18 ? "Bonjour" : "Bonsoir";
   return <main className={s.page}>
     <Header me={me} />
+    {me.role === "fondateur" && <Planning />}
     <InstallCard />
     <h1 className={s.h1}>{hello} {me.name.split(" ")[0]}</h1>
     <p className={s.sub}>{me.role === "fondateur" ? "Tous les outils NeoDrive, en un geste." : "Vos outils NeoDrive."}</p>
