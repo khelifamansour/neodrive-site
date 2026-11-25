@@ -75,5 +75,20 @@ export async function GET(req: Request) {
   const { data } = await crmDatabase().from("admin_once_tokens").select("token").eq("token", token).eq("purpose", "cv-deep").gt("expires_at", new Date().toISOString()).limit(1);
   if (!data?.length) return NextResponse.json({ ok: false }, { status: 401 });
   await applyStoredSecrets();
+  const inv = Number(new URL(req.url).searchParams.get("inv") || 0);
+  if (inv) return NextResponse.json({ ok: true, ...(await runInvitation(inv)) });
   return NextResponse.json({ ok: true, ...(await run()) });
+}
+
+/** Analyse approfondie d'un CV importé (job_invitations) même si le candidat n'a pas encore passé le test. */
+async function runInvitation(id: number) {
+  const db = crmDatabase();
+  const { data: inv } = await db.from("job_invitations").select("id,poste,full_name,phone,cv_path,cv_file").eq("id", id).maybeSingle();
+  if (!inv?.cv_path) return { results: [{ id, status: "pas de CV" }] };
+  const { data: blob } = await db.storage.from(BUCKET).download(inv.cv_path);
+  const raw = blob ? await analyse(inv.poste, inv.cv_file || inv.cv_path.split("/").pop() || "cv.pdf", new Uint8Array(await blob.arrayBuffer())) : null;
+  if (!raw) return { results: [{ id, name: inv.full_name, status: "échec" }] };
+  const res = { ...raw, v: 2 };
+  await db.from("cv_deep").upsert({ poste: inv.poste, phone9: t9(inv.phone), invitation_id: inv.id, data: res }, { onConflict: "poste,phone9" });
+  return { results: [{ id, name: inv.full_name, status: "analysé", data: res }] };
 }
