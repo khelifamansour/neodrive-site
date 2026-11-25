@@ -343,6 +343,7 @@ Réponds en json.`, 800);
 
 /** Lecture par jeton (admin_once_tokens.purpose « studio-get », payload { id }) : projet + liens signés de la source et du dernier rendu. */
 export async function GET(req: Request) {
+  if (new URL(req.url).searchParams.get("publish") === "1") return publish(req);
   const token = new URL(req.url).searchParams.get("token") || "";
   if (!/^[a-f0-9]{48}$/.test(token)) return fail("Jeton invalide", 401);
   const db = crmDatabase();
@@ -357,7 +358,7 @@ export async function GET(req: Request) {
 }
 
 /** Publication sur le site par jeton (purpose « studio-publish », payload { id, render?, name }) : copie un rendu dans le stockage public « social-media » et renvoie son adresse publique. */
-export async function PUT(req: Request) {
+async function publish(req: Request) {
   const token = new URL(req.url).searchParams.get("token") || "";
   if (!/^[a-f0-9]{48}$/.test(token)) return fail("Jeton invalide", 401);
   const db = crmDatabase();
@@ -379,3 +380,4 @@ export async function PUT(req: Request) {
   if (up.error) return fail("Publication impossible : " + up.error.message, 502);
   return NextResponse.json({ ok: true, render: renderPath, url: db.storage.from("social-media").getPublicUrl(dest).data.publicUrl });
 }
+export const PUT = publish;
