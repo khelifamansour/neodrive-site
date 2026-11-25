@@ -7,6 +7,7 @@ import { analyseDossier, linkReservationVin } from "../../../../lib/stock";
 import { checkDocuments, requestMissing } from "../../../../lib/carte-grise-check";
 import { payState } from "../../../../lib/stock-shared";
 import { stampMandat } from "../../../../lib/mandat-cachet";
+import { prepLinks, prepUrl } from "../../../../lib/carte-grise-prep";
 
 const RES = "id,prenom,nom,telephone,statut,livre_at,vin,total,paiement_confirme_at,paiement_en_attente,montant_du,reserve_path,reserve_token,modele,couleur";
 
@@ -30,6 +31,27 @@ export async function POST(req: Request) {
       const dossiers = (data || []).map(d => { const r = d.reservation_id ? byId.get(d.reservation_id) : null;
         return { ...d, reservation: r ? { id: r.id, name: `${r.prenom || ""} ${r.nom || ""}`.trim(), statut: r.statut, livre_at: r.livre_at, vin: r.vin, total: r.total, montant_du: r.montant_du } : null, pay: payState(r) }; });
       return NextResponse.json({ ok: true, dossiers, provider: { name: CARTE_GRISE_PROVIDER_NAME, email: CARTE_GRISE_PROVIDER_EMAIL } });
+    }
+    // Carte grise préparée avant la livraison : réservations à qui envoyer le lien, et lien personnel (jeton créé au besoin).
+    if (b.action === "prep_list") {
+      const cols = "id,prenom,nom,telephone,ville,modele,statut,livre_at,vin,created_at";
+      const q = (c: string) => sb.from("reservations").select(c).neq("statut", "Annulée").order("id", { ascending: false }).limit(400);
+      let { data, error } = await q(`${cols},cg_prep_token`) as unknown as { data: Record<string, unknown>[] | null; error: { message: string } | null };
+      // Migration pas encore appliquée : liste sans les jetons (le bouton signalera la migration manquante).
+      const migrated = !(error && /cg_prep_token/.test(error.message));
+      if (!migrated) ({ data, error } = await q(cols) as unknown as { data: Record<string, unknown>[] | null; error: { message: string } | null });
+      if (error) throw new Error(error.message);
+      const ids = (data || []).map(r => Number(r.id));
+      const { data: ds } = ids.length ? await sb.from("carte_grise_dossiers").select("id,reservation_id,status,created_at").in("reservation_id", ids).neq("status", "annulé").order("created_at", { ascending: false }) : { data: [] };
+      const byRes = new Map<number, { id: number; status: string }>();
+      for (const x of ds || []) if (!byRes.has(x.reservation_id)) byRes.set(x.reservation_id, { id: x.id, status: x.status });
+      const reservations = (data || []).map(({ cg_prep_token, ...r }) => ({ ...r, link: typeof cg_prep_token === "string" && cg_prep_token ? prepUrl(cg_prep_token) : null, dossier: byRes.get(Number(r.id)) || null }));
+      return NextResponse.json({ ok: true, migrated, reservations });
+    }
+    if (b.action === "prep_link") {
+      const [link] = await prepLinks(sb, [Number(b.reservation_id)]);
+      if (!link) return NextResponse.json({ ok: false, error: "Réservation introuvable ou annulée" }, { status: 404 });
+      return NextResponse.json({ ok: true, ...link });
     }
     const d = await findDossier(sb, { id: b.id });
     if (!d) return NextResponse.json({ ok: false, error: "Dossier introuvable" }, { status: 404 });

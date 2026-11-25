@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import c from "../giga/giga.module.css";
 import { PAY_STYLE, type PayState } from "../../lib/stock-shared";
+import PrepLinks from "./PrepLinks";
 import { CARTE_GRISE_CLIENT_TEXT, CARTE_GRISE_FILES, CARTE_GRISE_FILE_LABEL, missingWaText, overallLabel, pendingKeys, type DocCheck, type MissingRequest } from "../../lib/carte-grise";
 
 type F = { key: string; label: string; name: string; size: number };
@@ -98,6 +99,7 @@ export default function CarteGriseAdmin() {
     <h1 style={{ margin: "0 0 4px" }}>🪪 Dossiers carte grise</h1>
     <p className={c.muted} style={{ marginTop: 0 }}>Copie de chaque dossier envoyé depuis /reservation-carte-grise (l’e-mail Formspree continue d’arriver). Prestataire : <b>{provider.name}</b> {provider.email || "(adresse à renseigner)"}.</p>
     {msg ? <p className={c.msg}>{msg}</p> : null}
+    <PrepLinks call={api} />
     <div style={{ display: "flex", gap: 8, margin: "10px 0 14px", flexWrap: "wrap" }}>
       <button className={`${c.btn} ${tab === "queue" ? c.btnBrand : c.btnGhost}`} style={{ fontSize: 14, padding: "10px 14px" }} onClick={() => setTab("queue")}>À valider avant envoi ({rows.filter(ready).length})</button>
       <button className={`${c.btn} ${tab === "all" ? c.btnBrand : c.btnGhost}`} style={{ fontSize: 14, padding: "10px 14px" }} onClick={() => setTab("all")}>Tous les dossiers ({rows.length})</button>

@@ -81,3 +81,19 @@ const gsm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").re
 /** SMS (texte GSM, sans accents) et message WhatsApp de demande de pièces. */
 export const missingSmsText = (prenom: string | null, url: string) => gsm(`Bonjour${prenom ? " " + prenom.trim() : ""}, pour finaliser votre carte grise il nous manque un ou plusieurs documents. Envoyez-les en photo ici : ${url}\nL'equipe NeoDrive`);
 export const missingWaText = (prenom: string | null, url: string, labels: string[]) => `Bonjour${prenom ? " " + prenom.trim() : ""}, pour finaliser votre carte grise il nous manque :\n${labels.map(l => `• ${l}`).join("\n")}\n\nVous pouvez les envoyer en photo ou en PDF ici : ${url}\n\nMerci, l’équipe NeoDrive`;
+
+/* ───────────── Carte grise préparée avant la livraison (/carte-grise/preparer/<jeton>) ───────────── */
+
+/** Jeton du lien personnel (reservations.cg_prep_token). */
+export const PREP_TOKEN = /^[a-f0-9]{40}$/;
+/** Statuts du dossier préparé : pièces en cours d'envoi, puis en attente du véhicule (étape 2 : plaque VIN + mandat). */
+export const PREP_STATUS_PENDING = "préparation en cours";
+export const PREP_STATUS_WAITING = "préparé – en attente véhicule";
+/** Pièces demandées à l'étape 1 (rien d'autre : ni COC, ni CNIT, ni prix). */
+export const PREP_KEYS = ["cni", "justificatif_domicile"] as const;
+/** Photo de la plaque constructeur prise par le client à l'étape 2 (gardée dans le dossier, jamais envoyée à NK Services). */
+export const PLATE_PHOTO_KEY = "photo_plaque_vin";
+export const PLATE_PHOTO_LABEL = "Photo de la plaque VIN (client)";
+/** Message (WhatsApp / SMS) envoyé avec le lien de préparation. */
+export const prepMessage = (prenom: string | null | undefined, url: string) => `Bonjour${prenom?.trim() ? " " + prenom.trim() : ""}, pour préparer votre carte grise avant la livraison, merci d'ajouter votre pièce d'identité et un justificatif de domicile (2 minutes) : ${url}. L'équipe NeoDrive`;
+export const prepSmsText = (prenom: string | null | undefined, url: string) => gsm(prepMessage(prenom, url));

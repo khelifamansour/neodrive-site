@@ -199,7 +199,8 @@ const phone9 = (p: unknown) => normalizePhone(p).slice(-9);
  * (VIN, puis téléphone, puis nom), relie la voiture au client et prépare le brouillon de facture si la vente est livrée.
  * Ne touche jamais au statut de paiement ni à l'envoi à NK Services. Prévient le fondateur par e-mail (une fois).
  */
-export async function analyseDossier(db: DB, id: number, opts: { notify?: boolean } = {}) {
+/** extra : remarques ajoutées en tête du rapprochement (et donc de l'e-mail au fondateur), ex. contrôle de la plaque VIN. */
+export async function analyseDossier(db: DB, id: number, opts: { notify?: boolean; extra?: string[] } = {}) {
   const { data: d } = await db.from("carte_grise_dossiers").select("*").eq("id", id).maybeSingle();
   if (!d) throw new Error("Dossier introuvable");
   const dossier = d as CarteGriseDossier & { vin?: string | null; reservation_id?: number | null; founder_notified_at?: string | null; vin_source?: string | null };
@@ -257,7 +258,7 @@ export async function analyseDossier(db: DB, id: number, opts: { notify?: boolea
       if (delivered) await ensureDraftInvoice(db, Number(res.id));
     }
   } else notes.push("Aucune réservation trouvée (VIN, téléphone, nom) : à relier à la main");
-  const note = [res ? `Réservation n° ${res.id} trouvée par ${how}` : "", source ? `VIN lu sur : ${source}` : "", ...notes].filter(Boolean).join(" · ");
+  const note = [...(opts.extra || []), res ? `Réservation n° ${res.id} trouvée par ${how}` : "", source ? `VIN lu sur : ${source}` : "", ...notes].filter(Boolean).join(" · ");
   const at = new Date().toISOString();
   await db.from("carte_grise_dossiers").update({ vin, vin_check_ok: checkOk, vin_source: source || dossier.vin_source || null, reservation_id: res ? Number(res.id) : null, vehicle_id: vehicle?.id ?? null, match_note: note.slice(0, 2000), analysed_at: at, updated_at: at }).eq("id", id);
   if (opts.notify && !dossier.founder_notified_at) {
