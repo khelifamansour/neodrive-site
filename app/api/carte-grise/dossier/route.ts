@@ -3,6 +3,7 @@ import { dataClient } from "../../../../lib/datastore";
 import { CARTE_GRISE_COLUMNS, CARTE_GRISE_FILE_LABEL, CARTE_GRISE_MAX_FILE, type CarteGriseFile } from "../../../../lib/carte-grise";
 import { CARTE_GRISE_BUCKET } from "../../../../lib/carte-grise-server";
 import { analyseDossier } from "../../../../lib/stock";
+import { vinValid } from "../../../../lib/shipments";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -54,7 +55,11 @@ export async function POST(req: Request) {
         planned.push({ key: f.key!, label: CARTE_GRISE_FILE_LABEL[f.key!], path: data.path, name, size: Number(f.size), type: f.type || "" });
       }
       const cols = Object.fromEntries(CARTE_GRISE_COLUMNS.map(k => [k, (fields[k] || "").trim() || null]));
-      const { data: row, error } = await sb.from("carte_grise_dossiers").insert({ ref, folder, ...cols, fields, files: planned, status: "envoi en cours" }).select("id").single();
+      // Client d'un partenaire revendeur (/carte-grise-partenaire) : marqué dans les notes, VIN saisi repris s'il est valide (recoupé ensuite avec le COC).
+      const partner = (fields.partenaire || "").trim();
+      const vin = (fields.vin || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const extra = partner ? { notes: `🤝 Partenaire : ${partner} — carte grise offerte par NeoDrive`, ...(vinValid(vin) ? { vin } : {}) } : {};
+      const { data: row, error } = await sb.from("carte_grise_dossiers").insert({ ref, folder, ...cols, ...extra, fields, files: planned, status: "envoi en cours" }).select("id").single();
       if (error) throw new Error(error.message);
       return NextResponse.json({ ok: true, id: row.id, ref, folder, bucket: CARTE_GRISE_BUCKET, uploads });
     }
@@ -63,7 +68,7 @@ export async function POST(req: Request) {
       const folder = String(b.folder || "");
       const m = folder.match(FOLDER);
       if (!m) return NextResponse.json({ ok: false, error: "Référence invalide" }, { status: 400 });
-      const { data: d } = await sb.from("carte_grise_dossiers").select("id,files,status").eq("ref", m[1]).eq("folder", folder).maybeSingle();
+      const { data: d } = await sb.from("carte_grise_dossiers").select("id,files,status,notes").eq("ref", m[1]).eq("folder", folder).maybeSingle();
       if (!d) return NextResponse.json({ ok: false, error: "Dossier introuvable" }, { status: 404 });
       if (d.status !== "envoi en cours") return NextResponse.json({ ok: true, id: d.id });
       const { data: listed, error } = await sb.storage.from(CARTE_GRISE_BUCKET).list(`carte-grise/${folder}`, { limit: 50 });
@@ -71,7 +76,7 @@ export async function POST(req: Request) {
       const present = new Map((listed || []).map(f => [`carte-grise/${folder}/${f.name}`, Number((f.metadata as { size?: number } | null)?.size) || 0]));
       const files = ((d.files || []) as CarteGriseFile[]).filter(f => present.has(f.path)).map(f => ({ ...f, size: present.get(f.path) || f.size }));
       const lost = ((d.files || []) as CarteGriseFile[]).length - files.length;
-      await sb.from("carte_grise_dossiers").update({ files, status: "reçu", ...(lost ? { notes: `⚠️ ${lost} pièce(s) non reçue(s) côté serveur (voir l'e-mail Formspree)` } : {}), updated_at: new Date().toISOString() }).eq("id", d.id);
+      await sb.from("carte_grise_dossiers").update({ files, status: "reçu", ...(lost ? { notes: [d.notes, `⚠️ ${lost} pièce(s) non reçue(s) côté serveur (voir l'e-mail Formspree)`].filter(Boolean).join("\n") } : {}), updated_at: new Date().toISOString() }).eq("id", d.id);
       // VIN lu sur le COC / les documents, rapprochement stock + réservation, contrôle des pièces, e-mail au fondateur (jamais d'envoi automatique à NK Services).
       after(() => analyseDossier(sb, d.id, { notify: true }).then(() => undefined).catch(e => console.error("[carte-grise] analyse", e)));
       return NextResponse.json({ ok: true, id: d.id, files: files.length, lost });

@@ -12,6 +12,7 @@ export const CARTE_GRISE_FILES = [
   { key: "coc", label: "Certificat de conformité européen (COC)" },
   { key: "cnit", label: "CNIT / document d’homologation" },
   { key: "devis_signe", label: "Contrat de vente / devis signé" },
+  { key: "facture_partenaire", label: "Facture / certificat de vente du partenaire (signé par le vendeur)" },
 ] as const;
 export type CarteGriseFileKey = (typeof CARTE_GRISE_FILES)[number]["key"];
 export const CARTE_GRISE_FILE_LABEL: Record<string, string> = Object.fromEntries(CARTE_GRISE_FILES.map(f => [f.key, f.label]));
@@ -36,6 +37,14 @@ export type MissingRequest = { keys: string[]; note?: string; at: string; by?: s
 /** Pièces obligatoires pour un dossier complet (le CNIT est facultatif quand le COC est fourni). */
 export const CARTE_GRISE_REQUIRED = ["cni", "justificatif_domicile", "mandat_carte_grise_signe", "coc", "devis_signe"];
 
+/** Dossier d'un client de partenaire revendeur (/carte-grise-partenaire) : NeoDrive n'a pas vendu au titulaire. */
+export const isPartnerDossier = (d: { fields?: Record<string, string> | null; files?: { key: string }[] | null }) =>
+  !!d.fields?.partenaire?.trim() || !!d.files?.some(f => f.key === "facture_partenaire");
+
+/** Pièces obligatoires du dossier : pour un client partenaire, la facture du partenaire remplace le contrat de vente NeoDrive. */
+export const requiredKeys = (d: Parameters<typeof isPartnerDossier>[0]) =>
+  isPartnerDossier(d) ? CARTE_GRISE_REQUIRED.map(k => k === "devis_signe" ? "facture_partenaire" : k) : CARTE_GRISE_REQUIRED;
+
 /** Explication simple de chaque pièce, pour le client. */
 export const CARTE_GRISE_CLIENT_TEXT: Record<string, string> = {
   cni: "Pièce d’identité en cours de validité (carte d’identité recto et verso, ou passeport), bien lisible, à votre nom",
@@ -44,6 +53,7 @@ export const CARTE_GRISE_CLIENT_TEXT: Record<string, string> = {
   coc: "Certificat de conformité européen (COC) du véhicule, en entier et bien lisible",
   cnit: "Document d’homologation (CNIT) du véhicule",
   devis_signe: "Contrat de vente, facture ou certificat de cession signé",
+  facture_partenaire: "Facture ou certificat de vente établi par le partenaire vendeur à votre nom, signé par le vendeur",
 };
 
 /** Pièces encore attendues du client : demandées et pas encore reçues, ou reçues mais à refaire. */

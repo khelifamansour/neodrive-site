@@ -12,8 +12,8 @@ export async function storeDossierCopy(form: HTMLFormElement, timeoutMs = 30000)
     fd.forEach((v, k) => { if (typeof v === "string" && !k.startsWith("_")) fields[k] = fields[k] ? `${fields[k]}, ${v}` : v; });
     const files: { key: string; file: File }[] = [];
     form.querySelectorAll<HTMLInputElement>("input[type=file]").forEach(input => {
-      const f = input.files?.[0];
-      if (f && f.size > 0 && f.size <= CARTE_GRISE_MAX_FILE && CARTE_GRISE_FILE_LABEL[input.name]) files.push({ key: input.name, file: f });
+      // Plusieurs fichiers possibles pour une même pièce (ex. carte d'identité recto + verso).
+      for (const f of Array.from(input.files || [])) if (f.size > 0 && f.size <= CARTE_GRISE_MAX_FILE && CARTE_GRISE_FILE_LABEL[input.name]) files.push({ key: input.name, file: f });
     });
     if (!files.length) return null;
     const post = (body: object, ms = 10000) => fetch("/api/carte-grise/dossier", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(ms) }).then(r => r.json());
@@ -21,8 +21,9 @@ export async function storeDossierCopy(form: HTMLFormElement, timeoutMs = 30000)
     const init = await post({ action: "init", fields, files: files.map(({ key, file }) => ({ key, name: file.name, type: file.type, size: file.size })) }, 8000);
     if (!init?.ok) return null;
     const { supabase } = await import("../../lib/supabase");
-    await Promise.all((init.uploads as { key: string; path: string; token: string }[]).map(u => {
-      const f = files.find(x => x.key === u.key)?.file;
+    // Les URL d'envoi suivent l'ordre des fichiers annoncés.
+    await Promise.all((init.uploads as { key: string; path: string; token: string }[]).map((u, i) => {
+      const f = files[i]?.key === u.key ? files[i].file : files.find(x => x.key === u.key)?.file;
       return f ? supabase.storage.from(init.bucket).uploadToSignedUrl(u.path, u.token, f, { contentType: f.type || "application/octet-stream" }).catch(() => null) : null;
     }));
     await post({ action: "complete", folder: init.folder }).catch(() => null);

@@ -276,8 +276,10 @@ async function notifyFounder(db: DB, d: CarteGriseDossier & { vin?: string | nul
     const ps = payState(res as never);
     const warn = ps === "payé" ? "" : `<p style="background:#fde8e8;border:1px solid #f5b5b5;border-radius:8px;padding:8px 10px;color:#b91c1c"><b>⛔ Paiement : ${ps}</b>. Vérifiez avant d'envoyer le dossier à NK Services.</p>`;
     const esc = (s: unknown) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
-    const html = `<p>Nouveau dossier carte grise <b>${esc(fullName(d))}</b> (${esc(d.ref)}) prêt à valider.</p><p>VIN : <b>${esc(d.vin || "non lu")}</b><br>${esc(note)}</p>${warn}<p>Paiement : <b>${esc(ps)}</b></p>${docCheckHtml(check)}<p>Rien n'est envoyé à NK Services sans votre clic. <a href="${adminUrl(d.id)}" style="display:inline-block;background:#111;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:bold">Ouvrir le dossier (Envoyer à NK Services / Demander les pièces)</a></p>`;
-    await sendEmail(OWNER_EMAIL, "Mansour", `Carte grise à valider – ${fullName(d)}${check ? ` – ${check.overall.toUpperCase()}` : ""}${ps === "payé" ? "" : ` – ${ps.toUpperCase()}`}`, html);
+    const partner = d.fields?.partenaire?.trim();
+    const partnerHtml = partner ? `<p style="background:#fff1ea;border:1px solid #f8c9b4;border-radius:8px;padding:8px 10px"><b>🤝 Client du partenaire ${esc(partner)}</b> : carte grise offerte par NeoDrive (rien à facturer au client). Preuve de vente : facture du partenaire signée par le vendeur, pas de contrat NeoDrive.</p>` : "";
+    const html = `${partnerHtml}<p>Nouveau dossier carte grise <b>${esc(fullName(d))}</b> (${esc(d.ref)}) prêt à valider.</p><p>VIN : <b>${esc(d.vin || "non lu")}</b><br>${esc(note)}</p>${warn}<p>Paiement : <b>${esc(ps)}</b></p>${docCheckHtml(check)}<p>Rien n'est envoyé à NK Services sans votre clic. <a href="${adminUrl(d.id)}" style="display:inline-block;background:#111;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:bold">Ouvrir le dossier (Envoyer à NK Services / Demander les pièces)</a></p>`;
+    await sendEmail(OWNER_EMAIL, "Mansour", `Carte grise à valider – ${fullName(d)}${partner ? ` – partenaire ${partner}` : ""}${check ? ` – ${check.overall.toUpperCase()}` : ""}${ps === "payé" ? "" : ` – ${ps.toUpperCase()}`}`, html);
     await db.from("carte_grise_dossiers").update({ founder_notified_at: new Date().toISOString() }).eq("id", d.id);
   } catch (e) { console.error("[CARTE GRISE] e-mail fondateur", e); }
 }

@@ -9,7 +9,7 @@ import { applyStoredSecrets } from "./integrations";
 import { brevoReady, OWNER_EMAIL, sendEmail, sendSms, SITE } from "./brevo";
 import { CARTE_GRISE_BUCKET, findDossier, fullName, sendDossierToProvider, type CarteGriseDossier } from "./carte-grise-server";
 import {
-  CARTE_GRISE_CLIENT_TEXT, CARTE_GRISE_FILE_LABEL, CARTE_GRISE_FILES, CARTE_GRISE_REQUIRED, missingSmsText, missingWaText, pendingKeys,
+  CARTE_GRISE_CLIENT_TEXT, CARTE_GRISE_FILE_LABEL, CARTE_GRISE_FILES, missingSmsText, missingWaText, pendingKeys, requiredKeys,
   type CarteGriseFile, type DocCheck, type DocPiece, type DocStatus, type MissingRequest,
 } from "./carte-grise";
 import { visionModel } from "./vin-read";
@@ -49,6 +49,11 @@ const CRITERIA: Record<string, string> = {
   devis_signe: `Contrat de vente, bon de commande, facture de vente ou certificat de cession (cerfa 15776) du véhicule.
 - Doit concerner le titulaire du dossier.
 - Doit être signé par l'acheteur (signature manuscrite ou électronique visible) ; une facture acquittée est acceptée.
+- Lisible.`,
+  facture_partenaire: `Facture de vente ou certificat de vente du véhicule établi par un partenaire revendeur de NeoDrive (le vendeur est le partenaire, pas NeoDrive).
+- L'acheteur doit être le titulaire du dossier.
+- Le vendeur (raison sociale du partenaire) et le véhicule (VIN) doivent être indiqués.
+- Doit être signé par le vendeur (signature manuscrite ou électronique visible).
 - Lisible.`,
 };
 
@@ -93,7 +98,8 @@ async function checkPiece(sb: DB, d: CarteGriseDossier, key: string): Promise<Do
   const at = new Date().toISOString();
   const files = (d.files || []).filter(f => f.key === key && !f.superseded).sort((a, b) => String(b.added_at || "").localeCompare(String(a.added_at || ""))).slice(0, 4);
   const piece = (status: DocStatus, reason: string, detail = ""): DocPiece => ({ status, reason, detail, files: files.length, checked_at: at });
-  if (!files.length) return piece(CARTE_GRISE_REQUIRED.includes(key) ? "manquant" : "ok", CARTE_GRISE_REQUIRED.includes(key) ? "Pièce non fournie" : "Non fourni (facultatif)");
+  const required = requiredKeys(d).includes(key);
+  if (!files.length) return piece(required ? "manquant" : "ok", required ? "Pièce non fournie" : "Non fourni (facultatif)");
   const parts: Part[] = []; const skipped: string[] = []; let budget = 30 * 1024 * 1024;
   for (const f of files) {
     if (f.size > 20 * 1024 * 1024 || f.size > budget) { skipped.push(`${f.name} trop lourd`); continue; }
@@ -128,7 +134,8 @@ export async function checkDocuments(sb: DB, id: number, opts: { keys?: string[]
   const d = await findDossier(sb, { id });
   if (!d) throw new Error("Dossier introuvable");
   const present = new Set((d.files || []).filter(f => !f.superseded).map(f => f.key));
-  const all = CARTE_GRISE_FILES.map(f => f.key as string).filter(k => CARTE_GRISE_REQUIRED.includes(k) || present.has(k));
+  const required = requiredKeys(d);
+  const all = CARTE_GRISE_FILES.map(f => f.key as string).filter(k => required.includes(k) || present.has(k));
   const keys = opts.keys?.length && d.doc_check?.pieces ? all.filter(k => opts.keys!.includes(k)) : all;
   const results = await Promise.all(keys.map(async k => [k, await checkPiece(sb, d, k)] as const));
   const pieces: Record<string, DocPiece> = {};

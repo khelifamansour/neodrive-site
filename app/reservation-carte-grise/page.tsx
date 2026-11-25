@@ -7,6 +7,7 @@ import s from "../reservation-devis/reservation.module.css";
 import c from "./carte-grise.module.css";
 import SignOnScreen, { type Signature } from "./SignOnScreen";
 import { storeDossierCopy } from "./storeCopy";
+import { fitSignature, writeMandat } from "./mandat";
 
 // Bibliothèques chargées par CDN (balises Script ci-dessous) : html2canvas pour le devis, jsPDF pour le devis et le mandat.
 type JsPdfCtor = new (...args: unknown[]) => {
@@ -61,6 +62,8 @@ export default function ReservationCarteGrise() {
   // Client qui a déjà réservé ou reçu son véhicule : il dépose ses documents carte grise, le « devis » devient son contrat de vente (pas de nouvelle commande).
   const [dejaClient, setDejaClient] = useState(false);
   useEffect(() => { try { if (new URLSearchParams(location.search).get("client") === "1") setDejaClient(true); } catch { /* rien */ } }, []);
+  // Client d'un partenaire revendeur : NeoDrive ne lui a rien vendu, aucun devis / contrat NeoDrive ne doit être généré → page dédiée.
+  useEffect(() => { try { const p = new URLSearchParams(location.search).get("partenaire"); if (p) location.replace(`/carte-grise-partenaire?partenaire=${encodeURIComponent(p)}`); } catch { /* rien */ } }, []);
   // Options conseiller (non envoyées dans le formulaire, elles ne servent qu'au devis).
   const [quantity, setQuantity] = useState(1);
   const [manualTransport, setManualTransport] = useState("");
@@ -134,9 +137,6 @@ export default function ReservationCarteGrise() {
   const safeFileName = (v: string) => v.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9_-]/g, "-") || "client";
   const signerName = `${client.prenom} ${client.nom}`.trim();
 
-  // Signature au doigt placée dans un cadre (mm) en gardant ses proportions.
-  const fitSignature = (sig: Signature, maxW: number, maxH: number) => { const k = Math.min(maxW / sig.w, maxH / sig.h); return { w: sig.w * k, h: sig.h * k }; };
-
   /** Mandat pré-rempli ; avec `sig`, la signature au doigt, « Lu et approuvé », le lieu et la date sont placés dans la zone de signature. */
   const buildMandat = (sig?: Signature) => {
     const jsPDF = (window as unknown as PdfGlobals).jspdf?.jsPDF;
@@ -177,48 +177,7 @@ export default function ReservationCarteGrise() {
       return null;
     }
 
-    const pdf = new jsPDF();
-
-    pdf.setFontSize(16);
-    pdf.text("MANDAT D’IMMATRICULATION", 20, 20);
-
-    pdf.setFontSize(11);
-    pdf.text(`Nom : ${mandatClient.nom}`, 20, 42);
-    pdf.text(`Prénom : ${mandatClient.prenom}`, 20, 52);
-    pdf.text(`Adresse : ${mandatClient.adresse}`, 20, 62);
-    pdf.text(`${mandatClient.code_postal} ${mandatClient.ville}`, 20, 72);
-    pdf.text(`Téléphone : ${mandatClient.telephone}`, 20, 82);
-    pdf.text(`Email : ${mandatClient.email}`, 20, 92);
-    pdf.text(`Date : ${today}`, 20, 110);
-
-    pdf.text(
-      "Je soussigné(e), donne mandat à la société MK HOLDING, exploitant la marque Neodrive, afin d’effectuer en mon nom les démarches nécessaires à l’immatriculation de mon véhicule.",
-      20,
-      130,
-      { maxWidth: 170 }
-    );
-
-    pdf.text(
-      "Je certifie l’exactitude des informations communiquées et m’engage à fournir les justificatifs nécessaires au traitement du dossier.",
-      20,
-      158,
-      { maxWidth: 170 }
-    );
-
-    if (sig) {
-      pdf.text("Mention : Lu et approuvé", 20, 195);
-      pdf.text(`Fait à ${mandatClient.ville}, le ${today}`, 20, 203);
-      pdf.text("Signature :", 20, 215);
-      const size = fitSignature(sig, 90, 20);
-      pdf.addImage(sig.png, "PNG", 22, 238.5 - size.h, size.w, size.h, undefined, "FAST");
-      pdf.line(20, 240, 120, 240);
-      pdf.setFontSize(9);
-      pdf.text(`Signé à l’écran par ${mandatClient.prenom} ${mandatClient.nom} le ${today}, précédé de la mention « Lu et approuvé ».`, 20, 246, { maxWidth: 170 });
-    } else {
-      pdf.text("Mention manuscrite : Lu et approuvé", 20, 195);
-      pdf.text("Signature :", 20, 215);
-      pdf.line(20, 240, 120, 240);
-    }
+    const pdf = writeMandat(new jsPDF(), mandatClient, today, sig);
 
     const safeName = mandatClient.nom
       .normalize("NFD")
