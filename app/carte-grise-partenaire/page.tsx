@@ -113,7 +113,7 @@ export default function CarteGrisePartenaire() {
   };
   const onSale = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name } = e.target;
-    const value = name === "partenaire_siret" ? e.target.value.replace(/[^0-9 ]/g, "").slice(0, 17) : name === "cnit_code" ? e.target.value.toUpperCase().slice(0, 40) : name === "prix_vente_ttc" ? e.target.value.replace(/[^0-9.,]/g, "").slice(0, 10) : e.target.value;
+    const value = name === "partenaire_siret" ? e.target.value.replace(/[^0-9 ]/g, "").slice(0, 17) : name === "prix_vente_ttc" ? e.target.value.replace(/[^0-9.,]/g, "").slice(0, 10) : e.target.value;
     setSale(p => ({ ...p, [name]: value }));
   };
 
@@ -121,13 +121,15 @@ export default function CarteGrisePartenaire() {
   const readCoc = async (file: File) => {
     const id = ++readId.current;
     setCoc({ status: "reading", vin: "", marque: "", type: "", message: "" });
+    setSale(p => ({ ...p, cnit_code: "" }));
     const fail = (message: string) => { if (id === readId.current) setCoc({ status: "fail", vin: "", marque: "", type: "", message }); };
     const j = await readCocVin(file);
     if (id !== readId.current) return;
     if (!j.ok) return fail(j.error);
     setCoc({ status: "ok", vin: j.vin, marque: j.marque, type: j.type, message: "" });
     if (!vinValid(j.vin)) setManualVin(j.vin);
-    if (j.cnit) setSale(p => p.cnit_code ? p : { ...p, cnit_code: j.cnit });
+    // CNIT : seulement s'il est lu sur le COC (sinon NeoDrive l'ajoute dans l'admin), sans champ à remplir.
+    if (j.cnit) setSale(p => ({ ...p, cnit_code: j.cnit }));
   };
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,6 +266,7 @@ export default function CarteGrisePartenaire() {
           <input type="hidden" name="vin" value={vinShapeOk ? vin : ""} />
           <input type="hidden" name="vin_source" value={vinSource} />
           <input type="hidden" name="coc_marque" value={coc.marque} />
+          <input type="hidden" name="cnit_code" value={sale.cnit_code} />
           <input type="hidden" name="coc_type" value={coc.type} />
           <input type="hidden" name="date_vente" value={today} />
           <input ref={certificatRef} type="file" name="certificat_vente" accept="application/pdf" hidden tabIndex={-1} aria-hidden="true" />
@@ -292,7 +295,7 @@ export default function CarteGrisePartenaire() {
           <section className={s.card}>
             <header className={s.cardHead}><span className={s.stepNum}>2</span><div><h2>Les documents</h2><p>Photo bien lisible ou PDF, prise directement avec votre téléphone.</p></div></header>
             <div className={c.docGrid}>
-              {fileInput("coc", "Certificat de conformité (COC)", "La première page avec le numéro d’identification (VIN)", true, { id: "doc-coc" })}
+              {fileInput("coc", "Certificat de conformité (COC)", "La première page avec le numéro d’identification", true, { id: "doc-coc" })}
               {fileInput("cni", "Pièce d’identité du client", "Carte d’identité recto et verso (2 photos possibles) ou passeport", true, { id: "doc-cni", multiple: true })}
               {fileInput("justificatif_domicile", "Justificatif de domicile du client", "De moins de 6 mois, à son nom et à son adresse (facture d’électricité, d’eau, d’internet, assurance habitation…)", true, { id: "doc-domicile" })}
             </div>
@@ -316,10 +319,6 @@ export default function CarteGrisePartenaire() {
                 </label>
               </div>
             ) : null}
-
-            <div className={s.fields} style={{ marginTop: 16 }}>
-              {sField("cnit_code", "CNIT", { required: false, wide: true, autoComplete: "off", placeholder: "Code CNIT", hint: "Le CNIT envoyé par NeoDrive" })}
-            </div>
           </section>
 
           {/* 3 — PRIX DE VENTE */}
