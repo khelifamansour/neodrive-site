@@ -13,7 +13,7 @@ const cityLinks=[
 export default function SiteShell({children}:{children:React.ReactNode}){
  const[open,setOpen]=useState(false);const close=()=>setOpen(false);
  // Pages de travail sur téléphone (tournée du chauffeur, signature du client) : plein écran, sans en-tête ni pied de page du site.
- const bare=/^\/(chauffeur|accuse\/confirmer)(\/|$)/.test(usePathname()||"");
+ const bare=/^\/(chauffeur|app|accuse\/confirmer)(\/|$)/.test(usePathname()||"");
  if(bare)return <>{children}<style jsx global>{`html,body{margin:0;padding:0;background:#f6f4f0}*{box-sizing:border-box}`}</style></>;
  return <>
   <SeoGlobalTracker/>
