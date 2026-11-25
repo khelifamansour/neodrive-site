@@ -91,7 +91,7 @@ ${opts.complement ? `<p>Suite à votre demande, voici la ou les pièce(s) compl�
 <p>Veuillez trouver ci-dessous le dossier d’immatriculation de notre client <b>${esc(who)}</b> (référence ${esc(d.ref)}), pour un véhicule NeoDrive (voiturette électrique neuve, catégorie L6e).</p>
 <h3 style="margin:18px 0 6px">Titulaire</h3><table>${row("Nom", d.nom)}${row("Prénom", d.prenom)}${row("Téléphone", d.telephone)}${row("E-mail", d.email)}</table>
 <h3 style="margin:18px 0 6px">Adresse</h3><table>${row("Adresse", d.adresse)}${row("Code postal", d.code_postal)}${row("Ville", d.ville)}</table>
-<h3 style="margin:18px 0 6px">Véhicule</h3><table>${row("Marque", "NeoDrive")}${row("Version", d.version)}${row("Demande", d.type_demande)}${row("Vendu par", d.fields?.partenaire ? `${d.fields.partenaire} (partenaire revendeur NeoDrive, facture jointe)` : "")}</table>
+<h3 style="margin:18px 0 6px">Véhicule</h3><table>${row("Marque", "NeoDrive")}${row("Version", d.version)}${row("Demande", d.type_demande)}${row("Vendu par", d.fields?.partenaire ? `${d.fields.partenaire} (partenaire revendeur NeoDrive, certificat de vente joint)` : "")}</table>
 <h3 style="margin:18px 0 6px">Documents</h3><ul>${docs}</ul>
 ${missing.length ? `<p style="color:#a33">Pièce(s) indisponible(s) : ${missing.map(f => esc(f.label)).join(", ")}. Nous vous les transmettrons séparément.</p>` : ""}
 <p>Merci de nous confirmer la bonne réception et de nous tenir informés de l’avancement.<br>Bien cordialement,<br>Mansour Khelifa – NeoDrive (MK HOLDING SAS)</p></div>`;

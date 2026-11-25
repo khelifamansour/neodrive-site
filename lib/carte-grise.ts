@@ -12,7 +12,7 @@ export const CARTE_GRISE_FILES = [
   { key: "coc", label: "Certificat de conformité européen (COC)" },
   { key: "cnit", label: "CNIT / document d’homologation" },
   { key: "devis_signe", label: "Contrat de vente / devis signé" },
-  { key: "facture_partenaire", label: "Facture / certificat de vente du partenaire (signé par le vendeur)" },
+  { key: "certificat_vente", label: "Certificat de vente" },
 ] as const;
 export type CarteGriseFileKey = (typeof CARTE_GRISE_FILES)[number]["key"];
 export const CARTE_GRISE_FILE_LABEL: Record<string, string> = Object.fromEntries(CARTE_GRISE_FILES.map(f => [f.key, f.label]));
@@ -37,13 +37,18 @@ export type MissingRequest = { keys: string[]; note?: string; at: string; by?: s
 /** Pièces obligatoires pour un dossier complet (le CNIT est facultatif quand le COC est fourni). */
 export const CARTE_GRISE_REQUIRED = ["cni", "justificatif_domicile", "mandat_carte_grise_signe", "coc", "devis_signe"];
 
+type DossierLike = { fields?: Record<string, string> | null; files?: { key: string; superseded?: boolean }[] | null };
 /** Dossier d'un client de partenaire revendeur (/carte-grise-partenaire) : NeoDrive n'a pas vendu au titulaire. */
-export const isPartnerDossier = (d: { fields?: Record<string, string> | null; files?: { key: string }[] | null }) =>
-  !!d.fields?.partenaire?.trim() || !!d.files?.some(f => f.key === "facture_partenaire");
+export const isPartnerDossier = (d: DossierLike) => !!d.fields?.partenaire?.trim();
 
-/** Pièces obligatoires du dossier : pour un client partenaire, la facture du partenaire remplace le contrat de vente NeoDrive. */
-export const requiredKeys = (d: Parameters<typeof isPartnerDossier>[0]) =>
-  isPartnerDossier(d) ? CARTE_GRISE_REQUIRED.map(k => k === "devis_signe" ? "facture_partenaire" : k) : CARTE_GRISE_REQUIRED;
+/**
+ * Pièces obligatoires du dossier. Preuve de vente : contrat / devis signé, ou certificat de vente généré par le formulaire
+ * (toujours pour un client partenaire : le certificat du partenaire remplace le contrat NeoDrive).
+ */
+export const requiredKeys = (d: DossierLike) => {
+  const has = (k: string) => !!d.files?.some(f => f.key === k && !f.superseded);
+  return isPartnerDossier(d) || (!has("devis_signe") && has("certificat_vente")) ? CARTE_GRISE_REQUIRED.map(k => k === "devis_signe" ? "certificat_vente" : k) : CARTE_GRISE_REQUIRED;
+};
 
 /** Explication simple de chaque pièce, pour le client. */
 export const CARTE_GRISE_CLIENT_TEXT: Record<string, string> = {
@@ -53,7 +58,7 @@ export const CARTE_GRISE_CLIENT_TEXT: Record<string, string> = {
   coc: "Certificat de conformité européen (COC) du véhicule, en entier et bien lisible",
   cnit: "Document d’homologation (CNIT) du véhicule",
   devis_signe: "Contrat de vente, facture ou certificat de cession signé",
-  facture_partenaire: "Facture ou certificat de vente établi par le partenaire vendeur à votre nom, signé par le vendeur",
+  certificat_vente: "Certificat de vente du véhicule à votre nom, établi par le vendeur",
 };
 
 /** Pièces encore attendues du client : demandées et pas encore reçues, ou reçues mais à refaire. */

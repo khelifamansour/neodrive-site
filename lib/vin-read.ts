@@ -5,7 +5,7 @@ const INSTRUCTIONS = `Tu lis le numéro de série (VIN, 17 caractères, norme IS
 Le VIN ne contient jamais les lettres I, O ni Q. Recopie exactement ce que tu vois, caractère par caractère.
 Réponds uniquement en JSON : {"vin": "<17 caractères ou chaîne vide si illisible>", "doute": "<positions ou caractères incertains, sinon vide>"}`;
 
-export type VinRead = { vin: string | null; raw: string; check_ok: boolean; doubt: string };
+export type VinRead = { vin: string | null; raw: string; check_ok: boolean; doubt: string; extra?: Record<string, string> };
 
 const DOC_INSTRUCTIONS = `Tu lis le numéro de série (VIN, 17 caractères, norme ISO 3779) d'un véhicule sur un document : certificat de conformité européen (COC, rubrique « 0.10 » ou « numéro d'identification du véhicule »), document d'homologation, contrat de vente, facture ou photo de ces documents. Le véhicule est le plus souvent une voiture sans permis fabriquée en Chine (VIN commençant souvent par L).
 Le VIN ne contient jamais les lettres I, O ni Q. Recopie exactement le VIN complet du véhicule, caractère par caractère ; ignore les numéros de réception, de type ou de série partiels.
@@ -25,12 +25,13 @@ async function askVin(instructions: string, prompt: string, part: Part): Promise
     const j = await r.json().catch(() => null);
     if (!r.ok) throw new Error(`Lecture impossible (${r.status}) : tapez le numéro.`);
     const txt: string = (j?.output || []).flatMap((x: { content?: unknown[] }) => x.content || []).filter((x: { type?: string }) => x.type === "output_text").map((x: { text?: string }) => x.text || "").join("");
-    let o: { vin?: string; doute?: string } = {};
+    let o: { vin?: string; doute?: string } & Record<string, unknown> = {};
     try { o = JSON.parse(txt); } catch { o = { vin: (txt.match(/[A-Z0-9]{17}/i) || [""])[0] }; }
     const raw = String(o.vin || "").toUpperCase();
     const vin = cleanVin(raw);
     const ok = VIN_FORMAT.test(vin);
-    return { vin: ok ? vin : null, raw, check_ok: ok && vinCheckOk(vin), doubt: String(o.doute || "").slice(0, 200) };
+    const extra = Object.fromEntries(Object.entries(o).filter(([k, v]) => k !== "vin" && k !== "doute" && typeof v === "string" && v.trim()).map(([k, v]) => [k, String(v).trim().slice(0, 80)]));
+    return { vin: ok ? vin : null, raw, check_ok: ok && vinCheckOk(vin), doubt: String(o.doute || "").slice(0, 200), extra };
   } catch (e) {
     if ((e as Error).name === "AbortError") throw new Error("Lecture trop longue : réessayez ou tapez le numéro.");
     throw e;
@@ -62,4 +63,20 @@ export function nearestVin(vin: string, list: string[]) {
     if (d <= 2 && (!best || d < best.d)) best = { vin: v, d };
   }
   return best;
+}
+
+const COC_INSTRUCTIONS = `Tu lis la première page d'un certificat de conformité européen (COC) d'un véhicule (souvent une voiture sans permis fabriquée en Chine, VIN commençant souvent par L).
+- "vin" : numéro d'identification du véhicule (rubrique « 0.10 » ou « numéro d'identification »), 17 caractères, jamais les lettres I, O ni Q. Recopie-le exactement, caractère par caractère.
+- "marque" : la marque (rubrique « 0.1 »), "type" : le type / variante / version (rubriques « 0.2 »), "cnit" : le code CNIT s'il figure sur le document. Chaîne vide si absent.
+Réponds uniquement en JSON : {"vin": "", "marque": "", "type": "", "cnit": "", "doute": "<positions ou caractères incertains du VIN, sinon vide>"}`;
+
+/** COC (photo ou PDF) : VIN, et si visibles marque, type et CNIT (dans extra). null si le format n'est pas lisible (HEIC…). */
+export async function readCocFromDocument(buf: Uint8Array, mime: string, name: string): Promise<VinRead | null> {
+  const ext = (name.match(/\.([a-z0-9]{1,5})$/i)?.[1] || "").toLowerCase();
+  const b64 = Buffer.from(buf).toString("base64");
+  if (mime === "application/pdf" || ext === "pdf")
+    return askVin(COC_INSTRUCTIONS, "Lis ce COC (la première page suffit). Réponds en json.", { type: "input_file", filename: ext === "pdf" ? name : `${name}.pdf`, file_data: `data:application/pdf;base64,${b64}` });
+  const img = /^image\/(jpeg|png|webp|gif)$/.test(mime) ? mime : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : /^jpe?g$/.test(ext) ? "image/jpeg" : "";
+  if (!img) return null;
+  return askVin(COC_INSTRUCTIONS, "Lis ce COC sur la photo. Réponds en json.", { type: "input_image", image_url: `data:${img};base64,${b64}`, detail: "high" });
 }

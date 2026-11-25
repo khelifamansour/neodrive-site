@@ -5,7 +5,8 @@
  */
 import { CARTE_GRISE_FILE_LABEL, CARTE_GRISE_MAX_FILE } from "../../lib/carte-grise";
 
-export async function storeDossierCopy(form: HTMLFormElement, timeoutMs = 30000): Promise<string | null> {
+/** extra : pièces générées par la page qui n'ont pas pu être placées dans un champ fichier du formulaire. */
+export async function storeDossierCopy(form: HTMLFormElement, timeoutMs = 30000, extra: { key: string; file: File }[] = []): Promise<string | null> {
   const work = (async () => {
     const fd = new FormData(form);
     const fields: Record<string, string> = {};
@@ -15,6 +16,7 @@ export async function storeDossierCopy(form: HTMLFormElement, timeoutMs = 30000)
       // Plusieurs fichiers possibles pour une même pièce (ex. carte d'identité recto + verso).
       for (const f of Array.from(input.files || [])) if (f.size > 0 && f.size <= CARTE_GRISE_MAX_FILE && CARTE_GRISE_FILE_LABEL[input.name]) files.push({ key: input.name, file: f });
     });
+    for (const x of extra) if (x.file.size > 0 && x.file.size <= CARTE_GRISE_MAX_FILE && CARTE_GRISE_FILE_LABEL[x.key]) files.push(x);
     if (!files.length) return null;
     const post = (body: object, ms = 10000) => fetch("/api/carte-grise/dossier", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(ms) }).then(r => r.json());
     // Serveur lent ou indisponible : on n'attend pas plus de 8 s avant l'envoi Formspree.

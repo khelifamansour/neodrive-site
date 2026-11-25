@@ -50,10 +50,10 @@ const CRITERIA: Record<string, string> = {
 - Doit concerner le titulaire du dossier.
 - Doit être signé par l'acheteur (signature manuscrite ou électronique visible) ; une facture acquittée est acceptée.
 - Lisible.`,
-  facture_partenaire: `Facture de vente ou certificat de vente du véhicule établi par un partenaire revendeur de NeoDrive (le vendeur est le partenaire, pas NeoDrive).
+  certificat_vente: `Certificat de vente du véhicule généré par le formulaire en ligne (preuve d'achat pour l'immatriculation, ne vaut pas facture, pas de signature attendue).
+Le vendeur est MK HOLDING SAS (NeoDrive), ou un partenaire revendeur de NeoDrive pour le client d'un partenaire.
 - L'acheteur doit être le titulaire du dossier.
-- Le vendeur (raison sociale du partenaire) et le véhicule (VIN) doivent être indiqués.
-- Doit être signé par le vendeur (signature manuscrite ou électronique visible).
+- Le vendeur, le véhicule et le prix TTC doivent être indiqués. Le VIN peut être remplacé par « voir COC » si le COC est joint.
 - Lisible.`,
 };
 

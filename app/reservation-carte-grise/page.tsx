@@ -8,6 +8,8 @@ import c from "./carte-grise.module.css";
 import SignOnScreen, { type Signature } from "./SignOnScreen";
 import { storeDossierCopy } from "./storeCopy";
 import { fitSignature, writeMandat } from "./mandat";
+import { NEODRIVE_SELLER, pdfEuros, putFile, readCocVin, writeCertificat, type CocVin } from "./certificat";
+import { vinValid } from "../../lib/shipments";
 
 // Bibliothèques chargées par CDN (balises Script ci-dessous) : html2canvas pour le devis, jsPDF pour le devis et le mandat.
 type JsPdfCtor = new (...args: unknown[]) => {
@@ -18,6 +20,7 @@ type JsPdfCtor = new (...args: unknown[]) => {
   addPage: () => void;
   save: (name: string) => void;
   output: (type: "blob") => Blob;
+  getTextWidth: (t: string) => number;
 };
 type PdfGlobals = {
   jspdf?: { jsPDF: JsPdfCtor };
@@ -77,6 +80,9 @@ export default function ReservationCarteGrise() {
   const formRef = useRef<HTMLFormElement>(null);
   const sendingRef = useRef(false);
   const [sending, setSending] = useState(false);
+  // Lecture du VIN sur le COC (pour le certificat de vente) et champ fichier qui reçoit le certificat.
+  const cocRef = useRef<Promise<CocVin> | null>(null);
+  const certificatRef = useRef<HTMLInputElement>(null);
 
   const postal = client.code_postal;
 
@@ -132,6 +138,7 @@ export default function ReservationCarteGrise() {
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, files: list } = e.target;
     setFiles(p => ({ ...p, [name]: list?.[0]?.name || "" }));
+    if (name === "coc") cocRef.current = list?.[0] ? readCocVin(list[0]) : null;
   };
   const setFileName = (name: string, fileName: string) => setFiles(p => p[name] === fileName ? p : ({ ...p, [name]: fileName }));
   const safeFileName = (v: string) => v.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9_-]/g, "-") || "client";
@@ -295,6 +302,30 @@ export default function ReservationCarteGrise() {
     return pdf.output("blob");
   };
 
+  /** Certificat de vente (vendeur MK HOLDING SAS) : preuve d'achat pour l'immatriculation, ne vaut pas facture, sans numéro ni signature. */
+  const buildCertificat = async () => {
+    const jsPDF = (window as unknown as PdfGlobals).jspdf?.jsPDF;
+    if (!jsPDF) return null;
+    const read = cocRef.current ? await Promise.race([cocRef.current, new Promise<null>(res => setTimeout(() => res(null), 15000))]) : null;
+    const vin = read?.ok && vinValid(read.vin) ? read.vin : "";
+    const prices: [string, string][] = [[`${VERSION_FORM[model].devis} x${quantity}`, pdfEuros(vehiclesTotal)]];
+    prices.push(noDelivery ? ["Retrait sur place", pdfEuros(0)] : [`Livraison à domicile${postalComplete ? ` (code postal ${postal})` : ""}`, transport === null ? "sur devis" : pdfEuros(transport)]);
+    if (wantsCarteGrise) prices.push([`Pack mise en route et accompagnement administratif x${quantity}`, pdfEuros(registrationTotal)]);
+    if (discount > 0) prices.push(["Remise commerciale", `- ${pdfEuros(discount)}`]);
+    prices.push(["Total TTC", totalTTC === null ? "sur devis" : pdfEuros(totalTTC)]);
+    const pdf = writeCertificat(new jsPDF(), {
+      date: today,
+      seller: NEODRIVE_SELLER,
+      buyer: [signerName, client.adresse.trim(), `${client.code_postal} ${client.ville.trim()}`, client.telephone.trim(), client.email.trim()],
+      vehicle: [`Modèle : ${VEHICLES[model].label}${quantity > 1 ? ` (x${quantity})` : ""}`, `Numéro d’identification (VIN) : ${vin || "voir COC"}`, read?.ok && read.cnit ? `CNIT : ${read.cnit}` : ""],
+      prices,
+      statement: dejaClient
+        ? `MK HOLDING SAS (NeoDrive) certifie avoir vendu le véhicule désigné ci-dessus à ${signerName}, au prix indiqué.`
+        : `MK HOLDING SAS (NeoDrive) certifie la vente à ${signerName} du véhicule désigné ci-dessus, commandé le ${today} au prix indiqué (réserve de propriété jusqu’au paiement intégral).`,
+    });
+    return new File([pdf.output("blob")], `certificat-vente-${safeFileName(client.nom)}.pdf`, { type: "application/pdf" });
+  };
+
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     const form = e.currentTarget;
     const docs: [string, string, string][] = [
@@ -307,7 +338,11 @@ export default function ReservationCarteGrise() {
       e.preventDefault();
       if (sendingRef.current) return;
       sendingRef.current = true; setSending(true);
-      storeDossierCopy(form).finally(() => {
+      // Certificat de vente joint au dossier (si la carte grise est confiée à NeoDrive), puis copie privée et Formspree.
+      (wantsCarteGrise ? buildCertificat().catch(() => null) : Promise.resolve(null)).then(file => {
+        const extra = file && !putFile(certificatRef.current, file) ? [{ key: "certificat_vente", file }] : [];
+        return storeDossierCopy(form, 30000, extra);
+      }).finally(() => {
         HTMLFormElement.prototype.submit.call(form);
         setTimeout(() => { sendingRef.current = false; setSending(false); }, 15000);
       });
@@ -404,6 +439,7 @@ export default function ReservationCarteGrise() {
             <span><b>J’ai déjà réservé ou reçu ma NeoDrive</b> : je complète seulement mon dossier carte grise. Ce n’est pas une nouvelle commande : le document de l’étape 5 est votre contrat de vente, à signer et à joindre avec le mandat, le COC et vos pièces.</span>
           </label>
           <input type="hidden" name="version" value={VERSION_FORM[model].value} />
+          <input ref={certificatRef} type="file" name="certificat_vente" accept="application/pdf" hidden tabIndex={-1} aria-hidden="true" />
           <input type="hidden" name="departement_livraison" value={departementLivraison} />
           <input type="hidden" name="livraison" value={livraisonValue} />
 
