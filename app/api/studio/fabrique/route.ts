@@ -67,6 +67,16 @@ export async function POST(req: Request) {
       await logSection(acc, "fabrique_redo", { id });
       return NextResponse.json({ ok: true, proposal: (await withUrls(db, [n]))[0] });
     }
+    if (action === "tiktok") {
+      // Brouillon TikTok : la vidéo arrive dans la boîte de réception TikTok, le fondateur colle la légende et publie lui-même.
+      if (p.status !== "rendered") return fail("La vidéo n’est pas encore fabriquée.");
+      const secret = process.env.CRON_SECRET; if (!secret) return fail("Configuration manquante", 503);
+      const r = await fetch(`${new URL(req.url).origin}/api/tiktok/publish-reel`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: secret, proposalId: p.id, day: p.day, draft: true }), cache: "no-store" });
+      const j = await r.json().catch(() => ({})) as { ok?: boolean; error?: string; note?: string };
+      await logSection(acc, "fabrique_tiktok_draft", { id, ok: !!j.ok });
+      if (!j.ok) return fail(j.error || "Envoi TikTok impossible", 502);
+      return NextResponse.json({ ok: true, note: j.note || "Envoyée dans vos brouillons TikTok." });
+    }
     if (action === "update") {
       const n = await saveProposal(db, { ...p, published: b.published === true });
       return NextResponse.json({ ok: true, proposal: (await withUrls(db, [n]))[0] });

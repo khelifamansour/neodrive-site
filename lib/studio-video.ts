@@ -166,14 +166,17 @@ export const musicFile = () => path.join(process.cwd(), "public", "neodrive-back
 export async function probe(file: string) {
   const ff = await ffmpegPath();
   let err = "";
-  try { await run(ff, ["-hide_banner", "-i", file], { maxBuffer: 4 * 1024 * 1024 }); } catch (e) { err = String((e as { stderr?: string }).stderr || ""); }
+  try { await run(ff, ["-hide_banner", "-probesize", "20M", "-analyzeduration", "20M", "-i", file], { maxBuffer: 16 * 1024 * 1024, timeout: 120000 }); }
+  catch (e) { const x = e as { stderr?: string; message?: string }; err = String(x.stderr || x.message || ""); }
   const d = /Duration:\s*(\d+):(\d+):([\d.]+)/.exec(err);
   const duration = d ? Number(d[1]) * 3600 + Number(d[2]) * 60 + Number(d[3]) : 0;
   const v = /Stream #[^\n]*Video:[^\n]*?\b(\d{2,5})x(\d{2,5})\b/.exec(err);
   let width = v ? Number(v[1]) : 0, height = v ? Number(v[2]) : 0;
   const rot = /rotate\s*:\s*(-?\d+)/.exec(err) || /rotation of (-?[\d.]+) degrees/.exec(err);
   if (rot && Math.abs(Math.round(Number(rot[1]))) % 180 === 90) [width, height] = [height, width];
-  return { duration, width, height, hasAudio: /Stream #[^\n]*Audio:/.test(err), hasVideo: !!v };
+  // Raison lisible quand ffmpeg ne trouve pas de vidéo (fichier coupé, format inconnu, erreur réseau).
+  const reason = (err.split("\n").map(l => l.trim()).filter(l => /moov atom|invalid data|error|not found|unsupported|no such|refused|timed out|server returned|end of file/i.test(l)).pop() || "").replace(/^\[[^\]]*\]\s*/, "").replace(/https?:\/\/\S+/g, "").slice(0, 160);
+  return { duration, width, height, hasAudio: /Stream #[^\n]*Audio:/.test(err), hasVideo: !!v, reason };
 }
 
 /** Piste son légère (mono 16 kHz) pour la transcription (limite Whisper : 25 Mo). */

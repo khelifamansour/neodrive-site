@@ -3,10 +3,12 @@
 import { execFile } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { createWriteStream } from "node:fs";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import { promisify } from "node:util";
 import OpenAI, { toFile } from "openai";
@@ -83,7 +85,7 @@ export async function sampleFrames(input: string, dir: string, duration: number,
   const out: { t: number; jpg: Buffer }[] = [];
   await Promise.all(times.map(async (t, i) => {
     const f = path.join(dir, `f${i}.jpg`);
-    try { await ff(["-ss", String(t), "-i", input, "-frames:v", "1", "-vf", "scale='if(gt(iw,ih),512,-2)':'if(gt(iw,ih),-2,512)'", "-q:v", "5", f], 60000); out.push({ t, jpg: await readFile(f) }); } catch { /* image illisible */ }
+    try { await ff(["-ss", String(t), "-i", input, "-frames:v", "1", "-vf", "scale='if(gt(iw,ih),512,-2)':'if(gt(iw,ih),-2,512)',format=yuvj420p", "-q:v", "5", f], 60000); out.push({ t, jpg: await readFile(f) }); } catch { /* image illisible */ }
   }));
   return out.sort((a, b) => a.t - b.t);
 }
@@ -131,23 +133,64 @@ Réponds uniquement en json :
   };
 }
 
+const MB = (n: number) => `${Math.round(n / 1048576)} Mo`;
+/** Plus gros fichier copié en entier dans /tmp (512 Mo sur Vercel) quand la lecture à distance échoue. */
+const LOCAL_MAX = 450 * 1024 * 1024;
+export const MAX_ATTEMPTS = 3;
+/** Numéro d'essai gardé dans le champ error (« essai 2/3 ») : pas de colonne de plus dans video_library. */
+export const attemptOf = (it: LibItem) => Number(/essai (\d+)\/\d+/.exec(it.error || "")?.[1] || 0);
+/** Erreurs définitives (le fichier lui-même est incomplet) : inutile de réessayer, il faut renvoyer la vidéo. */
+export const permanentError = (e: string | null) => /^(Envoi incomplet|Fichier vide|Analyse trop longue)|fichier coupé/.test(e || "");
+
+/** Taille réelle de l'objet dans le stockage (0 si absent). */
+export async function storedSize(db: Db, p: string) {
+  const i = p.lastIndexOf("/");
+  const { data } = await db.storage.from(BUCKET).list(p.slice(0, i), { search: p.slice(i + 1), limit: 20 });
+  const f = (data || []).find(x => x.name === p.slice(i + 1));
+  return f ? Number((f.metadata as Record<string, unknown> | null)?.size || 0) : -1;
+}
+
+/** Copie complète dans /tmp (vidéos dont l'index est en fin de fichier et que la lecture par plages ne suffit pas à ouvrir). */
+async function download(url: string, file: string) {
+  const r = await fetch(url);
+  if (!r.ok || !r.body) throw new Error(`téléchargement impossible (${r.status})`);
+  await pipeline(Readable.fromWeb(r.body as unknown as WebReadableStream), createWriteStream(file));
+}
+
 /** Analyse complète d'une fiche (met à jour status, transcript, analysis, has_client, poster). */
 export async function analyseItem(db: Db, client: OpenAI, it: LibItem): Promise<LibItem> {
-  await saveItem(db, { ...it, status: "analysing", error: null });
+  const attempt = attemptOf(it) + 1;
+  await saveItem(db, { ...it, status: "analysing", error: `essai ${attempt}/${MAX_ATTEMPTS}` });
   const dir = path.join(tmpdir(), "studio-library", it.id);
   await mkdir(dir, { recursive: true });
-  const { data } = await db.storage.from(BUCKET).createSignedUrl(it.path, 60 * 60);
-  if (!data?.signedUrl) throw new Error("Vidéo introuvable dans le stockage");
+  const size = await storedSize(db, it.path);
+  if (size < 0) throw new Error(`Vidéo introuvable dans le stockage · essai ${attempt}/${MAX_ATTEMPTS}`);
+  if (size === 0) throw new Error("Fichier vide dans le stockage : l’envoi n’est pas allé au bout, renvoyez la vidéo.");
+  if (it.size && size < it.size * 0.98) throw new Error(`Envoi incomplet : ${MB(size)} reçus sur ${MB(it.size)}. Renvoyez la vidéo (écran allumé, Wi-Fi).`);
+  const { data } = await db.storage.from(BUCKET).createSignedUrl(it.path, 60 * 60 * 2);
+  if (!data?.signedUrl) throw new Error(`Lien de lecture impossible · essai ${attempt}/${MAX_ATTEMPTS}`);
   const rl = await relay(data.signedUrl);
   try {
-    const info = await probe(rl.local);
-    if (!info.hasVideo || !info.duration) throw new Error("Vidéo illisible");
+    let input = rl.local;
+    let info = await probe(input);
+    if ((!info.hasVideo || !info.duration) && size <= LOCAL_MAX) {
+      // Lecture à distance ratée : on copie le fichier entier et on réessaie en local.
+      const local = path.join(dir, "source" + (path.extname(it.path) || ".mp4"));
+      await download(data.signedUrl, local);
+      input = local; info = await probe(input);
+    }
+    if (!info.hasVideo || !info.duration) {
+      const why = info.reason || "aucune piste vidéo";
+      throw new Error(/moov atom|end of file|invalid data/i.test(why)
+        ? `Vidéo illisible : fichier coupé ou incomplet (${why}). Renvoyez la vidéo.`
+        : `Vidéo illisible (${why}) · essai ${attempt}/${MAX_ATTEMPTS}`);
+    }
     const meta = { duration: Math.round(info.duration * 100) / 100, width: info.width, height: info.height, name: it.name };
     const [tr, frames] = await Promise.all([
-      info.hasAudio ? transcribe(client, rl.local, dir, meta.duration) : Promise.resolve<Transcript>({ text: "", words: [], segments: [] }),
-      sampleFrames(rl.local, dir, meta.duration, meta.duration > 120 ? 10 : 8),
+      info.hasAudio ? transcribe(client, input, dir, meta.duration) : Promise.resolve<Transcript>({ text: "", words: [], segments: [] }),
+      sampleFrames(input, dir, meta.duration, meta.duration > 120 ? 10 : 8),
     ]);
-    if (!frames.length) throw new Error("Aucune image lisible (format non pris en charge)");
+    if (!frames.length) throw new Error(`Aucune image lisible (format non pris en charge) · essai ${attempt}/${MAX_ATTEMPTS}`);
     const analysis = await describe(client, frames, tr, meta);
     let poster = it.poster_path;
     if (!poster) {

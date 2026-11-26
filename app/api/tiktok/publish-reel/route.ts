@@ -5,6 +5,9 @@ import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { crmDatabase } from "@/lib/crm-agent";
+import { getProposal } from "@/lib/fabrique";
+import { BUCKET } from "@/lib/studio-video";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -24,7 +27,8 @@ async function normalizeTikTokVideo(input:Buffer, jobId:string) {
     await writeFile(inputPath, input);
     await runFile(ffmpegPath, [
       "-y", "-hide_banner", "-loglevel", "error", "-i", inputPath,
-      "-vf", "scale=1080:1920:flags=lanczos,setsar=1",
+      // Format 9:16 sans déformer : la vidéo garde ses proportions, bandes noires si elle est horizontale.
+      "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease:flags=lanczos,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,setsar=1",
       "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
       "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-movflags", "+faststart", outputPath,
     ], { timeout:180000, maxBuffer:1024*1024 });
@@ -67,7 +71,7 @@ async function refreshIfNeeded(sb:any, row:any) {
 }
 
 export async function POST(req: Request) {
-  const { passcode, jobId, caption, videoUrl } = await req.json().catch(()=>({}));
+  const { passcode, jobId, caption, videoUrl, proposalId, day, draft } = await req.json().catch(()=>({}));
   const secret = process.env.CRON_SECRET;
   if (!secret || passcode !== secret) return NextResponse.json({ ok:false, error:"Code d’accès incorrect" }, { status:401 });
   const sk = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -75,11 +79,23 @@ export async function POST(req: Request) {
   const sb = createClient(SB, sk, { auth:{ persistSession:false } });
 
   let job: { id:string; theme?:string|null; hook?:string|null; output_url:string|null; status:string } | null = null;
-  if (videoUrl) {
+  // Vidéo de la Fabrique : envoyée en BROUILLON (boîte de réception TikTok) pour que le fondateur valide dans l'application.
+  const fromFabrique = typeof proposalId === "string" && /^[a-z0-9]{6,30}$/.test(proposalId);
+  if (fromFabrique) {
+    const db = crmDatabase();
+    const p = await getProposal(db, proposalId, typeof day === "string" ? day : undefined);
+    if (!p || p.status !== "rendered" || !p.render_path) return NextResponse.json({ ok:false, error:"Vidéo de la Fabrique pas encore prête" }, { status:409 });
+    const { data:sig } = await db.storage.from(BUCKET).createSignedUrl(p.render_path, 3600);
+    if (!sig?.signedUrl) return NextResponse.json({ ok:false, error:"Vidéo introuvable" }, { status:404 });
+    job = { id:`fabrique-${p.id}`, hook:p.hook, output_url:sig.signedUrl, status:"succeeded" };
+    if (!caption) job.theme = `${p.caption}${p.hashtags.length ? "\n\n" + p.hashtags.join(" ") : ""}`.slice(0, 2200);
+  } else if (videoUrl) {
     // Vidéo réelle déposée depuis le Studio (stockage public social-media uniquement)
     if (!String(videoUrl).startsWith(`${SB}/storage/v1/object/public/social-media/`)) return NextResponse.json({ ok:false, error:"Vidéo non autorisée" }, { status:400 });
     job = { id:`studio-${Date.now()}`, hook: caption || null, output_url:String(videoUrl), status:"succeeded" };
   } else {
+    // Vidéos générées automatiquement (affiches animées) : arrêtées, on ne publie que de vraies vidéos.
+    if (process.env.ENABLE_GENERATED_POSTERS !== "1") return NextResponse.json({ ok:false, error:"Les vidéos générées automatiquement ne sont plus publiées : utilisez une vraie vidéo (Studio ou Fabrique)." }, { status:410 });
     let q = sb.from("video_generation_jobs").select("id,theme,hook,output_url,status,error_message");
     if (jobId) q = q.eq("id", String(jobId)); else q = q.eq("status","succeeded").not("output_url","is",null).order("completed_at",{ascending:false}).limit(1);
     const { data, error:jobError } = await q.maybeSingle();
@@ -107,13 +123,13 @@ export async function POST(req: Request) {
   // Publication directe si TikTok l'autorise (permission video.publish + compte public autorisé), sinon brouillon.
   const H = { Authorization:`Bearer ${conn.access_token}`, "Content-Type":"application/json; charset=UTF-8" };
   let direct = false, privacy = "";
-  if (String(conn.scope || stored?.scope || "").includes("video.publish")) {
+  if (!fromFabrique && draft !== true && String(conn.scope || stored?.scope || "").includes("video.publish")) {
     const ci = await fetch("https://open.tiktokapis.com/v2/post/publish/creator_info/query/", { method:"POST", headers:H, cache:"no-store" }).then(r=>r.json()).catch(()=>({}));
     const options: string[] = ci?.data?.privacy_level_options || [];
     console.log("[tiktok-upload] creator_info", { options, error: ci?.error?.code });
     if (options.includes("PUBLIC_TO_EVERYONE")) { direct = true; privacy = "PUBLIC_TO_EVERYONE"; }
   }
-  const title = String(caption || job.hook || job.theme || "NeoDrive — voiture sans permis électrique").slice(0, 2200);
+  const title = String(caption || (fromFabrique ? job.theme : "") || job.hook || job.theme || "NeoDrive — voiture sans permis électrique").slice(0, 2200);
   const init = await fetch(direct ? "https://open.tiktokapis.com/v2/post/publish/video/init/" : "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/", {
     method:"POST",
     headers:H,

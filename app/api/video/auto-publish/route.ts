@@ -31,10 +31,10 @@ export async function GET(req:Request){
  const origin=new URL(req.url).origin;
  const results:any={};
  if(!done.has("instagram")){
-  const r=await fetch(`${origin}/api/instagram/auto-publish?force=1`,{headers:{Authorization:`Bearer ${secret}`},cache:"no-store"});results.instagram=await r.json().catch(()=>({}));results.instagramOk=r.ok;
+  const r=await fetch(`${origin}/api/instagram/auto-publish?queue=1`,{headers:{Authorization:`Bearer ${secret}`},cache:"no-store"});results.instagram=await r.json().catch(()=>({}));results.instagramOk=r.ok;
  }
  if(!done.has("facebook")){
-  const r=await fetch(`${origin}/api/facebook/auto-publish?force=1`,{headers:{Authorization:`Bearer ${secret}`},cache:"no-store"});results.facebook=await r.json().catch(()=>({}));results.facebookOk=r.ok;
+  const r=await fetch(`${origin}/api/facebook/auto-publish?queue=1`,{headers:{Authorization:`Bearer ${secret}`},cache:"no-store"});results.facebook=await r.json().catch(()=>({}));results.facebookOk=r.ok;
  }
  const ok=(results.instagramOk??true)&&(results.facebookOk??true);
  return NextResponse.json({ok,jobId:job.id,video:job.output_url,caption,results},{status:ok?200:207});

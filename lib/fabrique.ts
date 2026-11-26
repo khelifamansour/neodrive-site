@@ -28,21 +28,27 @@ const FROM_MONTHLY = Math.round(monthlyPayment(VEHICLES.essentielle.price, MONTH
 /** Mention obligatoire, à l'écran et dans la légende, dès qu'une mensualité est citée (règle de la stratégie contenu). */
 export const CREDIT_ONSCREEN = `Exemple, sous réserve d'acceptation, TAEG à préciser. Un crédit vous engage et doit être remboursé.`;
 export const CREDIT_MENTION = `${CREDIT_ONSCREEN} Vérifiez vos capacités de remboursement avant de vous engager.`;
+/** « Livrée avant Noël » seulement si 3 semaines de livraison tombent avant le 23 décembre. */
+function christmas(now = new Date()) {
+  return AVAILABILITY.confort.inStock && now.getMonth() >= 9 && now.getTime() + 21 * 86400000 <= new Date(now.getFullYear(), 11, 23).getTime();
+}
 export const FACTS = [
   `Marque NeoDrive : voitures sans permis neuves, 100 % électriques, 2 places, 45 km/h, accessibles dès 14 ans avec le permis AM. Société MK HOLDING (Muret, Haute-Garonne), vente directe en ligne et par téléphone.`,
-  `Prix : on ne cite QUE la NeoDrive Confort à ${eur(VEHICLES.confort.price)} € TTC (${AVAILABILITY.confort.short.toLowerCase()}). Ne jamais citer d'autre prix de voiture.`,
+  `Prix : NeoDrive Confort à ${eur(VEHICLES.confort.price)} € TTC (${AVAILABILITY.confort.short.toLowerCase()})${christmas() ? " : commandée maintenant, elle est livrée avant Noël" : ""}. On peut citer aussi l'Essentielle à ${eur(VEHICLES.essentielle.price)} € TTC (${AVAILABILITY.essentielle.short.toLowerCase()}). Aucun autre prix de voiture.`,
+  `Garantie 2 ans. Le fondateur s'appelle Mansour ; l'entreprise est près de Toulouse (Muret).`,
   `Financement : « dès ${FROM_MONTHLY} €/mois » uniquement, toujours présenté comme un exemple, sous réserve d'acceptation (la mention légale est ajoutée automatiquement à l'écran et dans la légende). Aucun autre chiffre de crédit (durée, taux).`,
   `Livraison à domicile partout en France continentale : 450 € (Haute-Garonne, Tarn, Tarn-et-Garonne, Gers, Ariège), puis 590 €, 690 € ou 790 € selon le département ; Corse et outre-mer sur devis.`,
   `Réservation sans acompte, paiement à la livraison. Recharge sur une prise 220 V classique (environ 6 heures). Autonomie indicative 50 à 70 km selon conditions et version.`,
   `Pas de concession : import direct depuis le fabricant (conteneurs), vente directe, livrée chez le client par l'équipe NeoDrive.`,
 ].join("\n");
 const ALLOWED = new Set<number>([
-  VEHICLES.confort.price, FROM_MONTHLY,
+  VEHICLES.confort.price, VEHICLES.essentielle.price, FROM_MONTHLY,
   450, 590, 690, 790, 45, 14, 220, 50, 70, 100, 2026, 24,
 ]);
 const COMPETITORS = /\b(aixam|ligier|microcar|chatenet|bellier|jdm|casalini|citro[eë]n|ami\b|topolino|fiat|twizy|mobilize|opel|rocks-e|renault|dacia|tesla|silence\s*s0[14])/i;
 
 export const ANGLES: Record<string, string> = {
+  face_voiture: "Le fondateur face caméra à côté de la voiture, sans montage : un seul plan continu, sa vraie voix (le format qui marche le mieux sur notre TikTok)",
   prix_velo: "Le prix d'un bon vélo électrique… et t'as une voiture (Confort 4 990 € TTC)",
   pourquoi_prix: "Pourquoi nos prix sont bas : vente directe, pas de concession, livrée chez vous (sans se dire « les moins chers » ni chiffrer les autres)",
   electrique: "Électrique : pas de station-service, recharge sur une prise 220 V (qualitatif, aucun coût d'énergie chiffré)",
@@ -62,6 +68,8 @@ export type Proposal = {
   segments: Segment[]; caption: string; hashtags: string[]; status: ProposalStatus;
   render_path: string | null; duration: number | null; error: string | null; feedback: string | null; published: boolean;
   attempts: number; created_at: string; updated_at: string;
+  /** Légendes prêtes à publier sur Facebook et Instagram (colonne captions, facultative). */
+  captions?: { facebook?: string; instagram?: string } | null;
 };
 export const parisDay = (d = new Date()) => new Intl.DateTimeFormat("fr-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 const pid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -74,17 +82,40 @@ async function hasTable(db: Db) {
   tableMissing = !!error && (error.code === "42P01" || error.code === "PGRST205" || /does not exist|schema cache/i.test(error.message || ""));
   return !tableMissing;
 }
+let captionsColumn = true;
 export async function saveProposal(db: Db, p: Proposal) {
   p.updated_at = new Date().toISOString();
-  if (await hasTable(db)) { const { error } = await db.from("video_proposals").upsert(p, { onConflict: "id" }); if (error) throw new Error(error.message); return p; }
+  if (await hasTable(db)) {
+    const row: Partial<Proposal> = { ...p };
+    if (!captionsColumn) delete row.captions;
+    let { error } = await db.from("video_proposals").upsert(row, { onConflict: "id" });
+    if (error && captionsColumn && /captions/i.test(error.message || "")) {
+      // Colonne captions pas encore créée (migration 20261127120000) : légendes FB / IG gardées à part dans le stockage.
+      captionsColumn = false; delete row.captions;
+      ({ error } = await db.from("video_proposals").upsert(row, { onConflict: "id" }));
+    }
+    if (error) throw new Error(error.message);
+    if (!captionsColumn && p.captions) await db.storage.from(BUCKET).upload(`${META}captions/${p.id}.json`, Buffer.from(JSON.stringify(p.captions)), { contentType: "application/json", upsert: true }).catch(() => null);
+    return p;
+  }
   const { error } = await db.storage.from(BUCKET).upload(`${META}${p.day}/${p.id}.json`, Buffer.from(JSON.stringify(p)), { contentType: "application/json", upsert: true });
   if (error) throw new Error(error.message);
   return p;
 }
+/** Légendes FB / IG gardées à part quand la colonne captions n'existe pas encore. */
+async function withSideCaptions(db: Db, ps: Proposal[]) {
+  if (captionsColumn && ps.some(p => "captions" in p)) return ps;
+  return Promise.all(ps.map(async p => {
+    if (p.captions) return p;
+    const { data } = await db.storage.from(BUCKET).download(`${META}captions/${p.id}.json`);
+    if (!data) return p;
+    try { return { ...p, captions: JSON.parse(await data.text()) as Proposal["captions"] }; } catch { return p; }
+  }));
+}
 export async function listProposals(db: Db, day: string): Promise<Proposal[]> {
   if (await hasTable(db)) {
     const { data } = await db.from("video_proposals").select("*").eq("day", day).order("created_at", { ascending: true });
-    return (data as Proposal[] | null) || [];
+    return withSideCaptions(db, (data as Proposal[] | null) || []);
   }
   const { data } = await db.storage.from(BUCKET).list(`${META}${day}`, { limit: 200 });
   const out = await Promise.all((data || []).filter(f => f.name.endsWith(".json")).map(async f => {
@@ -94,7 +125,7 @@ export async function listProposals(db: Db, day: string): Promise<Proposal[]> {
   return out.filter((x): x is Proposal => !!x).sort((a, b) => a.created_at.localeCompare(b.created_at));
 }
 export async function getProposal(db: Db, id: string, day?: string): Promise<Proposal | null> {
-  if (await hasTable(db)) { const { data } = await db.from("video_proposals").select("*").eq("id", id).maybeSingle(); return (data as Proposal | null) || null; }
+  if (await hasTable(db)) { const { data } = await db.from("video_proposals").select("*").eq("id", id).maybeSingle(); return data ? (await withSideCaptions(db, [data as Proposal]))[0] : null; }
   if (!day) return null;
   return (await listProposals(db, day)).find(p => p.id === id) || null;
 }
@@ -142,13 +173,13 @@ export function checkText(...texts: string[]) {
 }
 const s = (v: unknown, m: number) => String(v ?? "").replace(/[\u0000-\u0008\u000b-\u001f]/g, " ").trim().slice(0, m);
 
-function cleanSegments(raw: unknown, clips: Map<string, LibItem>): Segment[] {
+function cleanSegments(raw: unknown, clips: Map<string, LibItem>, maxSeg = 15): Segment[] {
   const out: Segment[] = []; let total = 0;
   for (const r of (Array.isArray(raw) ? raw : []) as Record<string, unknown>[]) {
     const it = clips.get(String(r.clip || r.clip_id || "")); if (!it) continue;
     const D = it.duration || 0; let a = Math.max(0, Number(r.start) || 0); let b = Math.min(D, Number(r.end) || 0);
     if (!(b - a >= 1.2)) continue;
-    if (b - a > 15) b = a + 15;
+    if (b - a > maxSeg) b = a + maxSeg;
     const vis = (A(it).pii || []).filter(p => p.visual);
     if (vis.some(p => a < p.end + 0.5 && b > p.start - 0.5)) continue; // plaque, document visible : on n'utilise pas ce passage
     if (total + (b - a) > 45) b = a + Math.max(0, 45 - total);
@@ -161,19 +192,25 @@ function cleanSegments(raw: unknown, clips: Map<string, LibItem>): Segment[] {
 
 function toProposal(day: string, j: Record<string, unknown>, clips: Map<string, LibItem>): Proposal | { reject: string } {
   const angle = ANGLES[String(j.angle)] ? String(j.angle) : "faq";
-  const segments = cleanSegments(j.segments, clips);
+  const voice = j.voice === "original" ? "original" : "tts";
+  // Plan continu face caméra (voix d'origine) : un extrait peut durer jusqu'à 45 s, sans découpage.
+  const segments = cleanSegments(j.segments, clips, voice === "original" ? 45 : 15);
   if (!segments.length) return { reject: "aucun extrait valide" };
   if (angle === "temoignage" && !segments.some(x => clips.get(x.clip)?.has_client)) { /* témoignage sans client : on garde, l'angle reste factuel */ }
   const p: Proposal = {
-    id: pid(), day, angle, title: s(j.title, 90) || ANGLES[angle], hook: s(j.hook, 120), script: s(j.script, 700), voice: j.voice === "original" ? "original" : "tts",
+    id: pid(), day, angle, title: s(j.title, 90) || ANGLES[angle], hook: s(j.hook, 120), script: s(j.script, 700), voice,
     segments, caption: s(j.caption, 900), hashtags: (Array.isArray(j.hashtags) ? j.hashtags : []).map(h => "#" + String(h).replace(/^#+/, "").replace(/[^\p{L}\p{N}_]/gu, "")).filter(h => h.length > 2).slice(0, 8),
     status: "draft", render_path: null, duration: null, error: null, feedback: null, published: false, attempts: 0,
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    captions: { facebook: s(j.facebook, 1200) || undefined, instagram: s(j.instagram, 1500) || undefined },
   };
   if (p.voice === "tts" && p.script.split(/\s+/).length < 12) return { reject: "script trop court" };
-  const bad = checkText(p.hook, p.script, p.caption, p.title, p.hashtags.join(" "));
+  const bad = checkText(p.hook, p.script, p.caption, p.title, p.hashtags.join(" "), p.captions?.facebook || "", p.captions?.instagram || "");
   if (bad) return { reject: bad };
-  if (/financ|€\s*\/\s*mois|par mois|mensualit/i.test(`${p.script} ${p.caption} ${p.hook}`) && !p.caption.includes("sous réserve d'acceptation")) p.caption = `${p.caption}\n\n${CREDIT_MENTION}`.trim();
+  if (/financ|€\s*\/\s*mois|par mois|mensualit/i.test(`${p.script} ${p.caption} ${p.hook} ${p.captions?.facebook || ""} ${p.captions?.instagram || ""}`)) {
+    if (!p.caption.includes("sous réserve d'acceptation")) p.caption = `${p.caption}\n\n${CREDIT_MENTION}`.trim();
+    for (const k of ["facebook", "instagram"] as const) { const c = p.captions?.[k]; if (c && !c.includes("sous réserve d'acceptation")) p.captions![k] = `${c}\n\n${CREDIT_MENTION}`; }
+  }
   return p;
 }
 
@@ -186,22 +223,34 @@ Règles :
 - Permis suspendu ou annulé : ne dis JAMAIS que la personne peut conduire une voiture sans permis ; dis « vérifie ta décision de justice » (le juge peut interdire tout véhicule à moteur).
 - La polémique vise des pratiques (acompte, prix hors taxes, délais), jamais une marque nommée.
 - Aucun trou à remplir ([X], [à vérifier]) : écris uniquement ce qui est sûr.
-- Ne promets rien hors des faits (pas de garantie, pas de délai autre que ceux donnés, pas d'économie chiffrée).
+- Ne promets rien hors des faits (pas d'autre garantie que les 2 ans, pas de délai autre que ceux donnés, pas d'économie chiffrée).
 - Jamais de nom, d'adresse ou de ville d'un client.
 - "voice" : "tts" (voix off lue sur les images, le son d'origine est baissé) ou "original" (on garde la parole du fondateur face caméra, le script = ce qu'il dit dans les extraits).
-- "segments" : 2 à 6 extraits [{"clip":"id","start":s,"end":s,"why":"…"}] pris dans les clips listés, 1,5 à 12 s chacun, total ≥ durée de la voix off (≈ 2,5 mots par seconde) ; commence par l'image la plus forte ; évite les passages marqués ⚠️ ; varie les clips ; un clip « déjà utilisé » seulement si nécessaire.
-- "caption" : légende TikTok (2 à 4 lignes, une question pour les commentaires) ; "hashtags" : 4 à 6 hashtags en français (#voituresanspermis…).`;
+- "segments" : avec "original" (plan continu) UN extrait de 8 à 45 s ; avec "tts", 2 à 6 extraits [{"clip":"id","start":s,"end":s,"why":"…"}] pris dans les clips listés, 1,5 à 12 s chacun, total ≥ durée de la voix off (≈ 2,5 mots par seconde) ; commence par l'image la plus forte ; évite les passages marqués ⚠️ ; varie les clips ; un clip « déjà utilisé » seulement si nécessaire.
+- "caption" : légende TikTok (2 à 4 lignes, une question pour les commentaires) ; "hashtags" : 4 à 6 hashtags en français (#voituresanspermis…).
+- "facebook" : post Facebook (2 à 4 phrases, ton conversationnel, termine par « Prix livré en 1 minute : easydrive-auto.fr », 1 ou 2 hashtags) ; "instagram" : légende Instagram (2 à 3 phrases, 1 à 3 emojis, puis 5 à 8 hashtags sur une ligne). Chaque texte a sa propre première phrase (pas un copier-coller de la légende TikTok).
+Ce qui marche sur NOTRE compte (priorité absolue) :
+- Le fondateur face caméra à côté de la voiture, SANS montage : "voice":"original" et UN SEUL extrait continu (8 à 45 s) d'un clip « fondateur face caméra », du début d'une phrase à la fin d'une idée. C'est le format de la majorité des propositions (au moins 6 sur 10) quand de tels clips existent.
+- Les vraies livraisons et les témoignages de clients (seulement les clips avec accord) : aussi en plan continu avec la voix d'origine dès que la parole est bonne.
+- Le montage avec voix off ("tts", plusieurs extraits) seulement pour les coulisses (arrivage, déchargement, remorque) ou quand aucun plan continu ne convient.
+- Ne jamais inventer de paroles : avec "original", "script" = ce qui est réellement dit dans l'extrait (transcription), et l'accroche colle à ce qui est dit.`;
 
 /** Prépare les propositions du jour (complète jusqu'à PER_DAY). */
 export async function planDay(db: Db, client: OpenAI, day = parisDay(), wanted = PER_DAY) {
   const existing = await listProposals(db, day);
   const missing = wanted - existing.length;
   if (missing <= 0) return { created: 0, rejected: [] as string[], proposals: existing };
+  // Les clips qui marchent passent devant : fondateur face caméra, livraisons et témoignages (avec accord), puis les plus récents.
+  const boost = (it: LibItem) => { const a = A(it); const sc = (a.scenes || []).join(" "); return (a.founder_on_camera ? 2 : 0) + (it.has_client && it.consent ? 2 : 0) + (/livraison|remise-des-cles|client/.test(sc) ? 1 : 0) + (a.quality || 3); };
   const items = (await listItems(db, { status: ["analysed"], limit: 300 })).filter(usable)
-    .sort((a, b) => (A(b).quality || 3) - (A(a).quality || 3) || b.created_at.localeCompare(a.created_at)).slice(0, 45);
+    .sort((a, b) => boost(b) - boost(a) || b.created_at.localeCompare(a.created_at)).slice(0, 45);
   if (!items.length) throw new Error("Aucune vidéo analysée et utilisable dans la bibliothèque (pensez à « Accord du client » pour les clips avec client).");
   const used = new Map<string, number>();
-  for (let i = 1; i <= 3; i++) for (const p of await listProposals(db, parisDay(new Date(Date.now() - i * 86400000))).catch(() => [])) for (const sg of p.segments) used.set(sg.clip, (used.get(sg.clip) || 0) + 1);
+  const pastHooks: string[] = [];
+  for (let i = 1; i <= 14; i++) for (const p of await listProposals(db, parisDay(new Date(Date.now() - i * 86400000))).catch(() => [])) {
+    if (i <= 3) for (const sg of p.segments) used.set(sg.clip, (used.get(sg.clip) || 0) + 1);
+    if (p.hook) pastHooks.push(p.hook);
+  }
   for (const p of existing) for (const sg of p.segments) used.set(sg.clip, (used.get(sg.clip) || 0) + 1);
   const clips = new Map(items.map(i => [i.id, i]));
   const angles = Object.entries(ANGLES).map(([k, v]) => `"${k}" : ${v}`).join("\n");
@@ -211,8 +260,8 @@ export async function planDay(db: Db, client: OpenAI, day = parisDay(), wanted =
 Angles possibles (varie, au moins 6 angles différents) :
 ${angles}
 ${RULES}${templatesPrompt(pickTemplates(day, checkText))}
-Réponds en json : {"proposals":[{"angle":"clé","title":"titre interne court","hook":"…","voice":"tts|original","script":"…","segments":[…],"caption":"…","hashtags":["…"]}]}`,
-    input: `Date : ${day}. Déjà proposé aujourd'hui : ${existing.map(p => `${p.angle} « ${p.hook} »`).join(" ; ") || "rien"}.\nClips disponibles :\n${catalog(items, used)}\nRéponds en json.`,
+Réponds en json : {"proposals":[{"angle":"clé","title":"titre interne court","hook":"…","voice":"tts|original","script":"…","segments":[…],"caption":"…","hashtags":["…"],"facebook":"…","instagram":"…"}]}`,
+    input: `Date : ${day}. Déjà proposé aujourd'hui : ${existing.map(p => `${p.angle} « ${p.hook} »`).join(" ; ") || "rien"}.\nAccroches des 14 derniers jours (interdit de les reprendre ou de commencer pareil) : ${pastHooks.slice(0, 60).map(h => `« ${h} »`).join(" ; ") || "aucune"}.\nClips disponibles :\n${catalog(items, used)}\nRéponds en json.`,
   });
   const j = JSON.parse(r.output_text.trim().replace(/^```json\s*/i, "").replace(/```\s*$/, "")) as { proposals?: Record<string, unknown>[] };
   const rejected: string[] = []; const created: Proposal[] = [];
@@ -233,7 +282,7 @@ export async function redoProposal(db: Db, client: OpenAI, p: Proposal, feedback
   for (let attempt = 0; attempt < 2; attempt++) {
     const r = await client.responses.create({
       model: LIB_MODEL(), max_output_tokens: 2500, text: { format: { type: "json_object" } },
-      instructions: `Tu es le directeur de contenu TikTok de NeoDrive. Refais UNE proposition de vidéo en tenant compte de la remarque du fondateur.\n${RULES}${templatesPrompt(pickTemplates(p.day, checkText, 4, 8))}${lastErr ? `\nLa version précédente a été refusée par le contrôle : ${lastErr}. Corrige.` : ""}\nRéponds en json : {"angle":"clé","title":"…","hook":"…","voice":"tts|original","script":"…","segments":[…],"caption":"…","hashtags":["…"]}`,
+      instructions: `Tu es le directeur de contenu TikTok de NeoDrive. Refais UNE proposition de vidéo en tenant compte de la remarque du fondateur.\n${RULES}${templatesPrompt(pickTemplates(p.day, checkText, 4, 8))}${lastErr ? `\nLa version précédente a été refusée par le contrôle : ${lastErr}. Corrige.` : ""}\nRéponds en json : {"angle":"clé","title":"…","hook":"…","voice":"tts|original","script":"…","segments":[…],"caption":"…","hashtags":["…"],"facebook":"…","instagram":"…"}`,
       input: `Angles : ${Object.keys(ANGLES).join(", ")}.\nProposition actuelle : ${JSON.stringify({ angle: p.angle, title: p.title, hook: p.hook, voice: p.voice, script: p.script, segments: p.segments, caption: p.caption })}\nRemarque du fondateur : « ${feedback} »\nClips disponibles :\n${catalog(items, new Map())}\nRéponds en json.`,
     });
     const j = JSON.parse(r.output_text.trim().replace(/^```json\s*/i, "").replace(/```\s*$/, "")) as Record<string, unknown>;

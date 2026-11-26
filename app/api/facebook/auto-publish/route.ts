@@ -1,22 +1,16 @@
 import { NextResponse } from "next/server";
-import { dailyPosterForPublishing } from "@/lib/marketing-posters";
-import { isVideoAsset, pickSocialTheme, type SocialTheme } from "@/lib/social-copy";
-import { buildCoherentSocialCopy } from "@/lib/social-copy-ai";
+import { planAutoPost, recordAutoPost } from "@/lib/social-autopost";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic="force-dynamic";
-export const maxDuration=90;
+export const maxDuration=180;
 
 const SB="https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 
-type Asset={id:string;storage_path:string;public_url:string;media_type:string;title:string|null;context:string|null;ai_summary:string|null;ai_tags:string[]|null;times_used:number|null;last_used_at:string|null;created_at:string};
 type Q={id:string;caption:string;media_url:string;content_type:string;hook?:string|null;retry_count:number|null;max_retries:number|null};
-type Kind="image"|"video";
 
 const H=(k:string)=>({Authorization:`Bearer ${k}`,apikey:k});
 const video=(t:string,u:string)=>/video|reel/i.test(t||"")||/\.(mp4|mov|m4v)(\?|$)/i.test(u||"");
-const eligible=(a:Asset)=>!/^generated\//.test(a.storage_path||"")&&!!a.public_url&&(video(a.media_type,a.public_url)||/\.(jpe?g|png|webp)(\?|$)/i.test(a.public_url));
-const kindOf=(a:Asset):Kind=>isVideoAsset(a)?"video":"image";
 
 async function getQueue(k:string){
   const u=new URL(`${SB}/rest/v1/social_content_queue`);
@@ -25,63 +19,8 @@ async function getQueue(k:string){
   const r=await fetch(u,{headers:H(k),cache:"no-store"});const j=await r.json();return r.ok&&j?.[0]?j[0] as Q:null;
 }
 
-async function recentTexts(k:string){
-  const u=new URL(`${SB}/rest/v1/social_content_queue`);
-  u.searchParams.set("platform","eq.facebook");u.searchParams.set("status","eq.published");u.searchParams.set("select","hook,caption");u.searchParams.set("order","updated_at.desc");u.searchParams.set("limit","30");
-  const r=await fetch(u,{headers:H(k),cache:"no-store"});const j=await r.json().catch(()=>[]);
-  if(!r.ok||!Array.isArray(j))return [] as string[];
-  return (j as Array<{hook?:unknown;caption?:unknown}>).map((x)=>`${String(x.hook||"")}\n${String(x.caption||"")}`);
-}
-
-async function lastPublishedKind(k:string):Promise<Kind|null>{
-  const u=new URL(`${SB}/rest/v1/social_content_queue`);
-  u.searchParams.set("platform","eq.facebook");u.searchParams.set("status","eq.published");u.searchParams.set("select","content_type,media_url");u.searchParams.set("order","updated_at.desc");u.searchParams.set("limit","1");
-  const r=await fetch(u,{headers:H(k),cache:"no-store"});const j=await r.json().catch(()=>[]);
-  if(!r.ok||!Array.isArray(j)||!j[0])return null;
-  return video(j[0].content_type||"",j[0].media_url||"")?"video":"image";
-}
-
-function randomFrom(list:Asset[]){if(!list.length)return null;return list[Math.floor(Math.random()*list.length)]||null;}
-
-function pickFromPool(list:Asset[],preferred:Kind|null){
-  const images=list.filter(a=>kindOf(a)==="image"),videos=list.filter(a=>kindOf(a)==="video");
-  const target=preferred==="image"?images:preferred==="video"?videos:(Math.random()<0.5?images:videos);
-  const fallback=preferred==="image"?videos:preferred==="video"?images:(target===images?videos:images);
-  const pool=target.length?target:fallback.length?fallback:list;
-  const cutoff=Date.now()-36*60*60*1000;
-  const cooled=pool.filter(a=>!a.last_used_at||new Date(a.last_used_at).getTime()<cutoff);
-  return randomFrom(cooled.length?cooled:pool);
-}
-
-async function getAsset(k:string,preferred:Kind|null=null){
-  const u=new URL(`${SB}/rest/v1/social_media_assets`);
-  u.searchParams.set("status","eq.ready");
-  u.searchParams.set("select","id,storage_path,public_url,media_type,title,context,ai_summary,ai_tags,times_used,last_used_at,created_at");
-  u.searchParams.set("order","created_at.asc");u.searchParams.set("limit","1000");
-  const r=await fetch(u,{headers:H(k),cache:"no-store"});const j=await r.json();if(!r.ok||!Array.isArray(j))return null;
-  const list=(j as Asset[]).filter(eligible);if(!list.length)return null;
-  return pickFromPool(list,preferred);
-}
-
-async function assetByUrl(k:string,url:string){
-  const u=new URL(`${SB}/rest/v1/social_media_assets`);
-  u.searchParams.set("public_url",`eq.${url}`);u.searchParams.set("select","id,storage_path,public_url,media_type,title,context,ai_summary,ai_tags,times_used,last_used_at,created_at");u.searchParams.set("limit","1");
-  const r=await fetch(u,{headers:H(k),cache:"no-store"});const j=await r.json().catch(()=>[]);
-  return r.ok&&Array.isArray(j)&&j[0]?j[0] as Asset:null;
-}
-
 async function patch(k:string,id:string,data:Record<string,unknown>){
   await fetch(`${SB}/rest/v1/social_content_queue?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{...H(k),"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({...data,updated_at:new Date().toISOString()}),cache:"no-store"});
-}
-
-async function mark(k:string,id:string){
-  const r=await fetch(`${SB}/rest/v1/social_media_assets?id=eq.${encodeURIComponent(id)}&select=times_used`,{headers:H(k),cache:"no-store"});const x=(await r.json().catch(()=>[]))?.[0];
-  await fetch(`${SB}/rest/v1/social_media_assets?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{...H(k),"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({times_used:Number(x?.times_used||0)+1,last_used_at:new Date().toISOString(),updated_at:new Date().toISOString()}),cache:"no-store"});
-}
-
-async function rememberFresh(k:string,a:Asset,theme:SocialTheme,msg:string,externalId:string){
-  const saved=await fetch(`${SB}/rest/v1/social_content_queue`,{method:"POST",headers:{...H(k),"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({platform:"facebook",content_type:isVideoAsset(a)?"reel":"post",hook:theme.hook,caption:msg,hashtags:[],media_brief:`fresh-library:${a.id}`,media_url:a.public_url,cta:"easydrive-auto.fr",publish_at:new Date().toISOString(),status:"published",requires_human_review:false,external_post_id:externalId,retry_count:0,max_retries:3}),cache:"no-store"});
-  if(!saved.ok)throw new Error("Publication réussie mais enregistrement impossible : vérifier le canal avant de réessayer");
 }
 
 async function pageToken(t:string,p:string){
@@ -95,43 +34,40 @@ async function publish(p:string,t:string,u:string,msg:string,v:boolean){
   const r=await fetch(ep,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:b});const j=await r.json();if(!r.ok||(!j.id&&!j.post_id)){const e=j?.error||{};throw new Error(`${e.message||"Facebook publish failed"}${e.code?` (code ${e.code})`:""}`);}return j.post_id||j.id;
 }
 
+/** Une publication par jour à partir d'un vrai média (lib/social-autopost : rotation des sujets, pas de répétition sur 14 jours).
+ * ?manual=1 : bouton « publier maintenant » (ignore la limite du jour) · ?queue=1 : publie l'élément préparé à la main dans la file
+ * · ?dry=1 : montre ce qui serait publié, sans rien publier. */
 export async function GET(req:Request){
   await applyStoredSecrets();
   const s=process.env.CRON_SECRET;if(!s||req.headers.get("authorization")!==`Bearer ${s}`)return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
   const k=process.env.SUPABASE_SERVICE_ROLE_KEY,t=process.env.FACEBOOK_PAGE_ACCESS_TOKEN,p=process.env.FACEBOOK_PAGE_ID;if(!k||!t||!p)return NextResponse.json({ok:false,error:"Configuration missing"},{status:503});
+  const sp=new URL(req.url).searchParams;
 
-  const posterMode=new URL(req.url).searchParams.get("poster")==="1";
-  let poster:Awaited<ReturnType<typeof dailyPosterForPublishing>>=null;
-  if(posterMode){
-    try{poster=await dailyPosterForPublishing(k,"facebook");}catch(e){return NextResponse.json({ok:false,error:e instanceof Error?e.message:"Poster lookup failed"},{status:500});}
-    if(!poster)return NextResponse.json({ok:true,skipped:true,reason:"Affiche absente ou déjà publiée sur ce canal"});
-  }
-  const fresh=posterMode||new URL(req.url).searchParams.get("fresh")==="1";
-  const q=fresh?null:await getQueue(k);
-  const recent=await recentTexts(k);
-  const previousKind=await lastPublishedKind(k);
-  const preferred:Kind|null=previousKind==="video"?"image":previousKind==="image"?"video":null;
-  const queuedAsset=q?.media_url?await assetByUrl(k,q.media_url):null;
-  const a=poster?.asset||queuedAsset||await getAsset(k,preferred);
-  if(!a)return NextResponse.json({ok:true,skipped:true,reason:"Aucun média réel compatible dans la bibliothèque"});
-
-  const theme=poster?.theme||pickSocialTheme(a,recent,`facebook-${q?.id||"fresh"}-${a.id}-${Date.now()}`);
-  const copy=poster?{hook:theme.hook,caption:poster.caption}:await buildCoherentSocialCopy({platform:"facebook",theme,asset:a,recentTexts:recent});
-  const msg=copy.caption;
-  const url=a.public_url;
-  const typ=a.media_type;
-
-  if(q){
-    await patch(k,q.id,{status:"publishing",hook:copy.hook,caption:msg,media_url:url,content_type:isVideoAsset(a)?"reel":"post",last_attempt_at:new Date().toISOString()});
+  if(sp.get("queue")==="1"){
+    const q=await getQueue(k);
+    if(!q)return NextResponse.json({ok:true,skipped:true,reason:"Rien dans la file"});
+    await patch(k,q.id,{status:"publishing",last_attempt_at:new Date().toISOString()});
+    try{
+      const pt=await pageToken(t,p);const id=await publish(p,pt,q.media_url,q.caption,video(q.content_type,q.media_url));
+      await patch(k,q.id,{status:"published",external_post_id:id,error_message:null});
+      return NextResponse.json({ok:true,published:true,source:"queue",postId:id,media:q.media_url,caption:q.caption});
+    }catch(e){
+      const n=Number(q.retry_count||0)+1,max=Number(q.max_retries||3);await patch(k,q.id,{status:n>=max?"failed":"scheduled",retry_count:n,last_attempt_at:new Date().toISOString(),...(n>=max?{}:{publish_at:new Date(Date.now()+60*60*1000).toISOString()}),error_message:e instanceof Error?e.message:"Unknown"});
+      return NextResponse.json({ok:false,error:e instanceof Error?e.message:"Unknown"},{status:500});
+    }
   }
 
+  const plan=await planAutoPost("facebook",{manual:sp.get("manual")==="1"});
+  if("skip" in plan)return NextResponse.json({ok:true,skipped:true,reason:plan.skip});
+  const m=plan.choice.media;
+  const info={pillar:plan.choice.pillar.id,source:m.source,media:m.source==="fabrique"?m.key:m.url,type:m.kind,hook:plan.hook,caption:plan.caption,ai:plan.ai,rejected:plan.rejected};
+  if(sp.get("dry")==="1")return NextResponse.json({ok:true,dryRun:true,...info});
   try{
-    const pt=await pageToken(t,p);const id=await publish(p,pt,url,msg,video(typ,url));
-    if(q){await patch(k,q.id,{status:"published",external_post_id:id,error_message:null});await mark(k,a.id);}
-    else{await mark(k,a.id);await rememberFresh(k,a,{...theme,hook:copy.hook},msg,id);}
-    return NextResponse.json({ok:true,published:true,source:posterMode?"daily-poster":q?"planned-slot-mixed-library":"fresh-mixed-library",postId:id,media:url,type:kindOf(a),theme:copy.hook,caption:msg});
+    const pt=await pageToken(t,p);const id=await publish(p,pt,m.url,plan.caption,m.kind==="video");
+    await recordAutoPost("facebook",plan,id);
+    return NextResponse.json({ok:true,published:true,postId:id,...info});
   }catch(e){
-    if(q){const n=Number(q.retry_count||0)+1,max=Number(q.max_retries||3);await patch(k,q.id,{status:n>=max?"failed":"scheduled",retry_count:n,last_attempt_at:new Date().toISOString(),...(n>=max?{}:{publish_at:new Date(Date.now()+60*60*1000).toISOString()}),error_message:e instanceof Error?e.message:"Unknown"});}
-    return NextResponse.json({ok:false,error:e instanceof Error?e.message:"Unknown"},{status:500});
+    console.error("[FACEBOOK] publication failed",{error:e instanceof Error?e.message:"Unknown",media:m.key});
+    return NextResponse.json({ok:false,error:e instanceof Error?e.message:"Unknown",...info},{status:500});
   }
 }

@@ -10,8 +10,8 @@ export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || passcode !== secret) return NextResponse.json({ ok:false,error:"Code d’accès incorrect" },{status:401});
   const origin = new URL(request.url).origin;
-  // Manual action must ignore old scheduled content and publish a fresh real upload.
-  const r = await fetch(`${origin}/api/instagram/auto-publish?force=1&fresh=1`,{headers:{Authorization:`Bearer ${secret}`},cache:"no-store"});
+  // Bouton « publier maintenant » : choisit un vrai média non publié depuis 14 jours, sans limite du jour.
+  const r = await fetch(`${origin}/api/instagram/auto-publish?manual=1`,{headers:{Authorization:`Bearer ${secret}`},cache:"no-store"});
   const data = await r.json().catch(()=>({}));
   return NextResponse.json(data,{status:r.status});
 }

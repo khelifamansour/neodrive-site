@@ -245,8 +245,9 @@ export default function Bibliotheque() {
 
     <h2>Vidéos ({items.length})</h2>
     {items.some(i => i.status === "uploaded") ? <button className="go" disabled={!!batch} onClick={analyseAll}>🧠 Analyser les {items.filter(i => i.status === "uploaded").length} vidéo(s) en attente</button> : null}
+    {items.some(i => i.status === "error") ? <button className="go" disabled={!!batch} onClick={async () => { try { await api({ action: "retry_errors" }); await load(); await analyseAll(); } catch (e) { setErr((e as Error).message); } }}>🔁 Réessayer les {items.filter(i => i.status === "error").length} vidéo(s) en erreur</button> : null}
     {batch ? <div className="busy">{batch}<div className="bar pulse"><i /></div></div> : null}
-    <p className="muted">L’analyse se fait aussi automatiquement toutes les 20 minutes.</p>
+    <p className="muted">L’analyse se fait aussi automatiquement toutes les 10 minutes (les vidéos en erreur sont reprises jusqu’à 3 fois).</p>
     {(() => { const it = items.find(i => i.id === sel); if (!it || !it.analysis) return null; const a = it.analysis as Record<string, unknown> & { best_moments?: { start: number; end: number; why: string; kind: string }[]; pii?: { start: number; end: number; label: string; visual: boolean }[]; hooks?: string[]; scenes?: string[] };
       return <section className="card det" id="det">
         <div className="head"><b>{it.name}</b><button className="link" onClick={() => setSel(null)}>Fermer</button></div>

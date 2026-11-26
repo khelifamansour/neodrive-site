@@ -6,6 +6,7 @@ type Proposal = {
   id: string; day: string; angle: string; title: string; hook: string; script: string; voice: "tts" | "original"; segments: Segment[];
   caption: string; hashtags: string[]; status: "draft" | "rendering" | "rendered" | "error"; duration: number | null; error: string | null;
   feedback: string | null; published: boolean; url: string | null; downloadUrl: string | null;
+  captions?: { facebook?: string; instagram?: string } | null;
 };
 type Lib = { total: number; usable: number; pending: number; needConsent: number };
 
@@ -86,6 +87,11 @@ export default function Fabrique() {
     finally { setOne(o => ({ ...o, [p.id]: false })); }
   };
   const publish = async (p: Proposal, v: boolean) => { put({ ...p, published: v }); try { const j = await api({ action: "update", id: p.id, day, published: v }); put(j.proposal); } catch (e) { setErr((e as Error).message); put(p); } };
+  const toTikTok = async (p: Proposal) => {
+    setOne(o => ({ ...o, [p.id]: true })); setErr(""); setInfo("");
+    try { const j = await api({ action: "tiktok", id: p.id, day }); setInfo("✅ " + (j.note || "Envoyée dans vos brouillons TikTok.") + " Collez la légende, publiez, puis cochez « Publiée sur TikTok »."); }
+    catch (e) { setErr((e as Error).message); } finally { setOne(o => ({ ...o, [p.id]: false })); }
+  };
   const copy = (t: string) => { navigator.clipboard?.writeText(t).then(() => setInfo("📋 Légende copiée."), () => setInfo("Copie impossible : sélectionnez le texte.")); };
 
   if (authed === null) return <main className="s"><p className="muted">Chargement…</p><style jsx>{css}</style></main>;
@@ -118,6 +124,8 @@ export default function Fabrique() {
       {p.downloadUrl && (!toCheck(p) || checked[p.id]) ? <a className="go dl" href={p.downloadUrl}>⬇️ Télécharger la vidéo{p.duration ? ` (${Math.round(p.duration)} s)` : ""}</a> : null}
       {(p.status === "draft" || p.status === "error") && !busy ? <button className="ghost" disabled={!!one[p.id]} onClick={() => renderOne(p)}>▶️ Fabriquer cette vidéo</button> : null}
       <div className="cap"><p>{p.caption}{p.hashtags.length ? "\n\n" + p.hashtags.join(" ") : ""}</p><button className="mini" onClick={() => copy(`${p.caption}\n\n${p.hashtags.join(" ")}`)}>Copier la légende</button></div>
+      {p.status === "rendered" ? <button className="ghost" disabled={!!one[p.id] || !!busy || (toCheck(p) && !checked[p.id])} onClick={() => toTikTok(p)}>📲 Envoyer en brouillon TikTok</button> : null}
+      {p.captions?.facebook || p.captions?.instagram ? <details><summary>Légendes Facebook et Instagram</summary>{(["facebook", "instagram"] as const).map(k => p.captions?.[k] ? <div className="cap" key={k}><small className="muted">{k === "facebook" ? "Facebook" : "Instagram"}</small><p>{p.captions[k]}</p><button className="mini" onClick={() => copy(p.captions?.[k] || "")}>Copier</button></div> : null)}<p className="muted">Une fois cochée « Publiée sur TikTok », la vidéo peut aussi partir automatiquement sur Facebook et Instagram (1 publication par jour, jamais deux fois en 14 jours).</p></details> : null}
       <details><summary>Script et extraits</summary><p className="script">{p.script}</p><ul>{p.segments.map((s, k) => <li key={k}>{s.clip.slice(-5)} : {s.start.toFixed(1)}–{s.end.toFixed(1)} s{s.why ? ` — ${s.why}` : ""}</li>)}</ul>{p.feedback ? <p className="muted">Dernière remarque : « {p.feedback} »</p> : null}</details>
       <label className="pub"><input type="checkbox" checked={p.published} onChange={e => publish(p, e.target.checked)} /> Publiée sur TikTok</label>
       <div className="redo"><textarea rows={2} placeholder="Refaire : ex. « accroche plus courte », « utilise la vidéo de la remorque », « parle du financement »" value={fb[p.id] || ""} onChange={e => setFb(f => ({ ...f, [p.id]: e.target.value }))} /><button className="ghost" disabled={!!one[p.id] || !!busy} onClick={() => redo(p)}>↻ Refaire</button></div>

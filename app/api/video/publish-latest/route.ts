@@ -79,7 +79,7 @@ export async function POST(req: Request) {
   const result: any = { ok: true, video: job.output_url, jobId: job.id, theme: theme.hook, caption };
 
   if (platforms.includes("instagram")) {
-    const ir = await fetch(`${origin}/api/instagram/auto-publish?force=1`, {
+    const ir = await fetch(`${origin}/api/instagram/auto-publish?queue=1`, {
       headers: { Authorization: `Bearer ${secret}` },
       cache: "no-store",
     });
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     if (!ir.ok || !ij.ok) result.ok = false;
   }
   if (platforms.includes("facebook")) {
-    const fr = await fetch(`${origin}/api/facebook/auto-publish?force=1`, {
+    const fr = await fetch(`${origin}/api/facebook/auto-publish?queue=1`, {
       headers: { Authorization: `Bearer ${secret}` },
       cache: "no-store",
     });

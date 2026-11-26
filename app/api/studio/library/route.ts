@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { authorizeSection, logSection } from "../../../../lib/access";
 import { crmDatabase } from "../../../../lib/crm-agent";
 import { BUCKET } from "../../../../lib/studio-video";
-import { analyseItem } from "../../../../lib/video-analysis";
+import { MAX_ATTEMPTS, analyseItem, attemptOf, permanentError, storedSize } from "../../../../lib/video-analysis";
 import {
   LIB_MAX_BYTES, blankItem, deleteItem, getItem, libId, libPath, listItems, patchItem, readTicket, reconcile, safeLibId, saveItem, signTicket,
   type LibItem,
@@ -43,14 +43,27 @@ async function withUrls(db: Db, items: LibItem[]) {
   return items.map(i => ({ ...i, transcript: undefined, posterUrl: i.poster_path ? map.get(i.poster_path) || null : null, hasTranscript: !!i.transcript }));
 }
 
-/** Analyse les vidéos en attente, une par une, tant qu'il reste du temps dans l'appel (Vercel : 300 s). */
-async function processQueue(db: Db, client: OpenAI, max = 3, budgetMs = 150000) {
+/** Analyse les vidéos en attente, une par une. On ne commence une nouvelle vidéo que si l'appel a encore le temps de la finir
+ * (Vercel : 300 s) : sinon la fonction était coupée en pleine analyse et la vidéo restait bloquée « Analyse… ».
+ * Les vidéos en erreur passagère (lecture, délai) sont reprises automatiquement, 3 essais au total. */
+async function processQueue(db: Db, client: OpenAI, max = 3, startBudgetMs = 60000) {
   const t0 = Date.now(); const done: { id: string; ok: boolean; error?: string }[] = [];
   const stale = Date.now() - 12 * 60000;
-  const all = await listItems(db, { status: ["uploaded", "analysing"], limit: 200 });
-  const todo = all.filter(i => i.status === "uploaded" || new Date(i.updated_at).getTime() < stale).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const all = await listItems(db, { status: ["uploaded", "analysing", "error"], limit: 400 });
+  const todo: LibItem[] = [];
+  for (const i of all) {
+    if (i.status === "uploaded") { todo.push(i); continue; }
+    if (i.status === "analysing" && new Date(i.updated_at).getTime() >= stale) continue;
+    if (i.status === "error" && (permanentError(i.error) || new Date(i.updated_at).getTime() >= Date.now() - 10 * 60000)) continue;
+    if (attemptOf(i) >= MAX_ATTEMPTS) {
+      if (i.status === "analysing") await patchItem(db, i.id, { status: "error", error: "Analyse trop longue (3 essais) : raccourcissez la vidéo ou renvoyez-la." }).catch(() => null);
+      continue;
+    }
+    todo.push(i);
+  }
+  todo.sort((a, b) => (a.status === "uploaded" ? 0 : 1) - (b.status === "uploaded" ? 0 : 1) || a.created_at.localeCompare(b.created_at));
   for (const it of todo) {
-    if (done.length >= max || Date.now() - t0 > budgetMs) break;
+    if (done.length >= max || Date.now() - t0 > startBudgetMs) break;
     try { await analyseItem(db, client, it); done.push({ id: it.id, ok: true }); }
     catch (e) { const m = (e as Error).message.slice(0, 200); await patchItem(db, it.id, { status: "error", error: m }).catch(() => null); done.push({ id: it.id, ok: false, error: m }); }
   }
@@ -73,6 +86,9 @@ export async function POST(req: Request) {
       if (action === "retoken") return NextResponse.json({ ok: true, ...(await uploadSlot(db, t.path)), path: t.path });
       const { data: exists } = await db.storage.from(BUCKET).exists(t.path);
       if (!exists) return fail("Fichier absent du stockage : l’envoi n’est pas terminé.", 409);
+      // Fichier coupé pendant l'envoi (réseau, arrière-plan) : refusé ici pour que le téléphone le renvoie, au lieu d'une « vidéo illisible » plus tard.
+      const got = await storedSize(db, t.path).catch(() => -1);
+      if (t.size && got >= 0 && got < t.size * 0.98) return fail(`Envoi incomplet (${Math.round(got / 1048576)} Mo reçus sur ${Math.round(t.size / 1048576)} Mo) : la vidéo va être renvoyée.`, 409);
       const prev = await getItem(db, t.id);
       const posterPath = typeof b.poster === "string" && b.poster === `${t.path}.jpg` ? b.poster : null;
       const it = prev || blankItem({ id: t.id, path: t.path, name: t.name, size: t.size, mime: t.mime || null, uploaded_by: t.by });
@@ -108,7 +124,7 @@ export async function POST(req: Request) {
 
     if (action === "queue") {
       const key = process.env.OPENAI_API_KEY; if (!key) return fail("Clé IA absente", 503);
-      const q = await processQueue(db, new OpenAI({ apiKey: key }), Math.min(5, Number(b.max) || 2));
+      const q = await processQueue(db, new OpenAI({ apiKey: key }), Math.min(5, Number(b.max) || 2), 45000);
       return NextResponse.json({ ok: true, ...q });
     }
 
@@ -116,6 +132,14 @@ export async function POST(req: Request) {
       let items = await listItems(db, { limit: 400 });
       if (b.reconcile !== false) { const added = await reconcile(db, items).catch(() => []); if (added.length) items = [...added, ...items].sort((x, y) => y.created_at.localeCompare(x.created_at)); }
       return NextResponse.json({ ok: true, items: await withUrls(db, items) });
+    }
+
+    if (action === "retry_errors") {
+      // Remet en file les vidéos en erreur (sauf envoi incomplet : il faut renvoyer le fichier).
+      const errs = (await listItems(db, { status: ["error"], limit: 400 })).filter(i => !/^(Envoi incomplet|Fichier vide)/.test(i.error || ""));
+      for (const i of errs) await patchItem(db, i.id, { status: "uploaded", error: null }).catch(() => null);
+      await logSection(acc, "studio_library_retry", { n: errs.length });
+      return NextResponse.json({ ok: true, requeued: errs.length });
     }
 
     const id = safeLibId(b.id);
@@ -130,7 +154,7 @@ export async function POST(req: Request) {
     if (action === "analyse") {
       const key = process.env.OPENAI_API_KEY; if (!key) return fail("Clé IA absente", 503);
       try {
-        const next = await analyseItem(db, new OpenAI({ apiKey: key }), it);
+        const next = await analyseItem(db, new OpenAI({ apiKey: key }), { ...it, error: null });
         await logSection(acc, "studio_library_analyse", { id });
         return NextResponse.json({ ok: true, item: { ...(await withUrls(db, [next]))[0] } });
       } catch (e) {
@@ -165,6 +189,6 @@ export async function GET(req: Request) {
   const acc = await authorizeSection(req, null, "contenu");
   if (!acc) return fail("Non autorisé", 401);
   const key = process.env.OPENAI_API_KEY; if (!key) return fail("Clé IA absente", 503);
-  try { return NextResponse.json({ ok: true, ...(await processQueue(crmDatabase(), new OpenAI({ apiKey: key }), 4, 200000)) }); }
+  try { return NextResponse.json({ ok: true, ...(await processQueue(crmDatabase(), new OpenAI({ apiKey: key }), 4, 60000)) }); }
   catch (e) { return fail("Erreur : " + (e as Error).message.slice(0, 200), 500); }
 }
