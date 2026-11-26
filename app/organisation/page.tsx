@@ -20,6 +20,7 @@ const TILES: Tile[] = [
   { href: "/conteneurs", icon: "🚢", title: "Conteneurs", text: "Les arrivages, les documents d’import et les numéros de série.", section: "conteneurs" },
   { href: "/logistique", icon: "🏗️", title: "Logistique", text: "Les prestataires de dépotage, de stockage et de transport.", section: "logistique" },
   { href: "/logistique/dechargement", icon: "⚠️", title: "Déchargement conteneurs", text: "La procédure complète à envoyer aux prestataires avant chaque conteneur : matériel, étapes, photos.", section: "logistique|conteneurs" },
+  { href: "/marketing/annonce-leboncoin", icon: "🏷️", title: "Annonce Leboncoin type", text: "Le modèle d’annonce NeoDrive : choisir la ville, copier le titre et le texte.", section: "contenu" },
   { href: "/contenu", icon: "🎬", title: "Contenu", text: "Photos, vidéos, catalogue et documents à télécharger.", section: "contenu" },
   { href: "/studio/bibliotheque", icon: "📚", title: "Bibliothèque vidéo", text: "Envoyer tous les rushes d’un coup depuis la galerie du téléphone, même écran éteint.", section: "contenu" },
   { href: "/studio/fabrique", icon: "🏭", title: "Fabrique TikTok", text: "Chaque jour, 10 vidéos TikTok proposées à partir de la bibliothèque.", section: "contenu" },
