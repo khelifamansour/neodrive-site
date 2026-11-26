@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { consumeDryToken, planAutoPost, recordAutoPost } from "@/lib/social-autopost";
+import { claimSlot, consumeDryToken, planAutoPost, recordAutoPost } from "@/lib/social-autopost";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic="force-dynamic";
@@ -59,11 +59,12 @@ export async function GET(req:Request){
     }
   }
 
-  const plan=await planAutoPost("facebook",{manual:sp.get("manual")==="1"});
+  const plan=await planAutoPost("facebook",{manual:sp.get("manual")==="1"||sp.get("dry")==="1"});
   if("skip" in plan)return NextResponse.json({ok:true,skipped:true,reason:plan.skip});
   const m=plan.choice.media;
   const info={pillar:plan.choice.pillar.id,source:m.source,media:m.source==="fabrique"?m.key:m.url,type:m.kind,hook:plan.hook,caption:plan.caption,ai:plan.ai,rejected:plan.rejected};
   if(sp.get("dry")==="1")return NextResponse.json({ok:true,dryRun:true,...info});
+  if(sp.get("manual")!=="1"&&!(await claimSlot("facebook")))return NextResponse.json({ok:true,skipped:true,reason:"Créneau déjà pris (tâche lancée deux fois)"});
   try{
     const pt=await pageToken(t,p);const id=await publish(p,pt,m.url,plan.caption,m.kind==="video");
     await recordAutoPost("facebook",plan,id);

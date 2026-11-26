@@ -386,3 +386,11 @@ export async function consumeDryToken(token: string | null) {
   const { data } = await crmDatabase().from("admin_once_tokens").update({ used_at: new Date().toISOString() }).eq("token", token).eq("purpose", "social-dry").is("used_at", null).gt("expires_at", new Date().toISOString()).select("token");
   return !!data?.length;
 }
+
+/** Un seul envoi par réseau et par créneau horaire, même si la tâche est lancée plusieurs fois à la même minute
+ * (le dépôt est relié à plusieurs projets Vercel) : la clé primaire de admin_once_tokens sert de verrou. */
+export async function claimSlot(platform: Platform, now = new Date()) {
+  const token = `autopost-${platform}-${now.toISOString().slice(0, 13)}`;
+  const { error } = await crmDatabase().from("admin_once_tokens").insert({ token, purpose: "autopost-slot", payload: {}, expires_at: new Date(now.getTime() + 2 * 86400000).toISOString(), used_at: now.toISOString() });
+  return !error;
+}
