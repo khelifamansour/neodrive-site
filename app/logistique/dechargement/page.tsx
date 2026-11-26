@@ -3,9 +3,12 @@ import { useEffect, useState } from "react";
 
 /** Consignes de sécurité pour le dépotage des conteneurs : même accès que Logistique / Conteneurs (membre avec l’une des deux sections, ou le fondateur). */
 const C = { bg: "#f6f4f0", ink: "#141414", mute: "#666", line: "#e5e0d8", brand: "#f05a28", red: "#b91c1c", green: "#15803d" };
-const PDF = "/depotage/consignes-dechargement-neodrive.pdf";
-const PDF_URL = "https://www.easydrive-auto.fr/depotage/consignes-dechargement-neodrive.pdf";
-const WA = `https://wa.me/?text=${encodeURIComponent(`⚠️ NeoDrive – Consignes de sécurité pour le déchargement des conteneurs. À lire avant chaque dépotage : ${PDF_URL}`)}`;
+const PDF = "/depotage/livret-dechargement-neodrive.pdf";
+const PAGE_URL = "https://www.easydrive-auto.fr/procedure-dechargement";
+const PDF_URL = "https://www.easydrive-auto.fr/depotage/livret-dechargement-neodrive.pdf";
+const SHARE = `Bonjour, voici la procédure NeoDrive pour le déchargement de nos conteneurs (matériel, étapes, points de levage, photos) : ${PAGE_URL}\nLivret PDF : ${PDF_URL}\nMerci de la lire avant le dépotage. Mansour – NeoDrive, 06 89 78 17 10`;
+const WA = `https://wa.me/?text=${encodeURIComponent(SHARE)}`;
+const MAIL = `mailto:?subject=${encodeURIComponent("Procédure de déchargement des conteneurs NeoDrive")}&body=${encodeURIComponent(SHARE)}`;
 const PHONE = "06 89 78 17 10";
 
 const RULES: { title: string; text: React.ReactNode }[] = [
@@ -120,9 +123,13 @@ export default function Dechargement() {
         </section>
 
         <section style={{ ...card, display: "grid", gap: 10 }}>
-          <a href={PDF} target="_blank" rel="noreferrer" download style={btn(C.ink)}>📄 Télécharger la plaquette (PDF)</a>
-          <a href={WA} target="_blank" rel="noreferrer" style={btn("#16a34a")}>💬 Partager sur WhatsApp</a>
-          <p style={{ color: C.mute, fontSize: 13, margin: 0 }}>Envoyez la plaquette au cariste et au prestataire de dépotage avant l’arrivée du conteneur.</p>
+          <h2 style={{ fontSize: 20, margin: 0 }}>Envoyer la procédure au prestataire</h2>
+          <p style={{ color: C.mute, fontSize: 14, margin: 0 }}>Page complète avec matériel, 8 étapes, points de levage de l’usine et photos. À envoyer au prestataire et au cariste avant chaque arrivée de conteneur.</p>
+          <a href="/procedure-dechargement" target="_blank" rel="noreferrer" style={btn(C.brand)}>👀 Voir la procédure complète</a>
+          <a href={WA} target="_blank" rel="noreferrer" style={btn("#16a34a")}>💬 Envoyer par WhatsApp</a>
+          <a href={MAIL} style={btn("#1d4ed8")}>✉️ Envoyer par e-mail</a>
+          <button onClick={() => { try { navigator.clipboard.writeText(PAGE_URL); alert("Lien copié"); } catch { prompt("Lien à copier", PAGE_URL); } }} style={{ ...btn("#57534e"), border: 0, font: "inherit", fontWeight: 800, fontSize: 16, cursor: "pointer" }}>🔗 Copier le lien</button>
+          <a href={PDF} target="_blank" rel="noreferrer" download style={btn(C.ink)}>📄 Télécharger le livret (PDF)</a>
         </section>
       </>}
     </div>

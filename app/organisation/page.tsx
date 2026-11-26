@@ -19,7 +19,7 @@ const TILES: Tile[] = [
   { href: "/vehicules", icon: "🚗", title: "Suivi des voitures", text: "Chaque voiture, du conteneur jusqu’au client.", section: "vehicules" },
   { href: "/conteneurs", icon: "🚢", title: "Conteneurs", text: "Les arrivages, les documents d’import et les numéros de série.", section: "conteneurs" },
   { href: "/logistique", icon: "🏗️", title: "Logistique", text: "Les prestataires de dépotage, de stockage et de transport.", section: "logistique" },
-  { href: "/logistique/dechargement", icon: "⚠️", title: "Déchargement conteneurs", text: "Consignes de sécurité pour le dépotage", section: "logistique|conteneurs" },
+  { href: "/logistique/dechargement", icon: "⚠️", title: "Déchargement conteneurs", text: "La procédure complète à envoyer aux prestataires avant chaque conteneur : matériel, étapes, photos.", section: "logistique|conteneurs" },
   { href: "/contenu", icon: "🎬", title: "Contenu", text: "Photos, vidéos, catalogue et documents à télécharger.", section: "contenu" },
   { href: "/studio/bibliotheque", icon: "📚", title: "Bibliothèque vidéo", text: "Envoyer tous les rushes d’un coup depuis la galerie du téléphone, même écran éteint.", section: "contenu" },
   { href: "/studio/fabrique", icon: "🏭", title: "Fabrique TikTok", text: "Chaque jour, 10 vidéos TikTok proposées à partir de la bibliothèque.", section: "contenu" },
