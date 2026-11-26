@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { planAutoPost, recordAutoPost } from "@/lib/social-autopost";
+import { consumeDryToken, planAutoPost, recordAutoPost } from "@/lib/social-autopost";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic="force-dynamic";
@@ -34,16 +34,18 @@ async function publish(p:string,t:string,u:string,msg:string,v:boolean){
   const r=await fetch(ep,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:b});const j=await r.json();if(!r.ok||(!j.id&&!j.post_id)){const e=j?.error||{};throw new Error(`${e.message||"Facebook publish failed"}${e.code?` (code ${e.code})`:""}`);}return j.post_id||j.id;
 }
 
-/** Une publication par jour à partir d'un vrai média (lib/social-autopost : rotation des sujets, pas de répétition sur 14 jours).
- * ?manual=1 : bouton « publier maintenant » (ignore la limite du jour) · ?queue=1 : publie l'élément préparé à la main dans la file
+/** Jusqu'à 3 publications par jour (créneaux du cron ~8 h 30, 12 h 30, 18 h 30) à partir d'un vrai média (lib/social-autopost : rotation des sujets, pas de répétition sur 14 jours).
+ * ?manual=1 : bouton « publier maintenant » (ignore la limite du jour) · ?dry=1&once=<jeton social-dry> : aperçu sans le secret du cron · ?queue=1 : publie l'élément préparé à la main dans la file
  * · ?dry=1 : montre ce qui serait publié, sans rien publier. */
 export async function GET(req:Request){
   await applyStoredSecrets();
-  const s=process.env.CRON_SECRET;if(!s||req.headers.get("authorization")!==`Bearer ${s}`)return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
-  const k=process.env.SUPABASE_SERVICE_ROLE_KEY,t=process.env.FACEBOOK_PAGE_ACCESS_TOKEN,p=process.env.FACEBOOK_PAGE_ID;if(!k||!t||!p)return NextResponse.json({ok:false,error:"Configuration missing"},{status:503});
   const sp=new URL(req.url).searchParams;
+  const s=process.env.CRON_SECRET;
+  const dryOnly=sp.get("dry")==="1"&&await consumeDryToken(sp.get("once"));
+  if(!dryOnly&&(!s||req.headers.get("authorization")!==`Bearer ${s}`))return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
+  const k=process.env.SUPABASE_SERVICE_ROLE_KEY,t=process.env.FACEBOOK_PAGE_ACCESS_TOKEN,p=process.env.FACEBOOK_PAGE_ID;if(!k||!t||!p)return NextResponse.json({ok:false,error:"Configuration missing"},{status:503});
 
-  if(sp.get("queue")==="1"){
+  if(sp.get("queue")==="1"&&!dryOnly){
     const q=await getQueue(k);
     if(!q)return NextResponse.json({ok:true,skipped:true,reason:"Rien dans la file"});
     await patch(k,q.id,{status:"publishing",last_attempt_at:new Date().toISOString()});

@@ -1,9 +1,10 @@
-/** Publication automatique Facebook / Instagram (1 par jour et par réseau) à partir de VRAIS médias :
+/** Publication automatique Facebook / Instagram (jusqu'à 3 par jour et par réseau : ~8 h 30, ~12 h 30, ~18 h 30) à partir de VRAIS médias :
  * photos et vidéos de la bibliothèque réseaux sociaux (social_media_assets, envoyées depuis /social-upload ou /studio)
  * et vidéos de la Fabrique que le fondateur a validées (« Publiée sur TikTok »).
  *
  * - Rotation des types de contenu (livraison client, témoignage, question fréquente, prix / stock, comparaison, coulisses).
- * - Jamais le même média ni la même accroche sur un réseau pendant 14 jours (historique : social_content_queue).
+ * - Jamais le même média ni la même accroche sur un réseau pendant 14 jours (historique : social_content_queue), y compris
+ *   une même vidéo envoyée deux fois (même nom de fichier de la galerie). Pas assez de médias neufs : on publie moins, jamais une répétition.
  * - Les médias les plus récents passent en premier.
  * - Légende écrite par l'IA avec contraintes de variété, contrôlée (chiffres, concurrents, type de batterie, citations),
  *   sinon modèle de secours. Serveur uniquement. */
@@ -21,10 +22,15 @@ export type PillarId = "livraison" | "temoignage" | "faq" | "prix_stock" | "comp
 type Kind = "image" | "video";
 
 export const NO_REPEAT_DAYS = 14;
+/** Publications automatiques par jour et par réseau, et écart minimal entre deux (évite un doublon si la tâche repasse). */
+export const PER_DAY = 3;
+const MIN_GAP_MS = 150 * 60000;
 const SITE = "https://www.easydrive-auto.fr";
 
 export type Media = {
-  key: string; source: "bibliotheque" | "fabrique"; assetId: string | null; url: string; kind: Kind; created_at: string;
+  key: string;
+  /** Identité du contenu : le nom de fichier de la galerie (1000160849.mp4) pour une vidéo envoyée plusieurs fois, sinon la clé. */
+  sig: string; source: "bibliotheque" | "fabrique"; assetId: string | null; url: string; kind: Kind; created_at: string;
   title: string; evidence: string; text: string; angle: string | null; timesUsed: number;
   /** Légendes relues par le fondateur dans la Fabrique (prioritaires si elles passent les contrôles). */
   prewritten?: Partial<Record<Platform, string>>;
@@ -190,7 +196,7 @@ async function libraryMedia(db: Db): Promise<Media[]> {
       const evidence = [a.context && `Note de l'équipe : ${clean(a.context)}`, a.ai_summary && `Analyse du média : ${clean(a.ai_summary)}`,
         a.ai_tags?.length && `Tags : ${a.ai_tags.slice(0, 8).join(", ")}`, a.title && `Nom du fichier : ${clean(a.title, 120)}`].filter(Boolean).join("\n");
       return {
-        key: `asset:${a.id}`, source: "bibliotheque" as const, assetId: a.id, url: a.public_url, kind: isVideo(a.media_type, a.public_url) ? "video" as const : "image" as const,
+        key: `asset:${a.id}`, sig: /^\d{6,}\.(mp4|mov|m4v|jpe?g|png|heic)$/i.test(a.title || "") ? `file:${(a.title || "").toLowerCase()}` : `asset:${a.id}`, source: "bibliotheque" as const, assetId: a.id, url: a.public_url, kind: isVideo(a.media_type, a.public_url) ? "video" as const : "image" as const,
         created_at: a.created_at, title: clean(a.title, 120), evidence, text: `${a.context || ""} ${a.title || ""} ${a.ai_summary || ""} ${(a.ai_tags || []).join(" ")}`, angle: null, timesUsed: Number(a.times_used || 0),
       };
     });
@@ -211,7 +217,7 @@ async function fabriqueMedia(db: Db): Promise<Media[]> {
   return ok.flatMap(p => {
     const url = urls.get(p.render_path as string); if (!url) return [];
     const evidence = [`Vidéo montée à partir de nos rushes réels, validée par le fondateur.`, `Accroche à l'écran : ${clean(p.hook, 160)}`, `Texte de la vidéo : ${clean(p.script, 700)}`].join("\n");
-    return [{ key: `fabrique:${p.id}`, source: "fabrique" as const, assetId: null, url, kind: "video" as const, created_at: p.created_at, title: clean(p.title, 120), evidence, text: `${p.title} ${p.hook} ${p.script}`, angle: p.angle, timesUsed: 0, prewritten: { facebook: p.captions?.facebook, instagram: p.captions?.instagram } }];
+    return [{ key: `fabrique:${p.id}`, sig: `fabrique:${p.id}`, source: "fabrique" as const, assetId: null, url, kind: "video" as const, created_at: p.created_at, title: clean(p.title, 120), evidence, text: `${p.title} ${p.hook} ${p.script}`, angle: p.angle, timesUsed: 0, prewritten: { facebook: p.captions?.facebook, instagram: p.captions?.instagram } }];
   });
 }
 
@@ -220,7 +226,7 @@ const specific = (m: Media) => pillars().some(p => p.match && matches(p, m));
 
 // ───────────── historique ─────────────
 type HistRow = { media_url: string | null; media_brief: string | null; hook: string | null; caption: string | null; updated_at: string };
-export type History = { rows: HistRow[]; usedKeys: Set<string>; usedUrls: Set<string>; recentTexts: string[]; pillarsOrder: PillarId[]; lastTags: string; today: number };
+export type History = { rows: HistRow[]; usedKeys: Set<string>; usedUrls: Set<string>; usedSigs: Set<string>; recentTexts: string[]; pillarsOrder: PillarId[]; lastTags: string; today: number; lastAt: number };
 
 export function parseBrief(b: string | null) {
   const m = /^auto\|([a-z_]+)\|(\d+)\|(.+)$/.exec(b || "");
@@ -241,7 +247,7 @@ export async function loadHistory(db: Db, platform: Platform, now = new Date()):
   const pillarsOrder = rows.map(r => parseBrief(r.media_brief)?.pillar).filter((x): x is PillarId => !!x);
   const today = parisDay(now);
   return {
-    rows, usedKeys, usedUrls, pillarsOrder,
+    rows, usedKeys, usedUrls, usedSigs: new Set<string>(), pillarsOrder, lastAt: rows[0] ? new Date(rows[0].updated_at).getTime() : 0,
     recentTexts: recent.map(r => `${r.hook || ""}\n${r.caption || ""}`.trim()).filter(Boolean).slice(0, 30),
     lastTags: rows[0]?.caption?.match(/#\w+/g)?.join(" ") || "",
     today: rows.filter(r => parisDay(new Date(r.updated_at)) === today).length,
@@ -252,7 +258,11 @@ export async function loadHistory(db: Db, platform: Platform, now = new Date()):
 export type Choice = { pillar: Pillar; media: Media; style: number };
 
 export function choose(media: Media[], h: History, platform: Platform): Choice | null {
-  const fresh = media.filter(m => !h.usedKeys.has(m.key) && !h.usedUrls.has(m.url.split("?")[0]));
+  const used = (m: Media) => h.usedKeys.has(m.key) || h.usedUrls.has(m.url.split("?")[0]);
+  // Même contenu (même vidéo envoyée deux fois) déjà publié : exclu aussi.
+  for (const m of media) if (used(m)) h.usedSigs.add(m.sig);
+  const seen = new Set<string>();
+  const fresh = media.filter(m => !used(m) && !h.usedSigs.has(m.sig) && !seen.has(m.sig) && (seen.add(m.sig), true));
   if (!fresh.length) return null;
   // Sujet publié le moins récemment d'abord ; à égalité, ordre décalé selon le réseau pour que Facebook et Instagram diffèrent le même jour.
   const offset = platform === "instagram" ? 3 : 0;
@@ -347,7 +357,8 @@ export async function planAutoPost(platform: Platform, opts: { manual?: boolean 
   // Anciens créneaux de l'ancien planificateur (4 par jour) : on les retire pour qu'ils ne repassent jamais.
   await db.from("social_content_queue").delete().eq("platform", platform).eq("status", "scheduled").like("media_brief", "real-upload:%");
   const h = await loadHistory(db, platform);
-  if (!opts.manual && h.today >= 1) return { skip: `Déjà une publication aujourd'hui sur ${platform} (1 par jour maximum).` };
+  if (!opts.manual && h.today >= PER_DAY) return { skip: `Déjà ${h.today} publications aujourd'hui sur ${platform} (${PER_DAY} par jour maximum).` };
+  if (!opts.manual && h.lastAt && Date.now() - h.lastAt < MIN_GAP_MS) return { skip: `Dernière publication sur ${platform} il y a moins de 2 h 30 : on attend le prochain créneau.` };
   const media = [...await libraryMedia(db), ...await fabriqueMedia(db)];
   if (!media.length) return { skip: "Aucune vraie photo ou vidéo dans la bibliothèque." };
   const choice = choose(media, h, platform);
@@ -367,4 +378,11 @@ export async function recordAutoPost(platform: Platform, plan: Extract<Plan, { c
   });
   if (m.assetId) await db.from("social_media_assets").update({ times_used: m.timesUsed + 1, last_used_at: now, updated_at: now }).eq("id", m.assetId);
   if (error) throw new Error("Publication réussie mais enregistrement impossible : vérifier le réseau avant de relancer");
+}
+
+/** Aperçu sans publier (?dry=1&once=…) autorisé par un jeton à usage unique (admin_once_tokens, purpose « social-dry »). */
+export async function consumeDryToken(token: string | null) {
+  if (!token || !/^[A-Za-z0-9_-]{20,100}$/.test(token)) return false;
+  const { data } = await crmDatabase().from("admin_once_tokens").update({ used_at: new Date().toISOString() }).eq("token", token).eq("purpose", "social-dry").is("used_at", null).gt("expires_at", new Date().toISOString()).select("token");
+  return !!data?.length;
 }

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  allBatches, backgroundSupported, dropBatch, keepAwake, readVideoMeta, registerUploadWorker, startBackground, takeSharedFiles, uploadInPage, watchBackground,
+  allBatches, dropBatch, keepAwake, readVideoMeta, registerUploadWorker, takeSharedFiles, uploadInPage, watchBackground,
   type JobState, type StoredBatch, type UploadJob,
 } from "../../../lib/bg-upload";
 
@@ -10,14 +10,22 @@ type Item = {
   posterUrl: string | null; status: "uploaded" | "analysing" | "analysed" | "error"; consent: boolean; has_client: boolean; tags: string[];
   analysis: Record<string, unknown> | null; error: string | null; created_at: string;
 };
-type Slot = { name: string; id?: string; path?: string; signedUrl?: string; bgUrl?: string | null; token?: string; poster?: { path: string; signedUrl: string }; ticket?: string; error?: string };
+type Slot = { name: string; id?: string; path?: string; signedUrl?: string; bgUrl?: string | null; token?: string; poster?: { path: string; signedUrl: string }; ticket?: string; error?: string; duplicate?: boolean };
 type Row = { key: string; name: string; size: number; status: JobState["status"] | "prep"; sent: number; error?: string; bg?: boolean };
 
 const TUS = "https://tzlsdjzcxdjaatcpwqwn.storage.supabase.co/storage/v1/upload/resumable/sign";
 const API = "/api/studio/library";
-const BG_OFF = "nd_bg_off";
-const bgOff = () => { try { return localStorage.getItem(BG_OFF) === "1"; } catch { return false; } };
-const setBgOff = (v: boolean) => { try { if (v) localStorage.setItem(BG_OFF, "1"); else localStorage.removeItem(BG_OFF); } catch { /* privé */ } };
+/** Envois commencés et pas encore enregistrés (fichier → ticket) : en rechoisissant la même vidéo, l'envoi reprend au même endroit. */
+const PENDING = "nd_lib_pending";
+const fileKey = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
+const readPending = (): Record<string, { ticket: string; t: number }> => { try { return JSON.parse(localStorage.getItem(PENDING) || "{}"); } catch { return {}; } };
+const writePending = (m: Record<string, { ticket: string; t: number }>) => { try { localStorage.setItem(PENDING, JSON.stringify(m)); } catch { /* privé */ } };
+const setPending = (k: string, ticket: string | null) => {
+  const m = readPending(); const old = Date.now() - 40 * 3600_000;
+  for (const [x, v] of Object.entries(m)) if (v.t < old) delete m[x];
+  if (ticket) m[k] = { ticket, t: Date.now() }; else delete m[k];
+  writePending(m);
+};
 const mb = (n: number) => n >= 1073741824 ? `${(n / 1073741824).toFixed(2).replace(".", ",")} Go` : `${Math.max(1, Math.round(n / 1048576))} Mo`;
 const dur = (s: number | null) => s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "";
 const STATUS: Record<Item["status"], string> = { uploaded: "À analyser", analysing: "Analyse…", analysed: "Analysée", error: "Erreur" };
@@ -33,7 +41,6 @@ export default function Bibliotheque() {
   const [items, setItems] = useState<Item[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
   const [mode, setMode] = useState<"background" | "page" | null>(null);
-  const [bgOk, setBgOk] = useState<boolean | null>(null);
   const [bgTotal, setBgTotal] = useState<{ sent: number; total: number } | null>(null);
   const [prep, setPrep] = useState("");
   const [failedBatches, setFailedBatches] = useState<StoredBatch[]>([]);
@@ -61,13 +68,15 @@ export default function Bibliotheque() {
     if (!files.length) return;
     setErr(""); setInfo(""); setPrep(`Préparation de ${files.length} vidéo(s)…`);
     try {
-      const init = await api({ action: "init", files: files.map(f => ({ name: f.name, size: f.size, type: f.type || "video/mp4" })) });
+      const pend = readPending();
+      const init = await api({ action: "init", files: files.map(f => ({ name: f.name, size: f.size, type: f.type || "video/mp4", resume: pend[fileKey(f)]?.ticket })) });
       const slots = init.files as Slot[];
       const ready: { file: File; slot: Required<Pick<Slot, "id" | "path" | "signedUrl" | "token" | "ticket">> & Slot }[] = [];
       const newRows: Row[] = [];
       slots.forEach((s, i) => {
         const f = files[i];
-        if (s.error || !s.id) newRows.push({ key: `x${i}-${f.name}`, name: f.name, size: f.size, status: "error", sent: 0, error: s.error || "Refusée" });
+        if (s.duplicate) newRows.push({ key: `d${i}-${f.name}`, name: f.name, size: f.size, status: "done", sent: f.size, error: "déjà dans la bibliothèque" });
+        else if (s.error || !s.id) newRows.push({ key: `x${i}-${f.name}`, name: f.name, size: f.size, status: "error", sent: 0, error: s.error || "Refusée" });
         else { ready.push({ file: f, slot: s as never }); newRows.push({ key: s.id, name: f.name, size: f.size, status: "prep", sent: 0 }); }
       });
       setRows(rs => [...newRows, ...rs.filter(r => r.status !== "done")]);
@@ -88,21 +97,13 @@ export default function Bibliotheque() {
           refresh: async () => { const t = await api({ action: "retoken", ticket: slot.ticket }); return { putUrl: t.signedUrl, token: t.token }; },
         };
         jobsRef.current.set(slot.id, jobs[i]);
+        setPending(fileKey(file), slot.ticket);
         patchRow(slot.id, { status: "queued" });
         setPrep(`Préparation… ${++n}/${ready.length}`);
       });
       setPrep("");
       if (!jobs.length) return;
-      if (!bgOff() && await backgroundSupported()) {
-        try {
-          const id = `bib-${Date.now().toString(36)}`;
-          await startBackground({ id, title: `NeoDrive : envoi de ${jobs.length} vidéo(s)`, jobs, page: "/studio/bibliotheque" });
-          setMode("background");
-          jobs.forEach(j => patchRow(j.key, { status: "uploading", bg: true }));
-          setInfo("✅ Envoi lancé en arrière-plan : vous pouvez quitter la page, changer d’appli ou verrouiller le téléphone. Suivi dans la notification.");
-          return;
-        } catch (e) { console.warn("[bibliotheque] arrière-plan refusé", e); }
-      }
+      // Toujours dans la page, en TUS reprenable : l'envoi « en arrière-plan » (Background Fetch) d'Android arrivait vide (0 octet).
       await sendInPage(jobs);
     } catch (e) { setErr((e as Error).message); setPrep(""); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,7 +113,10 @@ export default function Bibliotheque() {
     setMode("page");
     const lock = await keepAwake();
     try {
-      await uploadInPage(jobs, { parallel: 3, onState: s => patchRow(s.key, { status: s.status, sent: s.sent, error: s.error, bg: false }) });
+      await uploadInPage(jobs, { parallel: 2, retries: 12, onState: s => {
+        patchRow(s.key, { status: s.status, sent: s.sent, error: s.error, bg: false });
+        if (s.status === "done") { const j = jobsRef.current.get(s.key); if (j) setPending(fileKey(j.file), null); }
+      } });
     } finally { lock.release(); }
     setMode(null);
     load().catch(() => null);
@@ -131,7 +135,7 @@ export default function Bibliotheque() {
     let pc = ""; try { pc = sessionStorage.getItem("nd_pc") || ""; } catch { /* privé */ }
     setCode(pc); codeRef.current = pc;
     load(pc).catch(() => setAuthed(false));
-    registerUploadWorker().then(() => backgroundSupported()).then(ok => setBgOk(ok && !bgOff())).catch(() => setBgOk(false));
+    registerUploadWorker().catch(() => null);
     const bip = (e: Event) => { e.preventDefault(); const ev = e as Event & { prompt: () => Promise<void> }; setInstall({ prompt: () => ev.prompt() }); };
     window.addEventListener("beforeinstallprompt", bip);
     return () => window.removeEventListener("beforeinstallprompt", bip);
@@ -147,7 +151,6 @@ export default function Bibliotheque() {
       p.failed.forEach(k => patchRow(k, { status: "error", error: "Envoi en arrière-plan échoué" }));
       if (p.result) {
         // Échec en arrière-plan : on renvoie dans la page les fichiers encore en mémoire ; si rien n'est passé, on n'utilise plus l'arrière-plan sur ce téléphone.
-        if (p.failed.size && !p.done.size) { setBgOff(true); setBgOk(false); }
         const again = [...p.failed].map(k => jobsRef.current.get(k)).filter((j): j is UploadJob => !!j);
         if (again.length) { setInfo("L’envoi en arrière-plan a échoué : nouvel envoi dans la page, gardez l’écran allumé."); again.forEach(j => patchRow(j.key, { status: "queued", error: undefined })); sendInPageRef.current(again); }
         setBgTotal(null); setMode(m => again.length ? "page" : m === "background" ? null : m); load().catch(() => null); allBatches().then(bs => setFailedBatches(bs.filter(b => b.finished && Object.values(b.results || {}).some(v => v !== "done")))); }
@@ -171,6 +174,15 @@ export default function Bibliotheque() {
     if (q === "erreur") { setErr("Le partage n’a pas pu être reçu. Réessayez ou choisissez les vidéos ici."); return; }
     takeSharedFiles().then(fs => { if (fs.length) sendFiles(fs); else setInfo("Aucune vidéo reçue par le partage."); });
   }, [authed, sendFiles]);
+
+  // Envoi en cours : on prévient avant de quitter la page (l'envoi s'arrêterait ; il reprendra en rechoisissant les vidéos).
+  const uploading = mode === "page";
+  useEffect(() => {
+    if (!uploading) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [uploading]);
 
   const enter = async (e: React.FormEvent) => { e.preventDefault(); setErr(""); codeRef.current = code; try { await load(code); try { sessionStorage.setItem("nd_pc", code); } catch { /* privé */ } } catch (x) { setErr((x as Error).message); } };
   const del = async (it: Item) => {
@@ -218,8 +230,7 @@ export default function Bibliotheque() {
       <input type="file" multiple accept="video/*" onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ""; sendFiles(fs); }} />
       <b>＋ Choisir des vidéos</b><small>Plusieurs d’un coup depuis la galerie · jusqu’à 1 Go chacune</small>
     </label>
-    {bgOk === true ? <p className="hint ok2">📶 L’envoi continue même si vous quittez la page ou verrouillez le téléphone.</p>
-      : bgOk === false ? <p className="hint warn">🔆 {bgOff() ? "Envoi en arrière-plan désactivé après un échec" : "Ce navigateur ne sait pas envoyer en arrière-plan"} : <b>gardez l’écran allumé et la page ouverte</b> pendant l’envoi.{bgOff() ? <> <button className="link" onClick={() => { setBgOff(false); backgroundSupported().then(setBgOk); }}>Réessayer l’arrière-plan</button></> : null}</p> : null}
+    <p className="hint warn">📶 De préférence en <b>Wi-Fi</b>, téléphone en charge : <b>gardez cette page ouverte</b> (l’écran reste allumé tout seul). Si l’envoi est coupé (réseau, appli fermée), rechoisissez les mêmes vidéos : <b>il reprend où il s’était arrêté</b>, rien n’est envoyé deux fois.</p>
     {install ? <button className="ghost full" onClick={() => install.prompt().then(() => setInstall(null))}>📲 Installer « NeoDrive Studio » (pour partager depuis la galerie)</button> : null}
 
     {prep ? <div className="busy">{prep}<div className="bar pulse"><i /></div></div> : null}

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 const SB = "https://tzlsdjzcxdjaatcpwqwn.supabase.co";
 
 /** Ancien planificateur (4 publications par jour et par réseau, mêmes médias en boucle) : remplacé par lib/social-autopost
- * (1 publication par jour, rotation des sujets, pas de répétition sur 14 jours). Cet appel ne fait plus que vider
+ * (jusqu’à 3 publications par jour, rotation des sujets, pas de répétition sur 14 jours). Cet appel ne fait plus que vider
  * les créneaux qu'il avait préparés. */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;

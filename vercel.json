@@ -23,11 +23,11 @@
     },
     {
       "path": "/api/instagram/auto-publish",
-      "schedule": "40 16 * * *"
+      "schedule": "30 7,11,17 * * *"
     },
     {
       "path": "/api/facebook/auto-publish",
-      "schedule": "50 16 * * *"
+      "schedule": "40 7,11,17 * * *"
     },
     {
       "path": "/api/health",

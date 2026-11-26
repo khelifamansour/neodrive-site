@@ -5,7 +5,7 @@ import { crmDatabase } from "../../../../lib/crm-agent";
 import { BUCKET } from "../../../../lib/studio-video";
 import { MAX_ATTEMPTS, analyseItem, attemptOf, permanentError, storedSize } from "../../../../lib/video-analysis";
 import {
-  LIB_MAX_BYTES, blankItem, deleteItem, getItem, libId, libPath, listItems, patchItem, readTicket, reconcile, safeLibId, saveItem, signTicket,
+  LIB_MAX_BYTES, blankItem, deleteItem, getItem, importSocialVideos, libId, libPath, listItems, patchItem, readTicket, reconcile, safeLibId, saveItem, signTicket,
   type LibItem,
 } from "../../../../lib/video-library";
 
@@ -88,6 +88,7 @@ export async function POST(req: Request) {
       if (!exists) return fail("Fichier absent du stockage : l’envoi n’est pas terminé.", 409);
       // Fichier coupé pendant l'envoi (réseau, arrière-plan) : refusé ici pour que le téléphone le renvoie, au lieu d'une « vidéo illisible » plus tard.
       const got = await storedSize(db, t.path).catch(() => -1);
+      if (got === 0) return fail("Fichier vide dans le stockage : la vidéo va être renvoyée.", 409);
       if (t.size && got >= 0 && got < t.size * 0.98) return fail(`Envoi incomplet (${Math.round(got / 1048576)} Mo reçus sur ${Math.round(t.size / 1048576)} Mo) : la vidéo va être renvoyée.`, 409);
       const prev = await getItem(db, t.id);
       const posterPath = typeof b.poster === "string" && b.poster === `${t.path}.jpg` ? b.poster : null;
@@ -95,6 +96,8 @@ export async function POST(req: Request) {
       Object.assign(it, {
         duration: num(b.duration) ?? it.duration, width: num(b.width) ?? it.width, height: num(b.height) ?? it.height,
         poster_path: posterPath || it.poster_path,
+        // Fiche réutilisée (renvoi d'une vidéo dont l'envoi avait raté) : taille réelle et retour dans la file d'analyse.
+        size: got > 0 ? got : t.size || it.size, status: "uploaded", error: null, analysis: null, transcript: null, analysed_at: null,
       });
       await saveItem(db, it);
       return NextResponse.json({ ok: true, item: it });
@@ -109,13 +112,28 @@ export async function POST(req: Request) {
       const files = (Array.isArray(b.files) ? b.files as Body[] : []).slice(0, 50);
       if (!files.length) return fail("Aucun fichier");
       await ensureBucket(db);
+      const known = await listItems(db, { limit: 1000 });
       const out = [];
       for (const f of files) {
         const name = String(f.name || "video.mp4").slice(0, 140); const size = Number(f.size) || 0;
         const mime = String(f.type || "video/mp4").slice(0, 60);
         if (size > LIB_MAX_BYTES) { out.push({ name, error: `Trop lourde (${Math.round(size / 1048576)} Mo) : 1 100 Mo maximum.` }); continue; }
         if (mime && !mime.startsWith("video/")) { out.push({ name, error: "Ce n’est pas une vidéo." }); continue; }
-        const id = libId(); const path = libPath(id, name);
+        // Reprise : même fichier qu'un envoi interrompu (ticket gardé par le téléphone) → même chemin, l'envoi TUS reprend où il s'était arrêté.
+        const rt = readTicket(f.resume);
+        let id = rt && rt.name === name && rt.size === size ? rt.id : "";
+        let path = id ? rt!.path : "";
+        if (!id) {
+          // Même vidéo déjà dans la bibliothèque : complète → on ne la renvoie pas ; fichier vide ou coupé → on répare la même fiche.
+          const prev = known.find(k => k.name === name && (!k.size || !size || k.size === size));
+          if (prev) {
+            const got = await storedSize(db, prev.path).catch(() => -1);
+            const full = got > 0 && (!size || got >= size * 0.98);
+            if (full) { out.push({ name, error: "Déjà dans la bibliothèque", duplicate: true }); continue; }
+            id = prev.id; path = prev.path;
+          }
+        }
+        if (!id) { id = libId(); path = libPath(id, name); }
         const [slot, poster] = await Promise.all([uploadSlot(db, path), uploadSlot(db, `${path}.jpg`)]);
         out.push({ name, id, path, signedUrl: slot.signedUrl, bgUrl: slot.bgUrl, token: slot.token, poster: { path: `${path}.jpg`, signedUrl: poster.signedUrl }, ticket: signTicket({ id, path, name, size, mime, by: acc.name }) });
       }
@@ -126,6 +144,12 @@ export async function POST(req: Request) {
       const key = process.env.OPENAI_API_KEY; if (!key) return fail("Clé IA absente", 503);
       const q = await processQueue(db, new OpenAI({ apiKey: key }), Math.min(5, Number(b.max) || 2), 45000);
       return NextResponse.json({ ok: true, ...q });
+    }
+
+    if (action === "import_social") {
+      const r = await importSocialVideos(db, { max: Math.min(80, Number(b.max) || 40) });
+      await logSection(acc, "studio_library_import", r);
+      return NextResponse.json({ ok: true, ...r });
     }
 
     if (action === "list") {
@@ -184,11 +208,24 @@ export async function POST(req: Request) {
   }
 }
 
+/** Jeton à usage unique (admin_once_tokens, purpose « studio-library », payload { action: "import" | "queue" }) : lancement ponctuel. */
+async function onceAction(db: Db, token: string) {
+  const { data } = await db.from("admin_once_tokens").update({ used_at: new Date().toISOString() }).eq("token", token).eq("purpose", "studio-library").is("used_at", null).gt("expires_at", new Date().toISOString()).select("payload");
+  const row = (data || [])[0] as { payload?: { action?: string } } | undefined;
+  return row ? String(row.payload?.action || "queue") : null;
+}
+
 /** Tâche planifiée (Vercel Cron, Authorization: Bearer CRON_SECRET) : analyse les vidéos en attente. */
 export async function GET(req: Request) {
-  const acc = await authorizeSection(req, null, "contenu");
-  if (!acc) return fail("Non autorisé", 401);
+  const db = crmDatabase();
+  const once = new URL(req.url).searchParams.get("once");
+  const onceDo = once && /^[A-Za-z0-9_-]{20,100}$/.test(once) ? await onceAction(db, once) : null;
+  if (!onceDo) { const acc = await authorizeSection(req, null, "contenu"); if (!acc) return fail("Non autorisé", 401); }
+  if (onceDo === "import") {
+    try { return NextResponse.json({ ok: true, ...(await importSocialVideos(db, { max: 80, budgetMs: 240000 })) }); }
+    catch (e) { return fail("Erreur : " + (e as Error).message.slice(0, 200), 500); }
+  }
   const key = process.env.OPENAI_API_KEY; if (!key) return fail("Clé IA absente", 503);
-  try { return NextResponse.json({ ok: true, ...(await processQueue(crmDatabase(), new OpenAI({ apiKey: key }), 4, 60000)) }); }
+  try { return NextResponse.json({ ok: true, ...(await processQueue(db, new OpenAI({ apiKey: key }), 4, 60000)) }); }
   catch (e) { return fail("Erreur : " + (e as Error).message.slice(0, 200), 500); }
 }

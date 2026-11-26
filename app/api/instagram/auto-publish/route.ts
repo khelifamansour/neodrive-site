@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { planAutoPost, recordAutoPost } from "@/lib/social-autopost";
+import { consumeDryToken, planAutoPost, recordAutoPost } from "@/lib/social-autopost";
 import { resolveInstagramPublishingAuth, type InstagramPublishingAuth } from "@/lib/instagram-publishing-auth";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 
@@ -68,19 +68,20 @@ async function publish(auth:InstagramPublishingAuth,url:string,msg:string,isV:bo
   throw new Error(last||"Instagram publish failed after processing finished");
 }
 
-/** Une publication par jour à partir d'un vrai média (lib/social-autopost : rotation des sujets, pas de répétition sur 14 jours).
- * ?manual=1 : bouton « publier maintenant » (ignore la limite du jour) · ?queue=1 : publie l'élément préparé à la main dans la file
+/** Jusqu'à 3 publications par jour (créneaux du cron ~8 h 30, 12 h 30, 18 h 30) à partir d'un vrai média (lib/social-autopost : rotation des sujets, pas de répétition sur 14 jours).
+ * ?manual=1 : bouton « publier maintenant » (ignore la limite du jour) · ?dry=1&once=<jeton social-dry> : aperçu sans le secret du cron · ?queue=1 : publie l'élément préparé à la main dans la file
  * · ?dry=1 : montre ce qui serait publié, sans rien publier. */
 export async function GET(req:Request) {
   await applyStoredSecrets();
+  const sp=new URL(req.url).searchParams;
   const s=process.env.CRON_SECRET,alt=process.env.INSTAGRAM_AUTOMATION_SECRET,auth=req.headers.get("authorization");
-  if(!((s&&auth===`Bearer ${s}`)||(alt&&auth===`Bearer ${alt}`))) return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
+  const dryOnly=sp.get("dry")==="1"&&await consumeDryToken(sp.get("once"));
+  if(!dryOnly&&!((s&&auth===`Bearer ${s}`)||(alt&&auth===`Bearer ${alt}`))) return NextResponse.json({ok:false,error:"Unauthorized"},{status:401});
   const k=process.env.SUPABASE_SERVICE_ROLE_KEY;
   if(!k) return NextResponse.json({ok:false,error:"Supabase configuration missing"},{status:503});
-  const sp=new URL(req.url).searchParams;
 
   // File manuelle (Reel préparé depuis /social-upload) : légende et média déjà choisis.
-  if(sp.get("queue")==="1"){
+  if(sp.get("queue")==="1"&&!dryOnly){
     const q=await queue(k);
     if(!q) return NextResponse.json({ok:true,skipped:true,reason:"Rien dans la file"});
     await patch(k,q.id,{status:"publishing",last_attempt_at:new Date().toISOString()});

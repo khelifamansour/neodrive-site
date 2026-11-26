@@ -112,6 +112,8 @@ export async function reconcile(db: Db, known: LibItem[]) {
       const id = safeLibId(f.name.split("-")[0]);
       if (!id) continue;
       const meta = (f.metadata || {}) as Record<string, unknown>;
+      // Objet vide ou presque (envoi coupé) : jamais de fiche « à analyser » pour un fichier qui n'est pas arrivé.
+      if ((Number(meta.size) || 0) < 64 * 1024) continue;
       const it = blankItem({ id, path, name: f.name.slice(id.length + 1), size: Number(meta.size) || 0, mime: String(meta.mimetype || "") || null, created_at: f.created_at || new Date().toISOString() });
       await saveItem(db, it).catch(() => null);
       added.push(it);
@@ -135,4 +137,45 @@ export function readTicket(v: unknown): Ticket | null {
   const got = Buffer.from(sig, "base64url");
   if (got.length !== want.length || !timingSafeEqual(got, want)) return null;
   try { const t = JSON.parse(Buffer.from(body, "base64url").toString()) as Ticket; return t.exp > Date.now() ? t : null; } catch { return null; }
+}
+
+// ───────────── import des vraies vidéos déjà envoyées pour les réseaux sociaux ─────────────
+const SOCIAL_BUCKET = "social-media";
+type SocialRow = { id: string; storage_path: string; title: string | null; media_type: string | null; created_at: string };
+
+/** Copie (côté serveur, sans téléchargement) les vraies vidéos de la bibliothèque réseaux sociaux (social_media_assets, bucket
+ * social-media) dans la bibliothèque vidéo pour qu'elles soient analysées et servent à la Fabrique. Une vidéo déjà présente
+ * (même nom de fichier) n'est pas dupliquée ; une fiche dont le fichier est vide (envoi raté) est réparée avec cette copie.
+ * Jamais les vidéos générées (dossier generated/, « Reel NeoDrive automatique »). */
+export async function importSocialVideos(db: Db, opts: { max?: number; budgetMs?: number } = {}) {
+  const t0 = Date.now(); const max = opts.max || 40; const budget = opts.budgetMs || 200000;
+  const { data, error } = await db.from("social_media_assets").select("id,storage_path,title,media_type,created_at")
+    .eq("status", "ready").order("created_at", { ascending: false }).limit(1000);
+  if (error) throw new Error("Bibliothèque réseaux sociaux illisible : " + error.message);
+  const rows = ((data || []) as SocialRow[]).filter(a => a.storage_path && !/^generated\//.test(a.storage_path) && /\.(mp4|mov|m4v)$/i.test(a.storage_path) && !/automatique/i.test(a.title || ""));
+  const known = await listItems(db, { limit: 1000 });
+  const byName = new Map(known.map(k => [k.name, k]));
+  const seen = new Set<string>();
+  const out = { copied: 0, repaired: 0, skipped: 0, errors: [] as string[], remaining: 0 };
+  for (const a of rows) {
+    const name = (a.title || a.storage_path.split("/").pop() || "video.mp4").slice(0, 140);
+    if (seen.has(name)) continue; seen.add(name);
+    const prev = byName.get(name);
+    const i = a.storage_path.lastIndexOf("/");
+    const { data: ls } = await db.storage.from(SOCIAL_BUCKET).list(a.storage_path.slice(0, i), { search: a.storage_path.slice(i + 1), limit: 5 });
+    const src = (ls || []).find(x => x.name === a.storage_path.slice(i + 1));
+    const size = Number((src?.metadata as Record<string, unknown> | null)?.size || 0);
+    if (!src || size < 64 * 1024) continue;
+    if (prev && prev.size >= size * 0.98 && prev.status !== "error") { out.skipped++; continue; }
+    if (prev && prev.status === "analysed") { out.skipped++; continue; }
+    if (out.copied + out.repaired >= max || Date.now() - t0 > budget) { out.remaining++; continue; }
+    const id = prev?.id || libId(); const path = prev?.path || libPath(id, name, new Date(a.created_at));
+    if (prev) await db.storage.from(BUCKET).remove([path]).catch(() => null);
+    const { error: ce } = await db.storage.from(SOCIAL_BUCKET).copy(a.storage_path, path, { destinationBucket: BUCKET });
+    if (ce && !/exists/i.test(ce.message || "")) { out.errors.push(`${name} : ${ce.message.slice(0, 80)}`); continue; }
+    const base = prev || blankItem({ id, path, name, created_at: a.created_at, uploaded_by: "réseaux sociaux" });
+    await saveItem(db, { ...base, size, mime: "video/mp4", status: "uploaded", error: null, analysis: null, transcript: null, analysed_at: null });
+    if (prev) out.repaired++; else out.copied++;
+  }
+  return out;
 }

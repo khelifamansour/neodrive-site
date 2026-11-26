@@ -1,6 +1,9 @@
 /**
  * Envoi de gros fichiers depuis le navigateur, réutilisable sur toute page d'envoi (vidéos, CV, tickets…). Client uniquement.
  *
+ * ⚠️ Bibliothèque vidéo : NE PAS utiliser l'arrière-plan pour des vidéos de la galerie. Le 26/11/2026, 55 vidéos (2 Go) envoyées
+ *    ainsi depuis Android sont toutes arrivées VIDES (0 octet, en quelques secondes) : le corps des requêtes n'a jamais été envoyé.
+ *    On envoie dans la page en TUS reprenable (morceaux de 6 Mo), qui reprend où il s'était arrêté.
  * 1. Arrière-plan (Chrome Android) : Background Fetch depuis le service worker /studio-sw.js. L'envoi continue page fermée,
  *    écran verrouillé ou appli changée ; le système affiche une notification de progression. Quand chaque fichier est arrivé,
  *    le service worker appelle lui-même l'URL d'enregistrement (`register`) avec le corps prévu (ticket signé, sans code d'accès).
@@ -167,6 +170,8 @@ function putTus(job: UploadJob, token: string, onProgress: (n: number) => void, 
     const up = new tus.Upload(job.file, {
       endpoint: t.endpoint, retryDelays: [0, 2000, 5000, 10000, 20000, 30000], headers: { "x-signature": token, "x-upsert": "true" },
       uploadDataDuringCreation: true, removeFingerprintOnSuccess: true, chunkSize: 6 * 1024 * 1024,
+      // Reprise liée au chemin de destination (et pas seulement au fichier) : un envoi coupé reprend vers la même fiche.
+      fingerprint: async () => `nd-tus:${t.bucket}/${t.path}:${job.file.size}`,
       metadata: { bucketName: t.bucket, objectName: t.path, contentType: job.contentType || job.file.type || "application/octet-stream", cacheControl: "3600" },
       onProgress: a => onProgress(a), onError: e => rej(new Error(String(e.message || "Envoi interrompu").slice(0, 160))), onSuccess: () => res(),
     });
