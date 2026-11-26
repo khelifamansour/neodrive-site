@@ -14,8 +14,8 @@ function titles(city: string) {
   return [
     `Voiture sans permis électrique neuve dès 3 990 € – ${city}`,
     `Voiture sans permis électrique NEUVE en stock – ${city}`,
-    `Voiturette sans permis neuve livrée avant Noël – ${city}`,
-    `VSP électrique neuve, livrée chez vous – ${city}`,
+    `Voiturette sans permis neuve, livrée chez vous – ${city}`,
+    `VSP électrique neuve en stock, 4 990 € – ${city}`,
   ];
 }
 
@@ -32,7 +32,7 @@ NeoDrive est une marque française basée à Toulouse, 7 ans de métier dans la 
 
 Trois versions
 
-⭐ Confort, 4 990 € : notre best-seller, en stock, livrée en 2 à 3 semaines, avant les fêtes, paiement à la livraison
+⭐ Confort, 4 990 € : notre best-seller, en stock, livrée en 2 à 3 semaines, paiement à la livraison
 - Jusqu'à 70 km d'autonomie, recharge sur une simple prise de maison
 - Chauffage, bien au chaud l'hiver
 - Caméra et radar de recul
