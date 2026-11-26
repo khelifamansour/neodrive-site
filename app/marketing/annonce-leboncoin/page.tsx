@@ -28,7 +28,7 @@ Voiture sans permis électrique neuve, à partir de 3 990 €, livrée chez vous
 ✅ La Confort en stock se réserve sans acompte : paiement uniquement à la livraison.
 
 Pourquoi un prix aussi bas ?
-NeoDrive est une marque française basée à Toulouse. Nous vendons directement de l'usine au particulier, sans concession ni intermédiaire. Vous roulez en voiturette neuve pour bien moins cher qu'avec une Citroën Ami, une Fiat Topolino, une Aixam ou une Ligier.
+NeoDrive est une marque française basée à Toulouse, 7 ans de métier dans la voiture sans permis. Nous vendons directement de l'usine au particulier, sans concession ni intermédiaire. Vous roulez en voiturette neuve pour bien moins cher qu'avec une Citroën Ami, une Fiat Topolino, une Aixam ou une Ligier.
 
 Trois versions
 
