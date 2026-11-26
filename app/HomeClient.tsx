@@ -32,6 +32,27 @@ export default function HomeClient() {
         <div><strong>France</strong><span>livrée devant chez vous</span></div>
       </section>
 
+      <section className="clientMoments">
+        <div className="sectionHeader compact">
+          <span className="miniBadge">La confiance en images</span>
+          <h2>Ils l’ont reçue. Ils en parlent.</h2>
+        </div>
+        <div className="clientGrid">
+          <article>
+            <video controls preload="metadata" playsInline><source src="https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/site/temoignage-yonne.mp4" type="video/mp4" /></video>
+            <div><strong>Témoignage cliente</strong><span>Yonne</span></div>
+          </article>
+          <article>
+            <video controls preload="metadata" playsInline><source src="/client2.mp4" type="video/mp4" /></video>
+            <div><strong>Livraison & prise en main</strong><span>Brest</span></div>
+          </article>
+          <article>
+            <video controls preload="metadata" playsInline><source src="/client1.mp4" type="video/mp4" /></video>
+            <div><strong>Livraison client</strong><span>Région de Strasbourg</span></div>
+          </article>
+        </div>
+      </section>
+
       <section className="realGallery" aria-label="Galerie photo NeoDrive">
         <div className="realGalleryIntro">
           <span className="miniBadge">NeoDrive en vrai</span>
@@ -139,26 +160,6 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section className="clientMoments">
-        <div className="sectionHeader compact">
-          <span className="miniBadge">La confiance en images</span>
-          <h2>Livrée chez vous, partout en France.</h2>
-        </div>
-        <div className="clientGrid">
-          <article>
-            <video controls preload="metadata" playsInline><source src="https://tzlsdjzcxdjaatcpwqwn.supabase.co/storage/v1/object/public/social-media/site/temoignage-yonne.mp4" type="video/mp4" /></video>
-            <div><strong>Témoignage cliente</strong><span>Yonne</span></div>
-          </article>
-          <article>
-            <video controls preload="metadata" playsInline><source src="/client1.mp4" type="video/mp4" /></video>
-            <div><strong>Livraison client</strong><span>Région de Strasbourg</span></div>
-          </article>
-          <article>
-            <video controls preload="metadata" playsInline><source src="/client2.mp4" type="video/mp4" /></video>
-            <div><strong>Livraison & prise en main</strong><span>Brest</span></div>
-          </article>
-        </div>
-      </section>
 
 
 
