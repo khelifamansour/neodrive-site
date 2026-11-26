@@ -89,12 +89,22 @@ export async function POST(req: Request) {
   }
 }
 
-/** Tâche planifiée (Vercel Cron) tôt le matin : prépare les propositions du jour, puis rend une vidéo par appel. */
+/** Lancement ponctuel par jeton à usage unique (admin_once_tokens, purpose « fabrique ») : même travail que la tâche planifiée. */
+async function onceOk(db: Db, token: string | null) {
+  if (!token || !/^[A-Za-z0-9_-]{20,100}$/.test(token)) return false;
+  const { data } = await db.from("admin_once_tokens").update({ used_at: new Date().toISOString() }).eq("token", token).eq("purpose", "fabrique").is("used_at", null).gt("expires_at", new Date().toISOString()).select("token");
+  return !!data?.length;
+}
+
+/** Tâche planifiée (Vercel Cron) tôt le matin : prépare les propositions du jour, puis rend une vidéo par appel.
+ * Rien n'est publié sur TikTok ici : le fondateur télécharge la vidéo ou l'envoie en brouillon depuis la Fabrique. */
 export async function GET(req: Request) {
-  const acc = await authorizeSection(req, null, "contenu");
-  if (!acc) return fail("Non autorisé", 401);
-  const client = ai(); if (!client) return fail("Clé IA absente", 503);
   const db = crmDatabase(); const day = parisDay();
+  if (!(await onceOk(db, new URL(req.url).searchParams.get("once")))) {
+    const acc = await authorizeSection(req, null, "contenu");
+    if (!acc) return fail("Non autorisé", 401);
+  }
+  const client = ai(); if (!client) return fail("Clé IA absente", 503);
   try {
     const ps = await listProposals(db, day);
     if (!ps.length) { const r = await planDay(db, client, day); return NextResponse.json({ ok: true, step: "plan", created: r.created, rejected: r.rejected }); }
