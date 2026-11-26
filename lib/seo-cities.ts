@@ -111,7 +111,47 @@ le-mans|Le Mans|Sarthe|72|Pays de la Loire|Allonnes;Coulaines;La Flèche;Sablé-
 rennes|Rennes|Ille-et-Vilaine|35|Bretagne|Cesson-Sévigné;Bruz;Vitré;Fougères
 saint-malo|Saint-Malo|Ille-et-Vilaine|35|Bretagne|Dinard;Cancale;Dol-de-Bretagne;Dinan
 vannes|Vannes|Morbihan|56|Bretagne|Séné;Auray;Lorient;Pontivy
-brest|Brest|Finistère|29|Bretagne|Guipavas;Plougastel-Daoulas;Landerneau;Morlaix`;
+brest|Brest|Finistère|29|Bretagne|Guipavas;Plougastel-Daoulas;Landerneau;Morlaix
+colomiers|Colomiers|Haute-Garonne|31|Occitanie|Toulouse;Blagnac;Pibrac;Léguevin
+tournefeuille|Tournefeuille|Haute-Garonne|31|Occitanie|Toulouse;Plaisance-du-Touch;Colomiers;Cugnaux
+blagnac|Blagnac|Haute-Garonne|31|Occitanie|Toulouse;Colomiers;Beauzelle;Cornebarrieu
+saint-gaudens|Saint-Gaudens|Haute-Garonne|31|Occitanie|Montréjeau;Valentine;Aspet;Carbonne
+auch|Auch|Gers|32|Occitanie|L’Isle-Jourdain;Fleurance;Mirande;Condom
+foix|Foix|Ariège|09|Occitanie|Pamiers;Varilhes;Tarascon-sur-Ariège;Lavelanet
+pamiers|Pamiers|Ariège|09|Occitanie|Foix;Saverdun;Mazères;Mirepoix
+castelsarrasin|Castelsarrasin|Tarn-et-Garonne|82|Occitanie|Moissac;Montauban;Valence-d’Agen;Montech
+bayonne|Bayonne|Pyrénées-Atlantiques|64|Nouvelle-Aquitaine|Anglet;Biarritz;Saint-Jean-de-Luz;Hendaye
+mont-de-marsan|Mont-de-Marsan|Landes|40|Nouvelle-Aquitaine|Saint-Pierre-du-Mont;Aire-sur-l’Adour;Roquefort;Grenade-sur-l’Adour
+dax|Dax|Landes|40|Nouvelle-Aquitaine|Saint-Paul-lès-Dax;Peyrehorade;Tartas;Soustons
+mende|Mende|Lozère|48|Occitanie|Marvejols;Langogne;Florac;Saint-Chély-d’Apcher
+aubenas|Aubenas|Ardèche|07|Auvergne-Rhône-Alpes|Privas;Vals-les-Bains;Annonay;Largentière
+gueret|Guéret|Creuse|23|Nouvelle-Aquitaine|Aubusson;La Souterraine;Bourganeuf;Sainte-Feyre
+la-roche-sur-yon|La Roche-sur-Yon|Vendée|85|Pays de la Loire|Les Sables-d’Olonne;Challans;Les Herbiers;Fontenay-le-Comte
+cholet|Cholet|Maine-et-Loire|49|Pays de la Loire|Beaupréau-en-Mauges;Chemillé-en-Anjou;Mauléon;Les Herbiers
+laval|Laval|Mayenne|53|Pays de la Loire|Changé;Mayenne;Château-Gontier;Évron
+quimper|Quimper|Finistère|29|Bretagne|Concarneau;Douarnenez;Quimperlé;Pont-l’Abbé
+lorient|Lorient|Morbihan|56|Bretagne|Lanester;Ploemeur;Hennebont;Quimperlé
+saint-brieuc|Saint-Brieuc|Côtes-d’Armor|22|Bretagne|Plérin;Lamballe;Guingamp;Lannion
+cherbourg|Cherbourg-en-Cotentin|Manche|50|Normandie|Valognes;Les Pieux;Saint-Lô;Coutances
+alencon|Alençon|Orne|61|Normandie|Argentan;Flers;L’Aigle;Mortagne-au-Perche
+chalon-sur-saone|Chalon-sur-Saône|Saône-et-Loire|71|Bourgogne-Franche-Comté|Mâcon;Le Creusot;Montceau-les-Mines;Autun
+lons-le-saunier|Lons-le-Saunier|Jura|39|Bourgogne-Franche-Comté|Dole;Champagnole;Saint-Claude;Poligny
+vesoul|Vesoul|Haute-Saône|70|Bourgogne-Franche-Comté|Lure;Gray;Luxeuil-les-Bains;Héricourt
+saint-quentin|Saint-Quentin|Aisne|02|Hauts-de-France|Laon;Chauny;Soissons;Guise
+charleville-mezieres|Charleville-Mézières|Ardennes|08|Grand Est|Sedan;Rethel;Givet;Revin
+chaumont|Chaumont|Haute-Marne|52|Grand Est|Langres;Saint-Dizier;Joinville;Nogent
+bar-le-duc|Bar-le-Duc|Meuse|55|Grand Est|Verdun;Commercy;Saint-Mihiel;Ligny-en-Barrois
+evry-courcouronnes|Évry-Courcouronnes|Essonne|91|Île-de-France|Corbeil-Essonnes;Massy;Palaiseau;Savigny-sur-Orge
+nanterre|Nanterre|Hauts-de-Seine|92|Île-de-France|Rueil-Malmaison;Colombes;Courbevoie;Puteaux
+boulogne-billancourt|Boulogne-Billancourt|Hauts-de-Seine|92|Île-de-France|Issy-les-Moulineaux;Sèvres;Saint-Cloud;Meudon
+saint-denis|Saint-Denis|Seine-Saint-Denis|93|Île-de-France|Aubervilliers;Saint-Ouen-sur-Seine;Épinay-sur-Seine;Pierrefitte-sur-Seine
+montreuil|Montreuil|Seine-Saint-Denis|93|Île-de-France|Bagnolet;Vincennes;Rosny-sous-Bois;Fontenay-sous-Bois
+argenteuil|Argenteuil|Val-d’Oise|95|Île-de-France|Bezons;Sartrouville;Sannois;Cormeilles-en-Parisis
+macon|Mâcon|Saône-et-Loire|71|Bourgogne-Franche-Comté|Charnay-lès-Mâcon;Tournus;Cluny;Bourg-en-Bresse
+roanne|Roanne|Loire|42|Auvergne-Rhône-Alpes|Riorges;Mably;Le Coteau;Charlieu
+saintes|Saintes|Charente-Maritime|17|Nouvelle-Aquitaine|Royan;Cognac;Saint-Jean-d’Angély;Pons
+arcachon|Arcachon|Gironde|33|Nouvelle-Aquitaine|La Teste-de-Buch;Gujan-Mestras;Andernos-les-Bains;Biganos
+villefranche-sur-saone|Villefranche-sur-Saône|Rhône|69|Auvergne-Rhône-Alpes|Gleizé;Anse;Belleville-en-Beaujolais;Tarare`;
 
 const seeds: SeoCitySeed[] = RAW.trim().split("\n").map((line) => {
   const [slug, city, department, departmentCode, region, nearby] = line.split("|");
@@ -147,10 +187,13 @@ function buildDelivery(c: SeoCitySeed, i: number) {
   return variants[i % variants.length];
 }
 
+/** Contractions françaises : « à Le Havre » → « au Havre », « de Le Mans » → « du Mans ». */
+const fr = (t: string) => t.replace(/(^|\s)à Le /g, "$1au ").replace(/(^|\s)à Les /g, "$1aux ").replace(/(^|\s)de Le /g, "$1du ").replace(/(^|\s)de Les /g, "$1des ");
+
 export const seoCities: SeoCity[] = seeds.map((c, i) => ({
   ...c,
-  intro: buildIntro(c, i),
-  delivery: buildDelivery(c, i),
+  intro: fr(buildIntro(c, i)),
+  delivery: fr(buildDelivery(c, i)),
   useCases: USE_CASES[i % USE_CASES.length],
 }));
 

@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { commercialPages } from "../lib/seo-commercial";
 import { seoCities } from "../lib/seo-cities";
 import { NEW_SEO_PATHS } from "../lib/seo-pillars";
+import { seoDepartments, departmentPath } from "../lib/seo-local";
 
 const SITE = "https://www.easydrive-auto.fr";
 const BUILD_DATE = new Date();
@@ -26,6 +27,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ["/blog/meilleur-rapport-qualite-prix-voiturette-electrique", "monthly", 0.8],
     ["/blog/voiture-sans-permis-neuve-3990-euros", "monthly", 0.8],
     ["/blog/cout-recharge-voiture-sans-permis-electrique", "monthly", 0.8],
+    ["/blog/voiture-sans-permis-cadeau-noel", "weekly", 0.9],
+    ["/blog/prix-voiture-sans-permis-neuve-livree", "weekly", 0.88],
     ["/guide-voiture-sans-permis", "weekly", 0.95], ["/QuiSommesNous", "monthly", 0.85],
     ["/a-propos", "weekly", 0.9], ["/financement", "weekly", 0.9],
     ["/voiture-sans-permis-electrique", "weekly", 0.95], ["/citroen-ami-ou-neodrive", "weekly", 0.95],
@@ -50,6 +53,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: BUILD_DATE,
     changeFrequency: "weekly",
     priority: city.slug === "toulouse" ? 0.95 : 0.9,
+  }));
+
+  const departmentPages: MetadataRoute.Sitemap = seoDepartments.map((d) => ({
+    url: `${SITE}${departmentPath(d)}`,
+    lastModified: BUILD_DATE,
+    changeFrequency: "weekly",
+    priority: d.zone === 1 ? 0.9 : 0.85,
   }));
 
   const [{ data: articleRows }, { data: videoRows }] = await Promise.all([
@@ -78,5 +88,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
-  return [...base, ...cityPages, ...offers, ...articles, ...videos];
+  return [...base, ...cityPages, ...departmentPages, ...offers, ...articles, ...videos];
 }

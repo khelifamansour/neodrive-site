@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { seoCities } from "../../lib/seo-cities";
+import { seoDepartments, departmentPath, eur, CONFORT_PRICE, CONFORT_STOCK, NOEL_NOTE } from "../../lib/seo-local";
+import { pageMeta } from "../../lib/seo-meta";
 import SocialLinks from "../_components/SocialLinks";
 
-export const metadata: Metadata = {
-  title: "Voiture sans permis en France | Prix, villes et livraison NeoDrive",
-  description: "Trouvez une voiture sans permis électrique NeoDrive et découvrez nos pages locales : Toulouse, Paris, Lyon, Marseille, Bordeaux, Lille, Nantes, Strasbourg, Montpellier, Nice et plus.",
-  alternates: { canonical: "https://www.easydrive-auto.fr/voiture-sans-permis" },
-};
+export const metadata: Metadata = pageMeta(
+  "/voiture-sans-permis",
+  `Voiture sans permis électrique neuve : ${eur(CONFORT_PRICE)}, ${CONFORT_STOCK}`,
+  `Voiture sans permis électrique neuve NeoDrive livrée partout en France : Confort ${eur(CONFORT_PRICE)} TTC en stock, livraison de 450 à 790 € selon le département, 0 € d'acompte, paiement à la livraison.`,
+);
 
 export default function VoitureSansPermisHub() {
   return (
@@ -22,7 +24,7 @@ export default function VoitureSansPermisHub() {
       </section>
 
       <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:14,margin:"24px 0 50px"}}>
-        <div style={{padding:20,border:"1px solid #e7e7e7",borderRadius:18}}><strong style={{fontSize:24}}>Dès 3 990 € TTC</strong><p style={{marginBottom:0,color:"#666"}}>Prix d'entrée de gamme selon version et délai.</p></div>
+        <div style={{padding:20,border:"1px solid #e7e7e7",borderRadius:18}}><strong style={{fontSize:24}}>Confort {eur(CONFORT_PRICE)} en stock</strong><p style={{marginBottom:0,color:"#666"}}>{NOEL_NOTE} Essentielle 3 990 € sur commande (6 à 8 mois).</p></div>
         <div style={{padding:20,border:"1px solid #e7e7e7",borderRadius:18}}><strong style={{fontSize:24}}>100 % électrique</strong><p style={{marginBottom:0,color:"#666"}}>Recharge sur une prise domestique adaptée à l'usage prévu.</p></div>
         <div style={{padding:20,border:"1px solid #e7e7e7",borderRadius:18}}><strong style={{fontSize:24}}>Livraison France</strong><p style={{marginBottom:0,color:"#666"}}>Organisation du rendez-vous directement avec le client.</p></div>
       </section>
@@ -40,12 +42,23 @@ export default function VoitureSansPermisHub() {
         </div>
       </section>
 
+      <section style={{marginTop:54}}>
+        <h2 style={{fontSize:32,letterSpacing:-1}}>Voiture sans permis par département</h2>
+        <p style={{color:"#666",maxWidth:820}}>Le prix de livraison dépend uniquement du département : 450 €, 590 €, 690 € ou 790 €. Chaque page indique le prix total livré, carte grise comprise.</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8,marginTop:18}}>
+          {seoDepartments.map(d => <a key={d.code} href={departmentPath(d)} style={{padding:"9px 12px",borderRadius:12,border:"1px solid #e5e5e5",textDecoration:"none",color:"#111",fontSize:15}}>{d.name} ({d.code}) <span style={{color:"#888"}}>· {eur(d.delivery)}</span></a>)}
+        </div>
+      </section>
+
       <section style={{marginTop:54,padding:28,borderRadius:22,background:"#111",color:"#fff"}}>
         <h2 style={{fontSize:30,marginTop:0}}>Les recherches les plus importantes avant l'achat</h2>
         <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
           {[
             ["Voiture sans permis électrique","/voiture-sans-permis-electrique"],
             ["Voiture sans permis pas chère","/prix-voiture-sans-permis"],
+            ["Offrir une voiture sans permis à Noël","/blog/voiture-sans-permis-cadeau-noel"],
+            ["Prix total livré","/blog/prix-voiture-sans-permis-neuve-livree"],
+            ["Neuve en stock","/offres/voiture-sans-permis-neuve-en-stock"],
             ["Voiture sans permis d'occasion","/voiture-sans-permis-occasion"],
             ["Citroën Ami ou NeoDrive","/citroen-ami-ou-neodrive"],
             ["Fiat Topolino ou NeoDrive","/fiat-topolino-ou-neodrive"],

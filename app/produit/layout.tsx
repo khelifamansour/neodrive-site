@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { graph, organizationLd, productLd, breadcrumbLd, ldJson } from "../../lib/seo-meta";
+import { graph, organizationLd, productLd, breadcrumbLd, ldJson, pageMeta } from "../../lib/seo-meta";
+import { CONFORT_STOCK, NOEL_ACTIVE } from "../../lib/seo-local";
 import GoogleReviews from "../_components/GoogleReviews";
-export const metadata: Metadata = {
-  title: "NeoDrive Confort 4 990 € | Voiture sans permis électrique neuve",
-  description: "Découvrez NeoDrive Confort : voiture sans permis électrique neuve, deux places, photos réelles, équipements et informations de livraison. Demandez votre devis.",
-  alternates: { canonical:"https://www.easydrive-auto.fr/produit" },
-  openGraph: {title:"NeoDrive Confort | Voiture sans permis électrique",description:"Photos réelles, équipements et prix de la NeoDrive Confort.",url:"https://www.easydrive-auto.fr/produit",type:"website"}
-};
+export const metadata: Metadata = pageMeta(
+  "/produit",
+  `NeoDrive Confort 4 990 € : voiture sans permis neuve ${CONFORT_STOCK}`,
+  `NeoDrive Confort 4 990 € TTC : voiture sans permis électrique neuve 2 places, en stock, livrée chez vous en 2 à 3 semaines${NOEL_ACTIVE ? " (avant Noël)" : ""}. Photos réelles, 0 € d'acompte, paiement à la livraison, garantie 2 ans.`,
+);
 const ld = graph(organizationLd, productLd, breadcrumbLd([["Accueil", "/"], ["NeoDrive Confort", "/produit"]]));
 const Ld = () => <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(ld) }} />;
 
