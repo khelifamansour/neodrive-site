@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorizeSection, logSection } from "../../../lib/access";
 import { applyStoredSecrets, isAuthorized } from "../../../lib/integrations";
-import { crmDatabase } from "../../../lib/crm-agent";
+import { crmDatabase, normalizePhone } from "../../../lib/crm-agent";
 import { listJson } from "../../../lib/datastore";
 import { PLAN_CLIENTS, PLAN_TOURS } from "../../../lib/fleet";
 import { driverKey } from "../../../lib/driver-link";
@@ -273,6 +273,9 @@ export async function POST(req: Request) {
     // Compte de test (is_test) : voit exactement ce que voit Serge (ses tournées et ses livraisons)
     const tourName = acc.who === "member" && (acc.member as { is_test?: boolean }).is_test ? TEST_DRIVER : name;
     const { data: mInfo } = memberId ? await db.from("team_members").select("contract_type,employment,personal").eq("id", memberId).maybeSingle() : { data: null };
+    // Mansour connecté avec son propre compte livreur (même numéro que le fondateur, hors compte de test) : mêmes droits que le fondateur pour le paiement.
+    const mPhone = acc.who === "member" ? String((acc.member as { phone?: string | null }).phone || "") : "";
+    const founder = acc.who === "owner" || (acc.who === "member" && !(acc.member as { is_test?: boolean }).is_test && !!mPhone && normalizePhone(mPhone).slice(-9) === normalizePhone(process.env.OWNER_SMS_PHONE || "0689781710").slice(-9));
     const ctype = isSalarie(mInfo?.contract_type) ? "salarie" : "prestataire";
 
     if (b.action === "me") {
@@ -319,13 +322,15 @@ export async function POST(req: Request) {
       }
       const cols = "id,prenom,nom,adresse,code_postal,ville,telephone,email,modele,couleur,statut,date_promise,vin,vin_photo_path,paiement_confirme_at,livre_at,accuse_token,confirm_sent_at,remote_confirm,paiement_en_attente,montant_du,prevenu_at,total,remise_data,plan_client_id,reserve_token,reserve_due";
       const mine = acc.who === "member";
+      // Fondateur : réservations confirmées ou planifiées, plus tous les clients d'une tournée validée (même encore « Nouvelle »).
+      const inTour = [...where.keys()].filter(k => /^[A-Za-z0-9_-]{1,80}$/.test(k));
       const { data, error } = mine
         ? await db.from("reservations").select(cols).in("plan_client_id", where.size ? [...where.keys()] : ["-"]).neq("statut", "Annulée").or(`livre_at.is.null,livre_at.gte.${since}`).limit(200)
-        : await db.from("reservations").select(cols).or(`statut.in.(Confirmée,Planifiée),livre_at.gte.${since}`).order("date_promise", { ascending: true, nullsFirst: false }).limit(300);
+        : await db.from("reservations").select(cols).neq("statut", "Annulée").or([`statut.in.(Confirmée,Planifiée)`, `livre_at.gte.${since}`, ...(inTour.length ? [`and(plan_client_id.in.(${inTour.join(",")}),livre_at.is.null)`] : [])].join(",")).order("date_promise", { ascending: true, nullsFirst: false }).limit(300);
       if (error) throw new Error(error.message);
       const rows = (data || []).map(r => ({ ...r, ...(r.plan_client_id ? where.get(r.plan_client_id) || {} : {}) })) as (Record<string, unknown> & { tour_date?: string; tour_id?: string; ordre?: number })[];
       if (mine) rows.sort((a, z) => String(a.tour_date || "").localeCompare(String(z.tour_date || "")) || String(a.tour_id || "").localeCompare(String(z.tour_id || "")) || (a.ordre || 0) - (z.ordre || 0));
-      return NextResponse.json({ ok: true, mine, who: acc.who, deliveries: rows.map(r => ({ ...r, kept: r.paiement_en_attente && !r.paiement_confirme_at ? keptOf(r.remise_data) : null, remise_data: undefined, plan_client_id: undefined, email: undefined, has_email: !!r.email, has_vin_photo: !!r.vin_photo_path, vin_photo_path: undefined, accuse_url: r.accuse_token ? `${SITE}/api/accuse/${r.accuse_token}` : r.reserve_token ? `${SITE}/api/accuse/${r.reserve_token}` : null, accuse_token: undefined, reserve_url: r.reserve_token ? `${SITE}/api/accuse/${r.reserve_token}` : null, reserve_token: undefined, remote_confirmed: !!r.remote_confirm, remote_confirm: undefined })), checks: checksFor(false), checks_pending: checksFor(false) });
+      return NextResponse.json({ ok: true, mine, who: founder ? "owner" : acc.who, deliveries: rows.map(r => ({ ...r, kept: r.paiement_en_attente && !r.paiement_confirme_at ? keptOf(r.remise_data) : null, remise_data: undefined, plan_client_id: undefined, email: undefined, has_email: !!r.email, has_vin_photo: !!r.vin_photo_path, vin_photo_path: undefined, accuse_url: r.accuse_token ? `${SITE}/api/accuse/${r.accuse_token}` : r.reserve_token ? `${SITE}/api/accuse/${r.reserve_token}` : null, accuse_token: undefined, reserve_url: r.reserve_token ? `${SITE}/api/accuse/${r.reserve_token}` : null, reserve_token: undefined, remote_confirmed: !!r.remote_confirm, remote_confirm: undefined })), checks: checksFor(false), checks_pending: checksFor(false) });
     }
     if (b.action === "free_vins") {
       const [{ data: sv }, { data: used }] = await Promise.all([db.from("shipment_vehicles").select("vin,container,status,client_name").neq("status", "livrée").order("vin").limit(500), db.from("reservations").select("vin").not("vin", "is", null)]);
@@ -366,7 +371,7 @@ export async function POST(req: Request) {
     }
     // Fondateur uniquement : annuler un « Paiement reçu » mis par erreur (tant que rien n'est signé).
     if (b.action === "unconfirm_payment") {
-      if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Seul Mansour peut modifier le paiement." }, { status: 403 });
+      if (!founder) return NextResponse.json({ ok: false, error: "Seul Mansour peut modifier le paiement." }, { status: 403 });
       const id = Number(b.id);
       const { data: r } = await db.from("reservations").select("id,accuse_token,reserve_token,livre_at,notes").eq("id", id).maybeSingle();
       if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
@@ -379,7 +384,7 @@ export async function POST(req: Request) {
     }
     // Fondateur uniquement : « Paiement reçu » confirmé directement depuis la livraison.
     if (b.action === "confirm_payment") {
-      if (acc.who !== "owner") return NextResponse.json({ ok: false, error: "Seul Mansour peut confirmer un paiement." }, { status: 403 });
+      if (!founder) return NextResponse.json({ ok: false, error: "Seul Mansour peut confirmer un paiement." }, { status: 403 });
       const id = Number(b.id);
       const { data: r } = await db.from("reservations").select("id,prenom,nom,telephone,livre_at,paiement_en_attente,paiement_confirme_at,notes").eq("id", id).maybeSingle();
       if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
@@ -440,6 +445,12 @@ export async function POST(req: Request) {
       if (error) throw new Error(error.message);
       await db.from("shipment_vehicles").update({ client_name: `${r.prenom} ${r.nom}`.trim(), ...(photo ? { plate_photo: photo } : {}), updated_at: new Date().toISOString() }).eq("vin", vin);
       try { await linkReservationVin(db, { ...r, vin }, { by: acc.name }); } catch (e) { console.error("[LIVRAISON] lien stock", e); }
+      // VIN scanné par le livreur : la voiture est avec lui (chargée), ce qui ouvre l'étape 2 du lien carte grise (photo de la plaque + mandat).
+      try {
+        const at = new Date().toISOString();
+        const { data: vs } = await db.from("shipment_vehicles").select("id,status,history").eq("vin", vin);
+        for (const v of vs || []) if (v.status !== "livrée" && v.status !== "chargée") await db.from("shipment_vehicles").update({ status: "chargée", picked_at: at, driver: driverDisplay(name) || acc.name, history: [...(Array.isArray(v.history) ? v.history : []), { at, stage: "chargée", by: acc.name, note: "VIN scanné à la livraison (espace livreur)" }], updated_at: at }).eq("id", v.id);
+      } catch (e) { console.error("[LIVRAISON] stock chargée", e); }
       await logSection(acc, "livraison_vin", { id, vin });
       return NextResponse.json({ ok: true, vin });
     }
@@ -482,7 +493,7 @@ export async function POST(req: Request) {
       const id = Number(b.id);
       const { data: r } = await db.from("reservations").select("id,prenom,nom,total,paiement_confirme_at,accuse_token,reserve_token,notes").eq("id", id).maybeSingle();
       if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
-      const owner = acc.who === "owner";
+      const owner = founder;
       if (r.accuse_token || r.reserve_token) return NextResponse.json({ ok: false, error: "Cette livraison est déjà confirmée." }, { status: 409 });
       if (r.paiement_confirme_at) return NextResponse.json({ ok: false, error: "Le paiement est déjà confirmé : livraison normale." }, { status: 409 });
       const on = !!b.on;

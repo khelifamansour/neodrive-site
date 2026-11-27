@@ -23,6 +23,25 @@ export async function sendGuideSms(phone: string) {
   await sendSms("+" + d, `NeoDrive : bienvenue ! TRES IMPORTANT pour vos batteries et votre garantie : lisez nos consignes de recharge et de stockage avant la 1re recharge : easydrive-auto.fr/guide-batterie`, "transactional");
   return true;
 }
+/** Lien personnel « carte grise » (/carte-grise/preparer/<jeton>, jeton reservations.cg_prep_token créé au besoin) ; null si le dossier est déjà signé ou la colonne absente. */
+export async function cgPrepLink(db: DB, id: number): Promise<string | null> {
+  try {
+    const { data: r, error } = await db.from("reservations").select("id,cg_prep_token").eq("id", id).maybeSingle();
+    if (error || !r) return null;
+    const { data: ds } = await db.from("carte_grise_dossiers").select("id,fields,status").eq("reservation_id", id).neq("status", "annulé").order("created_at", { ascending: false }).limit(1);
+    const d = (ds || [])[0] as { fields?: Record<string, unknown> | null } | undefined;
+    if (d?.fields?.prep_signed_at) return null;
+    let token = r.cg_prep_token as string | null;
+    if (!token) {
+      token = randomBytes(20).toString("hex");
+      await db.from("reservations").update({ cg_prep_token: token }).eq("id", id).is("cg_prep_token", null);
+      const { data: again } = await db.from("reservations").select("cg_prep_token").eq("id", id).maybeSingle();
+      token = (again?.cg_prep_token as string | null) || token;
+    }
+    return `${SITE}/carte-grise/preparer/${token}`;
+  } catch (e) { console.error("[LIVRAISON] lien carte grise", e); return null; }
+}
+const cgHtml = (url: string) => `<p style="background:#eef4ff;border:1px solid #c7d7fe;border-radius:10px;padding:10px 12px"><b>🪪 Dernière étape : votre carte grise.</b> Votre véhicule est livré : prenez en photo la plaque du numéro de série (sous le capot ou au bas du pare-brise) et signez le mandat d'immatriculation au doigt, en 2 minutes (si ce n'est pas encore fait, ajoutez aussi votre pièce d'identité et un justificatif de domicile) :<br><a href="${url}" style="display:inline-block;margin-top:8px;background:#1849a9;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:bold">Finaliser ma carte grise</a></p>`;
 const eur = (n: number | null | undefined) => n == null ? "" : `${Math.round(Number(n)).toLocaleString("fr-FR")} €`;
 
 /** Statut affiché : « Livrée – paiement en attente » tant que le paiement n'est pas confirmé (réserve de propriété en cours). */
@@ -64,19 +83,23 @@ export async function finalizeDelivery(db: DB, r: any, data: ReceiptData, signat
     } catch (e) { console.error("[LIVRAISON] tour_event", e); }
   }
   const url = `${SITE}/api/accuse/${token}`;
+  // Carte grise : lien personnel (étape 2 débloquée par la livraison), envoyé avec le bon de livraison (e-mail, SMS si crédit, WhatsApp via le livreur).
+  const cg = await cgPrepLink(db, id);
   let emailed = false;
   await applyStoredSecrets();
   if (brevoReady()) {
     const first = String(r.prenom || "").split(/\s+/)[0];
-    const html = `<p>Bonjour ${esc(first)},</p><p>Bienvenue dans la famille NeoDrive ! Vous trouverez ci-joint le bon de livraison de votre véhicule (n° de série ${esc(r.vin)}), que vous avez signé.</p><p>C'est le seul document à signer : vous n'aurez rien d'autre à signer pour cette livraison.</p><p>Vous pouvez aussi le consulter ici : <a href="${url}">${url}</a></p>${GUIDE_HTML}<p>Une question, un souci ? Répondez simplement à cet e-mail ou appelez-nous au 06 89 78 17 10.</p><p>Bonne route !<br>L'équipe NeoDrive</p>`;
+    const html = `<p>Bonjour ${esc(first)},</p><p>Bienvenue dans la famille NeoDrive ! Vous trouverez ci-joint le bon de livraison de votre véhicule (n° de série ${esc(r.vin)}), que vous avez signé.</p><p>C'est le seul document à signer pour la livraison.</p><p>Vous pouvez aussi le consulter ici : <a href="${url}">${url}</a></p>${cg ? cgHtml(cg) : ""}${GUIDE_HTML}<p>Une question, un souci ? Répondez simplement à cet e-mail ou appelez-nous au 06 89 78 17 10.</p><p>Bonne route !<br>L'équipe NeoDrive</p>`;
     const att = [{ name: `Bon-de-livraison-${data.numero}.pdf`, content: pdf.toString("base64") }];
     try {
       if (r.email) emailed = !!(await sendEmail(r.email, data.client, "Votre bon de livraison NeoDrive", html, att, { cc: [OWNER_EMAIL], replyTo: OWNER_EMAIL }));
-      else await sendEmail(OWNER_EMAIL, "Mansour", `Bon de livraison – ${data.client} (VIN ${r.vin})`, `<p>Bon de livraison ${esc(how)} pour ${esc(data.client)} (pas d'e-mail client connu).</p>${paid ? "" : "<p>Paiement pas encore confirmé : réserve de propriété en cours.</p>"}<p><a href="${url}">${url}</a></p>`, att);
+      else await sendEmail(OWNER_EMAIL, "Mansour", `Bon de livraison – ${data.client} (VIN ${r.vin})`, `<p>Bon de livraison ${esc(how)} pour ${esc(data.client)} (pas d'e-mail client connu).</p>${paid ? "" : "<p>Paiement pas encore confirmé : réserve de propriété en cours.</p>"}<p><a href="${url}">${url}</a></p>${cg ? `<p>Lien carte grise du client (à lui transmettre par WhatsApp) : <a href="${cg}">${cg}</a></p>` : ""}`, att);
     } catch (e) { console.error("[LIVRAISON] email bon de livraison", e); }
     try { if (r.telephone) await sendGuideSms(r.telephone); } catch (e) { console.error("[LIVRAISON] SMS guide", e); }
+    try { if (r.telephone && cg) await sendSms("+" + intlPhone(r.telephone), `NeoDrive : derniere etape pour votre carte grise : photo de la plaque du numero de serie + signature du mandat (2 min) : ${cg}`, "transactional"); } catch (e) { console.error("[LIVRAISON] SMS carte grise", e); }
     try { await sendSms(OWNER_SMS(), `NeoDrive : livraison de ${data.client} ${paid ? "terminee" : "faite, PAIEMENT EN ATTENTE (reserve de propriete)"}, bon de livraison signe (VIN ${r.vin}).`, "transactional"); } catch (e) { console.error("[LIVRAISON] SMS fondateur", e); }
   }
-  const wa = r.telephone ? `https://wa.me/${intlPhone(r.telephone)}?text=${encodeURIComponent(`Bonjour, voici votre bon de livraison NeoDrive : ${url}\n\n🔋 TRÈS IMPORTANT : avant votre première recharge, lisez notre guide batterie (recharge, temps de charge, stockage) pour préserver vos batteries et votre garantie : ${GUIDE_URL}\n\nBonne route ! NeoDrive`)}` : null;
-  return { url, emailed, whatsapp: wa, paid };
+  const wa = r.telephone ? `https://wa.me/${intlPhone(r.telephone)}?text=${encodeURIComponent(`Bonjour, voici votre bon de livraison NeoDrive : ${url}\n\n${cg ? `🪪 Dernière étape pour votre carte grise (2 minutes) : photo de la plaque du numéro de série + signature du mandat : ${cg}\n\n` : ""}🔋 TRÈS IMPORTANT : avant votre première recharge, lisez notre guide batterie (recharge, temps de charge, stockage) pour préserver vos batteries et votre garantie : ${GUIDE_URL}\n\nBonne route ! NeoDrive`)}` : null;
+  const waCg = r.telephone && cg ? `https://wa.me/${intlPhone(r.telephone)}?text=${encodeURIComponent(`Bonjour${r.prenom ? " " + String(r.prenom).split(/\s+/)[0] : ""}, dernière étape pour votre carte grise (2 minutes) : prenez en photo la plaque du numéro de série et signez le mandat au doigt ici : ${cg}\n\nL'équipe NeoDrive`)}` : null;
+  return { url, emailed, whatsapp: wa, paid, carte_grise_url: cg, carte_grise_whatsapp: waCg };
 }

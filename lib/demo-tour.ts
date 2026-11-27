@@ -148,6 +148,8 @@ export type CustomTourInput = {
   transporteur?: boolean; carrier?: PlanTour["carrier"];
   /** Note ajoutée au client après le créneau (par défaut : paiement par virement instantané à la livraison). */
   clientNote?: string;
+  /** Ne change ni le statut ni la date promise des réservations (seul plan_client_id est relié à la tournée). */
+  keepStatus?: boolean;
 };
 
 /** Vraie tournée quelconque (réservations existantes), même format que createRealTour. Sert aussi aux missions transporteur. */
@@ -167,7 +169,7 @@ export async function createCustomTour(db: SupabaseClient, t: CustomTourInput) {
     const prev = clientsList.find(p => p.id === cid);
     const pc: PlanClient = { ...(prev || {}), id: cid, created_at: prev?.created_at || now, source: "reservation", prenom: x.prenom, nom: x.nom, telephone: x.telephone, email: x.email || "", adresse: x.adresse, code_postal: x.code_postal, ville: x.ville, modele: x.modele || "NeoDrive Confort", couleur: x.couleur || "", total: x.total != null ? Number(x.total) : null, status: "planifie", tour_id: t.tourId, lat: c.lat, lng: c.lng, note: `Créneau ${c.slot} · ${t.clientNote ?? "paiement par virement instantané à la livraison"}` };
     await writeJson(db, `${PLAN_CLIENTS}/${cid}.json`, pc);
-    const upd = { plan_client_id: cid, statut: "Planifiée", date_promise: t.date };
+    const upd: Record<string, unknown> = t.keepStatus ? { plan_client_id: cid } : { plan_client_id: cid, statut: "Planifiée", date_promise: t.date };
     if (t.transporteur) {
       // Colonne livraison_mode (migration du 24/11) : repli sans elle si la migration n'est pas encore passée.
       const { error: e1 } = await db.from("reservations").update({ ...upd, livraison_mode: "transporteur", updated_at: now }).eq("id", x.id);

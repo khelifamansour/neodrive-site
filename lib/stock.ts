@@ -104,6 +104,8 @@ export async function ensureAllDrafts(db: DB) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function onDelivered(db: DB, r: any, by: string, at: string) {
   try { await linkReservationVin(db, r, { delivered: true, by, at }); } catch (e) { console.error("[STOCK] lien livraison", e); }
+  // Réservation de test (source « test ») : pas de brouillon de facture (hors chiffres et facturation).
+  if (String(r?.source || "") === "test") return;
   try { await ensureDraftInvoice(db, Number(r.id)); } catch (e) { console.error("[STOCK] brouillon facture", e); }
 }
 

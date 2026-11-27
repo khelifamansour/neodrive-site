@@ -88,7 +88,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   const [vin, setVin] = useState(""); const [photo, setPhoto] = useState(""); const [tail, setTail] = useState(""); const [vinInfo, setVinInfo] = useState<VinInfo | null>(null); const [editVin, setEditVin] = useState(false);
   const [ck, setCk] = useState<Record<string, boolean>>({}); const [reserves, setReserves] = useState(""); const [signer, setSigner] = useState(""); const [sig, setSig] = useState<string | null>(null);
   const [accept, setAccept] = useState(false);
-  const [done, setDone] = useState<{ url: string; emailed: boolean; whatsapp: string | null } | null>(null);
+  const [done, setDone] = useState<{ url: string; emailed: boolean; whatsapp: string | null; carte_grise_url?: string | null; carte_grise_whatsapp?: string | null } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -154,7 +154,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   });
   const signNow = (checksOut: Record<string, boolean>) => r && sig && run("sign", async () => {
     const pos = await position();
-    const j = await api<{ url: string; emailed: boolean; whatsapp: string | null; reserve?: boolean }>({ action: "sign", id: r.id, checks: checksOut, reserves, signer, signature: sig, accept, driver_name: driverName, ...pos });
+    const j = await api<{ url: string; emailed: boolean; whatsapp: string | null; reserve?: boolean; carte_grise_url?: string | null; carte_grise_whatsapp?: string | null }>({ action: "sign", id: r.id, checks: checksOut, reserves, signer, signature: sig, accept, driver_name: driverName, ...pos });
     setDone(j); onMsg(`✅ Livraison de ${r.prenom} ${r.nom} terminée, bon de livraison signé.`); await load();
   });
   const sendConfirm = () => r && run("send", async () => {
@@ -212,6 +212,12 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
         <DocBtns url={r.accuse_url} x={r} />
         {done?.whatsapp ? <a className={`${c.btn} ${c.btnGhost}`} style={{ ...big, background: "#1fa855", color: "#fff" }} href={done.whatsapp} target="_blank" rel="noreferrer">💬 Envoyer l’accusé par WhatsApp</a> : null}
         {done ? <small className={c.muted}>{done.emailed ? "📧 Envoyé aussi par e-mail au client." : "Pas d’e-mail client : envoyez-le par WhatsApp."}</small> : null}
+        {done?.carte_grise_url ? <div style={{ display: "grid", gap: 6, background: "#eef4ff", borderRadius: 10, padding: 10 }}>
+          <b>🪪 Carte grise : étape 2 ouverte pour le client</b>
+          <small>Photo de la plaque du numéro de série + mandat signé au doigt. Lien {done.emailed ? "envoyé par e-mail et inclus" : "inclus"} dans le message WhatsApp de l’accusé.</small>
+          {done.carte_grise_whatsapp ? <a className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center", background: "#1fa855", color: "#fff" }} href={done.carte_grise_whatsapp} target="_blank" rel="noreferrer">💬 Envoyer le lien carte grise par WhatsApp</a> : null}
+          <a className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} href={done.carte_grise_url} target="_blank" rel="noreferrer">Ouvrir le lien carte grise (le client peut le faire sur ce téléphone)</a>
+        </div> : null}
       </div> : <>
         <Step n={1} title="Prévenir le client" done={!!r.prevenu_at || !!arrived}>
           <b>🔔 J’arrive dans…</b>
