@@ -28,6 +28,8 @@ const setPending = (k: string, ticket: string | null) => {
 };
 const mb = (n: number) => n >= 1073741824 ? `${(n / 1073741824).toFixed(2).replace(".", ",")} Go` : `${Math.max(1, Math.round(n / 1048576))} Mo`;
 const dur = (s: number | null) => s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "";
+const PED_TAG = "pedagogie";
+type Pedagogy = { enabled: boolean; site: { id: string; title: string; active: boolean }[]; skipped: { id: string; title: string; why: string }[] };
 const STATUS: Record<Item["status"], string> = { uploaded: "À analyser", analysing: "Analyse…", analysed: "Analysée", error: "Erreur" };
 
 async function pool<T>(xs: T[], n: number, fn: (x: T, i: number) => Promise<void>) {
@@ -45,10 +47,11 @@ export default function Bibliotheque() {
   const [prep, setPrep] = useState("");
   const [failedBatches, setFailedBatches] = useState<StoredBatch[]>([]);
   const [install, setInstall] = useState<{ prompt: () => Promise<void> } | null>(null);
-  const [filter, setFilter] = useState<"all" | Item["status"]>("all");
+  const [filter, setFilter] = useState<"all" | "pedagogie" | Item["status"]>("all");
   const [sel, setSel] = useState<string | null>(null);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [batch, setBatch] = useState("");
+  const [ped, setPed] = useState<Pedagogy | null>(null);
   const jobsRef = useRef<Map<string, UploadJob>>(new Map());
   const codeRef = useRef("");
 
@@ -59,7 +62,8 @@ export default function Bibliotheque() {
     if (!j.ok) throw new Error(j.error || "Erreur");
     return j;
   }, []);
-  const load = useCallback(async (pc = codeRef.current) => { const j = await api({ action: "list" }, pc); setItems(j.items); setAuthed(true); }, [api]);
+  const loadPed = useCallback(async () => { try { const j = await api({ action: "pedagogy" }); setPed({ enabled: j.enabled, site: j.site, skipped: j.skipped }); } catch { /* facultatif */ } }, [api]);
+  const load = useCallback(async (pc = codeRef.current) => { const j = await api({ action: "list" }, pc); setItems(j.items); setAuthed(true); loadPed(); }, [api, loadPed]);
 
   const patchRow = (key: string, p: Partial<Row>) => setRows(rs => rs.map(r => r.key === key ? { ...r, ...p } : r));
 
@@ -209,6 +213,14 @@ export default function Bibliotheque() {
     upd({ ...it, ...patch });
     try { const j = await api({ action: "update", id: it.id, ...patch }); if (j.item) upd(j.item); } catch (e) { setErr((e as Error).message); upd(it); }
   };
+  const setPedagogy = async (it: Item, on: boolean) => {
+    const tags = on ? [...new Set([...(it.tags || []), PED_TAG])] : (it.tags || []).filter(t => t !== PED_TAG);
+    upd({ ...it, tags });
+    try { const j = await api({ action: "update", id: it.id, tags }); if (j.item) upd(j.item); loadPed(); } catch (e) { setErr((e as Error).message); upd(it); }
+  };
+  const pedSet = async (body: Record<string, unknown>) => {
+    try { const j = await api({ action: "pedagogy_set", ...body }); setPed(p => p ? { ...p, enabled: j.enabled, site: j.site } : p); } catch (e) { setErr((e as Error).message); }
+  };
   const open = async (it: Item) => { try { const j = await api({ action: "get", id: it.id }); if (j.url) window.open(j.url, "_blank", "noopener"); } catch (e) { setErr((e as Error).message); } };
 
   if (authed === null) return <main className="s"><p className="muted">Chargement…</p><style jsx>{css}</style></main>;
@@ -219,7 +231,8 @@ export default function Bibliotheque() {
   const sentBytes = bgTotal ? bgTotal.sent : rows.reduce((s, r) => s + (r.status === "done" || r.status === "registering" ? r.size : r.sent), 0);
   const pct = bgTotal && bgTotal.total ? Math.round(bgTotal.sent / bgTotal.total * 100) : totalBytes ? Math.round(sentBytes / totalBytes * 100) : 0;
   const nDone = rows.filter(r => r.status === "done").length, nErr = rows.filter(r => r.status === "error").length;
-  const shown = filter === "all" ? items : items.filter(i => i.status === filter);
+  const shown = filter === "all" ? items : filter === "pedagogie" ? items.filter(i => i.tags?.includes(PED_TAG)) : items.filter(i => i.status === filter);
+  const nPedLib = items.filter(i => i.tags?.includes(PED_TAG)).length;
 
   return <main className="s">
     <p className="nav"><a href="/studio/video">← Studio vidéo</a> · <a href="/studio/fabrique">🏭 Fabrique TikTok</a></p>
@@ -254,6 +267,13 @@ export default function Bibliotheque() {
       {failedBatches.map(b => <div key={b.id}><p className="muted">{new Date(b.created).toLocaleString("fr-FR")} : à resélectionner et renvoyer :</p><ul>{b.items.filter(it => b.results?.[it.key] !== "done").map(it => <li key={it.key}>{it.name} ({mb(it.size)})</li>)}</ul><button className="link" onClick={() => dropBatch(b.id).then(() => setFailedBatches(fb => fb.filter(x => x.id !== b.id)))}>Ignorer</button></div>)}
     </section> : null}
 
+    {ped ? <section className="card ped">
+      <div className="head"><b>🎓 Pédagogie client (WhatsApp)</b><label className="cons"><input type="checkbox" checked={ped.enabled} onChange={e => pedSet({ enabled: e.target.checked })} /> {ped.enabled ? "Envois actifs" : "Envois coupés"}</label></div>
+      <p className="muted">Les clients qui ont réservé et attendent leur livraison reçoivent de temps en temps une de ces vidéos (1 tous les 5 jours au plus, 4 au total, jamais deux fois la même). Cochez « Pédagogie client » sous une vidéo de la bibliothèque pour l’ajouter (16 Mo maximum pour WhatsApp).</p>
+      {ped.site.map(v => <label key={v.id} className="cons"><input type="checkbox" checked={v.active} onChange={e => pedSet({ site: v.id, active: e.target.checked })} /> {v.title} <small className="muted">(site)</small></label>)}
+      <p className="muted">{nPedLib} vidéo(s) de la bibliothèque cochée(s){ped.skipped.length ? ` · non envoyées : ${ped.skipped.map(x => `${x.title} (${x.why})`).join(", ")}` : ""}</p>
+    </section> : null}
+
     <h2>Vidéos ({items.length})</h2>
     {items.some(i => i.status === "uploaded") ? <button className="go" disabled={!!batch} onClick={analyseAll}>🧠 Analyser les {items.filter(i => i.status === "uploaded").length} vidéo(s) en attente</button> : null}
     {items.some(i => i.status === "error") ? <button className="go" disabled={!!batch} onClick={async () => { try { await api({ action: "retry_errors" }); await load(); await analyseAll(); } catch (e) { setErr((e as Error).message); } }}>🔁 Réessayer les {items.filter(i => i.status === "error").length} vidéo(s) en erreur</button> : null}
@@ -269,7 +289,7 @@ export default function Bibliotheque() {
         {a.hooks?.length ? <><b>Accroches</b><ul>{a.hooks.map((h, i) => <li key={i}>{h}</li>)}</ul></> : null}
         {a.pii?.length ? <><b>🔒 Infos personnelles repérées (masquées au montage)</b><ul>{a.pii.map((m, i) => <li key={i}>{dur(m.start) || "0:00"} : {m.label}{m.visual ? " (image)" : ""}</li>)}</ul></> : null}
       </section>; })()}
-    <div className="seg">{(["all", "uploaded", "analysed", "error"] as const).map(f => <button key={f} className={filter === f ? "on" : ""} onClick={() => setFilter(f)}>{f === "all" ? "Toutes" : STATUS[f]}</button>)}</div>
+    <div className="seg">{(["all", "uploaded", "analysed", "error", "pedagogie"] as const).map(f => <button key={f} className={filter === f ? "on" : ""} onClick={() => setFilter(f)}>{f === "all" ? "Toutes" : f === "pedagogie" ? "🎓 Pédagogie client" : STATUS[f]}</button>)}</div>
     <div className="grid">{shown.map(it => <article key={it.id} className="vid">
       <button className="thumb" onClick={() => open(it)} aria-label={`Voir ${it.name}`}>{it.posterUrl ? <img src={it.posterUrl} alt="" loading="lazy" /> : <span>🎬</span>}{it.duration ? <em>{dur(it.duration)}</em> : null}</button>
       <div className="meta"><b title={it.name}>{it.name}</b><small>{mb(it.size)} · {new Date(it.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</small>
@@ -280,6 +300,8 @@ export default function Bibliotheque() {
         {it.status === "error" && it.error ? <small className="e">{it.error}</small> : null}
         <label className="cons"><input type="checkbox" checked={it.has_client} onChange={e => setFlag(it, { has_client: e.target.checked })} /> Client visible</label>
         {it.has_client ? <label className={`cons${it.consent ? " yes" : " no"}`}><input type="checkbox" checked={it.consent} onChange={e => setFlag(it, { consent: e.target.checked })} /> Accord du client</label> : null}
+        <label className={`cons${it.tags?.includes(PED_TAG) ? " yes" : ""}`}><input type="checkbox" checked={!!it.tags?.includes(PED_TAG)} onChange={e => setPedagogy(it, e.target.checked)} /> 🎓 Pédagogie client</label>
+        {it.tags?.includes(PED_TAG) && it.size > 16 * 1024 * 1024 ? <small className="e">Plus de 16 Mo : trop lourde pour WhatsApp</small> : null}
       </div>
     </article>)}</div>
     {!shown.length ? <p className="muted">Aucune vidéo pour l’instant.</p> : null}
@@ -315,4 +337,5 @@ button{font:inherit;cursor:pointer}.login button{padding:15px;border:0;border-ra
 .cons{grid-column:1/3;display:flex;gap:6px;align-items:center;font-size:12px;font-weight:700;color:#344054}.cons input{width:18px;height:18px;padding:0;margin:0}.cons.no{color:#b42318}.cons.yes{color:#067647}
 .e{color:#b42318!important;font-size:11px}
 .det ul{margin:4px 0 8px;padding-left:18px;font-size:14px;line-height:1.5}.det p{margin:2px 0}.chips{display:flex;flex-wrap:wrap;gap:4px}.chips span{background:#f2f4f7;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700}
+.ped{background:#f5f8ff;border-color:#d1e0ff}.ped .cons{font-size:14px}
 .x{border:1px solid #eee;background:#fff;border-radius:10px;min-width:40px;min-height:40px;font-size:16px}`;

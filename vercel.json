@@ -120,6 +120,10 @@
     {
       "path": "/api/studio/fabrique",
       "schedule": "*/10 4-6 * * *"
+    },
+    {
+      "path": "/api/crm/pedagogie-wa",
+      "schedule": "30 9 * * 2,5"
     }
   ]
 }

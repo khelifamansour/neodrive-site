@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { authorizeSection, logSection } from "../../../../lib/access";
 import { crmDatabase } from "../../../../lib/crm-agent";
 import { BUCKET } from "../../../../lib/studio-video";
+import { PEDAGOGIE_TEMPLATE, pedagogyVideos, readPedagogySettings, writePedagogySettings } from "../../../../lib/client-pedagogy";
 import { MAX_ATTEMPTS, analyseItem, attemptOf, permanentError, storedSize } from "../../../../lib/video-analysis";
 import {
   LIB_MAX_BYTES, blankItem, deleteItem, getItem, importSocialVideos, libId, libPath, listItems, patchItem, readTicket, reconcile, safeLibId, saveItem, signTicket,
@@ -164,6 +165,20 @@ export async function POST(req: Request) {
       for (const i of errs) await patchItem(db, i.id, { status: "uploaded", error: null }).catch(() => null);
       await logSection(acc, "studio_library_retry", { n: errs.length });
       return NextResponse.json({ ok: true, requeued: errs.length });
+    }
+
+    if (action === "pedagogy") {
+      const p = await pedagogyVideos(db);
+      return NextResponse.json({ ok: true, template: PEDAGOGIE_TEMPLATE, enabled: p.settings.enabled, site: p.settings.videos, active: p.videos.map(v => v.id), skipped: p.skipped });
+    }
+    if (action === "pedagogy_set") {
+      // Interrupteur général des envois « Pédagogie client », ou activation d'une vidéo du site.
+      const s = await readPedagogySettings(db);
+      if (typeof b.enabled === "boolean") s.enabled = b.enabled;
+      if (typeof b.site === "string" && typeof b.active === "boolean") s.videos = s.videos.map(v => v.id === b.site ? { ...v, active: b.active as boolean } : v);
+      await writePedagogySettings(db, s);
+      await logSection(acc, "studio_library_pedagogy", { enabled: s.enabled, site: b.site ?? null, active: b.active ?? null });
+      return NextResponse.json({ ok: true, enabled: s.enabled, site: s.videos });
     }
 
     const id = safeLibId(b.id);
