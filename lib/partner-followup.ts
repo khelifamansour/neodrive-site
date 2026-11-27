@@ -6,7 +6,7 @@
  */
 import { createHmac } from "crypto";
 import { crmDatabase } from "./crm-agent";
-import { OWNER_EMAIL, SITE, sendEmail } from "./brevo";
+import { OWNER_EMAIL, SITE, marketingEmailGate, sendEmail, type MarketingGate } from "./brevo";
 
 export type PartnerFollowup = { welcome_at?: string; relance1_at?: string; relance2_at?: string; unsubscribed_at?: string; legacy?: boolean; manual_at?: string; no_relances?: boolean };
 export type PartnerApplication = { id: number; created_at: string; company: string | null; contact_name: string | null; phone: string | null; email: string | null; city: string | null; postal_code: string | null; activity: string | null; formula: string | null; has_showroom: boolean | null; message: string | null; status: string | null; followup: PartnerFollowup | null };
@@ -70,12 +70,13 @@ async function saveFollowup(id: number, followup: PartnerFollowup) {
 }
 
 /** Envoie l'e-mail de bienvenue au candidat (et une alerte au fondateur si notifyOwner). Enregistre welcome_at. */
-export async function sendPartnerWelcome(a: PartnerApplication, opts: { notifyOwner?: boolean; manual?: boolean; relances?: boolean } = {}) {
+export async function sendPartnerWelcome(a: PartnerApplication, opts: { notifyOwner?: boolean; manual?: boolean; relances?: boolean; gate?: MarketingGate } = {}) {
   const now = new Date().toISOString();
   const f: PartnerFollowup = { ...(a.followup || {}) };
   let sent = false, error = "";
   if (f.unsubscribed_at) error = "désinscrit";
   else if (!validEmail(a.email)) error = "e-mail invalide ou absent";
+  else if (opts.gate && !(await opts.gate.take())) return { id: a.id, sent: false, deferred: true, error: "reporté (quota Brevo)" };
   else {
     try {
       const c = partnerEmail(0, a);
@@ -95,12 +96,14 @@ export async function sendPartnerWelcome(a: PartnerApplication, opts: { notifyOw
   return { id: a.id, sent, error: error || undefined };
 }
 
-/** Relances quotidiennes : J+4 puis J+10 après l'e-mail de bienvenue, seulement si la candidature est encore « Nouveau ». */
+/** Relances quotidiennes : J+4 puis J+10 après l'e-mail de bienvenue, seulement si la candidature est encore « Nouveau ».
+ * Bridées par le budget Brevo (réserve transactionnelle gardée) : une relance reportée reste due et part le lendemain. */
 export async function runPartnerRelances(now = new Date()) {
   const db = crmDatabase();
   const { data, error } = await db.from("partner_applications").select("*").eq("status", "Nouveau").not("followup", "is", null).order("id");
   if (error) throw new Error(error.message);
   const results: { id: number; step: number; sent: boolean; error?: string }[] = [];
+  const gate = marketingEmailGate("relances-partenaires"); let deferred = 0;
   for (const a of (data || []) as PartnerApplication[]) {
     const f = a.followup || {};
     if (f.legacy || f.unsubscribed_at || f.no_relances || !f.welcome_at || f.relance2_at || !validEmail(a.email)) continue;
@@ -108,6 +111,7 @@ export async function runPartnerRelances(now = new Date()) {
     const step: 1 | 2 | 0 = !f.relance1_at ? (since >= 4 * DAY ? 1 : 0)
       : since >= 10 * DAY && now.getTime() - new Date(f.relance1_at).getTime() >= 3 * DAY ? 2 : 0;
     if (!step) continue;
+    if (!(await gate.take())) { deferred++; continue; }
     try {
       const c = partnerEmail(step, a);
       await sendEmail(String(a.email).trim(), String(a.contact_name || ""), c.subject, c.html);
@@ -119,5 +123,6 @@ export async function runPartnerRelances(now = new Date()) {
   if (sent.length) {
     try { await sendEmail(OWNER_EMAIL, "Mansour", `Relances partenaires : ${sent.length} e-mail(s) envoyé(s)`, `<p>${sent.map(r => `Candidature n°${r.id} : relance ${r.step}`).join("<br>")}</p>`); } catch (e) { console.error("[PARTENAIRE] récap relances", e); }
   }
-  return { sent: sent.length, results };
+  const quota = sent.length || deferred ? await gate.finish(deferred) : null;
+  return { sent: sent.length, deferred, quota, results };
 }

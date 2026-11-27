@@ -2,12 +2,13 @@
  * Newsletter mensuelle NeoDrive (e-mail) à toute la base Leboncoin.
  * - Deux éditions par mois (AAAA-MM-a / AAAA-MM-b), rédigée par l'IA à partir des articles du blog, enregistrée dans newsletter_editions.
  * - Envoi à partir du 5 du mois, par lots (plan gratuit Brevo : 300 e-mails/jour au total), pas le dimanche.
+ *   Chaque lot est bridé par marketingEmailGate (réserve transactionnelle gardée) ; le reste part au passage suivant.
  * - Jamais aux désinscrits, ni aux contacts écrits dans les 14 derniers jours (ils sont déjà dans la séquence de bienvenue).
  * - Désinscription en un clic dans chaque e-mail ; copie au fondateur.
  */
 import OpenAI from "openai";
 import { crmDatabase } from "./crm-agent";
-import { brevoReady, sendEmail, OWNER_EMAIL, SITE } from "./brevo";
+import { brevoReady, marketingEmailGate, sendEmail, OWNER_EMAIL, SITE } from "./brevo";
 import { btn, layout } from "./multichannel";
 
 const hist = (l: any) => (Array.isArray(l?.history) ? l.history : []);
@@ -62,9 +63,14 @@ export async function sendNewsletterBatch(limit = Number(process.env.NEWSLETTER_
   const recent = Date.now() - 14 * 86400000;
   const todo = (data || []).filter((l: any) => validEmail(l.email) && !hist(l).some((h: any) => h?.type === "newsletter" && h?.edition === edition) && !(l.last_contact_at && new Date(l.last_contact_at).getTime() > recent)).slice(0, limit);
   const firstBatch = !(data || []).some((l: any) => hist(l).some((h: any) => h?.type === "newsletter" && h?.edition === edition));
-  if (firstBatch) { try { await sendEmail(OWNER_EMAIL, "Mansour", `[Copie newsletter ${edition}] ${ed.subject}`, layout(ed.html.replace("{{PRENOM}}", "Mansour"), 0)); } catch (e) { console.error("[NEWSLETTER] copie", e); } }
-  let sent = 0, failed = 0;
+  const gate = marketingEmailGate("newsletter");
+  // Pas de budget du jour : on ne fait rien (ni copie, ni envoi), tout repart au prochain passage.
+  if (todo.length && !(await gate.take())) return { edition, subject: ed.subject, sent: 0, failed: 0, deferred: todo.length, remainingToday: todo.length, quota: await gate.finish(todo.length) };
+  if (todo.length) gate.giveBack();
+  if (firstBatch && todo.length) { try { await sendEmail(OWNER_EMAIL, "Mansour", `[Copie newsletter ${edition}] ${ed.subject}`, layout(ed.html.replace("{{PRENOM}}", "Mansour"), 0)); } catch (e) { console.error("[NEWSLETTER] copie", e); } }
+  let sent = 0, failed = 0, deferred = 0;
   for (const l of todo) {
+    if (!(await gate.take())) { deferred = todo.length - sent - failed; break; }
     const p = String(l.nom || "").trim().split(/\s+/)[0] || "";
     const prenom = p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : "";
     try {
@@ -73,7 +79,8 @@ export async function sendNewsletterBatch(limit = Number(process.env.NEWSLETTER_
       sent++;
     } catch (e: any) { failed++; if (e?.fatal) break; }
   }
-  return { edition, subject: ed.subject, sent, failed, remainingToday: Math.max(0, todo.length - sent) };
+  const quota = await gate.finish(deferred);
+  return { edition, subject: ed.subject, sent, failed, deferred, remainingToday: Math.max(0, todo.length - sent), quota };
 }
 
 /** Aperçu : rédige une newsletter (sans l'enregistrer) et l'envoie au fondateur uniquement. */

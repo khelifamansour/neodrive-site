@@ -7,7 +7,7 @@
  */
 import { crmDatabase, normalizePhone } from "./crm-agent";
 import { isOffTopic as isOffTopicLead } from "./welcome-package";
-import { brevoReady, sendEmail, sendSms, unsubscribeUrl, SITE, OWNER_EMAIL } from "./brevo";
+import { brevoReady, marketingEmailGate, sendEmail, sendSms, unsubscribeUrl, SITE, OWNER_EMAIL } from "./brevo";
 
 const hist = (l: any) => (Array.isArray(l?.history) ? l.history : []);
 const prenomOf = (nom: string | null) => { const f = String(nom || "").trim().split(/\s+/)[0] || ""; return f ? f.charAt(0).toUpperCase() + f.slice(1).toLowerCase() : ""; };
@@ -100,7 +100,8 @@ export function smsText(nom: string | null, source?: string | null) {
   return `Bonjour, merci d'avoir contacté NeoDrive, leader des prix en France de la voiture sans permis neuve, dès 3990 €. Garantie 2 ans et service après-vente national. Feuilletez notre catalogue : ${W}/catalogue Nos clients livrés en vidéo : ${W}/videos Réservez ici : ${W}/reservation`;
 }
 
-/** E-mails 1 et 2 + SMS. Renvoie les envois (pour le résumé du fondateur). */
+/** E-mails 1 à 4 + SMS. Renvoie les envois (pour le résumé du fondateur). Les e-mails sont bridés par le budget Brevo
+ * (marketingEmailGate, réserve transactionnelle gardée) : un e-mail non envoyé faute de budget reste dû et part au passage suivant. */
 export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN || 25)) {
   if (!brevoReady()) return { skipped: "Brevo pas encore connecté", results: [] as any[] };
   if (isSunday()) return { skipped: "dimanche", results: [] as any[] };
@@ -114,7 +115,8 @@ export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN 
   const replied = await repliedPhones(rows.map((l: any) => normalizePhone(l.telephone)).filter(Boolean));
   const results: any[] = []; let stopped = "";
   const smsLimit = Number(process.env.SMS_PER_RUN || 20);
-  let mailsSent = 0, smsSent = 0;
+  let mailsSent = 0, smsSent = 0, mailsDeferred = 0, noMailBudget = false;
+  const gate = marketingEmailGate("sequence-prospects");
   for (const l of rows) {
     if (stopped || (mailsSent >= limit && smsSent >= smsLimit)) break;
     if (replied.has(normalizePhone(l.telephone))) continue;
@@ -126,7 +128,9 @@ export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN 
     // E-mail (1 le jour du package, 2 quatre jours après)
     // 4 e-mails : J0 catalogue, J+4 prix livré, J+8 financement, J+13 livraisons clients (écarts : 4, 4, 5 jours).
     const GAPS = [0, 4, 4, 5]; const lastMail = mails.length ? new Date(mails[mails.length - 1].sent_at).getTime() : 0;
-    if (mailsSent < limit && validEmail(l.email) && mails.length < 4 && (mails.length === 0 || now - lastMail >= GAPS[mails.length] * 86400000)) {
+    const mailDue = mailsSent < limit && validEmail(l.email) && mails.length < 4 && (mails.length === 0 || now - lastMail >= GAPS[mails.length] * 86400000);
+    if (mailDue && (noMailBudget || !(await gate.take()))) { noMailBudget = true; mailsDeferred++; }
+    else if (mailDue) {
       try {
         const step = (mails.length + 1) as 1 | 2 | 3 | 4; const at = new Date().toISOString();
         const c = emailContent(step, l); const id = await sendEmail(String(l.email).trim(), String(l.nom || ""), c.subject, c.html);
@@ -172,7 +176,8 @@ export async function sendEmailsAndSms(limit = Number(process.env.EMAIL_PER_RUN 
       } catch (e: any) { results.push({ id: l.id, error: e?.message || "erreur" }); if (e?.fatal) stopped = e.message; }
     }
   }
-  return { sent: results.filter(r => r.sent).length, failed: results.filter(r => r.error).length, stopped, results };
+  const quota = mailsDeferred || mailsSent ? await gate.finish(mailsDeferred) : null;
+  return { sent: results.filter(r => r.sent).length, failed: results.filter(r => r.error).length, stopped, emailsDeferred: mailsDeferred, quota, results };
 }
 
 /** Copie pour le fondateur, sur sa boîte mail, de chaque e-mail ou SMS envoyé. */

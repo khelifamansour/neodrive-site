@@ -2,26 +2,29 @@ import { NextResponse } from "next/server";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 import { authorizeSection } from "../../../../lib/access";
 import { crmDatabase } from "../../../../lib/crm-agent";
-import { brevoReady, sendEmail, sendSms } from "../../../../lib/brevo";
+import { brevoReady, marketingEmailGate, sendEmail, sendSms } from "../../../../lib/brevo";
 import { POSTES, isPoste } from "../../../../lib/hiring";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** Envoie l'invitation (e-mail + SMS) aux candidats présélectionnés de job_invitations qui ne l'ont pas encore reçue. */
+/** Envoie l'invitation (e-mail + SMS) aux candidats présélectionnés de job_invitations qui ne l'ont pas encore reçue.
+ * E-mails bridés par le budget Brevo (réserve transactionnelle gardée) : un e-mail reporté reste à envoyer (email_sent_at vide) au prochain envoi. */
 async function send(ids: number[]) {
   await applyStoredSecrets();
   if (!brevoReady()) return { ok: false, error: "Brevo non connecté" };
   const db = crmDatabase();
   const { data } = await db.from("job_invitations").select("*").in("id", ids);
   const results: { name: string; email?: string; sms?: string }[] = [];
+  const gate = marketingEmailGate("invitations-candidats"); let deferred = 0;
   for (const c of data || []) {
     if (!isPoste(c.poste)) continue;
     const first = String(c.full_name).split(" ")[0];
     const link = `https://www.easydrive-auto.fr/candidature?poste=${c.poste}`;
     const r: { name: string; email?: string; sms?: string } = { name: c.full_name }; const now = new Date().toISOString(); const patch: Record<string, string> = {};
-    if (c.email && !c.email_sent_at) {
+    if (c.email && !c.email_sent_at && !(await gate.take())) { r.email = "reporté (quota Brevo)"; deferred++; }
+    else if (c.email && !c.email_sent_at) {
       try {
         await sendEmail(c.email, c.full_name, `NeoDrive – votre candidature : ${POSTES[c.poste].short}`, `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6"><p>Bonjour ${esc(first)},</p><p>NeoDrive, suite à votre candidature sur Emploitic : merci. NeoDrive est une marque française de voitures sans permis électriques. Votre CV a retenu notre attention pour le poste de <b>${esc(POSTES[c.poste].title)}</b> (prestataire freelance, à distance depuis chez vous en Algérie, aux horaires français).</p><p>Voici le test : notre formulaire avec quelques tests (français, logique, énigmes, rédaction et mises en situation). Comptez 30 à 40 minutes, en une seule fois.</p><p style="font-size:17px;font-weight:bold;color:#b91c1c">⚠️ À faire seul(e), sans aucune aide ni outil d'intelligence artificielle.</p><p><a href="${link}" style="display:inline-block;background:#f05a28;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:bold">Remplir le formulaire</a></p><p>Les meilleurs profils seront appelés pour un entretien.</p><p>Cordialement,<br>Mansour Khelifa – NeoDrive</p></div>`);
         r.email = "envoyé"; patch.email_sent_at = now;
@@ -36,7 +39,8 @@ async function send(ids: number[]) {
     if (Object.keys(patch).length) await db.from("job_invitations").update(patch).eq("id", c.id);
     results.push(r);
   }
-  return { ok: true, results };
+  const quota = await gate.finish(deferred);
+  return { ok: true, deferred, quota, results };
 }
 
 /** Déclenchement par jeton à usage unique (admin_once_tokens, purpose « hiring-invite », payload = { ids }). */
@@ -46,7 +50,10 @@ export async function GET(req: Request) {
   const { data } = await crmDatabase().from("admin_once_tokens").update({ used_at: new Date().toISOString() }).eq("token", token).eq("purpose", "hiring-invite").is("used_at", null).gt("expires_at", new Date().toISOString()).select("payload");
   const ids = (data?.[0] as { payload?: { ids?: number[] } } | undefined)?.payload?.ids;
   if (!ids?.length) return NextResponse.json({ ok: false }, { status: 401 });
-  return NextResponse.json(await send(ids));
+  const r = await send(ids);
+  // E-mails reportés (quota Brevo) : jeton libéré pour relancer le même lien (seuls les e-mails non envoyés partiront).
+  if ("deferred" in r && r.deferred) await crmDatabase().from("admin_once_tokens").update({ used_at: null }).eq("token", token).eq("purpose", "hiring-invite");
+  return NextResponse.json(r);
 }
 
 /** Espace de tri : liste des invitations, ou envoi (code d'accès NeoDrive). */

@@ -4,7 +4,7 @@ import { batteryQueue, batteryTemplateStatus } from "../../../../lib/battery-wa"
 import { relanceTemplateStatus } from "../../../../lib/prospect-relance";
 import { copyToOwner, smsText } from "../../../../lib/multichannel";
 import { sendNewsletterPreview } from "../../../../lib/newsletter";
-import { brevoAccount, brevoDomains, brevoEvents, sendSms, setSenderOverride } from "../../../../lib/brevo";
+import { brevoAccount, brevoDomains, brevoEvents, marketingEmailBudget, sendSms, setSenderOverride } from "../../../../lib/brevo";
 import { applyStoredSecrets } from "../../../../lib/integrations";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +35,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: !!d.is_valid, type: d.type, expires: fmt(d.expires_at), data_access_expires: fmt(d.data_access_expires_at), scopes: d.scopes || [] });
   }
   if (sp.get("brevo") === "account") return NextResponse.json({ ok: true, account: await brevoAccount() });
+  if (sp.get("brevo") === "budget") return NextResponse.json({ ok: true, budget: await marketingEmailBudget() });
   if (sp.get("wa") === "health" || sp.get("wa") === "subscribe") {
     try { return NextResponse.json({ ok: true, result: await waAdmin(sp.get("wa") as "health" | "subscribe") }); }
     catch (e) { return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "erreur" }, { status: 502 }); }
