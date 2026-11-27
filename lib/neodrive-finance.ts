@@ -19,6 +19,27 @@ export function monthlyPayment(amount: number, months: number, annualRate = FINA
   return (amount * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
 }
 
+/**
+ * Mensualité « ou dès XX €/mois » affichée à côté des prix (accueil, produit, pages SEO).
+ * ⚠️ Reste à false tant que l'organisme prêteur n'a pas fourni par écrit son exemple
+ * représentatif (TAEG, taux débiteur, durée, frais). Tant que false, AUCUNE mensualité
+ * chiffrée n'est affichée hors de /financement : seulement un lien « simuler » + la mention légale.
+ * Passer à true (après mise à jour de FINANCE.taeg / tauxDebiteur / fraisDossier) suffit à
+ * afficher partout « ou dès XX €/mois » avec l'exemple représentatif (art. L312-6 C. conso).
+ */
+export const FINANCE_RATE_CONFIRMED = false;
+
+/** Mention obligatoire de toute publicité pour un crédit (art. L312-5 du Code de la consommation). */
+export const CREDIT_WARNING = "Un crédit vous engage et doit être remboursé. Vérifiez vos capacités de remboursement avant de vous engager.";
+
+/** Exemple représentatif « dès » : durée la plus longue du simulateur, sans apport, montant = prix affiché. */
+export function representativeExample(amount: number) {
+  const months = FINANCE.durations[FINANCE.durations.length - 1];
+  const monthly = Math.round(monthlyPayment(amount, months) * 100) / 100;
+  const totalDue = Math.round((monthly * months + FINANCE.fraisDossier) * 100) / 100;
+  return { amount, months, monthly, totalDue, cost: Math.round((totalDue - amount) * 100) / 100, taeg: FINANCE.taeg, tauxDebiteur: FINANCE.tauxDebiteur, fraisDossier: FINANCE.fraisDossier };
+}
+
 export const FINANCE_DOCS = [
   { key: "identite", label: "Pièce d’identité (recto-verso)", required: true },
   { key: "domicile", label: "Justificatif de domicile (- de 3 mois)", required: false },

@@ -3,6 +3,7 @@
 import React from "react";
 import GoogleReviews from "./_components/GoogleReviews";
 import SocialLinks from "./_components/SocialLinks";
+import { FinanceHint, CreditNotice } from "./_components/FinanceHint";
 
 export default function HomeClient() {
   return (
@@ -13,6 +14,7 @@ export default function HomeClient() {
           <span className="badge">🇫🇷 Marque toulousaine</span>
           <h1>La liberté de rouler, simplement.</h1>
           <p className="price">Dès 3 990 €</p>
+          <FinanceHint price={3990} style={{ fontSize: 17, margin: "0 0 10px" }} />
           <p className="subtitle">Une voiture électrique sans permis, neuve, rassurante et accessible.</p>
           <div className="heroProof">
             <span>✓ 0 € d’acompte</span>
@@ -23,6 +25,7 @@ export default function HomeClient() {
             <a href="/reservation-devis" className="reserveBtn">Réserver</a>
             <a href="/videos" className="secondaryBtn">▶ Voir les vidéos</a>
           </div>
+          <CreditNotice price={3990} label="NeoDrive Essentielle" style={{ margin: "18px 0 0", maxWidth: 560, fontSize: 11.5 }} />
         </div>
       </section>
 
@@ -82,6 +85,7 @@ export default function HomeClient() {
             <span className="tag green">ESSENTIEL</span>
             <h3>Essentiel</h3>
             <p className="cardPrice">3 990 € TTC</p>
+            <FinanceHint price={3990} />
             <p className="cardText">Pour accéder à une voiture électrique neuve au prix le plus bas.</p>
             <div className="infoBox"><strong>⏳ Délai</strong><span>6 à 8 mois environ</span></div>
             <ul>
@@ -97,6 +101,7 @@ export default function HomeClient() {
             <span className="tag orange">LA PLUS CHOISIE</span>
             <h3>Confort</h3>
             <p className="cardPrice">4 990 € TTC</p>
+            <FinanceHint price={4990} />
             <p className="cardText">Le meilleur équilibre entre prix, équipement, délai et tranquillité.</p>
             <div className="infoBox darkInfo"><strong>✅ Disponibilité</strong><span>En stock — livrée chez vous en 2 à 3 semaines</span></div>
             <div className="warranty">
@@ -117,6 +122,7 @@ export default function HomeClient() {
             <span className="tag purple">CONFORT PLUS+</span>
             <h3>Confort Plus+</h3>
             <p className="cardPrice">5 990 € TTC</p>
+            <FinanceHint price={5990} />
             <p className="cardText">Pour ceux qui veulent plus d’autonomie et une expérience plus complète.</p>
             <div className="infoBox"><strong>⚡ Plus+</strong><span>Charge rapide et autonomie renforcée</span></div>
             <ul>
@@ -128,6 +134,7 @@ export default function HomeClient() {
             <a className="chooseBtn darkBtn" href="/reservation-devis?modele=confortPlus">Réserver la Plus+</a>
           </article>
         </div>
+        <CreditNotice price={4990} label="NeoDrive Confort" style={{ textAlign: "center", color: "#555" }} />
       </section>
 
       <section className="whySection">

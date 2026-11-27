@@ -3,6 +3,7 @@
 import { useState } from "react";
 import styles from "./produit.module.css";
 import SocialLinks from "../_components/SocialLinks";
+import { FinanceHint, CreditNotice } from "../_components/FinanceHint";
 
 const BASE = "/neodrive-switch";
 
@@ -52,12 +53,14 @@ export default function Produit() {
             <span>À partir de</span>
             <strong>3 990 € TTC</strong>
           </div>
+          <FinanceHint price={3990} />
           <div className={styles.actions}>
             <a href="https://wa.me/33676192234?text=Bonjour%2C%20je%20souhaite%20recevoir%20une%20vid%C3%A9o%20de%20la%20NeoDrive%20SWITCH" target="_blank" rel="noreferrer">Recevoir une vidéo</a>
             <a className={styles.secondary} href="#galerie">Voir les photos réelles</a>
             <a className={styles.secondary} href="/catalogue">📖 Voir le catalogue</a>
           </div>
-          <small>Prix selon version, équipement et disponibilité.</small>
+          <small>Prix selon version, équipement et disponibilité. Confort en stock à 4 990 € TTC.</small>
+          <CreditNotice price={3990} label="NeoDrive Essentielle" style={{ margin: "10px 0 0", fontSize: 11.5 }} />
         </div>
 
         <div className={styles.heroPhoto}>
@@ -138,9 +141,10 @@ export default function Produit() {
       <section className={styles.versions}>
         <div className={styles.heading}><span className={styles.eyebrow}>CHOISISSEZ VOTRE VERSION</span><h2>Un prix clair. Des équipements selon vos besoins.</h2></div>
         <div className={styles.versionGrid}>
-          <article><span>VERSION ESSENTIELLE</span><h3>3 990 € TTC</h3><p>Pour aller à l’essentiel avec une voiture électrique neuve.</p><ul><li>Véhicule électrique neuf</li><li>Batterie incluse</li><li>Chargeur 220 V inclus</li><li>Deux places</li></ul><p><b>⏳ Sur commande : délai de 6 à 8 mois environ.</b></p></article>
-          <article className={styles.comfort}><span>VERSION CONFORT</span><h3>4 990 € TTC</h3><p>Davantage d’équipements pour une utilisation quotidienne plus agréable.</p><ul><li>Caméra et aide au stationnement</li><li>Chauffage et ventilation de toit</li><li>Autoradio, Bluetooth et USB</li><li>Alarme antivol et assistance en côte</li></ul><p><b>✅ En stock : livrée chez vous en 2 à 3 semaines.</b></p></article>
+          <article><span>VERSION ESSENTIELLE</span><h3>3 990 € TTC</h3><FinanceHint price={3990} /><p>Pour aller à l’essentiel avec une voiture électrique neuve.</p><ul><li>Véhicule électrique neuf</li><li>Batterie incluse</li><li>Chargeur 220 V inclus</li><li>Deux places</li></ul><p><b>⏳ Sur commande : délai de 6 à 8 mois environ.</b></p></article>
+          <article className={styles.comfort}><span>VERSION CONFORT</span><h3>4 990 € TTC</h3><FinanceHint price={4990} /><p>Davantage d’équipements pour une utilisation quotidienne plus agréable.</p><ul><li>Caméra et aide au stationnement</li><li>Chauffage et ventilation de toit</li><li>Autoradio, Bluetooth et USB</li><li>Alarme antivol et assistance en côte</li></ul><p><b>✅ En stock : livrée chez vous en 2 à 3 semaines.</b></p></article>
         </div>
+        <CreditNotice price={4990} label="NeoDrive Confort" style={{ margin: "14px 0 18px" }} />
         <div className={styles.catalogue}>
           <div><b>📄 Catalogue NeoDrive 2026</b><span>Toutes les versions, équipements, caractéristiques et photos, à feuilleter en ligne.</span></div>
           <a href="/catalogue">Feuilleter le catalogue</a>

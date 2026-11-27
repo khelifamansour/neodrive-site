@@ -1,6 +1,8 @@
 /** Gabarit serveur des pages SEO « piliers » et comparatifs (contenu factuel, sources citées, FAQ + fil d'Ariane en JSON-LD). */
 import type { Metadata } from "next";
 import Image from "next/image";
+import { FinanceHint, CreditNotice } from "../app/_components/FinanceHint";
+import { VEHICLES, AVAILABILITY, type VehicleKey } from "./neodrive-pricing";
 
 export const SITE = "https://www.easydrive-auto.fr";
 const WA = "https://wa.me/33676192234";
@@ -17,10 +19,29 @@ export type Landing = {
 
 export function landingMetadata(p: Landing): Metadata {
   const url = `${SITE}${p.path}`;
-  return { title: { absolute: p.metaTitle }, description: p.description, alternates: { canonical: url }, openGraph: { title: p.metaTitle, description: p.description, url, type: "article", images: [`${SITE}/hero.png`] } };
+  return { title: { absolute: p.metaTitle }, description: p.description, alternates: { canonical: url }, openGraph: { title: p.metaTitle, description: p.description, url, type: "article", siteName: "NeoDrive", locale: "fr_FR", images: [`${SITE}/hero.png`] }, twitter: { card: "summary_large_image", title: p.metaTitle, description: p.description, images: [`${SITE}/hero.png`] } };
 }
 
 const box: React.CSSProperties = { maxWidth: 1040, margin: "0 auto", padding: "0 20px" };
+const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(n) + " € TTC";
+
+/** Encadré « Les prix NeoDrive » commun à toutes les pages piliers et comparatifs (prix du barème central + financement). */
+function PriceBox() {
+  const order: VehicleKey[] = ["confort", "essentielle", "confortPlus"];
+  return <section style={{ ...box, paddingBottom: 30 }}>
+    <h2>Les prix NeoDrive en 2026</h2>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+      {order.map(k => <article key={k} style={{ border: k === "confort" ? "2px solid #ff5a1f" : "1px solid #e5e7eb", borderRadius: 18, padding: "18px 18px 14px", background: k === "confort" ? "#fff7ed" : "white" }}>
+        <strong style={{ fontSize: 17 }}>{VEHICLES[k].label}</strong>
+        <div style={{ fontSize: 30, fontWeight: 900, margin: "6px 0 2px" }}>{fmt(VEHICLES[k].price)}</div>
+        <FinanceHint price={VEHICLES[k].price} style={{ fontSize: 14, margin: "0 0 8px", color: "#c2410c" }} />
+        <small style={{ color: "#4b5563" }}>{AVAILABILITY[k].short}</small>
+      </article>)}
+    </div>
+    <p style={{ color: "#374151", marginTop: 14 }}>Prix TTC du véhicule. À ajouter selon votre choix : la carte grise (formalités NeoDrive : 150 €) et la livraison à domicile (450 à 790 € selon le département, ou retrait à Muret). Réservation sans acompte, paiement à la livraison. <a href="/reservation-devis">Calculer mon prix livré</a> · <a href="/financement">Simuler un financement</a> · <a href="/temoignage">Voir le témoignage d’une cliente</a></p>
+    <CreditNotice price={VEHICLES.confort.price} label="NeoDrive Confort" style={{ margin: "8px 0 0", color: "#6b7280", opacity: 1 }} />
+  </section>;
+}
 
 export function LandingPage({ p }: { p: Landing }) {
   const crumbs = [{ name: "Accueil", path: "/" }, ...(p.breadcrumb || []), { name: p.title, path: p.path }];
@@ -57,13 +78,14 @@ export function LandingPage({ p }: { p: Landing }) {
       {(s.paras || []).map((t, i) => <p key={i} style={{ color: "#374151" }}>{t}</p>)}
       {s.bullets ? <ul>{s.bullets.map(b => <li key={b} style={{ marginBottom: 6 }}>{b}</li>)}</ul> : null}
     </section>)}
+    <PriceBox />
     <section style={{ background: "#f7f7f7", padding: "40px 0", marginTop: 20 }}><div style={box}>
       <h2>Questions fréquentes</h2>
       {p.faq.map(f => <article key={f.q} style={{ padding: "12px 0", borderBottom: "1px solid #e5e7eb" }}><h3 style={{ margin: "0 0 6px" }}>{f.q}</h3><p style={{ margin: 0, color: "#4b5563" }}>{f.a}</p></article>)}
     </div></section>
     <section style={{ ...box, padding: "34px 20px 60px" }}>
       <h2>Pour aller plus loin</h2>
-      <ul style={{ lineHeight: 2 }}>{p.related.map(r => <li key={r.href}><a href={r.href}>{r.label}</a></li>)}<li><a href="/videos">Voir les vidéos de livraisons NeoDrive</a></li><li><a href="/produit">La gamme NeoDrive et ses prix</a></li></ul>
+      <ul style={{ lineHeight: 2 }}>{p.related.map(r => <li key={r.href}><a href={r.href}>{r.label}</a></li>)}{[["/reservation-devis", "Réserver ou demander un devis (sans acompte)"], ["/temoignage", "Témoignage vidéo d’une cliente livrée"], ["/videos", "Voir les vidéos de livraisons NeoDrive"], ["/produit", "La gamme NeoDrive et ses prix"]].filter(([h]) => h !== p.path && !p.related.some(r => r.href === h)).map(([h, l]) => <li key={h}><a href={h}>{l}</a></li>)}</ul>
       <a href={WA} style={{ display: "inline-block", padding: "14px 20px", borderRadius: 13, background: "#111", color: "white", textDecoration: "none", fontWeight: 800 }}>Poser une question sur WhatsApp</a>
       {p.sources?.length ? <div style={{ marginTop: 28, fontSize: 13, color: "#6b7280" }}><strong>Sources</strong><ul>{p.sources.map(s => <li key={s.url}><a href={s.url} rel="nofollow noopener" target="_blank" style={{ color: "#6b7280" }}>{s.label}</a></li>)}</ul></div> : null}
     </section>

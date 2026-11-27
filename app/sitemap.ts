@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { commercialPages } from "../lib/seo-commercial";
 import { seoCities } from "../lib/seo-cities";
 import { NEW_SEO_PATHS } from "../lib/seo-pillars";
+import { NEW_GUIDE_PATHS } from "../lib/seo-guides";
 import { seoDepartments, departmentPath } from "../lib/seo-local";
 
 const SITE = "https://www.easydrive-auto.fr";
@@ -46,6 +47,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${SITE}${route}`, lastModified: BUILD_DATE, changeFrequency, priority,
   }));
   // Piliers « prix », « chinoise », « aides » et comparatifs NeoDrive face aux autres marques.
+  // Guides « budget 2026 » et « voiture sans permis chinoise : concession ou vente directe ».
+  base.push(...NEW_GUIDE_PATHS.map(route => ({ url: `${SITE}${route}`, lastModified: BUILD_DATE, changeFrequency: "weekly" as const, priority: 0.95 })));
   base.push(...NEW_SEO_PATHS.map(route => ({ url: `${SITE}${route}`, lastModified: BUILD_DATE, changeFrequency: "weekly" as const, priority: route.startsWith("/comparatif/") ? 0.85 : 0.95 })));
 
   const cityPages: MetadataRoute.Sitemap = seoCities.map((city) => ({

@@ -1,13 +1,12 @@
 /** Contenu des pages piliers et comparatifs (prix concurrents = prix constatés en novembre 2026, sources citées). */
 import type { Landing } from "./seo-landing";
 
-const DATE = "Prix constatés en novembre 2026 dans les sources citées en bas de page ; ils peuvent évoluer, vérifiez auprès de chaque marque.";
-const S = {
+export const DATE = "Prix constatés en novembre 2026 dans les sources citées en bas de page ; ils peuvent évoluer, vérifiez auprès de chaque marque.";
+export const S = {
   izi: { label: "izi by EDF – Prix d'une voiture électrique sans permis", url: "https://izi-by-edf.fr/blog/prix-voiture-electrique-sans-permis" },
   iziBest: { label: "izi by EDF – Meilleures voitures électriques sans permis", url: "https://izi-by-edf.fr/blog/voiture-electrique-sans-permis-meilleures" },
   motor1: { label: "Motor1 – Mobilize Duo vs Fiat Topolino vs Citroën Ami", url: "https://www.motor1.com/news/738924/mobilize-duo-versus-fiat-topolino-vs-citroen-ami/" },
   mondial: { label: "Mondial.paris – Voitures sans permis : modèles et prix", url: "https://mondial.paris/?p=99440" },
-  voltandgo: { label: "VoltandGo – Voitures sans permis neuves", url: "https://voltandgo.com/vehicule-neuf/voiture-sans-permis/" },
   aspp: { label: "ASPP – Voiture électrique sans permis Li-Bellule", url: "https://www.byaspp.com/voiture-electrique-sans-permis-w1" },
   simplici: { label: "LesVoitures.fr – Simplici S1 à 8 999 €", url: "https://lesvoitures.fr/simplici-s1-anti-citroen-ami-a-8-999-e-et-produite-en-chine-simplicicar-voiture-sans-permis-fiat-topolino-2024/" },
   alumi: { label: "Automobile Propre – Linktour Alumi", url: "https://www.automobile-propre.com/voitures/linktour-alumi/" },
@@ -22,7 +21,7 @@ const NEO_ROWS = [
   ["NeoDrive Confort", "4 990 €", "En stock, livrée chez vous"],
 ];
 
-const COMMON_FAQ = [
+export const COMMON_FAQ = [
   { q: "Les voitures NeoDrive sont-elles homologuées ?", a: "Oui. Chaque NeoDrive est homologuée en catégorie L6e (quadricycle léger, 45 km/h) et livrée avec son certificat de conformité (COC), indispensable pour la carte grise." },
   { q: "Comment se passe le paiement ?", a: "Vous réservez sans acompte. Le paiement se fait à la livraison, après avoir vu la voiture, selon les modalités confirmées par l'équipe." },
   { q: "Combien coûte la livraison ?", a: "Le prix de livraison dépend de votre département (de 450 à 790 €). Le total exact s'affiche sur la page de réservation avec votre code postal." },
@@ -35,7 +34,7 @@ export const PILLARS: Record<string, Landing> = {
     metaTitle: "Voiture sans permis électrique la moins chère (2026)",
     description: "Comparatif des prix 2026 des voitures sans permis électriques neuves : Ami, Topolino, Duo, Aixam, Ligier… et NeoDrive dès 3 990 €. Prix sourcés.",
     eyebrow: "COMPARATIF DES PRIX 2026",
-    h1: "Voiture sans permis électrique la moins chère de France (2026)",
+    h1: "Voiture sans permis électrique la moins chère : les prix 2026 comparés",
     intro: "Une voiture sans permis électrique neuve coûte en général entre 7 000 et 12 500 € chez les grandes marques. Voici les prix publics constatés, modèle par modèle, et pourquoi NeoDrive démarre à 3 990 €.",
     table: {
       caption: "Prix des voitures sans permis électriques neuves",
@@ -43,7 +42,6 @@ export const PILLARS: Record<string, Landing> = {
       rows: [
         ...NEO_ROWS,
         ["Li-Bellule (ASPP)", "6 990 €", "Prix annoncé hors batterie (à vérifier auprès du vendeur)"],
-        ["IMF e-Pauline", "7 490 €", "Prix affiché par un distributeur multimarque"],
         ["Citroën Ami", "7 990 à 8 190 €", "Selon les sources"],
         ["Aixam / Ligier-Microcar (électrique)", "dès 8 999 €", "Selon version"],
         ["Simplici S1", "8 999 €", "Prix de lancement annoncé"],
@@ -63,8 +61,8 @@ export const PILLARS: Record<string, Landing> = {
       { q: "Une voiture sans permis pas chère est-elle moins sûre ?", a: "Toutes les voitures sans permis vendues neuves doivent être homologuées dans leur catégorie (L6e pour les 45 km/h). Comparez la structure, les équipements et la garantie, pas seulement le prix." },
       ...COMMON_FAQ,
     ],
-    sources: [S.izi, S.iziBest, S.motor1, S.mondial, S.voltandgo, S.aspp, S.simplici, S.alumi],
-    related: [{ label: "Voiture sans permis électrique chinoise : ce qu'il faut savoir", href: "/voiture-sans-permis-chinoise" }, { label: "Aides 2026 pour une voiture sans permis électrique", href: "/aides-voiture-sans-permis-electrique-2026" }, { label: "Prix d'une voiture sans permis", href: "/prix-voiture-sans-permis" }, { label: "Citroën Ami ou NeoDrive", href: "/citroen-ami-ou-neodrive" }],
+    sources: [S.izi, S.iziBest, S.motor1, S.mondial, S.aspp, S.simplici, S.alumi],
+    related: [{ label: "Budget voiture sans permis 2026 : le vrai coût", href: "/budget-voiture-sans-permis-2026" }, { label: "Voiture sans permis chinoise : concession ou vente directe ?", href: "/voiture-sans-permis-chinoise-prix-concession" }, { label: "Voiture sans permis électrique chinoise : ce qu'il faut savoir", href: "/voiture-sans-permis-chinoise" }, { label: "Aides 2026 pour une voiture sans permis électrique", href: "/aides-voiture-sans-permis-electrique-2026" }, { label: "Prix d'une voiture sans permis", href: "/prix-voiture-sans-permis" }, { label: "Citroën Ami ou NeoDrive", href: "/citroen-ami-ou-neodrive" }],
   },
   "voiture-sans-permis-chinoise": {
     path: "/voiture-sans-permis-chinoise",
@@ -86,7 +84,7 @@ export const PILLARS: Record<string, Landing> = {
       { q: "Pourquoi acheter chez un vendeur français plutôt que sur une marketplace ?", a: "Pour avoir un interlocuteur, une garantie applicable en France, des pièces disponibles et un SAV. Sur certaines marketplaces, le service après-vente en Europe n'est pas identifié." },
       ...COMMON_FAQ,
     ],
-    related: [{ label: "Voiture sans permis chinoise : avis et fiabilité", href: "/offres/voiture-sans-permis-chinoise-avis-fiabilite" }, { label: "Homologation L6e et certificat de conformité", href: "/offres/homologation-l6e-certificat-conformite" }, { label: "Pièces et SAV d'une voiture sans permis importée", href: "/offres/pieces-sav-voiture-sans-permis-importee" }, { label: "La voiture sans permis électrique la moins chère", href: "/voiture-sans-permis-la-moins-chere" }, { label: "Pièces détachées NeoDrive", href: "/pieces" }, { label: "SAV et diagnostic NeoDrive", href: "/neodiag" }],
+    related: [{ label: "Voiture sans permis chinoise : 2 fois moins chère en direct qu'en concession ?", href: "/voiture-sans-permis-chinoise-prix-concession" }, { label: "Voiture sans permis chinoise : avis et fiabilité", href: "/offres/voiture-sans-permis-chinoise-avis-fiabilite" }, { label: "Homologation L6e et certificat de conformité", href: "/offres/homologation-l6e-certificat-conformite" }, { label: "Pièces et SAV d'une voiture sans permis importée", href: "/offres/pieces-sav-voiture-sans-permis-importee" }, { label: "La voiture sans permis électrique la moins chère", href: "/voiture-sans-permis-la-moins-chere" }, { label: "Pièces détachées NeoDrive", href: "/pieces" }, { label: "SAV et diagnostic NeoDrive", href: "/neodiag" }],
   },
   "aides-voiture-sans-permis-electrique-2026": {
     path: "/aides-voiture-sans-permis-electrique-2026",
@@ -109,7 +107,7 @@ export const PILLARS: Record<string, Landing> = {
       ...COMMON_FAQ,
     ],
     sources: [S.sp, S.roole, S.gsp, S.ligierCee],
-    related: [{ label: "La voiture sans permis électrique la moins chère", href: "/voiture-sans-permis-la-moins-chere" }, { label: "Financement d'une voiture sans permis", href: "/financement" }, { label: "Assurance voiture sans permis", href: "/assurance-voiture-sans-permis" }],
+    related: [{ label: "La voiture sans permis électrique la moins chère", href: "/voiture-sans-permis-la-moins-chere" }, { label: "Financement d'une voiture sans permis", href: "/financement" }, { label: "Budget voiture sans permis 2026", href: "/budget-voiture-sans-permis-2026" }, { label: "Assurance voiture sans permis", href: "/assurance-voiture-sans-permis" }],
   },
 };
 
@@ -143,6 +141,7 @@ export const COMPARATIFS: Record<string, Landing> = Object.fromEntries(RIVALS.ma
       ["Garantie", "selon constructeur", "2 ans"],
       ["Achat", r.network, "En direct, livraison à domicile partout en France"],
       ["Paiement", "selon le vendeur", "Sans acompte, paiement à la livraison"],
+      ["Délai", "selon le réseau", "Confort en stock : livrée en 2 à 3 semaines"],
       ["Homologation", "L6e", "L6e, livrée avec son certificat de conformité (COC)"],
     ],
     note: DATE,
@@ -157,7 +156,7 @@ export const COMPARATIFS: Record<string, Landing> = Object.fromEntries(RIVALS.ma
     ...COMMON_FAQ,
   ],
   sources: r.sources,
-  related: [{ label: "La voiture sans permis électrique la moins chère", href: "/voiture-sans-permis-la-moins-chere" }, { label: "Citroën Ami ou NeoDrive", href: "/citroen-ami-ou-neodrive" }, { label: "Fiat Topolino ou NeoDrive", href: "/fiat-topolino-ou-neodrive" }, ...RIVALS.filter(x => x.slug !== r.slug).slice(0, 3).map(x => ({ label: `${x.name} ou NeoDrive`, href: `/comparatif/${x.slug}` }))],
+  related: [{ label: "La voiture sans permis électrique la moins chère", href: "/voiture-sans-permis-la-moins-chere" }, { label: "Citroën Ami ou NeoDrive", href: "/citroen-ami-ou-neodrive" }, { label: "Fiat Topolino ou NeoDrive", href: "/fiat-topolino-ou-neodrive" }, { label: "Budget voiture sans permis 2026", href: "/budget-voiture-sans-permis-2026" }, { label: "Concession ou vente directe : l'écart de prix", href: "/voiture-sans-permis-chinoise-prix-concession" }, ...RIVALS.filter(x => x.slug !== r.slug).slice(0, 3).map(x => ({ label: `${x.name} ou NeoDrive`, href: `/comparatif/${x.slug}` }))],
   breadcrumb: [{ name: "Comparatifs", path: "/comparatif" }],
 } as Landing]));
 

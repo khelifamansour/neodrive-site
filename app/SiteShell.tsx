@@ -1,8 +1,12 @@
 "use client";
 import React,{useState}from"react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import SeoGlobalTracker from "./SeoGlobalTracker";
 import SocialLinks from "./_components/SocialLinks";
+
+/** Les <Link> ne reçoivent pas la classe styled-jsx : même style que « .footerLinks a ». */
+const FOOTER_LINK: React.CSSProperties = { color: "#ddd", textDecoration: "none", fontSize: 13 };
 
 const cityLinks=[
  ["Toulouse","toulouse"],["Paris","paris"],["Lyon","lyon"],["Marseille","marseille"],
@@ -22,7 +26,7 @@ export default function SiteShell({children}:{children:React.ReactNode}){
   <footer className="seoFooter">
     <div className="footerInner">
       <div className="footerBrand"><strong>NeoDrive</strong><span>Voiture sans permis électrique · Livraison en France</span></div>
-      <div><strong>Recherches utiles</strong><div className="footerLinks"><a href="/voiture-sans-permis">Voiture sans permis</a><a href="/voiture-sans-permis-electrique">Électrique</a><a href="/voiture-sans-permis-occasion">Occasion</a><a href="/prix-voiture-sans-permis">Prix</a><a href="/citroen-ami-ou-neodrive">Citroën Ami</a><a href="/fiat-topolino-ou-neodrive">Fiat Topolino</a><a href="/videos">Vidéos réelles</a><a href="/catalogue">Catalogue 2026</a><a href="/devenir-partenaire">Devenir partenaire</a><a href="/espace-pro">Espace pro</a><a href="/devenir-ambassadeur">Ambassadeurs</a></div></div>
+      <div><strong>Recherches utiles</strong><div className="footerLinks"><a href="/voiture-sans-permis">Voiture sans permis</a><a href="/voiture-sans-permis-electrique">Électrique</a><a href="/voiture-sans-permis-occasion">Occasion</a><a href="/prix-voiture-sans-permis">Prix</a><a href="/citroen-ami-ou-neodrive">Citroën Ami</a><a href="/fiat-topolino-ou-neodrive">Fiat Topolino</a><Link href="/comparatif" style={FOOTER_LINK}>Comparatifs</Link><Link href="/budget-voiture-sans-permis-2026" style={FOOTER_LINK}>Budget 2026</Link><Link href="/voiture-sans-permis-chinoise-prix-concession" style={FOOTER_LINK}>Concession ou direct</Link><a href="/videos">Vidéos réelles</a><a href="/catalogue">Catalogue 2026</a><a href="/devenir-partenaire">Devenir partenaire</a><a href="/espace-pro">Espace pro</a><a href="/devenir-ambassadeur">Ambassadeurs</a></div></div>
       <div><strong>Voiture sans permis par ville</strong><div className="footerLinks">{cityLinks.map(([name,slug])=><a key={slug} href={`/voiture-sans-permis/${slug}`}>{name}</a>)}</div></div>
     </div>
     <div className="footerBottom">
