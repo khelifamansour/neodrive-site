@@ -173,7 +173,7 @@ export default function Prep({ token }: { token: string }) {
     {stage === "attente" ? <section className={s.done}>
       <div className={s.big} aria-hidden="true">🎉</div>
       <h1>C’est prêt !</h1>
-      <p>Après la livraison, vous recevrez un dernier lien pour signer.</p>
+      <p>Après la livraison (et l’enregistrement du numéro de série de votre véhicule), vous pourrez signer le mandat sur ce même lien.</p>
       <ul className={s.status}>{pieceLine("cni", "Pièce d’identité")}{pieceLine("justificatif_domicile", "Justificatif de domicile")}</ul>
       {redo ? <button type="button" className={s.send} onClick={() => setEdit(true)}>Renvoyer le document à refaire</button>
         : <button type="button" className={s.ghost} onClick={() => setEdit(true)}>Modifier mes documents</button>}

@@ -4,7 +4,7 @@
 import PDFDocument from "pdfkit";
 
 import { safeText } from "./pdf-text";
-import { PENAL_TEXT, PROCESS_TEXT, VIRE_CHECK, bonClauses, declText, keptLabel, propertyText, type Declaration, type Kept } from "./reserve-text";
+import { NO_VIN_MODEL, PENAL_TEXT, PROCESS_TEXT, VIN_TODO, VIRE_CHECK, bonClauses, declText, keptLabel, propertyText, type Declaration, type Kept } from "./reserve-text";
 export const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
 export const RECEIPT_FOLDER = "livraisons";
 
@@ -55,6 +55,7 @@ export function paymentText(lines: PayLine[], driver: string) {
 export type ReceiptData = {
   numero: string; // ex. LIV-2026-000063
   client: string; adresse: string; telephone: string; email: string;
+  /** Sans VIN : modèle de la réservation (sinon « NeoDrive Confort »), couleur vide, vin "". */
   modele: string; couleur: string; vin: string;
   checks: Record<string, boolean>; reserves: string;
   signer: string; signed_at: string; livreur: string;
@@ -76,6 +77,11 @@ export type ReceiptData = {
   /** Remise sans paiement : déclaration choisie par le client (virement ordonné ou engagement de payer). */
   declaration?: Declaration | null;
 };
+
+/** Véhicule du bon : VIN connu → modèle, couleur, VIN ; sans VIN → modèle de la réservation (sinon NeoDrive Confort), sans couleur. */
+export const receiptVehicle = (r: { modele?: string | null; couleur?: string | null; vin?: string | null }) => r.vin
+  ? { modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: String(r.vin) }
+  : { modele: String(r.modele || "").trim() || NO_VIN_MODEL, couleur: "", vin: "" };
 
 const dateFr = (iso: string | null | undefined) => iso ? new Date(iso.length === 10 ? iso + "T12:00:00" : iso).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 const eurFr = (n: number | null | undefined) => n == null ? "le montant restant dû" : `${n.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €`;
@@ -138,7 +144,9 @@ export function receiptPdf(d: ReceiptData, signaturePng: Buffer | null): Promise
       doc.font("Helvetica").fontSize(9).fillColor(ink).text(lines.filter(Boolean).join("\n"), x + 10, y + 21, { width: w - 20, height: h - 26, ellipsis: true });
     };
     box("CLIENT", [d.client, d.adresse, d.telephone ? `Tél. ${d.telephone}` : "", d.email], 40, 250, 86);
-    box("VÉHICULE", [d.modele, d.couleur ? `Couleur : ${d.couleur}` : "", `N° de série (VIN) : ${d.vin}`], 305, 250, 86);
+    // Sans VIN (ajouté après la livraison) : désignation générique, sans couleur, numéro de série « à compléter ».
+    box("VÉHICULE", d.vin ? [d.modele, d.couleur ? `Couleur : ${d.couleur}` : "", `N° de série (VIN) : ${d.vin}`]
+      : ["Véhicule neuf, voiture sans permis électrique", "Marque : HAIBAO", `Modèle : ${d.modele || "NeoDrive Confort"}`, `N° de série (VIN) : ${VIN_TODO}`], 305, 250, 86);
     y += 96;
     const lieu = `Date de livraison : ${fr(d.signed_at)}${d.adresse ? ` · Lieu de livraison : ${d.adresse}` : ""}`;
     doc.font("Helvetica").fontSize(9).fillColor(ink).text(lieu, 40, y, { width: 515 });

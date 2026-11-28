@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { crmDatabase } from "../../../lib/crm-agent";
-import { CHECKS, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
+import { CHECKS, driverDisplay, receiptVehicle, type ReceiptData } from "../../../lib/delivery-receipt";
 import { listJson } from "../../../lib/datastore";
 import { PLAN_TOURS } from "../../../lib/fleet";
 import type { PlanTour } from "../../../lib/planif";
 import { finalizeDelivery } from "../../../lib/delivery-finalize";
-import { bonClauses } from "../../../lib/reserve-text";
+import { VIN_TODO, bonClauses, vehicleNoVin } from "../../../lib/reserve-text";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -34,6 +34,7 @@ type Step = "done" | "no_vin" | "sign";
 const EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}$/i;
 
 /**
+ * Numéro de série (VIN) facultatif : sans VIN, le bon désigne le véhicule (HAIBAO, modèle) et le VIN est « à compléter ».
  * Bon de livraison unique : le client signe une seule fois, que le paiement soit déjà arrivé ou non
  * (le bon contient toujours la réserve de propriété). Le lien ne périme jamais : une fois signé, il affiche
  * « Bon de livraison déjà signé » et le PDF. Les anciennes remises avec réserve (reserve_token) comptent aussi comme signées :
@@ -42,7 +43,6 @@ const EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}$/i;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function stepOf(r: any): Step {
   if (r.accuse_token || r.reserve_token) return "done";
-  if (!r.vin) return "no_vin";
   return "sign";
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,7 +63,8 @@ export async function GET(req: Request) {
     pdf_url: tok ? `/api/accuse/${tok}` : null,
     signed_at: r.accuse_token ? signedAt(r.accuse_data, r.livre_at) : r.reserve_token ? signedAt(r.reserve_data, r.livre_at) : null,
     has_email: !!r.email, clauses: bonClauses(r.vin || ""),
-    client: `${r.prenom || ""} ${r.nom || ""}`.replace(/\(.*?\)/g, "").trim(), modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin || "",
+    client: `${r.prenom || ""} ${r.nom || ""}`.replace(/\(.*?\)/g, "").trim(), ...receiptVehicle(r),
+    designation: r.vin ? null : vehicleNoVin(r.modele), vin_todo: VIN_TODO,
     lieu: lieuOf(r), date: new Date().toISOString(), checks: CHECKS.map(c => ({ id: c.id, label: c.label })),
   });
 }
@@ -75,7 +76,6 @@ export async function POST(req: Request) {
     if (!r) return NextResponse.json({ ok: false, error: "Ce lien n'existe pas." }, { status: 404 });
     const step = stepOf(r);
     if (step === "done") return NextResponse.json({ ok: true, done: true, already: true, pdf_url: `/api/accuse/${r.accuse_token || r.reserve_token}` });
-    if (step === "no_vin") return NextResponse.json({ ok: false, reload: true, error: "Le chauffeur doit d'abord enregistrer le numéro de série." }, { status: 409 });
     const signer = clean(b.name, 120);
     if (!b.accept) return NextResponse.json({ ok: false, error: "Cochez « J'ai bien reçu mon véhicule et j'accepte la réserve de propriété »." }, { status: 400 });
     if (signer.length < 3) return NextResponse.json({ ok: false, error: "Écrivez votre nom et prénom." }, { status: 400 });
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
     const data: ReceiptData = {
       numero: `LIV-${at.slice(0, 4)}-${String(r.id).padStart(6, "0")}`,
       client: `${r.prenom || ""} ${r.nom || ""}`.trim(), adresse: lieuOf(r),
-      telephone: r.telephone || "", email: r.email || "", modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin,
+      telephone: r.telephone || "", email: r.email || "", ...receiptVehicle(r),
       checks, reserves: clean(b.remarks, 600), signer, signed_at: at, livreur: driverName || "NeoDrive", paiement_confirme_at: r.paiement_confirme_at,
       mode: "distance", remote: { at, ip, phone: r.telephone || "", ua },
       pending: paid ? null : { montant_du: montantDu },

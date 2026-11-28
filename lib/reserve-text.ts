@@ -7,8 +7,15 @@ export type Declaration = { kind: "virement" | "engagement"; montant: number | n
 const eur = (n: number | null | undefined) => n == null ? "… €" : `${Number(n).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €`;
 const dFr = (d: string | null | undefined) => d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "…";
 
+/** Véhicule sans numéro de série enregistré (VIN ajouté après la livraison) : désignation du bon, sans couleur ni VIN inventé. */
+export const NO_VIN_MODEL = "NeoDrive Confort";
+export const vehicleNoVin = (modele?: string | null) => `Véhicule neuf, voiture sans permis électrique, marque HAIBAO, modèle ${String(modele || "").trim() || NO_VIN_MODEL}`;
+export const VIN_TODO = "à compléter";
+/** « Le véhicule (VIN …) » si le VIN est connu, sinon « Le véhicule désigné ci-dessus ». */
+const vehRef = (vin: string) => vin ? `Le véhicule (VIN ${vin})` : "Le véhicule désigné ci-dessus";
+
 export const propertyText = (vin: string, montant: number | null) =>
-  `RÉSERVE DE PROPRIÉTÉ – Le véhicule (VIN ${vin || "…"}) reste la propriété de MK HOLDING jusqu'au paiement intégral du prix de ${eur(montant)} TTC, conformément aux articles 2367 et suivants du Code civil.`;
+  `RÉSERVE DE PROPRIÉTÉ – ${vehRef(vin)} reste la propriété de MK HOLDING jusqu'au paiement intégral du prix de ${eur(montant)} TTC, conformément aux articles 2367 et suivants du Code civil.`;
 export const declText = (d: Pick<Declaration, "kind" | "date">, montant: number | null) => d.kind === "virement"
   ? `Je certifie avoir ordonné le virement de ${eur(montant)} le ${dFr(d.date)} vers le compte de MK HOLDING.`
   : `Je m'engage à payer ${eur(montant)} au plus tard le ${dFr(d.date)}.`;
@@ -40,7 +47,7 @@ export function cleanDecl(raw: unknown, montant: number | null): Declaration | n
 export const SELLER_NAME = "MK HOLDING SAS";
 export function bonClauses(vin: string) {
   return [
-    `RÉSERVE DE PROPRIÉTÉ – Le véhicule (VIN ${vin || "…"}) reste la propriété de ${SELLER_NAME} jusqu'au paiement intégral du prix, conformément aux articles 2367 et suivants du Code civil.`,
+    `RÉSERVE DE PROPRIÉTÉ – ${vehRef(vin)} reste la propriété de ${SELLER_NAME} jusqu'au paiement intégral du prix, conformément aux articles 2367 et suivants du Code civil.`,
     `Le transfert de propriété au client a lieu automatiquement dès le paiement intégral du prix, sans autre formalité ni nouvelle signature. Si le prix est déjà intégralement payé à la date de la livraison, la propriété est transférée au client à cette date.`,
     `Jusqu'au paiement intégral, le client s'engage à ne pas vendre, prêter, céder ou modifier le véhicule, à en assurer la garde, et à le restituer à ${SELLER_NAME} sur simple demande en cas de non-paiement du prix.`,
     `Le client reconnaît que toute fausse déclaration concernant le paiement du prix, ainsi que l'annulation ou le rappel d'un virement après la remise du véhicule, peuvent constituer une infraction pénale (notamment escroquerie, article 313-1 du Code pénal), pour laquelle ${SELLER_NAME} déposera plainte, en plus de récupérer le véhicule au titre de la réserve de propriété.`,

@@ -143,7 +143,7 @@ export async function POST(req: Request) {
     if (b.action === "sign_init" || b.action === "sign_complete") {
       const stage = prepStage(d, v.ready);
       if (stage === "termine") return NextResponse.json(view(r, d, v));
-      if (stage !== "signature") return fail(v.ready ? "Ajoutez d’abord vos documents" : "La signature sera possible après la livraison de votre véhicule");
+      if (stage !== "signature") return fail(v.ready ? "Ajoutez d’abord vos documents" : v.delivered ? "La signature sera possible dès que le numéro de série de votre véhicule sera enregistré" : "La signature sera possible après la livraison de votre véhicule");
     }
 
     if (b.action === "sign_init") {

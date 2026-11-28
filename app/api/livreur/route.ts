@@ -13,12 +13,12 @@ import { roadKm, splitTrips, type PlanClient, type PlanTour, type Stop } from ".
 import { DEFAULT_DRIVER_RATE, estimateHours, isExpenseType } from "../../../lib/driver-hours";
 import { addTickets, readTicket, type TicketData } from "../../../lib/driver-tickets";
 import { randomBytes } from "crypto";
-import { CHECKS, RECEIPT_FOLDER, VIN_RE, checksFor, driverDisplay, type ReceiptData } from "../../../lib/delivery-receipt";
-import { finalizeDelivery, intlPhone } from "../../../lib/delivery-finalize";
+import { CHECKS, RECEIPT_FOLDER, VIN_RE, checksFor, driverDisplay, receiptVehicle, type ReceiptData } from "../../../lib/delivery-receipt";
+import { cgPrepLink, cgWhatsapp, finalizeDelivery, intlPhone } from "../../../lib/delivery-finalize";
 import { AccuseError, sendAccuseLink } from "../../../lib/accuse-link";
 import { keptOf } from "../../../lib/reserve-text";
 import { nearestVin, readVinFromImage } from "../../../lib/vin-read";
-import { linkReservationVin } from "../../../lib/stock";
+import { linkReservationVin, onDelivered } from "../../../lib/stock";
 import { createDemoTour, deleteTestData } from "../../../lib/demo-tour";
 import { OWNER_EMAIL } from "../../../lib/brevo";
 import { PHOTO_BUCKET } from "../../../lib/fleet";
@@ -358,7 +358,15 @@ export async function POST(req: Request) {
       const { data: file, error: dlErr } = await db.storage.from(DRIVER_BUCKET).download(path);
       if (dlErr || !file) return NextResponse.json({ ok: false, error: "Photo introuvable : reprenez la photo." }, { status: 404 });
       const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
-      const out = await readVinFromImage(new Uint8Array(await file.arrayBuffer()), mime);
+      // Photo gardée sur la réservation même si la lecture échoue (relecture possible plus tard).
+      if (b.photo_path) await db.from("reservations").update({ vin_photo_path: path }).eq("id", id).is("vin", null);
+      let out: Awaited<ReturnType<typeof readVinFromImage>>;
+      try { out = await readVinFromImage(new Uint8Array(await file.arrayBuffer()), mime); }
+      catch (e) {
+        console.error("[LIVRAISON] lecture VIN", e);
+        // Crédit épuisé (429), clé absente, délai : rien de bloquant, le VIN est facultatif.
+        return NextResponse.json({ ok: false, unavailable: true, error: "Lecture automatique indisponible : tapez le numéro, ou continuez sans (facultatif)." }, { status: 503 });
+      }
       let match: string | null = null;
       if (out.vin) {
         const [{ data: sv }, { data: used }] = await Promise.all([db.from("shipment_vehicles").select("vin,client_name").neq("status", "livrée").limit(500), db.from("reservations").select("vin").not("vin", "is", null).neq("id", id)]);
@@ -437,13 +445,28 @@ export async function POST(req: Request) {
       if (!VIN_RE.test(vin)) return NextResponse.json({ ok: false, error: "Numéro de série invalide : 17 caractères, lettres et chiffres, sans I, O ni Q." }, { status: 400 });
       const photo = clean(b.photo_path, 300);
       if (photo && (!photo.startsWith(`${RECEIPT_FOLDER}/${id}/`) || photo.includes(".."))) return NextResponse.json({ ok: false, error: "Photo invalide" }, { status: 400 });
-      const { data: r } = await db.from("reservations").select("id,prenom,nom,statut,vin_photo_path,modele,couleur").eq("id", id).maybeSingle();
+      const { data: r } = await db.from("reservations").select("id,prenom,nom,statut,vin,vin_photo_path,modele,couleur,telephone,livre_at,accuse_token,reserve_token,notes,source").eq("id", id).maybeSingle();
       if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
+      // VIN ajouté APRÈS la signature (livraison faite sans VIN) : le bon signé n'est pas modifié, seuls la réservation, le stock et les notes le sont.
+      const after = !!(r.livre_at || r.accuse_token || r.reserve_token);
       const { data: dup } = await db.from("reservations").select("id,prenom,nom").eq("vin", vin).neq("id", id).limit(1);
       if (dup?.length) return NextResponse.json({ ok: false, error: `Ce numéro de série est déjà attribué à ${dup[0].prenom} ${dup[0].nom}. Vérifiez la plaque.` }, { status: 409 });
       const { error } = await db.from("reservations").update({ vin, ...(photo ? { vin_photo_path: photo } : {}), updated_at: new Date().toISOString() }).eq("id", id);
       if (error) throw new Error(error.message);
       await db.from("shipment_vehicles").update({ client_name: `${r.prenom} ${r.nom}`.trim(), ...(photo ? { plate_photo: photo } : {}), updated_at: new Date().toISOString() }).eq("vin", vin);
+      if (after) {
+        const at = new Date().toISOString();
+        // Véhicule « livrée » relié à la réservation + VIN complété sur le brouillon de facture.
+        await onDelivered(db, { ...r, vin }, driverDisplay(name) || acc.name, r.livre_at || at);
+        if (r.vin !== vin) {
+          const line = `[${new Date().toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}] N° de série (VIN) ${vin} ${r.vin ? `corrigé (avant : ${r.vin})` : "ajouté"} après la livraison par ${name || acc.name} (bon de livraison signé${r.vin ? "" : " sans VIN"}, non modifié)`;
+          await db.from("reservations").update({ notes: [r.notes, line].filter(Boolean).join("\n"), updated_at: at }).eq("id", id);
+        }
+        await logSection(acc, "livraison_vin", { id, vin, after: true });
+        // Carte grise : l'étape 2 (photo de la plaque + mandat) s'ouvre maintenant sur le même lien.
+        const cg = await cgPrepLink(db, id);
+        return NextResponse.json({ ok: true, vin, after: true, carte_grise_url: cg, carte_grise_whatsapp: cg ? cgWhatsapp(r, cg) : null });
+      }
       try { await linkReservationVin(db, { ...r, vin }, { by: acc.name }); } catch (e) { console.error("[LIVRAISON] lien stock", e); }
       // VIN scanné par le livreur : la voiture est avec lui (chargée), ce qui ouvre l'étape 2 du lien carte grise (photo de la plaque + mandat).
       try {
@@ -459,7 +482,7 @@ export async function POST(req: Request) {
       const { data: r } = await db.from("reservations").select("*").eq("id", id).maybeSingle();
       if (!r) return NextResponse.json({ ok: false, error: "Livraison introuvable" }, { status: 404 });
       if (r.accuse_token || r.reserve_token) return NextResponse.json({ ok: false, error: "Le bon de livraison est déjà signé." }, { status: 409 });
-      if (!r.vin) return NextResponse.json({ ok: false, error: "Enregistrez d'abord le numéro de série (VIN)." }, { status: 400 });
+      // VIN facultatif : sans VIN, le bon désigne le véhicule (HAIBAO, modèle) et le numéro de série reste « à compléter » (save_vin après la livraison).
       if (!r.paiement_confirme_at && !r.paiement_en_attente) return NextResponse.json({ ok: false, error: "Le paiement n'est pas encore confirmé par NeoDrive. Ne remettez pas les clés : appelez Mansour." }, { status: 409 });
       const signer = clean(b.signer, 120);
       if (signer.length < 3) return NextResponse.json({ ok: false, error: "Le client doit écrire son nom et prénom." }, { status: 400 });
@@ -478,14 +501,14 @@ export async function POST(req: Request) {
       const data: ReceiptData = {
         numero: `LIV-${at.slice(0, 4)}-${String(id).padStart(6, "0")}`,
         client: `${r.prenom || ""} ${r.nom || ""}`.trim(), adresse: [r.adresse, `${r.code_postal || ""} ${r.ville || ""}`.trim()].filter(Boolean).join(", "),
-        telephone: r.telephone || "", email: r.email || "", modele: r.modele || "NeoDrive", couleur: r.couleur || "", vin: r.vin,
+        telephone: r.telephone || "", email: r.email || "", ...receiptVehicle(r),
         checks, reserves: clean(b.reserves, 600), signer, signed_at: at, livreur: name || acc.name || "NeoDrive",
         paiement_confirme_at: r.paiement_confirme_at, lat: num(b.lat), lng: num(b.lng), mode: "signature",
         pending: pending ? { montant_du: r.montant_du == null ? null : Number(r.montant_du) } : null,
         reglement: null, driver_name: driverName, kept: null, declaration: null,
       };
       const out = await finalizeDelivery(db, r, data, Buffer.from(m[1], "base64"));
-      await logSection(acc, "livraison_accuse", { id, vin: r.vin, pending });
+      await logSection(acc, "livraison_accuse", { id, vin: r.vin || null, pending });
       return NextResponse.json({ ok: true, ...out });
     }
     // Livraison avec paiement en attente : le livreur peut l'activer, jamais confirmer un paiement.

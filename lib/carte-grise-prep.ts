@@ -78,7 +78,8 @@ export async function prepVehicle(sb: DB, r: PrepReservation) {
   const scanned = list.find(v => v.status === "chargée" || v.status === "livrée" || v.picked_at || v.delivered_at);
   const delivered = !!r.livre_at || r.statut === "Livrée";
   const vin = (r.vin && VIN_FORMAT.test(r.vin) ? r.vin : null) || (scanned?.vin && VIN_FORMAT.test(scanned.vin) ? scanned.vin : null);
-  return { ready: delivered || !!scanned, delivered, vin, model: r.modele || scanned?.model || "NeoDrive" };
+  // Étape 2 (plaque + mandat) : véhicule livré ou chargé ET numéro de série connu (livraison possible sans VIN, ajouté ensuite).
+  return { ready: !!vin && (delivered || !!scanned), delivered, vin, model: r.modele || scanned?.model || "NeoDrive" };
 }
 
 const current = (d: Pick<CarteGriseDossier, "files"> | null, key: string) => (d?.files || []).filter(f => f.key === key && !f.superseded);

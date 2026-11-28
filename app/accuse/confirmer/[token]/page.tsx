@@ -9,7 +9,7 @@ import SignaturePad from "../../../livreur/SignaturePad";
  * il affiche « Bon de livraison déjà signé » avec le PDF.
  */
 type Step = "done" | "no_vin" | "sign";
-type Info = { ok: boolean; error?: string; step: Step; done: boolean; pdf_url: string | null; signed_at: string | null; has_email: boolean; client: string; modele: string; couleur: string; vin: string; lieu: string; date: string; checks: { id: string; label: string }[]; clauses: string[] };
+type Info = { ok: boolean; error?: string; step: Step; done: boolean; pdf_url: string | null; signed_at: string | null; has_email: boolean; client: string; modele: string; couleur: string; vin: string; designation?: string | null; vin_todo?: string; lieu: string; date: string; checks: { id: string; label: string }[]; clauses: string[] };
 const box: React.CSSProperties = { background: "#fff", border: "1px solid #e5e0d8", borderRadius: 16, padding: 16, display: "grid", gap: 10 };
 const btn2: React.CSSProperties = { width: "100%", padding: "16px", fontSize: 18, fontWeight: 800, borderRadius: 14, background: "#fff", color: "#141414", border: "2px solid #141414", cursor: "pointer", textAlign: "center", textDecoration: "none", display: "block", boxSizing: "border-box" };
 const when = (d: string | null) => d ? new Date(d).toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).replace(":", " h ") : "";
@@ -54,8 +54,13 @@ export default function Confirmer({ params }: { params: Promise<{ token: string 
         <h1 style={{ fontSize: 22, margin: 0 }}>Bon de livraison de votre véhicule</h1>
         <div style={box}>
           <span>👤 <b>{info.client}</b></span>
-          <span>🚗 {info.modele}{info.couleur ? ` · ${info.couleur}` : ""}</span>
-          <span>🔢 N° de série : <b style={{ fontFamily: "monospace" }}>{info.vin}</b></span>
+          {info.vin ? <>
+            <span>🚗 {info.modele}{info.couleur ? ` · ${info.couleur}` : ""}</span>
+            <span>🔢 N° de série : <b style={{ fontFamily: "monospace" }}>{info.vin}</b></span>
+          </> : <>
+            <span>🚗 {info.designation || `Véhicule neuf, voiture sans permis électrique, marque HAIBAO, modèle ${info.modele}`}</span>
+            <span>🔢 N° de série : {info.vin_todo || "à compléter"}</span>
+          </>}
           <span>📅 {new Date(info.date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
           {info.lieu ? <span>📍 {info.lieu}</span> : null}
         </div>

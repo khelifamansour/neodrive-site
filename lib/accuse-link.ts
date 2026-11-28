@@ -6,6 +6,7 @@ import { randomBytes } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { applyStoredSecrets } from "./integrations";
 import { brevoReady, sendEmail, sendSms } from "./brevo";
+import { vehicleNoVin } from "./reserve-text";
 
 const SITE = "https://www.easydrive-auto.fr";
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -40,7 +41,7 @@ export async function accuseLink(db: SupabaseClient, id: number) {
 export async function sendAccuseLink(db: SupabaseClient, id: number) {
   const r = await load(db, id);
   if (r.accuse_token || r.reserve_token) throw new AccuseError("Le client a déjà signé le bon de livraison.", 409);
-  if (!r.vin) throw new AccuseError("Enregistrez d'abord le numéro de série de la voiture.");
+  // VIN facultatif : le bon peut être signé sans (numéro de série « à compléter », ajouté après la livraison).
   if (!r.telephone && !r.email) throw new AccuseError("Ni téléphone ni e-mail pour ce client : faites signer sur ce téléphone.");
   const first = String(r.prenom || "").split(/\s+/)[0];
   const sent = { sms: false, email: false, errors: [] as string[] };
@@ -48,7 +49,7 @@ export async function sendAccuseLink(db: SupabaseClient, id: number) {
   if (!brevoReady()) throw new AccuseError("Envoi indisponible : faites signer sur ce téléphone.", 503);
   const link = `${SITE}/accuse/confirmer/${await tokenOf(db, r)}`;
   if (r.telephone) { try { sent.sms = !!(await sendSms(r.telephone, `Bonjour ${first}, NeoDrive : merci de signer le bon de livraison de votre vehicule sur ce lien (une seule signature). Ce lien reste valable : ${link}`, "transactional")); } catch (e) { sent.errors.push("SMS : " + (e as Error).message); } }
-  if (r.email) { try { sent.email = !!(await sendEmail(r.email, `${r.prenom || ""} ${r.nom || ""}`.trim(), "Votre bon de livraison NeoDrive à signer", `<p>Bonjour ${esc(first)},</p><p>Votre NeoDrive ${esc(r.modele || "")} (n° de série ${esc(r.vin)}) vous est remise. Merci de lire et signer le bon de livraison, en une seule fois :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Lire et signer</a></p><p>Vous recevrez ensuite votre bon de livraison en PDF. Aucune autre signature ne vous sera demandée.</p><p>Merci,<br>L'équipe NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
+  if (r.email) { try { sent.email = !!(await sendEmail(r.email, `${r.prenom || ""} ${r.nom || ""}`.trim(), "Votre bon de livraison NeoDrive à signer", `<p>Bonjour ${esc(first)},</p><p>${r.vin ? `Votre NeoDrive ${esc(r.modele || "")} (n° de série ${esc(r.vin)}) vous est remise.` : `Votre ${esc(vehicleNoVin(r.modele).replace(/^V/, "v"))} vous est remis.`} Merci de lire et signer le bon de livraison, en une seule fois :</p><p><a href="${link}" style="display:inline-block;background:#e8592a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:bold">Lire et signer</a></p><p>Vous recevrez ensuite votre bon de livraison en PDF. Aucune autre signature ne vous sera demandée.</p><p>Merci,<br>L'équipe NeoDrive</p>`)); } catch (e) { sent.errors.push("E-mail : " + (e as Error).message); } }
   if (!sent.sms && !sent.email) throw new AccuseError("Envoi impossible : " + sent.errors.join(" · "), 502);
   const at = new Date().toISOString();
   await db.from("reservations").update({ confirm_sent_at: at, updated_at: at }).eq("id", id);
@@ -61,7 +62,6 @@ export async function startReserve(db: SupabaseClient, id: number, o: { montant:
   if (!r) throw new AccuseError("Réservation introuvable", 404);
   if (r.accuse_token || r.reserve_token) throw new AccuseError("Ce client a déjà signé.", 409);
   if (r.paiement_confirme_at) throw new AccuseError("Le paiement est déjà confirmé : livraison normale.", 409);
-  if (!r.vin) throw new AccuseError("Chargez d'abord le véhicule (numéro de série) pour ce client.");
   const m = Number(String(o.montant ?? "").replace(",", ".").replace(/[^\d.]/g, ""));
   const montant = Number.isFinite(m) && m > 0 ? Math.round(m * 100) / 100 : (r.total == null ? null : Number(r.total));
   const due = /^\d{4}-\d{2}-\d{2}$/.test(String(o.due || "")) ? String(o.due) : null;

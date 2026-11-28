@@ -5,9 +5,9 @@ import c from "../giga/giga.module.css";
 import s from "./delivery.module.css";
 import { supabase } from "../../lib/supabase";
 import { VIN_FORMAT, vinCheckOk } from "../../lib/vin";
-import { bonClauses, keptLabel, type Kept } from "../../lib/reserve-text";
+import { NO_VIN_MODEL, bonClauses, keptLabel, vehicleNoVin, type Kept } from "../../lib/reserve-text";
 
-/** Livraisons en 4 étapes : 1 prévenir le client (« j'arrive »), 2 numéro de série (photo → lecture auto), 3 paiement, 4 signature (téléphone du client ou du livreur). */
+/** Livraisons en 4 étapes : 1 prévenir le client (« j'arrive »), 2 numéro de série (facultatif : photo → lecture auto, ou ajouté après la signature), 3 paiement, 4 signature (téléphone du client ou du livreur). */
 /** Échéance par défaut : 3 jours ouvrés. */
 const dueDefault = () => { const d = new Date(); let n = 0; while (n < 3) { d.setDate(d.getDate() + 1); if (d.getDay() % 6) n++; } return d.toISOString().slice(0, 10); };
 export type Dlv = {
@@ -86,6 +86,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   const [vins, setVins] = useState<{ vin: string; container: string | null }[]>([]);
   const [sel, setSel] = useState<number | null>(null); const [busy, setBusy] = useState("");
   const [vin, setVin] = useState(""); const [photo, setPhoto] = useState(""); const [tail, setTail] = useState(""); const [vinInfo, setVinInfo] = useState<VinInfo | null>(null); const [editVin, setEditVin] = useState(false);
+  const [readErr, setReadErr] = useState(""); const [vinAfter, setVinAfter] = useState<{ cg: string | null; wa: string | null } | null>(null);
   const [ck, setCk] = useState<Record<string, boolean>>({}); const [reserves, setReserves] = useState(""); const [signer, setSigner] = useState(""); const [sig, setSig] = useState<string | null>(null);
   const [accept, setAccept] = useState(false);
   const [done, setDone] = useState<{ url: string; emailed: boolean; whatsapp: string | null; carte_grise_url?: string | null; carte_grise_whatsapp?: string | null } | null>(null);
@@ -102,7 +103,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
 
   const r = list.find(x => x.id === sel) || null;
   const open = (x: Dlv) => {
-    setSel(x.id); setVin(x.vin || ""); setPhoto(""); setVinInfo(null); setEditVin(false); setTail(""); setCk({}); setAccept(false); setReserves(""); setSigner(`${x.prenom} ${x.nom}`.replace(/\(.*?\)/g, "").trim()); setSig(null); setDone(null); setSigMode(true); setSent(null); setArrived(""); setChoice("");
+    setSel(x.id); setVin(x.vin || ""); setPhoto(""); setVinInfo(null); setEditVin(false); setReadErr(""); setVinAfter(null); setTail(""); setCk({}); setAccept(false); setReserves(""); setSigner(`${x.prenom} ${x.nom}`.replace(/\(.*?\)/g, "").trim()); setSig(null); setDone(null); setSigMode(true); setSent(null); setArrived(""); setChoice("");
     setNotif({ date: x.date_promise || "", from: "14:00", to: "16:00" }); setPend({ montant: x.montant_du != null ? String(x.montant_du) : x.total != null ? String(x.total) : "", cles: true, documents: true, due: "" }); window.scrollTo({ top: 0 });
   };
   const run = async (key: string, f: () => Promise<void>) => { setBusy(key); try { await f(); } catch (e) { onMsg("❌ " + (e as Error).message); } finally { setBusy(""); } };
@@ -116,9 +117,13 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   const notifyClient = () => r && run("notif", async () => { await api({ action: "notify_client", id: r.id, date: notif.date, from: notif.from, to: notif.to }); onMsg(`✅ ${r.prenom} est prévenu(e) par SMS.`); await load(); });
 
   // ── 2. Numéro de série
+  // Lecture automatique : jamais bloquante (crédit épuisé, clé absente…) : le VIN est facultatif.
   const readVin = (path?: string) => r && run("read", async () => {
-    const j = await api<{ vin: string | null; raw: string; check_ok: boolean; match: string | null; doubt: string }>({ action: "vin_read", id: r.id, photo_path: path || undefined });
-    if (!j.vin) { onMsg("⚠️ Numéro illisible sur la photo. Reprenez-la de plus près, ou tapez le numéro."); setVinInfo(null); return; }
+    setReadErr("");
+    let j: { vin: string | null; raw: string; check_ok: boolean; match: string | null; doubt: string };
+    try { j = await api({ action: "vin_read", id: r.id, photo_path: path || undefined }); }
+    catch (e) { const m = /indisponible|impossible|trop longue|clé/i.test((e as Error).message) ? "Lecture automatique indisponible : tapez le numéro, ou continuez sans (facultatif)." : `${(e as Error).message} Tapez le numéro, ou continuez sans (facultatif).`; setReadErr(m); setVinInfo(null); onMsg("⚠️ " + m); return; }
+    if (!j.vin) { const m = "Numéro illisible sur la photo. Reprenez-la de plus près, tapez le numéro, ou continuez sans (facultatif)."; setReadErr(m); onMsg("⚠️ " + m); setVinInfo(null); return; }
     setVin(j.vin); setVinInfo({ check_ok: j.check_ok, match: j.match, doubt: j.doubt });
     onMsg(j.check_ok ? `✅ Numéro lu : ${j.vin}. Vérifiez puis touchez « Enregistrer ».` : `⚠️ Numéro lu : ${j.vin}, à vérifier sur la plaque.`);
   });
@@ -135,8 +140,9 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   const saveVin = () => r && run("vin", async () => {
     const v = vin.toUpperCase().replace(/[\s-]/g, "");
     if (!VIN_FORMAT.test(v)) throw new Error("Le numéro de série fait 17 caractères (lettres et chiffres, sans I, O ni Q).");
-    await api({ action: "save_vin", id: r.id, vin: v, photo_path: photo || undefined });
-    onMsg(`✅ Numéro de série ${v} enregistré.`); setEditVin(false); setVinInfo(null); setPhoto(""); await load();
+    const j = await api<{ after?: boolean; carte_grise_url?: string | null; carte_grise_whatsapp?: string | null }>({ action: "save_vin", id: r.id, vin: v, photo_path: photo || undefined });
+    if (j.after) setVinAfter({ cg: j.carte_grise_url || null, wa: j.carte_grise_whatsapp || null });
+    onMsg(`✅ Numéro de série ${v} enregistré${j.after ? " (bon de livraison signé inchangé, carte grise étape 2 ouverte)" : ""}.`); setEditVin(false); setVinInfo(null); setReadErr(""); setPhoto(""); await load();
   });
 
   // ── 3. Paiement
@@ -171,12 +177,41 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
     const paid = !!r.paiement_confirme_at; const pending = !paid && r.paiement_en_attente;
     const kept: Kept = r.kept || { cles: true, documents: true }; const keep = keptLabel(kept);
     // Bon de livraison unique : même document payé ou non (réserve de propriété toujours incluse), mêmes points à cocher.
-    const ready = !!r.vin && (paid || pending) && !r.accuse_url;
+    // VIN facultatif : seul le paiement (reçu ou remise sans paiement) conditionne la signature.
+    const ready = (paid || pending) && !r.accuse_url;
     const checks = checksAll;
     const canSign = ready && signer.trim().length >= 3 && !!sig && accept;
     const vinNow = vin.toUpperCase().replace(/[\s-]/g, "");
     const vinOk = VIN_FORMAT.test(vinNow); const checkOk = vinOk && vinCheckOk(vinNow);
     const showVinForm = !r.vin || editVin;
+    // Formulaire du numéro de série (étape 2, ou après la signature si la livraison s'est faite sans VIN).
+    const vinForm = <>
+            <small className={c.muted}><b>Facultatif – peut être ajouté après.</b> Photographiez la plaque du constructeur (le numéro se remplit tout seul) ou tapez-le. Sans numéro, passez au paiement et à la signature.</small>
+            <div className={s.two}>
+              <label className={`${c.btn} ${c.btnBrand}`} style={{ justifyContent: "center", textAlign: "center", padding: "14px 6px", opacity: busy ? .6 : 1 }}>📷 Prendre la photo
+                <input type="file" accept="image/*" hidden disabled={!!busy} onChange={e => { uploadPhoto(e.target.files?.[0]); e.target.value = ""; }} /></label>
+              <label className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center", textAlign: "center", padding: "14px 6px", opacity: busy ? .6 : 1 }}>🖼️ Galerie
+                <input type="file" accept="image/*" hidden disabled={!!busy} onChange={e => { uploadPhoto(e.target.files?.[0]); e.target.value = ""; }} /></label>
+            </div>
+            {r.has_vin_photo && !photo ? <button className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} disabled={!!busy} onClick={() => readVin()}>🔍 Lire le VIN sur la photo déjà prise</button> : null}
+            {busy === "photo" ? <small>Envoi de la photo…</small> : busy === "read" ? <small>🔍 Lecture du numéro…</small> : null}
+            {readErr && busy !== "read" ? <div className={s.warn}>⚠️ {readErr}</div> : null}
+            <datalist id="dlv-vins">{vins.map(v => <option key={v.vin} value={v.vin}>{v.container || ""}</option>)}</datalist>
+            <input className={c.input} list="dlv-vins" value={vin} maxLength={17} autoCapitalize="characters" spellCheck={false} placeholder="Numéro de série (17 caractères)" onChange={e => { setVin(e.target.value.toUpperCase()); setVinInfo(null); }} style={{ fontFamily: "monospace", fontSize: 17, letterSpacing: .5 }} />
+            {vinOk && !checkOk ? <div className={s.warn}>⚠️ Le 9e caractère (contrôle) ne correspond pas. Vérifiez le numéro sur la plaque avant d’enregistrer.</div> : null}
+            {vinInfo?.doubt ? <small className={c.muted}>Lecture incertaine : {vinInfo.doubt}</small> : null}
+            {vinInfo?.match && vinInfo.match !== vinNow ? <div className={s.warn} style={{ display: "grid", gap: 6 }}>Numéro proche dans le stock : <b style={{ fontFamily: "monospace" }}>{vinInfo.match}</b>
+              <button className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} onClick={() => setVin(vinInfo.match || "")}>Utiliser ce numéro</button></div> : null}
+            <button className={`${c.btn} ${c.btnBrand}`} style={big} disabled={!!busy || !vinOk} onClick={saveVin}>{busy === "vin" ? "…" : "Enregistrer le numéro de série"}</button>
+            <details>
+              <summary style={{ cursor: "pointer", fontWeight: 600 }}>Sans photo : taper la fin du numéro</summary>
+              <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+                <input className={c.input} value={tail} placeholder="Derniers chiffres (3 à 6)" onChange={e => setTail(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))} style={{ fontFamily: "monospace" }} />
+                {tail.length >= 3 ? (() => { const hits = vins.filter(v => v.vin.endsWith(tail)).slice(0, 8); return hits.length ? hits.map(v => <button key={v.vin} className={`${c.btn} ${c.btnGhost}`} style={{ fontFamily: "monospace", justifyContent: "flex-start" }} onClick={() => { setVin(v.vin); setTail(""); setVinInfo(null); }}>{v.vin}{v.container ? ` · ${v.container}` : ""}</button>) : <small className={c.err}>Aucun numéro libre ne finit par « {tail} ».</small>; })() : null}
+              </div>
+            </details>
+            {editVin ? <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { setEditVin(false); setVin(r.vin || ""); setVinInfo(null); }}>Annuler</button> : null}
+    </>;
     const pendForm = (k: "trust" | "keep") => <div style={{ display: "grid", gap: 8 }}>
       <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>Montant à payer (€)<input className={c.input} inputMode="decimal" value={pend.montant} onChange={e => setPend({ ...pend, montant: e.target.value })} /></label>
       <label style={{ display: "grid", gap: 4, fontWeight: 600 }}>À payer au plus tard le<input className={c.input} type="date" value={pend.due || dueDefault()} onChange={e => setPend({ ...pend, due: e.target.value })} /></label>
@@ -208,15 +243,27 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
       </div> : null}
       {r.accuse_url ? <div className={c.card} style={{ background: "#e7f6ec", display: "grid", gap: 8, padding: 14 }}>
         <b>✅ Livrée{r.livre_at ? ` le ${fmt(r.livre_at)}` : ""} · accusé {r.remote_confirmed ? "signé par le client sur son téléphone" : "signé"}</b>
-        <span>N° de série : <b style={{ fontFamily: "monospace" }}>{r.vin}</b></span>
+        {r.vin ? <span>N° de série : <b style={{ fontFamily: "monospace" }}>{r.vin}</b></span> : null}
         <DocBtns url={r.accuse_url} x={r} />
         {done?.whatsapp ? <a className={`${c.btn} ${c.btnGhost}`} style={{ ...big, background: "#1fa855", color: "#fff" }} href={done.whatsapp} target="_blank" rel="noreferrer">💬 Envoyer l’accusé par WhatsApp</a> : null}
         {done ? <small className={c.muted}>{done.emailed ? "📧 Envoyé aussi par e-mail au client." : "Pas d’e-mail client : envoyez-le par WhatsApp."}</small> : null}
-        {done?.carte_grise_url ? <div style={{ display: "grid", gap: 6, background: "#eef4ff", borderRadius: 10, padding: 10 }}>
+        {done?.carte_grise_url && !r.vin ? <small className={c.muted}>🪪 Lien carte grise envoyé au client pour ses pièces. L’étape 2 (photo de la plaque + mandat) s’ouvrira dès que vous ajoutez le numéro de série ci-dessous.</small> : null}
+        {done?.carte_grise_url && r.vin && !vinAfter ? <div style={{ display: "grid", gap: 6, background: "#eef4ff", borderRadius: 10, padding: 10 }}>
           <b>🪪 Carte grise : étape 2 ouverte pour le client</b>
           <small>Photo de la plaque du numéro de série + mandat signé au doigt. Lien {done.emailed ? "envoyé par e-mail et inclus" : "inclus"} dans le message WhatsApp de l’accusé.</small>
           {done.carte_grise_whatsapp ? <a className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center", background: "#1fa855", color: "#fff" }} href={done.carte_grise_whatsapp} target="_blank" rel="noreferrer">💬 Envoyer le lien carte grise par WhatsApp</a> : null}
           <a className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} href={done.carte_grise_url} target="_blank" rel="noreferrer">Ouvrir le lien carte grise (le client peut le faire sur ce téléphone)</a>
+        </div> : null}
+        {!r.vin ? <div style={{ display: "grid", gap: 8, background: "#fff4d6", borderRadius: 10, padding: 10 }}>
+          <b>🔢 N° de série : à compléter</b>
+          <small>Ajoutez-le quand vous l’avez (le bon déjà signé ne change pas) : le véhicule passe « livrée » dans le stock et l’étape 2 de la carte grise s’ouvre pour le client.</small>
+          {vinForm}
+        </div> : null}
+        {vinAfter ? <div style={{ display: "grid", gap: 6, background: "#eef4ff", borderRadius: 10, padding: 10 }}>
+          <b>🪪 Carte grise : étape 2 ouverte pour le client</b>
+          <small>Le client peut maintenant photographier la plaque et signer le mandat sur son lien carte grise.</small>
+          {vinAfter.wa ? <a className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center", background: "#1fa855", color: "#fff" }} href={vinAfter.wa} target="_blank" rel="noreferrer">💬 Envoyer le lien carte grise par WhatsApp</a> : null}
+          {vinAfter.cg ? <a className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} href={vinAfter.cg} target="_blank" rel="noreferrer">Ouvrir le lien carte grise (le client peut le faire sur ce téléphone)</a> : null}
         </div> : null}
       </div> : <>
         <Step n={1} title="Prévenir le client" done={!!r.prevenu_at || !!arrived}>
@@ -239,36 +286,11 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
           </details>
         </Step>
 
-        <Step n={2} title="Numéro de série" done={!!r.vin && !editVin}>
+        <Step n={2} title="Numéro de série (facultatif)" done={!!r.vin && !editVin}>
           {!showVinForm ? <div className={s.ok} style={{ display: "grid", gap: 6 }}>
             <span>✅ <b style={{ fontFamily: "monospace", fontSize: 17 }}>{r.vin}</b></span>
             <button className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} onClick={() => { setEditVin(true); setVin(r.vin || ""); }}>Modifier</button>
-          </div> : <>
-            <small className={c.muted}>Photographiez la plaque du constructeur : le numéro se remplit tout seul.</small>
-            <div className={s.two}>
-              <label className={`${c.btn} ${c.btnBrand}`} style={{ justifyContent: "center", textAlign: "center", padding: "14px 6px", opacity: busy ? .6 : 1 }}>📷 Prendre la photo
-                <input type="file" accept="image/*" hidden disabled={!!busy} onChange={e => { uploadPhoto(e.target.files?.[0]); e.target.value = ""; }} /></label>
-              <label className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center", textAlign: "center", padding: "14px 6px", opacity: busy ? .6 : 1 }}>🖼️ Galerie
-                <input type="file" accept="image/*" hidden disabled={!!busy} onChange={e => { uploadPhoto(e.target.files?.[0]); e.target.value = ""; }} /></label>
-            </div>
-            {r.has_vin_photo && !photo ? <button className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} disabled={!!busy} onClick={() => readVin()}>🔍 Lire le VIN sur la photo déjà prise</button> : null}
-            {busy === "photo" ? <small>Envoi de la photo…</small> : busy === "read" ? <small>🔍 Lecture du numéro…</small> : null}
-            <datalist id="dlv-vins">{vins.map(v => <option key={v.vin} value={v.vin}>{v.container || ""}</option>)}</datalist>
-            <input className={c.input} list="dlv-vins" value={vin} maxLength={17} autoCapitalize="characters" spellCheck={false} placeholder="Numéro de série (17 caractères)" onChange={e => { setVin(e.target.value.toUpperCase()); setVinInfo(null); }} style={{ fontFamily: "monospace", fontSize: 17, letterSpacing: .5 }} />
-            {vinOk && !checkOk ? <div className={s.warn}>⚠️ Le 9e caractère (contrôle) ne correspond pas. Vérifiez le numéro sur la plaque avant d’enregistrer.</div> : null}
-            {vinInfo?.doubt ? <small className={c.muted}>Lecture incertaine : {vinInfo.doubt}</small> : null}
-            {vinInfo?.match && vinInfo.match !== vinNow ? <div className={s.warn} style={{ display: "grid", gap: 6 }}>Numéro proche dans le stock : <b style={{ fontFamily: "monospace" }}>{vinInfo.match}</b>
-              <button className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} onClick={() => setVin(vinInfo.match || "")}>Utiliser ce numéro</button></div> : null}
-            <button className={`${c.btn} ${c.btnBrand}`} style={big} disabled={!!busy || !vinOk} onClick={saveVin}>{busy === "vin" ? "…" : "Enregistrer"}</button>
-            <details>
-              <summary style={{ cursor: "pointer", fontWeight: 600 }}>Sans photo : taper la fin du numéro</summary>
-              <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-                <input className={c.input} value={tail} placeholder="Derniers chiffres (3 à 6)" onChange={e => setTail(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))} style={{ fontFamily: "monospace" }} />
-                {tail.length >= 3 ? (() => { const hits = vins.filter(v => v.vin.endsWith(tail)).slice(0, 8); return hits.length ? hits.map(v => <button key={v.vin} className={`${c.btn} ${c.btnGhost}`} style={{ fontFamily: "monospace", justifyContent: "flex-start" }} onClick={() => { setVin(v.vin); setTail(""); setVinInfo(null); }}>{v.vin}{v.container ? ` · ${v.container}` : ""}</button>) : <small className={c.err}>Aucun numéro libre ne finit par « {tail} ».</small>; })() : null}
-              </div>
-            </details>
-            {editVin ? <button className={`${c.btn} ${c.btnGhost}`} onClick={() => { setEditVin(false); setVin(r.vin || ""); setVinInfo(null); }}>Annuler</button> : null}
-          </>}
+          </div> : vinForm}
         </Step>
 
         <Step n={3} title="Paiement" done={paid || (pending && !!r.reserve_url)} tone={paid ? "#e7f6ec" : pending ? "#fff4d6" : undefined}>
@@ -308,7 +330,8 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
         </Step>
 
         <Step n={4} title="Signature du client" done={!!r.accuse_url}>
-          {!ready ? <small className={c.err}>{!r.vin ? "D’abord le numéro de série (étape 2)." : "D’abord le paiement (étape 3)."}</small> : <>
+          {!ready ? <small className={c.err}>D’abord le paiement (étape 3).</small> : <>
+            {!r.vin ? <small className={c.muted}>Sans numéro de série : le bon indiquera « N° de série : à compléter ». Vous pourrez l’ajouter après la signature.</small> : null}
             <span>✍️ <b>Le client signe sur votre téléphone</b>, juste en dessous.</span>
             <button className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} disabled={!!busy} onClick={sendConfirm}>{busy === "send" ? "Envoi…" : r.confirm_sent_at ? "📲 Renvoyer le lien au client" : "📲 Ou envoyer le lien au client (il signe sur son téléphone)"}</button>
             {r.confirm_sent_at ? <div style={{ display: "grid", gap: 6, background: "#e8f0fe", borderRadius: 10, padding: 10 }}>
@@ -321,6 +344,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
 
         {sigMode && ready ? <div className={c.card} style={{ display: "grid", gap: 10, padding: 14 }}>
           <b>Bon de livraison : le client lit et signe</b>
+          <span>🚗 {r.vin ? <>{r.modele || "NeoDrive"}{r.couleur ? ` · ${r.couleur}` : ""} · N° de série <b style={{ fontFamily: "monospace" }}>{r.vin}</b></> : <>{vehicleNoVin(r.modele || NO_VIN_MODEL)} · N° de série : à compléter</>}</span>
           <button type="button" className={`${c.btn} ${c.btnGhost}`} style={{ justifyContent: "center" }} onClick={() => setCk({})}>✅ Tout cocher</button>
           {checks.map(x => <label key={x.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 16 }}><input type="checkbox" checked={ck[x.id] !== false} onChange={e => setCk({ ...ck, [x.id]: e.target.checked })} /><span>{x.label}</span></label>)}
           <small className={c.muted}>Décochez ce qui n’est pas remis.</small>
@@ -346,7 +370,7 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
     <button onClick={() => open(x)} style={{ textAlign: "left", display: "grid", gap: 4, cursor: "pointer", font: "inherit", background: "none", border: 0, padding: 0, color: "inherit" }}>
       <b style={{ fontSize: 17 }}>{x.ordre ? `${x.ordre}. ` : ""}{x.prenom} {x.nom}</b>
       <span className={c.muted}>📍 {x.ville || "—"}{x.code_postal ? ` (${x.code_postal.slice(0, 2)})` : ""} · 🚗 {x.modele || "—"}{x.couleur ? ` · ${x.couleur}` : ""}{mine ? "" : ` · 📅 ${fmt(x.date_promise)}`}</span>
-      <span style={{ fontSize: 14 }}>{x.vin ? `🔢 ${x.vin}` : "🔢 numéro à saisir"} · {x.paiement_confirme_at ? "💶 payé" : x.paiement_en_attente ? "💶 paiement en attente" : "⏳ paiement à confirmer"}{x.confirm_sent_at ? " · 📲 lien envoyé" : ""}</span>
+      <span style={{ fontSize: 14 }}>{x.vin ? `🔢 ${x.vin}` : "🔢 n° de série facultatif"} · {x.paiement_confirme_at ? "💶 payé" : x.paiement_en_attente ? "💶 paiement en attente" : "⏳ paiement à confirmer"}{x.confirm_sent_at ? " · 📲 lien envoyé" : ""}</span>
     </button>
     <NavBtns x={x} />
     {x.reserve_url ? <DocBtns url={x.reserve_url} x={x} /> : null}
@@ -355,14 +379,14 @@ export default function Delivery({ api, onMsg, driverName = "" }: { api: Api; on
   const groups: { id: string; name: string; date: string; link: string | null; items: Dlv[] }[] = [];
   for (const x of todo) { const k = x.tour_id || ""; let g = groups.find(y => y.id === k); if (!g) { g = { id: k, name: x.tour_name || "Hors tournée", date: x.tour_date || "", link: x.link || null, items: [] }; groups.push(g); } g.items.push(x); }
   return <section className={s.root} style={{ display: "grid", gap: 10, marginTop: 12 }}>
-    <p className={c.muted} style={{ margin: 0 }}>{mine ? "Vos clients, dans l’ordre de passage. " : ""}Pour chaque voiture : 1 prévenir · 2 numéro de série · 3 paiement · 4 signature.</p>
+    <p className={c.muted} style={{ margin: 0 }}>{mine ? "Vos clients, dans l’ordre de passage. " : ""}Pour chaque voiture : 1 prévenir · 2 numéro de série (facultatif) · 3 paiement · 4 signature.</p>
     {todo.length ? (mine ? groups.map(g => <div key={g.id} style={{ display: "grid", gap: 8 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}><b style={{ fontSize: 18 }}>🚚 {g.name}</b>{g.date ? <span className={c.badge} style={{ background: "#e8f0fe", color: "#1849a9" }}>📅 {fmt(g.date)}</span> : null}</div>
       {g.link ? <a className={`${c.btn} ${c.btnGhost}`} href={g.link} style={{ justifyContent: "center", textDecoration: "none" }}>Ouvrir la tournée (chargement, étapes, heures)</a> : null}
       {g.items.map(card)}
     </div>) : todo.map(card)) : <p className={c.muted}>{mine ? "Les clients à livrer apparaissent ici quand une tournée est validée." : "Aucune livraison en attente."}</p>}
     {recent.length ? <><b style={{ marginTop: 8 }}>Livrées ces 3 derniers jours</b>{recent.map(x => <div key={x.id} className={c.card} style={{ display: "grid", gap: 8, background: "#e7f6ec", padding: 14 }}>
-      <button onClick={() => open(x)} style={{ textAlign: "left", cursor: "pointer", font: "inherit", background: "none", border: 0, padding: 0, color: "inherit" }}>{x.paiement_en_attente && !x.paiement_confirme_at ? "💶" : "✅"} {x.prenom} {x.nom} · {x.ville} · <span style={{ fontFamily: "monospace" }}>{x.vin}</span>{x.paiement_en_attente && !x.paiement_confirme_at ? " · paiement en attente" : ""}</button>
+      <button onClick={() => open(x)} style={{ textAlign: "left", cursor: "pointer", font: "inherit", background: "none", border: 0, padding: 0, color: "inherit" }}>{x.paiement_en_attente && !x.paiement_confirme_at ? "💶" : "✅"} {x.prenom} {x.nom} · {x.ville} · {x.vin ? <span style={{ fontFamily: "monospace" }}>{x.vin}</span> : <b>VIN à compléter</b>}{x.paiement_en_attente && !x.paiement_confirme_at ? " · paiement en attente" : ""}</button>
       {x.accuse_url ? <DocBtns url={x.accuse_url} x={x} /> : null}
     </div>)}</> : null}
   </section>;
