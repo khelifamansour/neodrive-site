@@ -65,7 +65,7 @@ const hist = (h: unknown) => (Array.isArray(h) ? h : []) as Hist[];
 const mask = (k: string) => k ? `0${k.slice(0, 1)} ** ** ${k.slice(5, 7)} ${k.slice(7)}` : "";
 function firstName(nom: string | null) {
   const f = String(nom || "").trim().split(/\s+/)[0] || "";
-  if (!/^[A-Za-zÀ-ÖØ-öø-ÿ'-]{2,20}$/.test(f) || /^(contact|whatsapp|client|cliente|mr|mme|mlle|monsieur|madame|neodrive|leboncoin)$/i.test(f)) return "";
+  if (!/^[A-Za-zÀ-ÖØ-öø-ÿ'-]{2,20}$/.test(f) || /^(contact|whatsapp|client|cliente|mr|mme|mlle|monsieur|madame|neodrive|leboncoin|appel|manqu[ée]|inconnu|mm|mr|m|prospect|lead|test)$/i.test(f)) return "";
   return prettyFirst(f);
 }
 
