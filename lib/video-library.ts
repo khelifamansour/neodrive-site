@@ -122,6 +122,24 @@ export async function reconcile(db: Db, known: LibItem[]) {
   return added;
 }
 
+/** Fiche dont le fichier n'est jamais arrivé (vide ou coupé) : seule solution, renvoyer la vidéo depuis le téléphone. */
+export const needsResend = (it: Pick<LibItem, "status" | "error">) => it.status === "error" && /^(Envoi incomplet|Fichier vide)/.test(it.error || "");
+
+// ───────────── crédit IA épuisé : file d'analyse en pause ─────────────
+const AI_PAUSE = "library/_state/ai-pause.json";
+/** Crédit OpenAI épuisé (pas la faute de la vidéo) : on ne compte pas d'essai et on met la file en pause au lieu de boucler. */
+export const isAiQuotaError = (m: string | null | undefined) => /insufficient_quota|no credits remaining|credit_balance_exhausted|exceeded your current quota/i.test(m || "");
+export const AI_WAIT = "En attente : crédit IA (OpenAI) épuisé, l’analyse reprendra toute seule une fois le crédit rechargé.";
+export async function readAiPause(db: Db): Promise<{ until: number; reason: string } | null> {
+  const { data } = await db.storage.from(BUCKET).download(AI_PAUSE);
+  if (!data) return null;
+  try { const p = JSON.parse(await data.text()) as { until: number; reason: string }; return p.until > Date.now() ? p : null; } catch { return null; }
+}
+export async function writeAiPause(db: Db, reason: string, minutes = 60) {
+  await db.storage.from(BUCKET).upload(AI_PAUSE, Buffer.from(JSON.stringify({ until: Date.now() + minutes * 60000, reason: reason.slice(0, 200), at: new Date().toISOString() })), { contentType: "application/json", upsert: true });
+}
+export const clearAiPause = (db: Db) => db.storage.from(BUCKET).remove([AI_PAUSE]);
+
 // ───────────── tickets d'enregistrement (sans code d'accès, pour le service worker) ─────────────
 const key = () => process.env.CRON_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "neodrive";
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
@@ -160,7 +178,11 @@ export async function importSocialVideos(db: Db, opts: { max?: number; budgetMs?
   for (const a of rows) {
     const name = (a.title || a.storage_path.split("/").pop() || "video.mp4").slice(0, 140);
     if (seen.has(name)) continue; seen.add(name);
-    const prev = byName.get(name);
+    // Fiche vide d'un envoi raté : même vidéo de la galerie (1000150326.mp4) dans la bibliothèque réseaux sociaux (préfixe uuid) → réparée par la copie.
+    const gallery = name.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i, "");
+    const emptyTwin = gallery !== name ? byName.get(gallery) : undefined;
+    if (!byName.get(name) && emptyTwin && !needsResend(emptyTwin)) { out.skipped++; continue; }
+    const prev = byName.get(name) || emptyTwin;
     const i = a.storage_path.lastIndexOf("/");
     const { data: ls } = await db.storage.from(SOCIAL_BUCKET).list(a.storage_path.slice(0, i), { search: a.storage_path.slice(i + 1), limit: 5 });
     const src = (ls || []).find(x => x.name === a.storage_path.slice(i + 1));

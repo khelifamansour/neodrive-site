@@ -31,6 +31,8 @@ const dur = (s: number | null) => s ? `${Math.floor(s / 60)}:${String(Math.round
 const PED_TAG = "pedagogie";
 type Pedagogy = { enabled: boolean; site: { id: string; title: string; active: boolean }[]; skipped: { id: string; title: string; why: string }[] };
 const STATUS: Record<Item["status"], string> = { uploaded: "À analyser", analysing: "Analyse…", analysed: "Analysée", error: "Erreur" };
+/** Fichier jamais arrivé (0 octet ou coupé) : il faut renvoyer la vidéo depuis le téléphone, réessayer l'analyse ne sert à rien. */
+const toResend = (i: Pick<Item, "status" | "error">) => i.status === "error" && /^(Envoi incomplet|Fichier vide)/.test(i.error || "");
 
 async function pool<T>(xs: T[], n: number, fn: (x: T, i: number) => Promise<void>) {
   let i = 0; await Promise.all(Array.from({ length: n }, async () => { while (i < xs.length) { const k = i++; await fn(xs[k], k); } }));
@@ -47,7 +49,8 @@ export default function Bibliotheque() {
   const [prep, setPrep] = useState("");
   const [failedBatches, setFailedBatches] = useState<StoredBatch[]>([]);
   const [install, setInstall] = useState<{ prompt: () => Promise<void> } | null>(null);
-  const [filter, setFilter] = useState<"all" | "pedagogie" | Item["status"]>("all");
+  const [filter, setFilter] = useState<"all" | "pedagogie" | "resend" | Item["status"]>("all");
+  const [aiPaused, setAiPaused] = useState<string | null>(null);
   const [sel, setSel] = useState<string | null>(null);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [batch, setBatch] = useState("");
@@ -63,14 +66,23 @@ export default function Bibliotheque() {
     return j;
   }, []);
   const loadPed = useCallback(async () => { try { const j = await api({ action: "pedagogy" }); setPed({ enabled: j.enabled, site: j.site, skipped: j.skipped }); } catch { /* facultatif */ } }, [api]);
-  const load = useCallback(async (pc = codeRef.current) => { const j = await api({ action: "list" }, pc); setItems(j.items); setAuthed(true); loadPed(); }, [api, loadPed]);
+  const load = useCallback(async (pc = codeRef.current) => { const j = await api({ action: "list" }, pc); setItems(j.items); setAiPaused(j.aiPaused || null); setAuthed(true); loadPed(); }, [api, loadPed]);
 
   const patchRow = (key: string, p: Partial<Row>) => setRows(rs => rs.map(r => r.key === key ? { ...r, ...p } : r));
 
   // ───── envoi ─────
-  const sendFiles = useCallback(async (files: File[]) => {
+  const sendFiles = useCallback(async (picked: File[]) => {
+    let files = picked;
     if (!files.length) return;
-    setErr(""); setInfo(""); setPrep(`Préparation de ${files.length} vidéo(s)…`);
+    setErr(""); setInfo("");
+    // Fichier à 0 octet côté téléphone (galerie cloud pas encore téléchargée, accès refusé) : refusé tout de suite, avec la raison.
+    const empty = files.filter(f => !f.size);
+    if (empty.length) {
+      setRows(rs => [...empty.map((f, i) => ({ key: `z${Date.now()}-${i}`, name: f.name, size: 0, status: "error" as const, sent: 0, error: "fichier vide sur le téléphone (ouvrez-le une fois dans la galerie puis rechoisissez-le)" })), ...rs]);
+      files = files.filter(f => f.size > 0);
+      if (!files.length) return;
+    }
+    setPrep(`Préparation de ${files.length} vidéo(s)…`);
     try {
       const pend = readPending();
       const init = await api({ action: "init", files: files.map(f => ({ name: f.name, size: f.size, type: f.type || "video/mp4", resume: pend[fileKey(f)]?.ticket })) });
@@ -231,8 +243,10 @@ export default function Bibliotheque() {
   const sentBytes = bgTotal ? bgTotal.sent : rows.reduce((s, r) => s + (r.status === "done" || r.status === "registering" ? r.size : r.sent), 0);
   const pct = bgTotal && bgTotal.total ? Math.round(bgTotal.sent / bgTotal.total * 100) : totalBytes ? Math.round(sentBytes / totalBytes * 100) : 0;
   const nDone = rows.filter(r => r.status === "done").length, nErr = rows.filter(r => r.status === "error").length;
-  const shown = filter === "all" ? items : filter === "pedagogie" ? items.filter(i => i.tags?.includes(PED_TAG)) : items.filter(i => i.status === filter);
+  const shown = filter === "all" ? items : filter === "pedagogie" ? items.filter(i => i.tags?.includes(PED_TAG)) : filter === "resend" ? items.filter(toResend) : items.filter(i => i.status === filter);
   const nPedLib = items.filter(i => i.tags?.includes(PED_TAG)).length;
+  const resend = items.filter(toResend);
+  const nRetry = items.filter(i => i.status === "error" && !toResend(i)).length;
 
   return <main className="s">
     <p className="nav"><a href="/studio/video">← Studio vidéo</a> · <a href="/studio/fabrique">🏭 Fabrique TikTok</a></p>
@@ -267,6 +281,15 @@ export default function Bibliotheque() {
       {failedBatches.map(b => <div key={b.id}><p className="muted">{new Date(b.created).toLocaleString("fr-FR")} : à resélectionner et renvoyer :</p><ul>{b.items.filter(it => b.results?.[it.key] !== "done").map(it => <li key={it.key}>{it.name} ({mb(it.size)})</li>)}</ul><button className="link" onClick={() => dropBatch(b.id).then(() => setFailedBatches(fb => fb.filter(x => x.id !== b.id)))}>Ignorer</button></div>)}
     </section> : null}
 
+    {aiPaused ? <p className="hint warn">🧠 {aiPaused}</p> : null}
+
+    {resend.length ? <section className="card warnc">
+      <div className="head"><b>📤 {resend.length} vidéo(s) à renvoyer</b><button className="link" onClick={() => setFilter("resend")}>Voir</button></div>
+      <p className="muted">Ces vidéos ne sont jamais arrivées (fichier vide ou coupé pendant l’envoi). Dans la galerie, resélectionnez ces fichiers avec « ＋ Choisir des vidéos » : chaque envoi remplace automatiquement la fiche vide, les vidéos déjà reçues sont ignorées.</p>
+      <ul className="names">{resend.map(i => <li key={i.id}>{i.name}{i.size ? ` (${mb(i.size)})` : ""}</li>)}</ul>
+      <button className="link" onClick={() => { navigator.clipboard?.writeText(resend.map(i => i.name).join("\n")).then(() => setInfo("Liste copiée."), () => null); }}>Copier la liste des noms</button>
+    </section> : null}
+
     {ped ? <section className="card ped">
       <div className="head"><b>🎓 Pédagogie client (WhatsApp)</b><label className="cons"><input type="checkbox" checked={ped.enabled} onChange={e => pedSet({ enabled: e.target.checked })} /> {ped.enabled ? "Envois actifs" : "Envois coupés"}</label></div>
       <p className="muted">Les clients qui ont réservé et attendent leur livraison reçoivent de temps en temps une de ces vidéos (1 tous les 5 jours au plus, 4 au total, jamais deux fois la même). Cochez « Pédagogie client » sous une vidéo de la bibliothèque pour l’ajouter (16 Mo maximum pour WhatsApp).</p>
@@ -276,7 +299,7 @@ export default function Bibliotheque() {
 
     <h2>Vidéos ({items.length})</h2>
     {items.some(i => i.status === "uploaded") ? <button className="go" disabled={!!batch} onClick={analyseAll}>🧠 Analyser les {items.filter(i => i.status === "uploaded").length} vidéo(s) en attente</button> : null}
-    {items.some(i => i.status === "error") ? <button className="go" disabled={!!batch} onClick={async () => { try { await api({ action: "retry_errors" }); await load(); await analyseAll(); } catch (e) { setErr((e as Error).message); } }}>🔁 Réessayer les {items.filter(i => i.status === "error").length} vidéo(s) en erreur</button> : null}
+    {nRetry ? <button className="go" disabled={!!batch} onClick={async () => { try { await api({ action: "retry_errors" }); await load(); await analyseAll(); } catch (e) { setErr((e as Error).message); } }}>🔁 Réessayer l’analyse des {nRetry} vidéo(s) en erreur</button> : null}
     {batch ? <div className="busy">{batch}<div className="bar pulse"><i /></div></div> : null}
     <p className="muted">L’analyse se fait aussi automatiquement toutes les 10 minutes (les vidéos en erreur sont reprises jusqu’à 3 fois).</p>
     {(() => { const it = items.find(i => i.id === sel); if (!it || !it.analysis) return null; const a = it.analysis as Record<string, unknown> & { best_moments?: { start: number; end: number; why: string; kind: string }[]; pii?: { start: number; end: number; label: string; visual: boolean }[]; hooks?: string[]; scenes?: string[] };
@@ -289,15 +312,16 @@ export default function Bibliotheque() {
         {a.hooks?.length ? <><b>Accroches</b><ul>{a.hooks.map((h, i) => <li key={i}>{h}</li>)}</ul></> : null}
         {a.pii?.length ? <><b>🔒 Infos personnelles repérées (masquées au montage)</b><ul>{a.pii.map((m, i) => <li key={i}>{dur(m.start) || "0:00"} : {m.label}{m.visual ? " (image)" : ""}</li>)}</ul></> : null}
       </section>; })()}
-    <div className="seg">{(["all", "uploaded", "analysed", "error", "pedagogie"] as const).map(f => <button key={f} className={filter === f ? "on" : ""} onClick={() => setFilter(f)}>{f === "all" ? "Toutes" : f === "pedagogie" ? "🎓 Pédagogie client" : STATUS[f]}</button>)}</div>
+    <div className="seg">{(["all", "uploaded", "analysed", "error", "resend", "pedagogie"] as const).filter(f => f !== "resend" || resend.length).map(f => <button key={f} className={filter === f ? "on" : ""} onClick={() => setFilter(f)}>{f === "all" ? "Toutes" : f === "pedagogie" ? "🎓 Pédagogie client" : f === "resend" ? `📤 À renvoyer (${resend.length})` : STATUS[f]}</button>)}</div>
     <div className="grid">{shown.map(it => <article key={it.id} className="vid">
       <button className="thumb" onClick={() => open(it)} aria-label={`Voir ${it.name}`}>{it.posterUrl ? <img src={it.posterUrl} alt="" loading="lazy" /> : <span>🎬</span>}{it.duration ? <em>{dur(it.duration)}</em> : null}</button>
       <div className="meta"><b title={it.name}>{it.name}</b><small>{mb(it.size)} · {new Date(it.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</small>
-        <span className={`st ${it.status}`}>{busy[it.id] ? "Analyse…" : STATUS[it.status]}</span>
+        <span className={`st ${it.status}`}>{busy[it.id] ? "Analyse…" : toResend(it) ? "À renvoyer" : STATUS[it.status]}</span>
         <button className="x" onClick={() => del(it)} aria-label="Supprimer">🗑</button>
         {it.status === "analysed" ? <button className="mini" onClick={() => { setSel(it.id); setTimeout(() => document.getElementById("det")?.scrollIntoView({ behavior: "smooth" }), 50); }}>Détails</button>
+          : toResend(it) ? <small className="e">📤 Fichier non reçu : resélectionnez « {it.name} » dans la galerie</small>
           : <button className="mini" disabled={!!busy[it.id] || it.status === "analysing"} onClick={() => analyse(it)}>{it.status === "error" ? "Réessayer" : "Analyser"}</button>}
-        {it.status === "error" && it.error ? <small className="e">{it.error}</small> : null}
+        {it.error && !toResend(it) && (it.status === "error" || it.error.startsWith("En attente")) ? <small className="e">{it.error}</small> : null}
         <label className="cons"><input type="checkbox" checked={it.has_client} onChange={e => setFlag(it, { has_client: e.target.checked })} /> Client visible</label>
         {it.has_client ? <label className={`cons${it.consent ? " yes" : " no"}`}><input type="checkbox" checked={it.consent} onChange={e => setFlag(it, { consent: e.target.checked })} /> Accord du client</label> : null}
         <label className={`cons${it.tags?.includes(PED_TAG) ? " yes" : ""}`}><input type="checkbox" checked={!!it.tags?.includes(PED_TAG)} onChange={e => setPedagogy(it, e.target.checked)} /> 🎓 Pédagogie client</label>
@@ -322,7 +346,7 @@ button{font:inherit;cursor:pointer}.login button{padding:15px;border:0;border-ra
 .bar{height:8px;background:#f1f1f3;border-radius:9px;overflow:hidden;margin-top:6px}.bar.big{height:12px}.bar i{display:block;height:100%;background:#f05a28;transition:width .3s}.pulse i{width:35%;animation:p 1.4s infinite ease-in-out}@keyframes p{0%{margin-left:-35%}100%{margin-left:100%}}
 .err{color:#b42318;font-weight:700;background:#fef3f2;padding:10px 12px;border-radius:12px}.ok{color:#067647;font-weight:700;background:#ecfdf3;padding:10px 12px;border-radius:12px}
 .muted{color:#777;font-size:14px;margin:4px 0}
-.card{border:1px solid #e5e7eb;border-radius:18px;padding:14px;margin:12px 0;display:grid;gap:6px}.warnc{background:#fffaeb;border-color:#fedf89}.warnc ul{margin:4px 0;padding-left:20px;font-size:14px}
+.card{border:1px solid #e5e7eb;border-radius:18px;padding:14px;margin:12px 0;display:grid;gap:6px}.warnc{background:#fffaeb;border-color:#fedf89}.warnc ul{margin:4px 0;padding-left:20px;font-size:14px}.names{max-height:220px;overflow:auto;columns:2}
 .head{display:flex;justify-content:space-between;gap:8px}.head span{color:#555;font-weight:700;white-space:nowrap}
 .rows{display:grid;gap:6px;max-height:50vh;overflow:auto}.row{border-bottom:1px solid #f2f2f2;padding:6px 0}.rn{display:flex;justify-content:space-between;gap:8px;font-size:14px}.rn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.rn small{white-space:nowrap;color:#666}.row.error small{color:#b42318}.row.done small{color:#067647}
 .link{border:0;background:none;color:#666;text-decoration:underline;padding:6px 0;justify-self:start}

@@ -6,8 +6,8 @@ import { BUCKET } from "../../../../lib/studio-video";
 import { PEDAGOGIE_TEMPLATE, pedagogyVideos, readPedagogySettings, writePedagogySettings } from "../../../../lib/client-pedagogy";
 import { MAX_ATTEMPTS, analyseItem, attemptOf, permanentError, storedSize } from "../../../../lib/video-analysis";
 import {
-  LIB_MAX_BYTES, blankItem, deleteItem, getItem, importSocialVideos, libId, libPath, listItems, patchItem, readTicket, reconcile, safeLibId, saveItem, signTicket,
-  type LibItem,
+  AI_WAIT, LIB_MAX_BYTES, blankItem, clearAiPause, deleteItem, getItem, importSocialVideos, isAiQuotaError, libId, libPath, listItems, needsResend, patchItem,
+  readAiPause, readTicket, reconcile, safeLibId, saveItem, signTicket, writeAiPause, type LibItem,
 } from "../../../../lib/video-library";
 
 export const dynamic = "force-dynamic";
@@ -63,10 +63,23 @@ async function processQueue(db: Db, client: OpenAI, max = 3, startBudgetMs = 600
     todo.push(i);
   }
   todo.sort((a, b) => (a.status === "uploaded" ? 0 : 1) - (b.status === "uploaded" ? 0 : 1) || a.created_at.localeCompare(b.created_at));
+  // Crédit IA épuisé récemment : pas de nouvel essai avant la fin de la pause (sinon chaque passage retélécharge les vidéos pour rien).
+  const pause = await readAiPause(db).catch(() => null);
+  if (pause) return { done, remaining: todo.length, paused: AI_WAIT };
   for (const it of todo) {
     if (done.length >= max || Date.now() - t0 > startBudgetMs) break;
     try { await analyseItem(db, client, it); done.push({ id: it.id, ok: true }); }
-    catch (e) { const m = (e as Error).message.slice(0, 200); await patchItem(db, it.id, { status: "error", error: m }).catch(() => null); done.push({ id: it.id, ok: false, error: m }); }
+    catch (e) {
+      const m = (e as Error).message.slice(0, 200);
+      if (isAiQuotaError(m)) {
+        // Pas la faute de la vidéo : elle reste « À analyser » (aucun essai compté) et la file s'arrête une heure.
+        await patchItem(db, it.id, { status: "uploaded", error: AI_WAIT }).catch(() => null);
+        await writeAiPause(db, m).catch(() => null);
+        console.error("[studio-library] crédit IA épuisé, file en pause", m);
+        return { done, remaining: todo.length - done.length, paused: AI_WAIT };
+      }
+      await patchItem(db, it.id, { status: "error", error: m }).catch(() => null); done.push({ id: it.id, ok: false, error: m });
+    }
   }
   return { done, remaining: Math.max(0, todo.length - done.length) };
 }
@@ -156,12 +169,16 @@ export async function POST(req: Request) {
     if (action === "list") {
       let items = await listItems(db, { limit: 400 });
       if (b.reconcile !== false) { const added = await reconcile(db, items).catch(() => []); if (added.length) items = [...added, ...items].sort((x, y) => y.created_at.localeCompare(x.created_at)); }
-      return NextResponse.json({ ok: true, items: await withUrls(db, items) });
+      // Vidéos dont le fichier n'est jamais arrivé (0 octet ou coupé) : liste claire de ce qu'il faut renvoyer depuis le téléphone.
+      const resend = items.filter(needsResend).map(i => ({ id: i.id, name: i.name, size: i.size, created_at: i.created_at }));
+      const pause = await readAiPause(db).catch(() => null);
+      return NextResponse.json({ ok: true, items: await withUrls(db, items), resend, aiPaused: pause ? AI_WAIT : null });
     }
 
     if (action === "retry_errors") {
       // Remet en file les vidéos en erreur (sauf envoi incomplet : il faut renvoyer le fichier).
-      const errs = (await listItems(db, { status: ["error"], limit: 400 })).filter(i => !/^(Envoi incomplet|Fichier vide)/.test(i.error || ""));
+      const errs = (await listItems(db, { status: ["error"], limit: 400 })).filter(i => !needsResend(i));
+      await clearAiPause(db).catch(() => null);
       for (const i of errs) await patchItem(db, i.id, { status: "uploaded", error: null }).catch(() => null);
       await logSection(acc, "studio_library_retry", { n: errs.length });
       return NextResponse.json({ ok: true, requeued: errs.length });
@@ -198,6 +215,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, item: { ...(await withUrls(db, [next]))[0] } });
       } catch (e) {
         const m = (e as Error).message.slice(0, 200);
+        if (isAiQuotaError(m)) { await patchItem(db, id, { status: "uploaded", error: AI_WAIT }).catch(() => null); await writeAiPause(db, m).catch(() => null); return fail(AI_WAIT, 503); }
         await patchItem(db, id, { status: "error", error: m }).catch(() => null);
         return fail("Analyse impossible : " + m, 500);
       }
